@@ -576,79 +576,89 @@ class OdeExportService implements OdeExportServiceInterface
         // COPY FILES
         // ///////////////////////////////////////////////////
 
-        // TODO VER QUé HACE PORQUE NO COPIA NADA en export ELP ****************
-        // Copy project schema files
-        $this->copySchemaFilesToExportDir($exportDirPath, $exportType);
-
-        // Export type content directory
-        // In some exports the content is placed in a subdirectory
         $newExportDirPath = $exportDirPath;
-        if (isset(Constants::EXPORT_DIR_CONTENT_BY_EXPORT[$exportType])) {
-            $newExportDirName = Constants::EXPORT_DIR_CONTENT_BY_EXPORT[$exportType];
-            $newExportDirPath = self::createDirInExportDir($exportDirPath, $newExportDirName);
+        if (Constants::EXPORT_TYPE_H5P !== $exportType) {
+            // TODO VER QUé HACE PORQUE NO COPIA NADA en export ELP ****************
+            // Copy project schema files
+            $this->copySchemaFilesToExportDir($exportDirPath, $exportType);
+
+            // Export type content directory
+            // In some exports the content is placed in a subdirectory
+            if (isset(Constants::EXPORT_DIR_CONTENT_BY_EXPORT[$exportType])) {
+                $newExportDirName = Constants::EXPORT_DIR_CONTENT_BY_EXPORT[$exportType];
+                $newExportDirPath = self::createDirInExportDir($exportDirPath, $newExportDirName);
+            }
+            // TODO VER QUé HACE PORQUE NO COPIA NADA en export ELP ****************
+            // Copy project common files
+            $this->copyCommonFilesToExportDir($newExportDirPath, $exportType);
         }
-        // TODO VER QUé HACE PORQUE NO COPIA NADA en export ELP ****************
-        // Copy project common files
-        $this->copyCommonFilesToExportDir($newExportDirPath, $exportType);
 
         // vamos a crear un método que analice recursivamente odeNavStructureSyncs y que copie los archivos de las librerías que se deben de incluir en el proyecto
         // debe de buscar en cada idevice si tiene una algún efecto incluido. El método retornará todos un array con todos los efectos que encuentre.
-        list($librariesToCopy, $librariesFileToCopy) = ExportXmlUtil::getPathForLibrariesInIdevices($odeNavStructureSyncs, $odeProperties);
-
-        // copia todos los libs, jquery, bootstrap
-        // Copy project base files to export --> Aquí vamos a copiar los obligatorios
-        $this->copyBaseFilesToExportDir($newExportDirPath, $exportType, $resourcesPrefix, $isPreview, $librariesToCopy);
-
-        // Copy ode files
+        $libsResourcesPath = [];
         $idevicesMapping = $odeSaveXML->getOdeComponentsMapping();
-        $idevicesMapping['odeFileNames'] = $this->odeService->copyOdeFilesToDist(
-            $odeSessionId,
-            $idevicesMapping,
-            $dbUser,
-            $newExportDirPath
-        );
+        $idevicesTypesData = [];
+        if (Constants::EXPORT_TYPE_H5P !== $exportType) {
+            list($librariesToCopy, $librariesFileToCopy) = ExportXmlUtil::getPathForLibrariesInIdevices($odeNavStructureSyncs, $odeProperties);
 
-        // Modify the urls of the base style in the preview
-        $baseCssPath = $newExportDirPath.Constants::PERMANENT_SAVE_CONTENT_DIRNAME.DIRECTORY_SEPARATOR.
-            Constants::PERMANENT_SAVE_CONTENT_CSS_DIRNAME.DIRECTORY_SEPARATOR.
-            Constants::WORKAREA_STYLE_BASE_CSS_FILENAME;
-        $this->replaceUrlsBaseCssFile($baseCssPath, $resourcesPrefix, $isPreview);
-        // array con todos las rutas de las librerías
-        // Get links to files (previously copied files)
-        $libsResourcesPath = $this->getFilesLoadedPath($exportType, $librariesFileToCopy);
+            // copia todos los libs, jquery, bootstrap
+            // Copy project base files to export --> Aquí vamos a copiar los obligatorios
+            $this->copyBaseFilesToExportDir($newExportDirPath, $exportType, $resourcesPrefix, $isPreview, $librariesToCopy);
 
-        // Copy idevices export files
-        $idevicesTypesData = $this->copyIdevicesToExportDir(
-            $user,
-            $odeNavStructureSyncs,
-            $newExportDirPath,
-            $resourcesPrefix,
-            $isPreview,
-            $exportType
-        );
-
-        // Copy ELP to the export dir if it is necessary
-        $elpFileName = false;
-        if ($addElpToExport || ('true' == $odeProperties['pp_exportElp']->getValue())) {
-            $elpFileName = $this->copyDistElpToExport(
-                $dbUser,
-                $odeId,
+            // Copy ode files
+            $idevicesMapping['odeFileNames'] = $this->odeService->copyOdeFilesToDist(
                 $odeSessionId,
-                $odeVersionId,
-                $odeProperties,
-                $saveOdeResultParameters['elpFileName'],
+                $idevicesMapping,
+                $dbUser,
                 $newExportDirPath
+            );
+
+            // Modify the urls of the base style in the preview
+            $baseCssPath = $newExportDirPath.Constants::PERMANENT_SAVE_CONTENT_DIRNAME.DIRECTORY_SEPARATOR.
+                Constants::PERMANENT_SAVE_CONTENT_CSS_DIRNAME.DIRECTORY_SEPARATOR.
+                Constants::WORKAREA_STYLE_BASE_CSS_FILENAME;
+            $this->replaceUrlsBaseCssFile($baseCssPath, $resourcesPrefix, $isPreview);
+
+            // array con todos las rutas de las librerías
+            // Get links to files (previously copied files)
+            $libsResourcesPath = $this->getFilesLoadedPath($exportType, $librariesFileToCopy);
+
+            // Copy idevices export files
+            $idevicesTypesData = $this->copyIdevicesToExportDir(
+                $user,
+                $odeNavStructureSyncs,
+                $newExportDirPath,
+                $resourcesPrefix,
+                $isPreview,
+                $exportType
             );
         }
 
-        // Copy theme files
-        $themeServerDir = $this->themeHelper->getThemeDir(
-            $theme->getDirName(),
-            $theme->getType(),
-            $dbUser
-        );
-        $exportDirThemePath = $newExportDirPath.Constants::EXPORT_DIR_THEME;
-        FileUtil::copyDir($themeServerDir, $exportDirThemePath);
+
+        // Copy ELP to the export dir if it is necessary
+        $elpFileName = false;
+        if (Constants::EXPORT_TYPE_H5P !== $exportType) {
+            if ($addElpToExport || ('true' == $odeProperties['pp_exportElp']->getValue())) {
+                $elpFileName = $this->copyDistElpToExport(
+                    $dbUser,
+                    $odeId,
+                    $odeSessionId,
+                    $odeVersionId,
+                    $odeProperties,
+                    $saveOdeResultParameters['elpFileName'],
+                    $newExportDirPath
+                );
+            }
+
+            // Copy theme files
+            $themeServerDir = $this->themeHelper->getThemeDir(
+                $theme->getDirName(),
+                $theme->getType(),
+                $dbUser
+            );
+            $exportDirThemePath = $newExportDirPath.Constants::EXPORT_DIR_THEME;
+            FileUtil::copyDir($themeServerDir, $exportDirThemePath);
+        }
 
         // ///////////////////////////////////////////////////
 
@@ -666,40 +676,41 @@ class OdeExportService implements OdeExportServiceInterface
 
         // Clone idevices
         $odeComponentsSyncCloneArray = [];
+        if (Constants::EXPORT_TYPE_H5P !== $exportType) {
+            // Replace urls in idevice
+            foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
+                foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
+                    foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
+                        $ideviceId = $odeComponentsSync->getOdeIdeviceId();
+                        $newIdeviceId = $idevicesMapping[$ideviceId];
+                        $ideviceResourcesMapping = $idevicesMapping['odeFileNames']['odeComponents'][$newIdeviceId];
+                        $filemanagerResourcesMapping = $idevicesMapping['odeFileNames']['fileManager'];
 
-        // Replace urls in idevice
-        foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
-            foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
-                foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
-                    $ideviceId = $odeComponentsSync->getOdeIdeviceId();
-                    $newIdeviceId = $idevicesMapping[$ideviceId];
-                    $ideviceResourcesMapping = $idevicesMapping['odeFileNames']['odeComponents'][$newIdeviceId];
-                    $filemanagerResourcesMapping = $idevicesMapping['odeFileNames']['fileManager'];
+                        $odeComponentsSyncClone = clone $odeComponentsSync;
 
-                    $odeComponentsSyncClone = clone $odeComponentsSync;
+                        // Page file path/url
+                        $pageData = $pagesFileData[$odeNavStructureSync->getOdePageId()];
 
-                    // Page file path/url
-                    $pageData = $pagesFileData[$odeNavStructureSync->getOdePageId()];
+                        // In case it is not a preview we need to adjust the url of the links since we will be in a subfolder
+                        if (!$pageData['isIndex'] && !$isPreview && Constants::EXPORT_TYPE_HTML5_SP != $exportType) {
+                            $newResourcesPrefix = '..'.Constants::SLASH.$resourcesPrefix;
+                        } else {
+                            $newResourcesPrefix = $resourcesPrefix;
+                        }
 
-                    // In case it is not a preview we need to adjust the url of the links since we will be in a subfolder
-                    if (!$pageData['isIndex'] && !$isPreview && Constants::EXPORT_TYPE_HTML5_SP != $exportType) {
-                        $newResourcesPrefix = '..'.Constants::SLASH.$resourcesPrefix;
-                    } else {
-                        $newResourcesPrefix = $resourcesPrefix;
+                        $odeComponentsSyncClone->replaceLinksHtml(
+                            $newIdeviceId,
+                            $ideviceResourcesMapping,
+                            $filemanagerResourcesMapping,
+                            $pagesFileData,
+                            $userPreferencesDtos,
+                            $elpFileName,
+                            $newResourcesPrefix,
+                            $exportType
+                        );
+
+                        $odeComponentsSyncCloneArray[$ideviceId] = $odeComponentsSyncClone;
                     }
-
-                    $odeComponentsSyncClone->replaceLinksHtml(
-                        $newIdeviceId,
-                        $ideviceResourcesMapping,
-                        $filemanagerResourcesMapping,
-                        $pagesFileData,
-                        $userPreferencesDtos,
-                        $elpFileName,
-                        $newResourcesPrefix,
-                        $exportType
-                    );
-
-                    $odeComponentsSyncCloneArray[$ideviceId] = $odeComponentsSyncClone;
                 }
             }
         }
@@ -709,12 +720,13 @@ class OdeExportService implements OdeExportServiceInterface
         // ///////////////////////////////////////////////////
 
         // Create the config.xml in case the export is a ELP or editable export preference is activated
-        if (Constants::EXPORT_TYPE_ELP == $exportType
+        if (Constants::EXPORT_TYPE_H5P !== $exportType && (
+                Constants::EXPORT_TYPE_ELP == $exportType
                 || ((('true' == $odeProperties['exportSource']->getValue()) || $isIntegration)
                    && (Constants::EXPORT_TYPE_HTML5 == $exportType || Constants::EXPORT_TYPE_SCORM12 == $exportType
                    || Constants::EXPORT_TYPE_SCORM2004 == $exportType || Constants::EXPORT_TYPE_HTML5_SP == $exportType
-                   || Constants::EXPORT_TYPE_IMS == $exportType)
-                )
+                   || Constants::EXPORT_TYPE_IMS == $exportType))
+            )
         ) {
             $configFileName = Constants::PERMANENT_SAVE_CONTENT_FILENAME;
             $xmlFilePathName = $newExportDirPath.$configFileName;
@@ -805,8 +817,10 @@ class OdeExportService implements OdeExportServiceInterface
             $exportType
         );
 
-        // Create export pages dir
-        self::createPagesDir($exportDirPath);
+        // Create export pages dir except for H5P
+        if (Constants::EXPORT_TYPE_H5P !== $exportType) {
+            self::createPagesDir($exportDirPath);
+        }
 
         // Get service by export type
         switch ($exportType) {

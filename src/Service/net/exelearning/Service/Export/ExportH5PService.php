@@ -49,8 +49,8 @@ class ExportH5PService implements ExportServiceInterface
             mkdir($contentDir, 0775, true);
         }
 
-        $projectTitle = isset($odeProperties['pp_title']) ? $odeProperties['pp_title']->getValue() : 'eXeLearning project';
-        $language = isset($odeProperties['pp_lang']) ? $odeProperties['pp_lang']->getValue() : 'en';
+        $projectTitle = isset($odeProperties['pp_title']) ? strip_tags($odeProperties['pp_title']->getValue()) : 'eXeLearning project';
+        $language = isset($odeProperties['pp_lang']) ? substr($odeProperties['pp_lang']->getValue(), 0, 10) : 'en';
 
         $html = '';
         foreach ($odeNavStructureSyncs as $page) {

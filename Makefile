@@ -305,16 +305,16 @@ endif
 ifndef OUTPUT
        $(error OUTPUT is required. Use OUTPUT=/absolute/path/to/output.h5p)
 endif
-       $(eval EXPANDED_INPUT := $(call EXPAND_PATH,$(INPUT)))
-       @if [ ! -f "$(EXPANDED_INPUT)" ]; then \
-          echo "❌ INPUT file does not exist: $(EXPANDED_INPUT)"; \
-          exit 1; \
-       fi
-       @mkdir -p $(dir $(OUTPUT))
-       $(eval TMP_DIR := $(OUTPUT).tmpdir)
-       @$(MAKE) export-elp FORMAT=h5p INPUT="$(EXPANDED_INPUT)" OUTPUT="$(TMP_DIR)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
-       @mv "$(TMP_DIR)"/*.h5p "$(OUTPUT)"
-       @rm -rf "$(TMP_DIR)"
+	$(eval EXPANDED_INPUT := $(call EXPAND_PATH,$(INPUT)))
+	@if [ ! -f "$(EXPANDED_INPUT)" ]; then \
+	   echo "❌ INPUT file does not exist: $(EXPANDED_INPUT)"; \
+	   exit 1; \
+	fi
+	@mkdir -p $(dir $(OUTPUT))
+	$(eval TMP_DIR := $(OUTPUT).tmpdir)
+	@$(MAKE) export-elp FORMAT=h5p INPUT="$(EXPANDED_INPUT)" OUTPUT="$(TMP_DIR)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+	@mv "$(TMP_DIR)"/*.h5p "$(OUTPUT)"
+	@rm -rf "$(TMP_DIR)"
 
 
 # Install nativephp/php-bin package temporarily without modifying composer.json
@@ -406,7 +406,7 @@ help:
 	@echo "  export-elp-scorm2004  - Export .elp to SCORM 2004 format (alias for FORMAT=scorm2004)"
 	@echo "  export-elp-ims        - Export .elp to IMS format (alias for FORMAT=ims)"
 	@echo "  export-elp-epub3      - Export .elp to EPUB 3 format (alias for FORMAT=epub3)"
-       @echo "  export-elp-h5p        - Export .elp to H5P (experimental) format (alias for FORMAT=h5p)"
+	@echo "  export-elp-h5p        - Export .elp to H5P (experimental) format (alias for FORMAT=h5p)"
 	@echo "  export-elp-elp        - Re-export .elp file (alias for FORMAT=elp)"
 	@echo ""
 	@echo "Data:"

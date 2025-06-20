@@ -1239,7 +1239,8 @@ class OdeExportService implements OdeExportServiceInterface
         $name = self::generateExportFileName($odeId, $odeVersionId, null, $exportType, $slug, $typeSuffix);
         $zipPath = $exportDirPath.$name;
 
-        FileUtil::zipDir($exportDirPath, $zipPath);
+        $includeDirs = Constants::FILE_EXTENSION_H5P !== $exportType;
+        FileUtil::zipDir($exportDirPath, $zipPath, $includeDirs);
 
         return $name;
     }

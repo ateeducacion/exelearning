@@ -293,13 +293,13 @@ export-elp-scorm2004:
 	@$(MAKE) export-elp FORMAT=scorm2004 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
 export-elp-epub3:
-        @$(MAKE) export-elp FORMAT=epub3 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+	@$(MAKE) export-elp FORMAT=epub3 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
 export-elp-ims:
-        @$(MAKE) export-elp FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+	@$(MAKE) export-elp FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
 export-elp-h5p:
-        @$(MAKE) export-elp FORMAT=h5p INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+	@$(MAKE) export-elp FORMAT=h5p INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
 
 # Install nativephp/php-bin package temporarily without modifying composer.json
@@ -389,10 +389,10 @@ help:
 	@echo "  export-elp-html5-sp   - Export .elp to single-page HTML5 format (alias for FORMAT=html5-sp)"
 	@echo "  export-elp-scorm12    - Export .elp to SCORM 1.2 format (alias for FORMAT=scorm12)"
 	@echo "  export-elp-scorm2004  - Export .elp to SCORM 2004 format (alias for FORMAT=scorm2004)"
-        @echo "  export-elp-ims        - Export .elp to IMS format (alias for FORMAT=ims)"
-        @echo "  export-elp-epub3      - Export .elp to EPUB 3 format (alias for FORMAT=epub3)"
-        @echo "  export-elp-h5p        - Export .elp to H5P format (alias for FORMAT=h5p)"
-        @echo "  export-elp-elp        - Re-export .elp file (alias for FORMAT=elp)"
+	@echo "  export-elp-ims        - Export .elp to IMS format (alias for FORMAT=ims)"
+	@echo "  export-elp-epub3      - Export .elp to EPUB 3 format (alias for FORMAT=epub3)"
+	@echo "  export-elp-h5p        - Export .elp to H5P format (alias for FORMAT=h5p)"
+	@echo "  export-elp-elp        - Re-export .elp file (alias for FORMAT=elp)"
 	@echo ""
 	@echo "Data:"
 	@echo ""

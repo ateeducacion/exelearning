@@ -49,8 +49,12 @@ class ExportH5PService implements ExportServiceInterface
             mkdir($contentDir, 0775, true);
         }
 
-        $projectTitle = isset($odeProperties['pp_title']) ? strip_tags($odeProperties['pp_title']->getValue()) : 'eXeLearning project';
-        $language = isset($odeProperties['pp_lang']) ? substr($odeProperties['pp_lang']->getValue(), 0, 10) : 'en';
+        $projectTitle = isset($odeProperties['pp_title'])
+            ? trim(strip_tags($odeProperties['pp_title']->getValue()))
+            : 'eXeLearning project';
+        $language = isset($odeProperties['pp_lang'])
+            ? substr($odeProperties['pp_lang']->getValue(), 0, 2)
+            : 'en';
 
         $html = '';
         foreach ($odeNavStructureSyncs as $page) {
@@ -67,22 +71,77 @@ class ExportH5PService implements ExportServiceInterface
         }
 
         $content = ['text' => $html];
-        file_put_contents($contentDir.'content.json', json_encode($content, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        file_put_contents(
+            $contentDir.'content.json',
+            json_encode($content, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+
+        $libraryDir = $exportDirPath.'H5P.SimpleHtml'.DIRECTORY_SEPARATOR;
+        if (!is_dir($libraryDir)) {
+            mkdir($libraryDir, 0775, true);
+        }
+
+        $libraryJson = [
+            'title' => 'SimpleHtml',
+            'machineName' => 'H5P.SimpleHtml',
+            'majorVersion' => 1,
+            'minorVersion' => 0,
+            'patchVersion' => 0,
+            'runnable' => 1,
+            'embedTypes' => ['div'],
+            'preloadedJs' => ['simple-html.js'],
+            'preloadedCss' => [],
+        ];
+        file_put_contents(
+            $libraryDir.'library.json',
+            json_encode($libraryJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+
+        $semantics = [
+            [
+                'name' => 'text',
+                'type' => 'text',
+                'widget' => 'html',
+                'label' => 'Text',
+            ],
+        ];
+        file_put_contents(
+            $libraryDir.'semantics.json',
+            json_encode($semantics, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+
+        $js = <<<'JS'
+H5P.SimpleHtml = (function () {
+  function SimpleHtml(params) {
+    this.text = params.text || '';
+  }
+
+  SimpleHtml.prototype.attach = function (container) {
+    container.innerHTML = this.text;
+  };
+
+  return SimpleHtml;
+})();
+JS;
+        file_put_contents($libraryDir.'simple-html.js', $js);
 
         $h5pJson = [
             'title' => $projectTitle,
             'language' => $language,
-            'mainLibrary' => 'H5P.Text',
-            'embedTypes' => ['iframe'],
+            'mainLibrary' => 'H5P.SimpleHtml',
+            'embedTypes' => ['div'],
             'preloadedDependencies' => [
                 [
-                    'machineName' => 'H5P.Text',
+                    'machineName' => 'H5P.SimpleHtml',
                     'majorVersion' => 1,
-                    'minorVersion' => 1,
+                    'minorVersion' => 0,
                 ],
             ],
         ];
-        file_put_contents($exportDirPath.'h5p.json', json_encode($h5pJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        file_put_contents(
+            $exportDirPath.'h5p.json',
+            json_encode($h5pJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
 
         return true;
     }

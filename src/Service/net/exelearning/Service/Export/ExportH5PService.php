@@ -76,11 +76,6 @@ class ExportH5PService implements ExportServiceInterface
             json_encode($content, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
         );
 
-        $libraryDir = $exportDirPath.'H5P.SimpleHtml'.DIRECTORY_SEPARATOR;
-        if (!is_dir($libraryDir)) {
-            mkdir($libraryDir, 0775, true);
-        }
-
         $libraryJson = [
             'title' => 'SimpleHtml',
             'machineName' => 'H5P.SimpleHtml',
@@ -92,6 +87,12 @@ class ExportH5PService implements ExportServiceInterface
             'preloadedJs' => ['simple-html.js'],
             'preloadedCss' => [],
         ];
+
+        $folderName = \H5PCore::libraryToFolderName($libraryJson);
+        $libraryDir = $exportDirPath.$folderName.DIRECTORY_SEPARATOR;
+        if (!is_dir($libraryDir)) {
+            mkdir($libraryDir, 0775, true);
+        }
         file_put_contents(
             $libraryDir.'library.json',
             json_encode($libraryJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)

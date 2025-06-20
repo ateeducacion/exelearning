@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ac1985069fa92d52cb0f1a3e1ad57c5a",
+    "content-hash": "d4679a1ca5108646dc6db741f091b937",
     "packages": [
         {
             "name": "doctrine/collections",
@@ -1254,6 +1254,67 @@
                 "source": "https://github.com/firebase/php-jwt/tree/v6.11.1"
             },
             "time": "2025-04-09T20:32:01+00:00"
+        },
+        {
+            "name": "h5p/h5p-core",
+            "version": "1.27.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/h5p/h5p-php-library.git",
+                "reference": "829524eaf81fe3f3a295d0e843812be4735f51fc"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/h5p/h5p-php-library/zipball/829524eaf81fe3f3a295d0e843812be4735f51fc",
+                "reference": "829524eaf81fe3f3a295d0e843812be4735f51fc",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.0.0"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "h5p.classes.php",
+                    "h5p-development.class.php",
+                    "h5p-file-storage.interface.php",
+                    "h5p-default-storage.class.php",
+                    "h5p-event-base.class.php",
+                    "h5p-metadata.class.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-3.0"
+            ],
+            "authors": [
+                {
+                    "name": "Svein-Tore Griff With",
+                    "email": "with@joubel.com",
+                    "homepage": "http://joubel.com",
+                    "role": "CEO"
+                },
+                {
+                    "name": "Frode Petterson",
+                    "email": "frode.petterson@joubel.com",
+                    "homepage": "http://joubel.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "H5P Core functionality in PHP",
+            "homepage": "https://h5p.org",
+            "keywords": [
+                "content",
+                "h5p",
+                "hvp",
+                "interactive",
+                "quiz"
+            ],
+            "support": {
+                "issues": "https://github.com/h5p/h5p-php-library/issues",
+                "source": "https://github.com/h5p/h5p-php-library/tree/1.27.0"
+            },
+            "time": "2024-10-25T11:30:55+00:00"
         },
         {
             "name": "imagine/imagine",
@@ -11274,13 +11335,13 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
         "php": ">=8.1",
         "ext-ctype": "*"
     },
-    "platform-dev": {},
+    "platform-dev": [],
     "plugin-api-version": "2.6.0"
 }

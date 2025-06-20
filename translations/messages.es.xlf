@@ -9238,8 +9238,8 @@
         <target>ePub3</target>
       </trans-unit>
       <trans-unit id="vtmCl99" resname="H5P">
-        <source>H5P</source>
-        <target>H5P</target>
+        <source>H5P (experimental)</source>
+        <target>H5P (experimental)</target>
       </trans-unit>
       <trans-unit id="b0UHAqn" resname="Upload to">
         <source>Upload to</source>

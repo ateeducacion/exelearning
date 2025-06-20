@@ -524,11 +524,12 @@ class FileUtil
      * Creates a zip file with the dir sourcepath.
      *
      * @param string $sourcePath
-     * @param string $sourcePath
+     * @param string $outZipPath
+     * @param bool   $includeDirs Whether to include directory entries
      *
      * @return bool
      */
-    public static function zipDir($sourcePath, $outZipPath)
+    public static function zipDir($sourcePath, $outZipPath, $includeDirs = true)
     {
         $pathInfo = pathinfo($sourcePath);
         $parentPath = $pathInfo['dirname'];
@@ -538,9 +539,9 @@ class FileUtil
         $z->open($outZipPath, \ZipArchive::CREATE);
         // $z->addEmptyDir($dirName);
         if ($sourcePath == $dirName) {
-            self::dirToZip($sourcePath, $z, 0);
+            self::dirToZip($sourcePath, $z, 0, $includeDirs);
         } else {
-            self::dirToZip($sourcePath, $z, strlen("$sourcePath/"));
+            self::dirToZip($sourcePath, $z, strlen("$sourcePath/"), $includeDirs);
         }
         $z->close();
 
@@ -553,7 +554,7 @@ class FileUtil
      * @param string $folder
      * @param string $exclusiveLength
      */
-    private static function dirToZip($folder, &$zipFile, $exclusiveLength)
+    private static function dirToZip($folder, &$zipFile, $exclusiveLength, $includeDirs)
     {
         $handle = opendir($folder);
         while (false !== $f = readdir($handle)) {
@@ -565,9 +566,10 @@ class FileUtil
                 if (is_file($filePath)) {
                     $zipFile->addFile($filePath, $localPath);
                 } elseif (is_dir($filePath)) {
-                    // Add sub-directory
-                    $zipFile->addEmptyDir($localPath);
-                    self::dirToZip($filePath, $zipFile, $exclusiveLength);
+                    if ($includeDirs) {
+                        $zipFile->addEmptyDir($localPath);
+                    }
+                    self::dirToZip($filePath, $zipFile, $exclusiveLength, $includeDirs);
                 }
             }
         }

@@ -30,7 +30,7 @@ This version is built with modern technologies (PHP 8, Symfony 7) and provides a
 * Creation and edition of interactive educational content
 * Multiple iDevices (interactive elements)
 * Multilingual support
-* Exportation to various formats
+* Exportation to multiple formats (SCORM, IMS, EPUB, HTML and H5P)
 * Moodle integration
 * Real-time collaborative features powered by [Mercure](https://mercure.rocks/)
 * Modern and accessible interface built with [Bootstrap](https://getbootstrap.com/)

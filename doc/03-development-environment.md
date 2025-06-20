@@ -139,6 +139,16 @@ The project provides a Makefile to simplify common tasks:
 | `make update`       | Update Composer dependencies          |
 | `make translations` | Update translation files              |
 
+### Exporting Content
+
+Use the Makefile to generate packages from `.elp` projects. For example, to create an experimental H5P package:
+
+```bash
+make export-elp-h5p INPUT=/path/project.elp OUTPUT=/path/project.h5p
+```
+
+Other formats can be exported by replacing `h5p` with `html5`, `scorm12`, `scorm2004`, `ims`, or `epub3`.
+
 ### Installing `make`
 
 On Linux, `make` is usually pre-installed. On Windows, install it with:

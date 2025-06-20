@@ -123,6 +123,7 @@ class Constants
     public const EXPORT_TYPE_SCORM2004 = 'scorm2004';
     public const EXPORT_TYPE_IMS = 'ims';
     public const EXPORT_TYPE_EPUB3 = 'epub3';
+    public const EXPORT_TYPE_H5P = 'h5p';
 
     // Export types filename suffixes
     public const SUFFIX_TYPE_HTML5 = '_web';
@@ -130,6 +131,7 @@ class Constants
     public const SUFFIX_TYPE_SCORM12 = '_scorm';
     public const SUFFIX_TYPE_SCORM2004 = '_scorm2004';
     public const SUFFIX_TYPE_IMS = '_ims';
+    public const SUFFIX_TYPE_H5P = '_h5p';
 
     // Export files
     public const EXPORT_FILE_INDEX_NAME = 'index';
@@ -225,6 +227,7 @@ class Constants
     public const FILE_EXTENSION_ELP = 'elp';
     public const FILE_EXTENSION_ZIP = 'zip';
     public const FILE_EXTENSION_EPUB = 'epub';
+    public const FILE_EXTENSION_H5P = 'h5p';
     public const FILE_EXTENSION_XML = 'xml';
 
     // CSV separator

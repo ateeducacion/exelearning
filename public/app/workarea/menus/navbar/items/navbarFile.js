@@ -46,6 +46,9 @@ export default class NavbarFile {
         this.exportEPUB3Button = this.menu.navbar.querySelector(
             '#navbar-button-export-epub3',
         );
+        this.exportH5PButton = this.menu.navbar.querySelector(
+            '#navbar-button-export-h5p',
+        );
         this.exportXmlPropertiesButton = this.menu.navbar.querySelector(
             '#navbar-button-export-xml-properties',
         );
@@ -79,6 +82,7 @@ export default class NavbarFile {
         this.setExportSCORM2004Event();
         this.setExportIMSEvent();
         this.setExportEPUB3Event();
+        this.setExportH5PEvent();
         this.setExportXmlPropertiesEvent();
         this.setImportXmlPropertiesEvent();
         this.setLeftPanelsTogglerEvents();
@@ -271,6 +275,13 @@ export default class NavbarFile {
         this.exportEPUB3Button.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportEPUB3Event();
+        });
+    }
+
+    setExportH5PEvent() {
+        this.exportH5PButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportH5PEvent();
         });
     }
 
@@ -1083,6 +1094,41 @@ export default class NavbarFile {
         }, 1000);
 
         // Reload last edition text in interface
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    async exportH5PEvent() {
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        let odeSessionId = eXeLearning.app.project.odeSession;
+        let response = await eXeLearning.app.api.getOdeExportDownload(
+            odeSessionId,
+            'h5p',
+        );
+        if (response['responseMessage'] == 'OK') {
+            this.downloadLink(
+                response['urlZipFile'],
+                response['exportProjectName'],
+            );
+            toast.toastBody.innerHTML = _('The project has been exported.');
+        } else {
+            toast.toastBody.innerHTML = _('An error occurred while exporting the project.');
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: response['responseMessage'] ? response['responseMessage'] : _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
+
         eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
     }
 

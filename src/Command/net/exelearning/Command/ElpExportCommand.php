@@ -41,7 +41,7 @@ class ElpExportCommand extends Command
         $this
             ->addArgument('input', InputArgument::REQUIRED, 'Input ELP file path (use "-" for stdin)')
             ->addArgument('output', InputArgument::REQUIRED, 'Output directory')
-            ->addArgument('format', InputArgument::OPTIONAL, 'Export format (elp, html5, html5-sp, scorm12, scorm2004, ims, epub3)', $this->defaultFormat)
+            ->addArgument('format', InputArgument::OPTIONAL, 'Export format (elp, html5, html5-sp, scorm12, scorm2004, ims, epub3, h5p)', $this->defaultFormat)
             ->addOption('debug', 'd', InputOption::VALUE_NONE, 'Enable debug mode')
             ->addOption('base-url', 'b', InputOption::VALUE_OPTIONAL, 'Base URL for links', false);
     }
@@ -63,6 +63,7 @@ class ElpExportCommand extends Command
             Constants::EXPORT_TYPE_SCORM2004,
             Constants::EXPORT_TYPE_IMS,
             Constants::EXPORT_TYPE_EPUB3,
+            Constants::EXPORT_TYPE_H5P,
         ];
 
         if (!in_array($format, $validFormats, true)) {

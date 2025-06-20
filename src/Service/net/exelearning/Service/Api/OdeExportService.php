@@ -19,6 +19,7 @@ use App\Service\net\exelearning\Service\Export\ExportHTML5SPService;
 use App\Service\net\exelearning\Service\Export\ExportIMSService;
 use App\Service\net\exelearning\Service\Export\ExportSCORM12Service;
 use App\Service\net\exelearning\Service\Export\ExportSCORM2004Service;
+use App\Service\net\exelearning\Service\Export\ExportH5PService;
 use App\Util\net\exelearning\Util\ExportXmlUtil;
 use App\Util\net\exelearning\Util\FilePermissionsUtil;
 use App\Util\net\exelearning\Util\FileUtil;
@@ -49,6 +50,7 @@ class OdeExportService implements OdeExportServiceInterface
     private ExportSCORM2004Service $exportSCORM2004Service;
     private ExportIMSService $exportIMSService;
     private ExportEPUB3Service $exportEPUB3Service;
+    private ExportH5PService $exportH5PService;
     private SluggerInterface $slugger;
 
     public function __construct(
@@ -68,6 +70,7 @@ class OdeExportService implements OdeExportServiceInterface
         ExportSCORM2004Service $exportSCORM2004Service,
         ExportIMSService $exportIMSService,
         ExportEPUB3Service $exportEPUB3Service,
+        ExportH5PService $exportH5PService,
         SluggerInterface $slugger,
     ) {
         $this->entityManager = $entityManager;
@@ -86,6 +89,7 @@ class OdeExportService implements OdeExportServiceInterface
         $this->exportSCORM2004Service = $exportSCORM2004Service;
         $this->exportIMSService = $exportIMSService;
         $this->exportEPUB3Service = $exportEPUB3Service;
+        $this->exportH5PService = $exportH5PService;
         $this->slugger = $slugger;
     }
 
@@ -305,6 +309,10 @@ class OdeExportService implements OdeExportServiceInterface
                 case Constants::EXPORT_TYPE_IMS:
                     $ext = Constants::FILE_EXTENSION_ZIP;
                     $typeSuffix = Constants::SUFFIX_TYPE_IMS;
+                    break;
+                case Constants::EXPORT_TYPE_H5P:
+                    $ext = Constants::FILE_EXTENSION_H5P;
+                    $typeSuffix = Constants::SUFFIX_TYPE_H5P;
                     break;
                 default:
                     $ext = Constants::FILE_EXTENSION_ZIP;
@@ -813,6 +821,9 @@ class OdeExportService implements OdeExportServiceInterface
                 break;
             case Constants::EXPORT_TYPE_EPUB3:
                 $exportService = $this->exportEPUB3Service;
+                break;
+            case Constants::EXPORT_TYPE_H5P:
+                $exportService = $this->exportH5PService;
                 break;
             case Constants::EXPORT_TYPE_HTML5_SP:
                 $exportService = $this->exportHTML5SPService;

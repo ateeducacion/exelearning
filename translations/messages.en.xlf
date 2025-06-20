@@ -9293,6 +9293,10 @@
         <source>ePub3</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="vtmCl99" resname="H5P">
+        <source>H5P</source>
+        <target></target>
+      </trans-unit>
       <trans-unit id="b0UHAqn" resname="Upload to">
         <source>Upload to</source>
         <target></target>

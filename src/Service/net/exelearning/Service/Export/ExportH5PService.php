@@ -84,7 +84,9 @@ class ExportH5PService implements ExportServiceInterface
             'patchVersion' => 0,
             'runnable' => 1,
             'embedTypes' => ['div'],
-            'preloadedJs' => ['simple-html.js'],
+            'preloadedJs' => [
+                ['path' => 'simple-html.js'],
+            ],
             'preloadedCss' => [],
         ];
 

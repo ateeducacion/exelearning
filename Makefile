@@ -300,10 +300,10 @@ export-elp-ims:
 
 export-elp-h5p:
 ifndef INPUT
-       $(error INPUT is required. Use INPUT=/absolute/path/to/file.elp)
+	$(error INPUT is required. Use INPUT=/absolute/path/to/file.elp)
 endif
 ifndef OUTPUT
-       $(error OUTPUT is required. Use OUTPUT=/absolute/path/to/output.h5p)
+	$(error OUTPUT is required. Use OUTPUT=/absolute/path/to/output.h5p)
 endif
 	$(eval EXPANDED_INPUT := $(call EXPAND_PATH,$(INPUT)))
 	@if [ ! -f "$(EXPANDED_INPUT)" ]; then \

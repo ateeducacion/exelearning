@@ -4,6 +4,8 @@
     "require": {
         "php": ">=8.4",
         "ext-ctype": "*",
+        "api-platform/core": "^3.2",
+        "api-platform/doctrine-orm": "^3.2",
         "doctrine/doctrine-bundle": "^2.0",
         "doctrine/doctrine-migrations-bundle": "^3.0",
         "doctrine/orm": "^3.0",

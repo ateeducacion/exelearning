@@ -19,7 +19,7 @@ class OdeXmlUtilTest extends TestCase
         $oldXmlListInst = simplexml_load_string($xml_serialized);
 
 
-        // 3) Usamos Reflection para llamar al método privado estático
+        // Use Reflection to call the private static method
         $refClass  = new \ReflectionClass(OdeXmlUtil::class);
         $refMethod = $refClass->getMethod('oldElpStructureNewPage');
         $refMethod->setAccessible(true);
@@ -29,7 +29,7 @@ class OdeXmlUtilTest extends TestCase
             [$odeSessionId, $generatedIds, $oldXmlListInst, null, $xpathNamespace]
         );
 
-        // 4) Aserciones básicas sobre la estructura de salida
+        // Basic assertions on the output structure
         $this->assertIsArray($result);
         $this->assertArrayHasKey('odeNavStructureSyncs', $result);
         $this->assertArrayHasKey('nodeReferences',           $result);

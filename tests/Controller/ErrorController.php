@@ -19,15 +19,15 @@ class ErrorControllerTest extends KernelTestCase
     {
         self::bootKernel();
         
-        // Obtén el contenedor de servicios
+        // Get the service container
         $container = static::getContainer();
         
-        // Obtén el servicio Twig
+        // Get the Twig service
         $this->twig = $container->get('twig');
         
-        // Crea una instancia del controlador
+        // Create an instance of the controller
         $this->controller = new ErrorController();
-        // Establece el contenedor en el controlador
+        // Set the container on the controller
         $controllerReflection = new \ReflectionClass($this->controller);
         $containerProperty = $controllerReflection->getProperty('container');
         $containerProperty->setAccessible(true);
@@ -36,24 +36,24 @@ class ErrorControllerTest extends KernelTestCase
 
     public function testShowRendersErrorTemplate()
     {
-        // Crea un mock para FlattenException
+        // Create a mock for FlattenException
         $exception = $this->createMock(FlattenException::class);
         $exception->method('getStatusCode')->willReturn(500);
         $exception->method('getMessage')->willReturn('Test error message');
 
-        // Crea un Request
+        // Create a Request
         $request = new Request();
 
-        // Captura la renderización
+        // Capture the rendering
         $response = $this->controller->show($request, $exception);
 
-        // Verifica que la respuesta sea una instancia de Response
+        // Assert that the response is an instance of Response
         $this->assertInstanceOf(Response::class, $response);
         
-        // Verifica que el código de estado sea correcto
+        // Assert that the status code is correct
         $this->assertEquals(500, $response->getStatusCode());
         
-        // Verifica que el contenido no esté vacío
+        // Assert that the content is not empty
         $this->assertNotEmpty($response->getContent());
     }
 
@@ -62,40 +62,40 @@ class ErrorControllerTest extends KernelTestCase
         $errorCodes = [400, 403, 404, 500];
         
         foreach ($errorCodes as $code) {
-            // Crea un mock para FlattenException con diferentes códigos
+            // Create a mock for FlattenException with different codes
             $exception = $this->createMock(FlattenException::class);
             $exception->method('getStatusCode')->willReturn($code);
             $exception->method('getMessage')->willReturn("Error $code message");
 
-            // Crea un Request
+            // Create a Request
             $request = new Request();
 
-            // Obtén la respuesta
+            // Get the response
             $response = $this->controller->show($request, $exception);
 
-            // Verifica que el código de estado sea correcto
-            $this->assertEquals($code, $response->getStatusCode(), "El código de estado debería ser $code");
+            // Assert that the status code is correct
+            $this->assertEquals($code, $response->getStatusCode(), "'The status code should be $code");
         }
     }
 
     public function testErrorTemplateReceivesCorrectParameters()
     {
-        // Crea un mock para el entorno Twig
+        // Create a mock for the Twig environment
         $twigEnvironment = $this->createMock(\Twig\Environment::class);
         
-        // Reemplaza el servicio Twig en el controlador
+        // Replace the Twig service in the controller
         $controllerReflection = new \ReflectionClass($this->controller);
         $twigProperty = $controllerReflection->getProperty('twig');
         $twigProperty->setAccessible(true);
         $twigProperty->setValue($this->controller, $twigEnvironment);
         
-        // Configura expectativas para la llamada a render
+        // Set expectations for the render call
         $twigEnvironment->expects($this->once())
             ->method('render')
             ->with(
                 $this->equalTo('security/error.html.twig'),
                 $this->callback(function ($parameters) {
-                    // Verifica que los parámetros esperados estén presentes
+                    // Assert that the expected parameters are present
                     return isset($parameters['status_code']) &&
                            isset($parameters['status_text']) &&
                            isset($parameters['error']) &&
@@ -105,32 +105,32 @@ class ErrorControllerTest extends KernelTestCase
             )
             ->willReturn('rendered template');
         
-        // Crea un mock para FlattenException
+        // Create a mock for FlattenException
         $exception = $this->createMock(FlattenException::class);
         $exception->method('getStatusCode')->willReturn(404);
         $exception->method('getMessage')->willReturn('Page not found');
 
-        // Crea un Request
+        // Create a Request
         $request = new Request();
 
-        // Ejecuta el método show
+        // Execute the show method
         $this->controller->show($request, $exception);
     }
     
     public function testErrorTemplateHandlesEmptyErrorMessage()
     {
-        // Crea un mock para FlattenException con mensaje vacío
+        // Create a mock for FlattenException with an empty message
         $exception = $this->createMock(FlattenException::class);
         $exception->method('getStatusCode')->willReturn(500);
         $exception->method('getMessage')->willReturn('');
 
-        // Crea un Request
+        // Create a Request
         $request = new Request();
 
-        // Obtén la respuesta
+        // Get te response
         $response = $this->controller->show($request, $exception);
 
-        // Verifica que aún así devuelva una respuesta válida
+        // Assert that it still returns a valid response
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(500, $response->getStatusCode());
     }

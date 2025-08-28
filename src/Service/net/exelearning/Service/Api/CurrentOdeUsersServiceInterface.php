@@ -112,7 +112,7 @@ interface CurrentOdeUsersServiceInterface
      *
      * @return bool
      */
-    public function checkSyncSaveFlag(string $odeId, string $odeSessionId);
+    public function checkSyncSaveFlag(?string $odeId, string $odeSessionId);
 
     /**
      * Checks if another user in the session has the idevice open.

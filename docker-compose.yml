@@ -17,8 +17,8 @@ services:
       - ./tests:/app/tests
       - ./public:/app/public
       - ./translations:/app/translations
-      - ./config:/app/config
       - ./templates:/app/templates
+      - ./config:/app/config
       - ./composer.json:/app/composer.json
       - ./composer.lock:/app/composer.lock
       - mnt-data:/mnt/data:rw # Mount the volume for persistent data
@@ -32,9 +32,9 @@ services:
         echo "this is a test line 2"
         php bin/console app:create-user ${TEST_USER_EMAIL} ${TEST_USER_PASSWORD} ${TEST_USER_USERNAME} --no-fail
 
-  # The alpine-chromedriver image includes a browser configured to work with Chromedriver  
+  # The Zenika Alpine Chrome image includes a browser configured to work with Chromedriver  
   chrome:
-    image: ghcr.io/erseco/alpine-chromedriver:latest
+    image: ghcr.io/zenika/alpine-chrome:with-chromedriver
     container_name: chrome
     hostname: chrome # Important! To be called from exelearning container
     shm_size: "2gb"

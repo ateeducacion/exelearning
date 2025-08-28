@@ -123,24 +123,11 @@ test: check-docker check-env
 	@echo "Stopping test environment..."
 	@docker compose --profile e2e down > /dev/null 2>&1
 
-
-# Run just unit tests with PHPUnit
-test-unit2: check-docker check-env
-# 	@echo "Starting unit test environment..."
-# 	@docker compose up -d --quiet-pull
-	@echo "Running PHPUnit tests..."
-	#@docker compose exec exelearning composer --no-cache phpunit-unit
-	#docker compose run --rm --no-deps exelearning composer --no-cache phpunit-unit
-	# Usamos --entrypoint="" para saltar el script de inicialización del contenedor, que no es necesario para los tests.
-	# We add -e APP_ENV=test to ensure that Symfony runs in the test environment.
-	#docker compose run --rm --no-deps -e APP_ENV=test --entrypoint="" exelearning sh -c "php bin/console doctrine:schema:create && composer --no-cache phpunit-unit"
-
 # Run just unit tests with PHPUnit
 test-unit: check-docker check-env
 	@echo "Running PHPUnit tests..."
 	# We add -e APP_ENV=test to ensure that Symfony runs in the test environment.
 	@docker compose run --rm --no-deps -e APP_ENV=test exelearning composer --no-cache phpunit-unit
-
 
 # Run unit tests in parallel using "paratest"
 test-unit-parallel: check-docker check-env

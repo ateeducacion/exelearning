@@ -87,10 +87,6 @@ lint: lint-php lint-js
 fix: fix-php fix-js
 
 # Check PHP code style with PHP-CS-Fixer
-lint-php2: check-docker check-env upd
-	docker compose exec exelearning composer --no-cache php-cs-checker
-
-# Check PHP code style with PHP-CS-Fixer
 lint-php: check-docker check-env
 	docker compose run --rm --no-deps --entrypoint "" exelearning composer --no-cache php-cs-checker
 

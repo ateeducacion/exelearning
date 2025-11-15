@@ -84,6 +84,20 @@ More development tools, options, and real-time collaboration info are documented
 
 A SCSS watcher is implemented which compiles any style automatically, without the need to launch any command. SCSS can be laid out directly in the same way as CSS.
 
+### Experimental NestJS backend
+
+The repository now ships with an experimental NestJS backend located in [`nest-backend/`](./nest-backend). It will eventually replace the Symfony API while both stacks coexist during the migration.
+
+To explore the new service locally:
+
+```bash
+cd nest-backend
+yarn install
+yarn start:dev
+```
+
+By default the server listens on `http://localhost:3000/api/v2`, mirroring the current REST namespace. The implementation is intentionally lightweight (in-memory storage) so that contract tests and data adapters can be developed incrementally before wiring the definitive persistence layer.
+
 ## Project Structure
 
 The application follows the standard Symfony project structure, with some specific folders for managing iDevices and educational resources.

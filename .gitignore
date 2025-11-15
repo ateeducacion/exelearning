@@ -69,6 +69,11 @@ Icon
 
 # Ignore node_modules
 node_modules/
+nest-backend/node_modules/
+
+# Ignore NestJS build artifacts
+nest-backend/dist/
+nest-backend/coverage/
 
 # Ignore lock files
 package-lock.json
@@ -97,3 +102,7 @@ symfony.lock
 .idea/
 
 runtime/
+
+###> liip/imagine-bundle ###
+/public/media/cache/
+###< liip/imagine-bundle ###

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
 import { ProjectsModule } from './projects/projects.module';
+import { OdeExportModule } from './ode-export/ode-export.module';
 
 @Module({
   imports: [
@@ -10,7 +11,8 @@ import { ProjectsModule } from './projects/projects.module';
       envFilePath: ['.env', '.env.local']
     }),
     UsersModule,
-    ProjectsModule
+    ProjectsModule,
+    OdeExportModule
   ]
 })
 export class AppModule {}

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as AdmZip from 'adm-zip';
+import AdmZip = require('adm-zip');
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import * as archiver from 'archiver';
+import archiver = require('archiver');
 
 export interface ExtractOptions {
   overwrite?: boolean;

@@ -149,6 +149,11 @@ test-unit-parallel: check-docker check-env
 	@echo "Running PHPUnit tests..."
 	@docker compose run --rm --no-deps -e APP_ENV=test exelearning composer --no-cache phpunit-unit-parallel
 
+# Run NestJS Jest tests
+test-node: check-env
+	@echo "Running NestJS Jest tests..."
+	@cd nest-backend && npm test
+
 # Run just e2e tests with PHPUnit
 test-e2e: check-docker check-env css-dev
 	@echo "Starting e2e test environment..."
@@ -356,7 +361,6 @@ up-node: check-env
 	@echo "\033[32m========================================\033[0m"
 	@echo ""
 	@echo "\033[33mThis will start:\033[0m"
-	@echo "  1. Symfony server on port 8080"
 	@echo "  2. NestJS server on port 3001"
 	@echo "  3. Proxy server on port 3000"
 	@echo ""
@@ -364,7 +368,6 @@ up-node: check-env
 	@echo "\033[33mCleaning up existing processes...\033[0m"
 	@lsof -ti:3000 | xargs kill -9 2>/dev/null || true
 	@lsof -ti:3001 | xargs kill -9 2>/dev/null || true
-	@lsof -ti:8080 | xargs kill -9 2>/dev/null || true
 	@sleep 1
 	@# Configure NestJS if needed
 	@if [ ! -f "nest-backend/.env" ] || [ ! -d "nest-backend/node_modules" ]; then \
@@ -379,77 +382,6 @@ up-node: check-env
 		export JWT_SECRET=nestjs-secret-key && \
 		./02-configure-nestjs.sh; \
 	fi
-	@# Start Symfony in background
-	@echo "\033[32mStarting Symfony server on port 8080...\033[0m"
-	@TMPDIR=$$(mktemp -d /tmp/exelearning-symfony-XXXXXX) && \
-	echo "Using temp directory for Symfony: $$TMPDIR" && \
-	DB_DRIVER=pdo_sqlite \
-	DB_HOST="" \
-	DB_PORT="" \
-	DB_NAME="" \
-	DB_USER="" \
-	DB_PASSWORD="" \
-	DB_CHARSET="" \
-	DB_SERVER_VERSION="3.32" \
-	APP_ENV=dev \
-	APP_DEBUG=1 \
-	APP_ONLINE_MODE=1 \
-	DB_PATH="$$TMPDIR/exelearning.db" \
-	FILES_DIR="$$TMPDIR/" \
-	TEST_USER_EMAIL="user@exelearning.net" \
-	TEST_USER_PASSWORD="1234" \
-	TEST_USER_USERNAME="testuser" \
-	APP_SECRET=mySuperSecretKey \
-	php bin/console doctrine:schema:update --force && \
-	DB_DRIVER=pdo_sqlite \
-	DB_HOST="" \
-	DB_PORT="" \
-	DB_NAME="" \
-	DB_USER="" \
-	DB_PASSWORD="" \
-	DB_CHARSET="" \
-	DB_SERVER_VERSION="3.32" \
-	APP_ENV=dev \
-	APP_DEBUG=1 \
-	APP_ONLINE_MODE=1 \
-	DB_PATH="$$TMPDIR/exelearning.db" \
-	FILES_DIR="$$TMPDIR/" \
-	TEST_USER_EMAIL="user@exelearning.net" \
-	TEST_USER_PASSWORD="1234" \
-	TEST_USER_USERNAME="testuser" \
-	APP_SECRET=mySuperSecretKey \
-	php bin/console app:create-user "user@exelearning.net" "1234" "testuser" --no-fail && \
-	DB_DRIVER=pdo_sqlite \
-	DB_HOST="" \
-	DB_PORT="" \
-	DB_NAME="" \
-	DB_USER="" \
-	DB_PASSWORD="" \
-	DB_CHARSET="" \
-	DB_SERVER_VERSION="3.32" \
-	APP_ENV=dev \
-	APP_DEBUG=1 \
-	APP_ONLINE_MODE=1 \
-	DB_PATH="$$TMPDIR/exelearning.db" \
-	FILES_DIR="$$TMPDIR/" \
-	APP_SECRET=mySuperSecretKey \
-	symfony server:start --port=8080 --no-tls --daemon
-	@# Start NestJS in background
-	@echo "\033[32mStarting NestJS server on port 3001...\033[0m"
-	@cd nest-backend && npm run start:dev > ../nest-server.log 2>&1 &
-	@# Wait for services to be ready
-	@echo "\033[33mWaiting for services to start...\033[0m"
-	@for i in $$(seq 1 10); do \
-		if nc -z localhost 8080 && nc -z localhost 3001; then \
-			echo "\033[32m✓ Services are ready!\033[0m"; \
-			break; \
-		fi; \
-		if [ $$i -eq 10 ]; then \
-			echo "\033[31m✗ Services failed to start\033[0m"; \
-			exit 1; \
-		fi; \
-		sleep 2; \
-	done
 	@# Start proxy server
 	@echo "\033[32mStarting Strangler Fig Proxy on port 3000...\033[0m"
 	@echo ""
@@ -477,8 +409,8 @@ stop-node:
 	@symfony server:stop 2>/dev/null || true
 	@lsof -ti:3000 | xargs kill -9 2>/dev/null || true
 	@lsof -ti:3001 | xargs kill -9 2>/dev/null || true
-	@lsof -ti:8080 | xargs kill -9 2>/dev/null || true
 	@echo "\033[32m✓ All services stopped\033[0m"
+
 
 # Start the unit tests in a local environment
 test-local: check-env
@@ -843,6 +775,7 @@ help:
 	@echo "  test-e2e              - Run e2e tests with Paratest (chrome)"
 	@echo "  test-e2e-realtime     - Run e2e-realtime tests with Paratest (chrome)"
 	@echo "  test-e2e-offline      - Run e2e-offline tests with Paratest (chrome)"
+	@echo "  test-node             - Run NestJS Jest unit tests"
 	@echo "  test-playwright       - Run local Playwright collaborative test (host browser)"
 	@echo "  test-shell            - Open a shell inside the exelearning container (and the chrome container)"
 	@echo "  test-local            - Run unit tests in local environment (no Docker, SQLite tmp DB)"

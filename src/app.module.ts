@@ -7,6 +7,10 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ProjectModule } from './modules/project/project.module';
 import { PagesModule } from './modules/pages/pages.module';
 import { UserPreferencesModule } from './modules/user-preferences/user-preferences.module';
+import { OdePropertiesSyncModule } from './modules/ode-properties-sync/ode-properties-sync.module';
+import { OdeFilesModule } from './modules/ode-files/ode-files.module';
+import { OdeOperationsLogModule } from './modules/ode-operations-log/ode-operations-log.module';
+import { CurrentOdeUsersModule } from './modules/current-ode-users/current-ode-users.module';
 import databaseConfig from './config/database.config';
 
 @Module({
@@ -36,7 +40,8 @@ import databaseConfig from './config/database.config';
           autoSave: true,
           autoSaveInterval: 1000,
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          synchronize: false, // Never true in production
+          synchronize: true, // Never true in production
+          migrationsRun: true,
           logging: configService.get<string>('NODE_ENV') === 'development',
         } as any;
       },
@@ -50,6 +55,10 @@ import databaseConfig from './config/database.config';
     ProjectModule,
     PagesModule,
     UserPreferencesModule,
+    OdePropertiesSyncModule,
+    OdeFilesModule,
+    OdeOperationsLogModule,
+    CurrentOdeUsersModule,
   ],
   controllers: [],
   providers: [],

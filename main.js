@@ -988,14 +988,19 @@ function checkAndCreateDatabase() {
 function startNestServer() {
   try {
     const candidates = [
+      // Prefer asar-packed build (has node_modules alongside)
+      path.join(app.getAppPath(), 'dist', 'main.js'),
+      path.join(app.getAppPath(), 'dist', 'src', 'main.js'),
+      // Prefer unpacked path in packaged apps (read/write friendly) if present
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'main.js'),
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'src', 'main.js'),
       // ExtraResources path (outside asar)
       path.join(process.resourcesPath, 'dist', 'main.js'),
-      // Prefer unpacked path in packaged apps (read/write friendly)
-      path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'main.js'),
-      // Fallback to asar-packed path (read-only)
-      path.join(app.getAppPath(), 'dist', 'main.js'),
+      // Build output keeps "src" directory (tsconfig has no rootDir)
+      path.join(process.resourcesPath, 'dist', 'src', 'main.js'),
       // Dev path
       path.join(__dirname, 'dist', 'main.js'),
+      path.join(__dirname, 'dist', 'src', 'main.js'),
     ];
 
     const nestMain = candidates.find((p) => fs.existsSync(p));

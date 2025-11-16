@@ -132,6 +132,7 @@
       "main.js",
       "preload.js",
       "update-manager.js",
+      "node_modules/**/*",
       ".env.dist",
       "translations/en.json",
       "translations/es.json",

@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { User } from '../../entities/user.entity';
 import { UserPreferencesModule } from '../user-preferences/user-preferences.module';
+import { OdePropertiesSyncModule } from '../ode-properties-sync/ode-properties-sync.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { UserPreferencesModule } from '../user-preferences/user-preferences.modu
       signOptions: { expiresIn: '1d' },
     }),
     UserPreferencesModule,
+    OdePropertiesSyncModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

@@ -6,6 +6,7 @@ import { XMLParser } from 'fast-xml-parser';
 import { AuthService } from './auth.service';
 import { buildAbsoluteUrl, decodeJwtPayload } from './auth.utils';
 import { UserPreferencesService } from '../user-preferences/user-preferences.service';
+import { OdePropertiesSyncService } from '../ode-properties-sync/ode-properties-sync.service';
 
 @Controller()
 export class AuthController {
@@ -13,6 +14,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
     private readonly userPreferencesService: UserPreferencesService,
+    private readonly odePropertiesSyncService: OdePropertiesSyncService,
   ) {}
 
   private authMethods(): string[] {
@@ -546,12 +548,13 @@ export class AuthController {
   }
 
   @Get('api/project/:odeSessionId/properties')
-  async getOdeProperties(@Req() req: any) {
-    // Return empty properties for now
-    // TODO: Implement real project properties from database
+  async getOdeProperties(@Param('odeSessionId') odeSessionId: string) {
+    // Get properties from database
+    const properties = await this.odePropertiesSyncService.getPropertiesObject(odeSessionId);
+
     return {
-      odeProperties: {},
-      odeVersionName: '1.0.0'
+      odeProperties: properties,
+      odeVersionName: properties['odeVersionName'] || '1.0.0'
     };
   }
 
@@ -646,12 +649,27 @@ export class AuthController {
 
   @Put('api/ode-management/odes/properties/save')
   async saveOdeProperties(@Body() body: any, @Req() req: any) {
-    // Save project properties
-    // TODO: Implement real project properties saving to database
+    const { odeSessionId, odeProperties } = body;
+
+    if (!odeSessionId) {
+      return {
+        success: false,
+        message: 'Missing odeSessionId'
+      };
+    }
+
+    // Save all properties to database
+    if (odeProperties && typeof odeProperties === 'object') {
+      await this.odePropertiesSyncService.upsertMultipleProperties(
+        odeSessionId,
+        odeProperties
+      );
+    }
+
     return {
       success: true,
       message: 'Properties saved',
-      odeProperties: body.odeProperties || {}
+      odeProperties: odeProperties || {}
     };
   }
 

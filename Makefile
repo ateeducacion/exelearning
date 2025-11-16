@@ -557,7 +557,7 @@ endif
 	@npm run build
 	@echo "4/4 Building with electron-builder..."
 	@npm run electron:pack $(PUBLISH_ARG)
-	@echo "✅ Package created in dist/electron"
+	@echo "✅ Package created in release/"
 
 
 ## --------- WINDOWS LOCAL SIGN ---------

@@ -526,7 +526,7 @@ run-app: fail-on-windows
 	lsof -ti:3001 | xargs kill -9 2>/dev/null || true; \
 	sleep 1; \
 	echo "🔧 Starting NestJS backend on port 3001..."; \
-	npm run start:dev & \
+	APP_ONLINE_MODE=0 npm run start:dev & \
 	NEST_PID=$$!; \
 	echo "⏳ Waiting for NestJS to be ready (5 seconds)..."; \
 	sleep 5; \
@@ -536,7 +536,7 @@ run-app: fail-on-windows
 	fi; \
 	echo "✅ NestJS ready!"; \
 	echo "🖥️  Launching Electron..."; \
-	npm run electron:dev; \
+	APP_ONLINE_MODE=0 npm run electron:dev; \
 	cleanup
 
 # Package the application with the specified version

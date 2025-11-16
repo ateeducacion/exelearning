@@ -290,7 +290,7 @@ customEnv = {
   APP_SECRET: process.env.APP_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
   APP_PORT: desiredPort,
   NEST_PORT: desiredPort,
-  APP_ONLINE_MODE: process.env.APP_ONLINE_MODE ?? 0,
+  APP_ONLINE_MODE: process.env.APP_ONLINE_MODE ?? '0',
   APP_AUTH_METHODS: process.env.APP_AUTH_METHODS || 'none',
   TEST_USER_EMAIL: process.env.TEST_USER_EMAIL || 'user@exelearning.net',
   TEST_USER_USERNAME: process.env.TEST_USER_USERNAME || 'user',

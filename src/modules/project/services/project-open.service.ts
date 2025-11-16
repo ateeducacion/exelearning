@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ConflictException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -6,6 +6,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { ZipService } from '../../file-management/services/zip.service';
 import { FileHelperService } from '../../file-management/services/file-helper.service';
 import { XmlParserService } from '../../xml/services/xml-parser.service';
+import { CurrentOdeUsersService } from '../../current-ode-users/current-ode-users.service';
+import { OdeNavStructureSyncService } from '../../ode-sync-structures/services/ode-nav-structure-sync.service';
+import { OdePagStructureSyncService } from '../../ode-sync-structures/services/ode-pag-structure-sync.service';
+import { OdeComponentsSyncService } from '../../ode-sync-structures/services/ode-components-sync.service';
+import { OdePropertiesSyncService } from '../../ode-properties-sync/ode-properties-sync.service';
 import {
   OpenElpResult,
   ProjectSession,
@@ -22,6 +27,11 @@ export class ProjectOpenService {
     private readonly fileHelper: FileHelperService,
     private readonly xmlParser: XmlParserService,
     private readonly configService: ConfigService,
+    private readonly currentOdeUsersService: CurrentOdeUsersService,
+    private readonly navStructureService: OdeNavStructureSyncService,
+    private readonly pagStructureService: OdePagStructureSyncService,
+    private readonly componentsService: OdeComponentsSyncService,
+    private readonly propertiesService: OdePropertiesSyncService,
   ) {}
 
   /**

@@ -1,14 +1,38 @@
-import { Controller, Get, Render, Req, Redirect, Res } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Controller, Get, Req, Redirect, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { randomBytes } from 'crypto';
+
+const isOfflineMode = () => String(process.env.APP_ONLINE_MODE ?? '1') === '0';
 
 @Controller()
 export class PagesController {
   constructor(private readonly authService: AuthService) {}
   @Get('/login')
-  @Render('security/login')
-  async login(@Req() request: any) {
+  async login(@Req() request: any, @Res() res: Response) {
+    const offline = isOfflineMode();
+    const defaultEmail =
+      process.env.DEFAULT_USER_EMAIL || process.env.TEST_USER_EMAIL || 'user@exelearning.net';
+
+    // Offline mode: auto-login with default/local user and skip login screen
+    if (offline && request.session) {
+      if (!request.session.userId) {
+        let user = await this.authService.findByEmail(defaultEmail);
+        if (!user) {
+          user = await this.authService.findOrCreateExternalUser('offline-local', defaultEmail, ['ROLE_USER']);
+        }
+        if (user) {
+          request.session.userId = user.id;
+          request.session.email = user.email;
+          request.session.isGuest = false;
+          request.session.authMethodUsed = 'offline';
+        }
+      }
+
+      const redirectTo = request.session?.targetPath || '/workarea';
+      return res.redirect(302, redirectTo);
+    }
+
     const authMethods = this.authService.getAuthMethods();
     const guestLoginNonce = authMethods.includes('guest') ? randomBytes(8).toString('hex') : null;
     if (guestLoginNonce && request.session) {
@@ -35,7 +59,7 @@ export class PagesController {
       }
     }
 
-    return {
+    const viewModel = {
       app_version: process.env.APP_VERSION || 'v3.0.0',
       auth_methods: authMethods,
       user,
@@ -45,6 +69,7 @@ export class PagesController {
       guest_login_nonce: guestLoginNonce,
       locale: 'en',
     };
+    return res.render('security/login', viewModel);
   }
 
   @Get('/workarea')

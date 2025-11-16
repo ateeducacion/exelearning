@@ -13,6 +13,7 @@ import { OdeOperationsLogModule } from './modules/ode-operations-log/ode-operati
 import { CurrentOdeUsersModule } from './modules/current-ode-users/current-ode-users.module';
 import { CurrentOdeUsersSyncChangesModule } from './modules/current-ode-users-sync-changes/current-ode-users-sync-changes.module';
 import { OdeSyncStructuresModule } from './modules/ode-sync-structures/ode-sync-structures.module';
+import { CommandsModule } from './modules/commands/commands.module';
 import * as path from 'path';
 import * as fs from 'fs';
 import databaseConfig from './config/database.config';
@@ -73,6 +74,7 @@ import databaseConfig from './config/database.config';
     CurrentOdeUsersModule,
     CurrentOdeUsersSyncChangesModule,
     OdeSyncStructuresModule,
+    CommandsModule,
   ],
   controllers: [],
   providers: [],

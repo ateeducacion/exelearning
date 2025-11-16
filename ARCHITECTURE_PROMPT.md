@@ -175,7 +175,9 @@ exelearning/
 ├── frontend/             # Vite frontend
 ├── cli/                  # CLI tool
 ├── mcp/                  # MCP server
-├── electron/             # Electron wrapper
+├── main.js               # Electron main process
+├── preload.js            # Electron preload script
+├── update-manager.js     # Electron auto-updater
 ├── shared/               # Shared types/utils
 ├── Makefile              # Project management
 └── ...

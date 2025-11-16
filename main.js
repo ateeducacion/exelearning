@@ -10,9 +10,6 @@ const AdmZip                          = require('adm-zip');
 const http                            = require('http'); // Import the http module to check server availability and downloads
 const https                           = require('https');
 
-// Toggle to use the Nest backend instead of the legacy PHP server (default ON).
-const useNestBackend = process.env.USE_NEST_BACKEND !== '0';
-
 const { initAutoUpdater }             = require('./update-manager');
 
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
@@ -61,7 +58,6 @@ i18n.configure({
 
 i18n.setLocale(defaultLocale);
 
-let phpBinaryPath;
 let appDataPath;
 let databasePath;
 
@@ -69,7 +65,6 @@ let databaseUrl;
 
 let mainWindow;
 let loadingWindow;
-let phpServer;
 let isShuttingDown = false; // Flag to ensure the app only shuts down once
 let updaterInited = false; // guard
 
@@ -274,13 +269,9 @@ function ensureAllDirectoriesWritable(env) {
 }
 
 function initializePaths() {
-  phpBinaryPath = useNestBackend ? null : getPhpBinaryPath(); 
   appDataPath = app.getPath('userData');
   databasePath = path.join(appDataPath, 'exelearning.db')
 
-  if (!useNestBackend) {
-    console.log(`PHP binary path: ${phpBinaryPath}`);
-  }
   console.log(`APP data path: ${appDataPath}`);
   console.log('Database path:', databasePath);
 }
@@ -418,22 +409,15 @@ function createWindow() {
   // Create the loading window
   createLoadingWindow();
 
-  if (useNestBackend) {
+  // Start the NestJS server only in production (in dev, assume it's already running)
+  const isDev = determineDevMode();
+  if (!isDev) {
     startNestServer();
   } else {
-    // Check if the database exists and run Symfony commands
-    checkAndCreateDatabase();
-
-    // Check if the php binary is runable exists and run Symfony commands
-    assertWindowsPhpUsableOrGuide();
-
-    runSymfonyCommands();
-
-    // Start the embedded PHP server
-    startPhpServer();
+    console.log('Development mode: skipping NestJS in-process loading (assuming external server running)');
   }
 
-  // Wait for the PHP server to be available before loading the main window
+  // Wait for the server to be available before loading the main window
   waitForServer(() => {
     // Close the loading window
     if (loadingWindow) {
@@ -671,7 +655,7 @@ function waitForServer(callback) {
     });
 
     req.on('error', () => {
-      console.log('PHP server not available, retrying...');
+      console.log('Server not available, retrying...');
       setTimeout(checkServer, 1000);  // Try again in 1 second
     });
 
@@ -852,28 +836,18 @@ app.whenReady().then(() => {
 
 
 app.on('window-all-closed', function () {
-  if (phpServer) {
-    phpServer.kill('SIGTERM');
-    console.log('Closed PHP server.');
-  }
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 /**
- * Function to handle app exit, including killing the PHP server.
+ * Function to handle app exit.
  */
 function handleAppExit() {
   const cleanup = () => {
     if (isShuttingDown) return;
     isShuttingDown = true;
-
-    // Terminate PHP server if running
-    if (phpServer) {
-      phpServer.kill('SIGTERM');
-      phpServer = null;
-    }
 
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.destroy();
@@ -1008,225 +982,25 @@ function checkAndCreateDatabase() {
 }
 
 /**
- * Runs Symfony commands using the integrated PHP binary.
- */
-function runSymfonyCommands() {
-  try {
-    // We already created FILES_DIR in ensureAllDirectoriesWritable().
-    // Also check other required directories if needed.
-
-    const iniArgs = phpIniArgs();
-
-    const publicDir = path.join(basePath, 'public');
-    if (!fs.existsSync(publicDir)) {
-      showErrorDialog(`The public directory was not found at the path: ${publicDir}`);
-      app.quit();
-    }
-
-    const consolePath = path.join(basePath, 'bin', 'console');
-    if (!fs.existsSync(consolePath)) {
-      showErrorDialog(`The bin/console file was not found at the path: ${consolePath}`);
-      app.quit();
-    }
-    try {
-      console.log('Clearing Symfony cache...');
-      execFileSync(phpBinaryPath, [...iniArgs, 'bin/console', 'cache:clear'], {
-        env: env,
-        cwd: basePath,
-        windowsHide: true,
-        stdio: 'inherit',
-      });
-    } catch (cacheError) {
-      console.error('Error clearing cache (non-critical):', cacheError.message);
-    }
-
-    console.log('Creating database tables in SQLite...');
-    execFileSync(phpBinaryPath, [...iniArgs, 'bin/console', 'doctrine:schema:update', '--force'], {
-      env: env,
-      cwd: basePath,
-      windowsHide: true,
-      stdio: 'inherit',
-    });
-
-    // Do NOT run assets:install when packaged: the directory is read-only
-    if (!app.isPackaged) {
-      try {
-        console.log('Installing assets in public (dev/local only)...');
-        execFileSync(
-          phpBinaryPath,
-          [...iniArgs, 'bin/console', 'assets:install', 'public', '--no-debug', '--env=prod'],
-          {
-            env, cwd: basePath, windowsHide: true, stdio: 'inherit',
-          },
-        );
-      } catch (e) {
-        console.warn('Skipping assets:install:', e.message);
-      }
-    } else {
-      console.log('Skipping assets:install (packaged app is read-only).');
-    }
-
-    console.log('Creating test user...');
-    execFileSync(
-      phpBinaryPath,
-      [
-        ...iniArgs,
-        'bin/console',
-        'app:create-user',
-        customEnv.TEST_USER_EMAIL,
-        customEnv.TEST_USER_PASSWORD,
-        customEnv.TEST_USER_USERNAME,
-        '--no-fail',
-      ],
-      {
-        env, cwd: basePath, windowsHide: true, stdio: 'inherit',
-      },
-    );
-
-    console.log('Symfony commands executed successfully.');
-  } catch (err) {
-    showErrorDialog(`Error executing Symfony commands: ${err.message}`);
-    app.quit();
-  }
-}
-
-function phpIniArgs() {
-  const maxExecutionTime = String(process.env.PHP_MAX_EXECUTION_TIME ?? '600');
-  const maxInputTime = String(process.env.PHP_MAX_INPUT_TIME ?? maxExecutionTime);
-  const memoryLimit = String(process.env.PHP_MEMORY_LIMIT ?? '512M');
-  const uploadMaxFilesize = String(process.env.PHP_UPLOAD_MAX_FILESIZE ?? '512M');
-  let postMaxSize = String(process.env.PHP_POST_MAX_SIZE ?? uploadMaxFilesize);
-
-  // Ensure POST payload limit is never lower than the upload limit.
-  const parseSize = (value) => {
-    if (!value) return 0;
-    const match = String(value).trim().match(/^(\d+)([KMG]?)/i);
-    if (!match) return Number(value) || 0;
-    const quantity = Number(match[1]);
-    const unit = match[2]?.toUpperCase();
-    switch (unit) {
-      case 'G': return quantity * 1024 * 1024 * 1024;
-      case 'M': return quantity * 1024 * 1024;
-      case 'K': return quantity * 1024;
-      default: return quantity;
-    }
-  };
-
-  if (parseSize(postMaxSize) < parseSize(uploadMaxFilesize)) {
-    postMaxSize = uploadMaxFilesize;
-  }
-
-  return [
-    '-dopcache.enable=1',
-    '-dopcache.enable_cli=1',
-    '-dopcache.memory_consumption=128',
-    '-dopcache.interned_strings_buffer=16',
-    '-dopcache.max_accelerated_files=20000',
-    '-dopcache.validate_timestamps=0',
-    '-drealpath_cache_size=4096k',
-    '-drealpath_cache_ttl=600',
-    `-dmax_execution_time=${maxExecutionTime}`,
-    `-dmax_input_time=${maxInputTime}`,
-    `-dmemory_limit=${memoryLimit}`,
-    `-dupload_max_filesize=${uploadMaxFilesize}`,
-    `-dpost_max_size=${postMaxSize}`,
-  ];
-}
-
-/**
- * Starts the embedded PHP server.
- */
-function startPhpServer() {
-  try {
-    phpServer = spawn(
-      phpBinaryPath,
-      [...phpIniArgs(), '-S', `localhost:${customEnv.APP_PORT}`, '-t', 'public', 'public/router.php'],
-      {
-        // env: Object.assign({}, process.env, customEnv),
-        env, // usa el env ya combinado por combineEnv()
-        cwd: basePath,
-        windowsHide: true,
-      }
-    );
-
-    phpServer.on('error', (err) => {
-      console.error('Error starting PHP server:', err.message);
-      if (err.message.includes('EADDRINUSE')) {
-        showErrorDialog(`Port ${customEnv.APP_PORT} is already in use. Close the process using it and try again.`);
-      } else {
-        showErrorDialog(`Error starting PHP server: ${err.message}`);
-      }
-      app.quit();
-    });
-
-    phpServer.stdout.on('data', (data) => {
-      console.log(`PHP: ${data}`);
-    });
-
-    phpServer.stderr.on('data', (data) => {
-      // Normalize to string
-      const text = data instanceof Buffer ? data.toString() : String(data);
-
-      // Process line by line (chunks can arrive concatenated)
-      for (const raw of text.split(/\r?\n/)) {
-        const line = raw.trim();
-        if (!line) continue;
-
-        // Silence php -S noise: "[::1]:64324 Accepted" / "[::1]:64324 Closing"
-        if (/\[(?:::1|127\.0\.0\.1)\]:\d+\s+(?:Accepted|Closing)\s*$/i.test(line)) {
-          continue;
-        }
-
-        // Hide simple succesful access logs like [200] or [301]
-        // Example: "[::1]:64331 [200]: GET /path" | "[::1]:64335 [301]: POST /path"
-        if (/\[\s*(?:200|301)\s*\]:\s+(GET|POST|PUT|DELETE|HEAD|OPTIONS)\s+/i.test(line)) {
-          continue;
-        }
-
-        // Detect "Address already in use" and stop the app
-        if (line.includes('Address already in use')) {
-          showErrorDialog(`Port ${customEnv.APP_PORT} is already in use. Close the process using it and try again.`);
-          app.quit();
-          return;
-        }
-
-        // Keep useful stderr
-        console.warn(`${line}`);
-      }
-    });
-
-    phpServer.on('close', (code) => {
-      console.log(`The PHP server closed with code ${code}`);
-      if (code !== 0) {
-        app.quit();
-      }
-    });
-  } catch (err) {
-    showErrorDialog(`Error starting PHP server: ${err.message}`);
-    app.quit();
-  }
-}
-
-/**
- * Starts the NestJS backend (built output must exist at nest-backend/dist/main.js).
+ * Starts the NestJS backend (built output must exist at dist/main.js).
  * We require it in-process to keep packaging simpler (asar-friendly).
  */
 function startNestServer() {
   try {
     const candidates = [
       // ExtraResources path (outside asar)
-      path.join(process.resourcesPath, 'nest-backend', 'dist', 'main.js'),
+      path.join(process.resourcesPath, 'dist', 'main.js'),
       // Prefer unpacked path in packaged apps (read/write friendly)
-      path.join(process.resourcesPath, 'app.asar.unpacked', 'nest-backend', 'dist', 'main.js'),
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'main.js'),
       // Fallback to asar-packed path (read-only)
-      path.join(app.getAppPath(), 'nest-backend', 'dist', 'main.js'),
+      path.join(app.getAppPath(), 'dist', 'main.js'),
       // Dev path
-      path.join(__dirname, 'nest-backend', 'dist', 'main.js'),
+      path.join(__dirname, 'dist', 'main.js'),
     ];
 
     const nestMain = candidates.find((p) => fs.existsSync(p));
     if (!nestMain) {
-      showErrorDialog('Nest backend build not found. Run "npm run build" inside nest-backend before packaging.');
+      showErrorDialog('NestJS backend build not found. Run "npm run build" before packaging.');
       app.quit();
       return;
     }
@@ -1252,178 +1026,11 @@ function startNestServer() {
 
 /**
  * Shows an error dialog.
- * 
+ *
  * @param {string} message - The message to display.
  */
 function showErrorDialog(message) {
   dialog.showErrorBox('Error', message);
-}
-
-// Helper: resolve platform and arch folders used in extraResources
-function resolvePhpRuntimeRoot() {
-  const plat = process.platform === 'win32' ? 'win' : (process.platform === 'darwin' ? 'mac' : 'linux');
-  // En mac "universal" de Electron puede ejecutarse como arm64 o x64 (Rosetta).
-  const arch = (process.platform === 'darwin')
-    ? (process.arch === 'arm64' ? 'arm64' : 'x64')
-    : 'x64';
-
-  // Todo lo que copies con extraResources vive fuera del asar, bajo resourcesPath.
-  // Estructura final esperada: <resources>/php/<plat>/<arch>/(php.exe|php)
-  return path.join(process.resourcesPath, 'php', plat, arch);
-}
-
-/**
- * Pick the first existing file from candidates.
- * @param {string[]} candidates
- */
-function pickExisting(candidates) {
-  for (const p of candidates) {
-    try {
-      if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
-    } catch (_) {}
-  }
-  return null;
-}
-
-/**
- * Ensure exec bit on POSIX.
- * @param {string} p
- */
-function ensureExecIfNeeded(p) {
-  if (process.platform !== 'win32') {
-    try { fs.chmodSync(p, 0o755); } catch (_) {}
-  }
-}
-
-/**
- * Try to resolve system PHP for dev.
- */
-function findSystemPhp() {
-  try {
-    const which = process.platform === 'win32' ? 'where' : 'which';
-    const out = execFileSync(which, ['php'], { windowsHide: true, stdio: 'pipe' })
-      .toString().split(/\r?\n/)[0].trim();
-    return out || null;
-  } catch (_) { return null; }
-}
-
-/**
- * Resolve the embedded PHP binary path across mac (universal), Linux, and Windows.
- * - macOS packaged: <Resources>/php/mac/php  (fat binary)
- * - Linux packaged: <Resources>/php/linux/<arch>/php
- * - Windows packaged: <Resources>/php/win/x64/php.exe
- * - dev: ./runtime/php/... or fallback to system "php"
- */
-function getPhpBinaryPath() {
-  const isPackaged = app.isPackaged;
-  const binWin = 'php.exe';
-  const binNix = 'php';
-
-  if (process.platform === 'darwin') {
-    // Universal: single FAT binary path in packaged app
-    const prod = path.join(process.resourcesPath, 'php', 'mac', binNix);
-    // In dev, keep arch layout from runtime/php/mac/<arch>/*
-    const devArch = (process.arch === 'arm64') ? 'arm64' : 'x64';
-    const dev = [
-      path.join(app.getAppPath(), 'runtime', 'php', 'mac', devArch, binNix),
-      path.join(app.getAppPath(), 'runtime', 'php', 'mac', devArch, 'php-8.4', 'bin', binNix),
-      path.join(app.getAppPath(), 'runtime', 'php', 'mac', devArch, 'php-8.4', binNix)
-    ];
-    const chosen = pickExisting(isPackaged ? [prod] : [...dev, prod]);
-    if (chosen) { ensureExecIfNeeded(chosen); return chosen; }
-    if (!isPackaged) { const sys = findSystemPhp(); if (sys) return sys; }
-    throw new Error('php-runtime-missing (mac): ' + [prod, ...dev].join(' | '));
-  }
-
-  if (process.platform === 'linux') {
-    // Keep per-arch layout; default to x64. If someday arm64 is present, it will just work.
-    const arch = (process.arch === 'arm64') ? 'arm64' : 'x64';
-    const prod = path.join(process.resourcesPath, 'php', 'linux', arch, binNix);
-    const dev = [
-      path.join(app.getAppPath(), 'runtime', 'php', 'linux', arch, binNix),
-      path.join(app.getAppPath(), 'runtime', 'php', 'linux', arch, 'php-8.4', 'bin', binNix),
-      // Fallback to x64 in dev if you’re on arm64 but only prepared x64 runtime
-      ...(arch === 'arm64' ? [
-        path.join(app.getAppPath(), 'runtime', 'php', 'linux', 'x64', binNix),
-        path.join(app.getAppPath(), 'runtime', 'php', 'linux', 'x64', 'php-8.4', 'bin', binNix),
-      ] : []),
-    ];
-    const chosen = pickExisting(isPackaged ? [prod] : [...dev, prod]);
-    if (chosen) { ensureExecIfNeeded(chosen); return chosen; }
-    if (!isPackaged) { const sys = findSystemPhp(); if (sys) return sys; }
-    throw new Error('php-runtime-missing (linux): ' + [prod, ...dev].join(' | '));
-  }
-
-  if (process.platform === 'win32') {
-    // We ship x64 on Windows
-    const prod = path.join(process.resourcesPath, 'php', 'win', 'x64', binWin);
-    const dev = [
-      path.join(app.getAppPath(), 'runtime', 'php', 'win', 'x64', binWin),
-      path.join(app.getAppPath(), 'runtime', 'php', 'win', 'x64', 'php-8.4', 'php.exe'),
-      path.join(app.getAppPath(), 'runtime', 'php', 'win', 'x64', 'php-8.4', 'bin', 'php.exe'),
-    ];
-    const chosen = pickExisting(isPackaged ? [prod] : [...dev, prod]);
-    if (chosen) return chosen;
-    if (!isPackaged) { const sys = findSystemPhp(); if (sys) return sys; }
-    throw new Error('php-runtime-missing (win): ' + [prod, ...dev].join(' | '));
-  }
-
-  throw new Error(`unsupported platform: ${process.platform}`);
-}
-
-// --- Windows-only VC++ runtime check for embedded PHP ---
-function assertWindowsPhpUsableOrGuide() {
-  // Run only on Windows
-  if (process.platform !== 'win32') return;
-
-  const VC_REDIST_URL = 'https://aka.ms/vs/17/release/vc_redist.x64.exe';
-
-  try {
-    // Quick probe: if PHP starts, dependencies are fine.
-    execFileSync(phpBinaryPath, ['-v'], { windowsHide: true, stdio: 'pipe' });
-    return;
-  } catch (err) {
-    // Optional: check registry to see if the VC++ 2015–2022 (x64) runtime is installed
-    let vcredistInstalled = false;
-    try {
-      const out = execFileSync('reg', [
-        'query',
-        'HKLM\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64',
-        '/v',
-        'Installed'
-      ], { windowsHide: true, stdio: 'pipe' }).toString();
-      vcredistInstalled = /\bInstalled\s+REG_DWORD\s+0x1\b/i.test(out);
-    } catch (_) {
-      // If the key is missing or unreadable, assume it's not installed.
-      vcredistInstalled = false;
-    }
-
-    // Build a user-friendly message
-    const message = vcredistInstalled
-      ? 'PHP could not be started. The embedded PHP binary may be corrupted or incompatible.'
-      : 'Microsoft Visual C++ 2015–2022 (x64) is required to run the embedded PHP on Windows.';
-
-    const detail = vcredistInstalled
-      ? 'Please reinstall eXeLearning or replace the embedded PHP runtime.'
-      : 'Click “Install VC++ now” to download it from Microsoft. After installing, reopen eXeLearning.';
-
-    // Offer to open the official installer link
-    const { shell } = require('electron');
-    const buttons = vcredistInstalled ? ['Exit'] : ['Install VC++ now', 'Exit'];
-    const choice = dialog.showMessageBoxSync({
-      type: 'error',
-      buttons,
-      defaultId: 0,
-      cancelId: buttons.length - 1,
-      message,
-      detail
-    });
-
-    if (!vcredistInstalled && choice === 0) {
-      shell.openExternal(VC_REDIST_URL);
-    }
-    app.quit();
-  }
 }
 
 /**

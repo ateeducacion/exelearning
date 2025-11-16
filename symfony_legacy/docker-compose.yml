@@ -12,7 +12,7 @@ services:
       - .env.dist
       - .env # Overrides what is defined in .env
     ports:
-      - ${APP_PORT}:3000 # Maps the host's $APP_PORT to the container's port 8080
+      - ${APP_PORT}:8080 # Maps the host's $APP_PORT to the container's port 8080
       # - 9003:9003 # Port for Xdebug, you don't need to map this port, because is the container who connects to the host xdebug
     restart: unless-stopped # Restart the container unless it is stopped manually
     volumes:
@@ -25,7 +25,16 @@ services:
       - ./public:/app/public:cached
       ##FORDELETEINCI-END
 
+      # Config - CACHED (mainly read-only)
+      - ./config:/app/config:cached
+
+      # Composer files - no modifier (require consistency)
+      - ./composer.json:/app/composer.json
+      - ./composer.lock:/app/composer.lock
+
       # Anonym volumes - MUCH faster
+      - /app/vendor          # ← Not synchronized with host
+      - /app/var             # ← Cache and logs
       - /app/node_modules    # ← To avoid copying npm files
 
       # Persistent data
@@ -33,12 +42,18 @@ services:
 
       # Screenshots - DELEGATED (container writes)
       - ./e2e_screenshots:/tmp/e2e_screenshots:delegated
+    tmpfs:
+      - /app/public/bundles:rw,size=64m,mode=1777 # public/bundles mounted as tmpfs to avoid permission errors
     environment:
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}
+      # Force OPcache to check for updated script (for developent)
+      opcache_validate_timestamps: 1
       PRE_CONFIGURE_COMMANDS:
       POST_CONFIGURE_COMMANDS: |
         echo "this is a test line 1"
         echo "this is a test line 2"
-        # php bin/console app:create-user ${TEST_USER_EMAIL} ${TEST_USER_PASSWORD} ${TEST_USER_USERNAME} --no-fail
+        php bin/console app:create-user ${TEST_USER_EMAIL} ${TEST_USER_PASSWORD} ${TEST_USER_USERNAME} --no-fail
 
   #  ⚠️ WARNING: Uncomment this for using mariadb as local database for development 
   #     # Database settings

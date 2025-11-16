@@ -57,19 +57,15 @@ const NESTJS_ROUTES = [
 ### 1. Instalar Dependencias
 
 ```bash
-# Dependencias de NestJS (ya instaladas en el root)
+# Todas las dependencias están ahora en el root del proyecto
 npm install
-
-# Dependencias específicas de nest-backend
-cd nest-backend
-npm install
-cd ..
 ```
 
-### 2. Configurar Symfony
+### 2. Configurar Symfony Legacy
 
 ```bash
-# Asegurarse de que Symfony funciona
+# Asegurarse de que Symfony funciona (ahora en symfony_legacy/)
+cd symfony_legacy
 symfony server:start --port=8080
 ```
 
@@ -90,11 +86,11 @@ Este script:
 ### Opción 2: Manual
 
 ```bash
-# Terminal 1: Symfony
+# Terminal 1: Symfony Legacy
+cd symfony_legacy
 symfony server:start --port=8080
 
-# Terminal 2: NestJS
-cd nest-backend
+# Terminal 2: NestJS (ahora en el root)
 npm run start:dev
 
 # Terminal 3: Proxy
@@ -138,7 +134,7 @@ public function getExample() {
 ### 2. Crear el Endpoint en NestJS
 
 ```typescript
-// nest-backend/src/modules/example/example.controller.ts
+// src/modules/example/example.controller.ts
 @Controller('api')
 export class ExampleController {
   @Get('example')
@@ -186,11 +182,11 @@ El proxy muestra en consola qué servicio maneja cada petición:
 [2025-11-15T18:00:01.000Z] GET /login -> Symfony
 ```
 
-## Estructura del Proyecto NestJS
+## Estructura del Proyecto
 
 ```
-nest-backend/
-├── src/
+exelearning/ (root)
+├── src/                        # Código NestJS
 │   ├── main.ts                 # Bootstrap de NestJS
 │   ├── app.module.ts           # Módulo principal
 │   ├── config/
@@ -204,6 +200,11 @@ nest-backend/
 │   ├── base.njk
 │   └── workarea/
 │       └── workarea.njk
+├── symfony_legacy/             # Aplicación Symfony legacy
+│   ├── src/
+│   ├── templates/
+│   ├── public/
+│   └── config/
 ├── tsconfig.json
 └── package.json
 ```
@@ -238,7 +239,6 @@ lsof -ti:3000 | xargs kill -9
 ### NestJS no compila
 
 ```bash
-cd nest-backend
 rm -rf dist
 npm run build
 ```
@@ -246,6 +246,7 @@ npm run build
 ### Symfony no responde
 
 ```bash
+cd symfony_legacy
 symfony server:stop
 symfony server:start --port=8080
 ```

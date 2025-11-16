@@ -1,235 +1,287 @@
 {
-    "name": "exelearning",
-    "version": "0.0.1-rc3",
-    "license": "AGPL-3.0-or-later",
-    "description": "eXeLearning 3 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
-    "main": "main.js",
-    "homepage": "https://exelearning.net",
-    "scripts": {
-        "start": "yarn electron .",
-        "build": "yarn electron-builder",
-        "js:lint": "eslint 'public/**/*.js'",
-        "js:fix": "eslint 'public/**/*.js' --fix",
-        "check-format": "prettier --check \"public/**/*.js\"",
-        "format": "prettier --write \"public/**/*.js\"",
-        "test": "playwright test tests/electron"
+  "name": "exelearning",
+  "version": "0.0.1-rc3",
+  "license": "AGPL-3.0-or-later",
+  "description": "eXeLearning 3 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
+  "main": "main.js",
+  "homepage": "https://exelearning.net",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "build": "tsc",
+    "build:electron": "npm run build && electron-builder",
+    "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "start:debug": "ts-node-dev --inspect --respawn --transpile-only src/main.ts",
+    "start:prod": "node dist/src/main.ts",
+    "seed": "ts-node src/database/seed.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test tests/electron",
+    "electron:dev": "EXELEARNING_DEBUG_MODE=1 electron .",
+    "electron:pack": "electron-builder",
+    "electron:pack:dir": "electron-builder --dir",
+    "js:lint": "eslint 'public/**/*.js'",
+    "js:fix": "eslint 'public/**/*.js' --fix",
+    "check-format": "prettier --check \"public/**/*.js\"",
+    "format": "prettier --write \"public/**/*.js\""
+  },
+  "keywords": [],
+  "author": {
+    "name": "INTEF",
+    "email": "cedec@educacion.gob.es",
+    "url": "https://exelearning.net"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.9",
+    "@nestjs/jwt": "^11.0.1",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.1.9",
+    "@nestjs/platform-socket.io": "^11.1.9",
+    "@nestjs/typeorm": "^11.0.0",
+    "@nestjs/websockets": "^11.1.9",
+    "@types/express-session": "^1.18.2",
+    "@types/nunjucks": "^3.2.6",
+    "adm-zip": "^0.5.16",
+    "archiver": "^7.0.1",
+    "bcryptjs": "^2.4.3",
+    "chmodr": "^1.2.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "electron-log": "^5.4.0",
+    "electron-notarize": "^1.2.2",
+    "electron-updater": "^6.6.2",
+    "express-session": "^1.18.2",
+    "fast-xml-parser": "^5.3.2",
+    "fs-extra": "^11.3.2",
+    "i18n": "^0.15.1",
+    "jszip": "^3.10.1",
+    "mysql2": "^3.15.3",
+    "nunjucks": "^3.2.4",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "passport-local": "^1.0.0",
+    "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "sharp": "^0.34.5",
+    "socket.io": "^4.8.1",
+    "sql.js": "^1.13.0",
+    "sqlite3": "^5.1.7",
+    "typeorm": "^0.3.27",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.10",
+    "@nestjs/testing": "^11.1.9",
+    "@playwright/test": "^1.55.0",
+    "@types/archiver": "^7.0.0",
+    "@types/bcrypt": "^6.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.5",
+    "@types/fs-extra": "^11.0.4",
+    "@types/jest": "^29.5.14",
+    "@types/jszip": "^3.4.0",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^24.10.1",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/passport-local": "^1.0.38",
+    "@types/supertest": "^6.0.3",
+    "@types/uuid": "^10.0.0",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "eslint": "^9.20.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
+    "jest": "^29.7.0",
+    "jest-util": "^29.7.0",
+    "prettier": "^3.5.3",
+    "sass": "^1.93.2",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "es.intef.exelearning",
+    "productName": "eXeLearning",
+    "directories": {
+      "output": "dist/electron"
     },
-    "keywords": [],
-    "author": {
-        "name": "INTEF",
-        "email": "cedec@educacion.gob.es",
-        "url": "https://exelearning.net"
+    "compression": "normal",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "exelearning",
+        "repo": "exelearning",
+        "releaseType": "prerelease",
+        "channel": "latest"
+      }
+    ],
+    "afterPack": "packaging/afterPack.js",
+    "afterSign": "packaging/notarize.js",
+    "asar": true,
+    "disableDefaultIgnoredFiles": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "update-manager.js",
+      ".env.dist",
+      "translations/en.json",
+      "translations/es.json",
+      "dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "USE_NEST_BACKEND": "1"
     },
-    "dependencies": {
-        "adm-zip": "^0.5.16",
-        "chmodr": "^1.2.0",
-        "electron-log": "^5.4.0",
-        "electron-notarize": "^1.2.2",
-        "electron-updater": "^6.6.2",
-        "i18n": "^0.15.1"
-    },
-    "devDependencies": {
-        "@playwright/test": "^1.55.0",
-        "electron": "^39.0.0",
-        "electron-builder": "^26.0.12",
-        "eslint": "^9.20.0",
-        "eslint-config-prettier": "^10.1.5",
-        "eslint-plugin-prettier": "^5.4.0",
-        "prettier": "^3.5.3",
-        "sass": "^1.93.2"
-    },
-    "build": {
-        "appId": "es.intef.exelearning",
-        "productName": "eXeLearning",
-        "directories": {
-            "output": "dist"
-        },
-        "compression": "normal",
-        "publish": [
-            {
-                "provider": "github",
-                "owner": "exelearning",
-                "repo": "exelearning",
-                "releaseType": "prerelease",
-                "channel": "latest"
-            }
-        ],
-        "afterPack": "packaging/afterPack.js",
-        "afterSign": "packaging/notarize.js",
-        "asar": true,
-        "disableDefaultIgnoredFiles": true,
-        "files": [
-            "main.js",
-            "preload.js",
-            "update-manager.js",
-            ".env.dist",
-        "translations/en.json",
-        "translations/es.json"
-      ],
-      "extraMetadata": {
-        "USE_NEST_BACKEND": "1"
+    "fileAssociations": [
+      {
+        "ext": "elpx",
+        "name": "eXeLearning Project",
+        "description": "eXeLearning project file",
+        "role": "Editor",
+        "mimeType": "application/x-exelearning-elpx"
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "public/",
+        "to": "public/"
       },
-      "fileAssociations": [
-            {
-                "ext": "elpx",
-                "name": "eXeLearning Project",
-                "description": "eXeLearning project file",
-                "role": "Editor",
-                "mimeType": "application/x-exelearning-elpx"
-            }
-        ],
-      "extraResources": [
+      {
+        "from": "translations/",
+        "to": "translations/"
+      },
+      {
+        "from": ".env.dist",
+        "to": ".env.dist"
+      },
+      {
+        "from": "packaging/keys/",
+        "to": "keys/"
+      },
+      {
+        "from": "dist/",
+        "to": "dist/"
+      },
+      {
+        "from": "node_modules/",
+        "to": "node_modules/"
+      },
+      {
+        "from": "views/",
+        "to": "views/"
+      }
+    ],
+    "win": {
+      "target": [
         {
-          "from": "public/",
-          "to": "public/"
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         },
         {
-          "from": "templates/",
-          "to": "templates/"
-        },
-        {
-          "from": "translations/",
-          "to": "translations/"
-        },
-        {
-          "from": ".env.dist",
-          "to": ".env.dist"
-        },
-        {
-          "from": "packaging/keys/",
-          "to": "keys/"
-        },
-        {
-          "from": "nest-backend/dist/",
-          "to": "nest-backend/dist/"
-        },
-        {
-          "from": "nest-backend/node_modules/",
-          "to": "nest-backend/node_modules/"
-        },
-        {
-          "from": "nest-backend/views/",
-          "to": "nest-backend/views/"
-        },
-        {
-          "from": "nest-backend/public/",
-          "to": "nest-backend/public/"
+          "target": "msiWrapped",
+          "arch": [
+            "x64"
+          ]
         }
       ],
-      "files": [
-        "main.js",
-        "preload.js",
-        "update-manager.js",
-        ".env.dist",
-        "translations/en.json",
-        "translations/es.json",
-        "nest-backend/dist/**/*",
-        "nest-backend/node_modules/**/*",
-        "nest-backend/package.json"
-      ],
-        "win": {
-            "target": [
-                {
-                    "target": "nsis",
-                    "arch": [
-                        "x64"
-                    ]
-                },
-                {
-                    "target": "msiWrapped",
-                    "arch": [
-                        "x64"
-                    ]
-                }
-            ],
-            "icon": "public/exelearning.ico",
-            "legalTrademarks": "INTEF",
-            "signAndEditExecutable": true,
-            "verifyUpdateCodeSignature": false,
-            "signtoolOptions": {
-                "rfc3161TimeStampServer": "http://time.certum.pl",
-                "timeStampServer": "http://time.certum.pl",
-                "signingHashAlgorithms": [
-                    "sha1",
-                    "sha256"
-                ]
-            }
-        },
-        "nsis": {
-            "oneClick": true,
-            "runAfterFinish": true,
-            "perMachine": false,
-            "createDesktopShortcut": true,
-            "createStartMenuShortcut": true,
-            "shortcutName": "eXeLearning",
-            "preCompressedFileExtensions": [
-                ".zip",
-                ".7z",
-                ".gz",
-                ".bz2",
-                ".xz"
-            ]
-        },
-        "msiWrapped": {
-            "oneClick": true,
-            "runAfterFinish": true,
-            "perMachine": false
-        },
-        "linux": {
-            "executableName": "exelearning",
-            "executableArgs": [
-                "--no-sandbox"
-            ],
-            "target": [
-                {
-                    "target": "deb",
-                    "arch": [
-                        "x64"
-                    ]
-                },
-                {
-                    "target": "rpm",
-                    "arch": [
-                        "x64"
-                    ]
-                }
-            ],
-            "category": "Education",
-            "icon": "public/icons"
-        },
-        "deb": {
-            "afterInstall": "packaging/deb/after-install.sh",
-            "afterRemove": "packaging/deb/after-remove.sh"
-        },
-        "rpm": {
-            "afterInstall": "packaging/rpm/after-install.sh",
-            "afterRemove": "packaging/rpm/after-remove.sh"
-        },
-        "mac": {
-            "category": "public.app-category.education",
-            "hardenedRuntime": true,
-            "gatekeeperAssess": false,
-            "target": [
-                {
-                    "target": "dmg",
-                    "arch": [
-                        "universal"
-                    ]
-                },
-                {
-                    "target": "zip",
-                    "arch": [
-                        "universal"
-                    ]
-                }
-            ],
-            "icon": "public/exe_elp.icns",
-            "entitlements": "packaging/entitlements.mac.plist",
-            "entitlementsInherit": "packaging/entitlements.mac.inherit.plist"
-        },
-        "dmg": {
-            "format": "ULFO"
-        }
+      "icon": "public/exelearning.ico",
+      "legalTrademarks": "INTEF",
+      "signAndEditExecutable": true,
+      "verifyUpdateCodeSignature": false,
+      "signtoolOptions": {
+        "rfc3161TimeStampServer": "http://time.certum.pl",
+        "timeStampServer": "http://time.certum.pl",
+        "signingHashAlgorithms": [
+          "sha1",
+          "sha256"
+        ]
+      }
     },
-    "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+    "nsis": {
+      "oneClick": true,
+      "runAfterFinish": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "eXeLearning",
+      "preCompressedFileExtensions": [
+        ".zip",
+        ".7z",
+        ".gz",
+        ".bz2",
+        ".xz"
+      ]
+    },
+    "msiWrapped": {
+      "oneClick": true,
+      "runAfterFinish": true,
+      "perMachine": false
+    },
+    "linux": {
+      "executableName": "exelearning",
+      "executableArgs": [
+        "--no-sandbox"
+      ],
+      "target": [
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Education",
+      "icon": "public/icons"
+    },
+    "deb": {
+      "afterInstall": "packaging/deb/after-install.sh",
+      "afterRemove": "packaging/deb/after-remove.sh"
+    },
+    "rpm": {
+      "afterInstall": "packaging/rpm/after-install.sh",
+      "afterRemove": "packaging/rpm/after-remove.sh"
+    },
+    "mac": {
+      "category": "public.app-category.education",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "icon": "public/exe_elp.icns",
+      "entitlements": "packaging/entitlements.mac.plist",
+      "entitlementsInherit": "packaging/entitlements.mac.inherit.plist"
+    },
+    "dmg": {
+      "format": "ULFO"
+    }
+  }
 }

@@ -8,8 +8,8 @@
  * array to include them.
  */
 
-const express = require('./nest-backend/node_modules/express');
-const { createProxyMiddleware } = require('./nest-backend/node_modules/http-proxy-middleware');
+const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 

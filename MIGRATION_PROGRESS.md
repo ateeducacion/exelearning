@@ -83,7 +83,7 @@ curl -X POST http://localhost:3000/api/project \
 
 ## 🏗️ Arquitectura Actual
 
-### NestJS (nest-backend/)
+### NestJS (en root del proyecto)
 ```
 src/
 ├── modules/
@@ -93,6 +93,12 @@ src/
 │   └── auth/            🚧 Básico, sin implementación real
 ├── config/
 └── main.ts
+
+symfony_legacy/          # Aplicación Symfony legacy
+├── src/
+├── templates/
+├── public/
+└── config/
 ```
 
 ### Formato de Datos de Proyecto
@@ -148,11 +154,11 @@ interface Project {
 
 ### Iniciar todos los servicios
 ```bash
-# Terminal 1: Symfony
-symfony server:start --port=8080
+# Terminal 1: Symfony Legacy
+cd symfony_legacy && symfony server:start --port=8080
 
-# Terminal 2: NestJS
-cd nest-backend && npm run start:dev
+# Terminal 2: NestJS (ahora en root)
+npm run start:dev
 
 # Terminal 3: Proxy
 node proxy-server.js

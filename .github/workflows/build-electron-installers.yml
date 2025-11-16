@@ -30,12 +30,6 @@ jobs:
           node-version: '24'  # Use the version you need
           package-manager-cache: false 
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: sodium, fileinfo, zip, mbstring
-
       # TODO: Temporary disabled because we must have an account in snapcraft.io,
       #  when we release the app we should edit packages.json to add
       # to add

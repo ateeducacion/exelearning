@@ -100,24 +100,23 @@ pull: check-docker check-env
 build: check-docker check-env
 	docker compose build --pull
 
-# Run the linter to check TS and JS code style
-lint: lint-ts lint-js
+# Run the linter to check PHP and JS code style
+lint: lint-php lint-js
 
-# Automatically fix TS and JS code style issues
-fix: fix-ts fix-js
+# Automatically fix PHP and JS code style issues
+fix: fix-php fix-js
 
+# Check PHP code style with PHP-CS-Fixer
+lint-php: check-docker check-env
+	docker compose run --rm --no-deps --entrypoint "" exelearning composer --no-cache php-cs-checker
 
-# Check TypeScript files indentation
-lint-ts:
-	echo "TO-DO"
+# Automatically fix PHP code style with PHP-CS-Fixer
+fix-php: check-docker check-env upd
+	docker compose exec exelearning composer --no-cache php-cs-fixer
 
 # Check JavaScript files indentation
 lint-js:
 	yarn check-format
-
-# Indent TypeScript files with 4 spaces
-fix-ts:
-	echo "TO-DO"
 
 # Indent JavaScript files with 4 spaces
 fix-js:
@@ -153,7 +152,7 @@ test-unit-parallel: check-docker check-env
 # Run NestJS Jest tests
 test-node: check-env
 	@echo "Running NestJS Jest tests..."
-	@ npm test
+	@cd nest-backend && npm test
 
 # Run just e2e tests with PHPUnit
 test-e2e: check-docker check-env css-dev
@@ -335,6 +334,28 @@ translations: check-docker check-env upd
 
 # Start the local environment with specific commands
 up-local: check-env css-dev
+	@echo "\033[31mWarning: Running in local environment may cause unexpected behavior. Use at your own risk.\033[0m"
+	@TMPDIR=$$(mktemp -d /tmp/exelearning-XXXXXX) && \
+	echo "Using temporary directory: $$TMPDIR" && \
+	export DB_DRIVER=pdo_sqlite && \
+	export APP_ENV=dev && \
+	export APP_DEBUG=1 && \
+	export APP_ONLINE_MODE=1 && \
+	export DB_PATH="$$TMPDIR/exelearning.db" && \
+	export FILES_DIR="$$TMPDIR/" && \
+	export TEST_USER_EMAIL="user@exelearning.net" && \
+	export TEST_USER_PASSWORD="1234" && \
+	export TEST_USER_USERNAME="testuser" && \
+	export APP_SECRET=mySuperSecretKey && \
+	php bin/console doctrine:schema:update --force && \
+	php bin/console app:create-user "$${TEST_USER_EMAIL}" "$${TEST_USER_PASSWORD}" "$${TEST_USER_USERNAME}" --no-fail && \
+	php bin/console cache:clear && \
+	php bin/console assets:install public && \
+	php bin/console dbal:run-sql "SELECT * FROM users" && \
+	php -d variables_order=EGPCS -S 127.0.0.1:8000 -t public public/router.php
+
+# Start NestJS server with migration setup (Strangler Fig pattern)
+up-node: check-env
 	@set -e; \
 	echo "\033[32m========================================\033[0m"; \
 	echo "\033[32mStarting NestJS Server\033[0m"; \
@@ -355,7 +376,7 @@ up-local: check-env css-dev
 	echo "\033[33mCleaning up existing processes...\033[0m"; \
 	lsof -ti:3000 | xargs kill -9 2>/dev/null || true; \
 	sleep 1; \
-	if [ ! -f ".env" ] || [ ! -d "node_modules" ]; then \
+	if [ ! -f "nest-backend/.env" ] || [ ! -d "nest-backend/node_modules" ]; then \
 		echo "\033[33mConfiguring NestJS...\033[0m"; \
 		TMPDIR=$$(mktemp -d /tmp/exelearning-nestjs-XXXXXX) && \
 		export DB_DRIVER=pdo_sqlite && \
@@ -368,7 +389,7 @@ up-local: check-env css-dev
 		./02-configure-nestjs.sh; \
 	fi; \
 	echo "\033[32mStarting NestJS backend on port 3000...\033[0m"; \
-	(  npm run start:dev ) & \
+	( cd nest-backend && npm run start:dev ) & \
 	NEST_PID=$$!; \
 	sleep 3; \
 	if ! kill -0 $$NEST_PID 2>/dev/null; then \
@@ -393,7 +414,7 @@ up-local: check-env css-dev
 	wait $$NEST_PID
 
 # Stop NestJS server
-stop-local:
+stop-node:
 	@echo "\033[33mStopping NestJS server...\033[0m"
 	@lsof -ti:3000 | xargs kill -9 2>/dev/null || true
 	@echo "\033[32m✓ NestJS server stopped\033[0m"
@@ -509,38 +530,16 @@ export-epub3:
 export-ims:
 	@$(MAKE) export-elpx FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
-# Run the app locally in development mode with Electron
-# Automatically starts NestJS backend and launches Electron
+# Run the app locally with yarn, pass DEBUG=1 to enable dev mode
 run-app: fail-on-windows
-	@echo "🚀 Launching eXeLearning with NestJS backend..."
-	@set -e; \
-	CLEANED=0; \
-	cleanup() { \
-		[ "$$CLEANED" = "1" ] && return; \
-		CLEANED=1; \
-		echo "🛑 Stopping NestJS server..."; \
-		lsof -ti:3001 | xargs kill -9 2>/dev/null || true; \
-	}; \
-	trap cleanup INT TERM EXIT; \
-	echo "🧹 Cleaning up existing processes on port 3001..."; \
-	lsof -ti:3001 | xargs kill -9 2>/dev/null || true; \
-	sleep 1; \
-	echo "🔧 Starting NestJS backend on port 3001..."; \
-	npm run start:dev & \
-	NEST_PID=$$!; \
-	echo "⏳ Waiting for NestJS to be ready (5 seconds)..."; \
-	sleep 5; \
-	if ! kill -0 $$NEST_PID 2>/dev/null; then \
-		echo "❌ NestJS failed to start. Check the output above for errors."; \
-		exit 1; \
-	fi; \
-	echo "✅ NestJS ready!"; \
-	echo "🖥️  Launching Electron..."; \
-	npm run electron:dev; \
-	cleanup
+ifeq ($(SYSTEM_OS),windows)
+	powershell -Command "cd nest-backend; $$env:EXELEARNING_DEBUG_MODE='$(DEBUG)'; yarn electron:dev"
+else
+	cd nest-backend && EXELEARNING_DEBUG_MODE=$(DEBUG) yarn electron:dev
+endif
 
 # Package the application with the specified version
-# Usage: make package VERSION=1.0.0 [PUBLISH=always]
+# Usage: make package VERSION=1.0.0
 package: fail-on-windows
 ifndef VERSION
 	$(error VERSION is not set. Usage: make package VERSION=x.y.z)
@@ -548,16 +547,10 @@ endif
 	$(eval PACKAGE_VERSION := $(patsubst v%,%,$(VERSION)))
 	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
 	$(if $(PACKAGE_VERSION),,$(error Unable to derive package version from '$(VERSION)'))
-	@echo "📦 Packaging eXeLearning v$(PACKAGE_VERSION)..."
-	@echo "1/4 Updating version in package.json..."
-	@node -e "const fs=require('fs');const p='package.json';const pj=JSON.parse(fs.readFileSync(p,'utf8'));pj.version='$(PACKAGE_VERSION)';fs.writeFileSync(p,JSON.stringify(pj,null,2));"
-	@echo "2/4 Generating production CSS..."
-	@$(MAKE) css-node
-	@echo "3/4 Compiling TypeScript..."
-	@npm run build
-	@echo "4/4 Building with electron-builder..."
-	@npm run electron:pack $(PUBLISH_ARG)
-	@echo "✅ Package created in dist/electron"
+	@echo "Packaging Nest/Electron application with version $(PACKAGE_VERSION)..."
+	@cd nest-backend && node -e "const fs=require('fs');const p='package.json';const pj=JSON.parse(fs.readFileSync(p,'utf8'));pj.version='$(PACKAGE_VERSION)';fs.writeFileSync(p,JSON.stringify(pj,null,2));"
+	@cd nest-backend && yarn electron:pack $(PUBLISH_ARG)
+	@echo "Package created in nest-backend/dist/electron"
 
 
 ## --------- WINDOWS LOCAL SIGN ---------
@@ -673,11 +666,12 @@ help:
 	@echo "  pull                  - Pull the latest images from the registry"
 	@echo "  shell                 - Open a shell inside the exelearning container"
 	@echo "  up                    - Start Docker containers in interactive mode"
-	@echo "  up-local               - Start NestJS migration environment (Symfony + NestJS + Proxy)"
+	@echo "  up-local              - Run local Symfony server and prepare the environment (unstable)"
+	@echo "  up-node               - Start NestJS migration environment (Symfony + NestJS + Proxy)"
 	@echo "  upd                   - Start Docker containers in background mode (daemon)"
 	@echo "  update                - Update Composer dependencies"
 	@echo "  pull-vendor           - Copy vendor/ from container to local ./vendor (for debugging)"
-	@echo "  stop-local             - Stop NestJS migration environment"
+	@echo "  stop-node             - Stop NestJS migration environment"
 	@echo ""
 	@echo "Assets (SCSS / CSS):"
 	@echo ""
@@ -738,8 +732,8 @@ help:
 	@echo ""
 	@echo "Packaging:"
 	@echo ""
-	@echo "  run-app               - Run the app locally in Electron development mode"
-	@echo "  package               - Package the app with electron-builder (usage: make package VERSION=x.y.z [PUBLISH=always])"
+	@echo "  run-app               - Run the app locally as it would work when packaged"
+	@echo "  package               - Generate installers for current platform with specified version (usage: make package VERSION=x.y.z)"
 	@echo ""
 	@echo "Translations (i18n):"
 	@echo ""

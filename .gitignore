@@ -1,28 +1,30 @@
-###> symfony/framework-bundle ###
+###> symfony/framework-bundle (LEGACY) ###
+# Root level (for any remaining Symfony configs)
 .env
 /.env
 /.env.local
 /.env.local.php
 /.env.*.local
-/config/secrets/prod/prod.decrypt.private.php
-/public/bundles/
-/var/*
-/src/var/
+
+# Symfony legacy application
+symfony_legacy/config/secrets/prod/prod.decrypt.private.php
+symfony_legacy/public/bundles/
+symfony_legacy/var/*
+symfony_legacy/src/var/
+!symfony_legacy/var/.gitkeep
 
 /e2e_screenshots/
+###< symfony/framework-bundle (LEGACY) ###
 
-!/var/.gitkeep
-###< symfony/framework-bundle ###
+###> symfony/phpunit-bridge (LEGACY) ###
+symfony_legacy/.phpunit.result.cache
+symfony_legacy/phpunit.xml
+###< symfony/phpunit-bridge (LEGACY) ###
 
-###> symfony/phpunit-bridge ###
-.phpunit.result.cache
-/phpunit.xml
-###< symfony/phpunit-bridge ###
-
-###> phpunit/phpunit ###
-/phpunit.xml
-.phpunit.result.cache
-###< phpunit/phpunit ###
+###> phpunit/phpunit (LEGACY) ###
+symfony_legacy/phpunit.xml
+symfony_legacy/.phpunit.result.cache
+###< phpunit/phpunit (LEGACY) ###
 
 ###> files ###
 #/public/files/*
@@ -30,7 +32,7 @@
 #!/public/files/tmp/.gitkeep
 ###< files ###
 data
-vendor
+symfony_legacy/vendor/
 
 ### macOS ###
 # General macOS file excludes
@@ -54,46 +56,47 @@ Icon
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
 
-###> squizlabs/php_codesniffer ###
-/.phpcs-cache
-/phpcs.xml
-###< squizlabs/php_codesniffer ###
+###> squizlabs/php_codesniffer (LEGACY) ###
+symfony_legacy/.phpcs-cache
+symfony_legacy/phpcs.xml
+###< squizlabs/php_codesniffer (LEGACY) ###
 
-###> friendsofphp/php-cs-fixer ###
-/.php-cs-fixer.php
-/.php-cs-fixer.cache
-###< friendsofphp/php-cs-fixer ###
+###> friendsofphp/php-cs-fixer (LEGACY) ###
+symfony_legacy/.php-cs-fixer.php
+symfony_legacy/.php-cs-fixer.cache
+###< friendsofphp/php-cs-fixer (LEGACY) ###
 
 # Ignore Aider files
 .aider*
 
-# Ignore node_modules
+# NestJS / Node.js
 node_modules/
+/dist
+/coverage
+.env.test
 
-# Ignore lock files
+# Lock files
 package-lock.json
-symfony.lock
+symfony_legacy/symfony.lock
 yarn.lock
 
-# Ignore dist directory
-/dist
-
+# Build artifacts
 public/style/workarea/main.css
 public/style/workarea/main.css.map
 
-# Ignore SQLite database
+# Database
 exelearning.db
 
-###> phpstan/phpstan ###
-phpstan.neon
-###< phpstan/phpstan ###
+###> phpstan/phpstan (LEGACY) ###
+symfony_legacy/phpstan.neon
+###< phpstan/phpstan (LEGACY) ###
 
-
+# Data directories
 data_database/
 data_persistent/
 
-symfony.lock
-.phpunit.cache
+# IDE
 .idea/
 
-runtime/
+# Symfony legacy runtime
+symfony_legacy/runtime/

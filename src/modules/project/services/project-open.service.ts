@@ -58,6 +58,29 @@ export class ProjectOpenService {
         throw new Error('Invalid ELP file: Not a valid ZIP archive');
       }
 
+      // Check if user has an existing session (if username provided)
+      if (options.username) {
+        const existingSession = await this.currentOdeUsersService.getCurrentSessionForUser(
+          options.username,
+        );
+
+        if (existingSession) {
+          if (!options.forceCloseSession) {
+            throw new ConflictException(
+              `User ${options.username} already has an open session: ${existingSession.odeSessionId}. ` +
+              'Use forceCloseSession option to close it automatically.',
+            );
+          }
+
+          // Close existing session
+          this.logger.log(
+            `Closing existing session ${existingSession.odeSessionId} for user ${options.username}`,
+          );
+          await this.closeSession(existingSession.odeSessionId, false);
+          await this.currentOdeUsersService.delete(existingSession.id);
+        }
+      }
+
       // Generate session ID
       const odeSessionId = uuidv4();
 
@@ -100,6 +123,11 @@ export class ProjectOpenService {
         if (!isValid) {
           throw new Error('Invalid content.xml structure');
         }
+      }
+
+      // Persist structures to database (if username provided)
+      if (options.username) {
+        await this.persistStructuresToDatabase(odeSessionId, structure, options);
       }
 
       // Create session
@@ -322,6 +350,193 @@ export class ProjectOpenService {
       } else {
         files.push(relativePath);
       }
+    }
+  }
+
+  /**
+   * Persist parsed structures to database
+   * This method saves navigation, pages, blocks, and components to the database
+   *
+   * @param odeSessionId Session ID
+   * @param structure Parsed structure from XML
+   * @param options Open options (username, odeId, odeVersionId)
+   * @private
+   */
+  private async persistStructuresToDatabase(
+    odeSessionId: string,
+    structure: any,
+    options: OpenElpOptions,
+  ): Promise<void> {
+    this.logger.debug(`Persisting structures to database for session: ${odeSessionId}`);
+
+    try {
+      // Extract IDs from options or generate defaults
+      const odeId = options.odeId || uuidv4();
+      const odeVersionId = options.odeVersionId || uuidv4();
+      const username = options.username || 'guest';
+
+      // 1. Create CurrentOdeUsers record
+      const now = new Date();
+      await this.currentOdeUsersService.create({
+        odeId,
+        odeVersionId,
+        odeSessionId,
+        user: username,
+        lastAction: now,
+        lastSync: now,
+        syncSaveFlag: false,
+        syncNavStructureFlag: false,
+        syncPagStructureFlag: false,
+        syncComponentsFlag: false,
+        syncUpdateFlag: false,
+        nodeIp: '127.0.0.1', // TODO: Get from request context
+        currentPageId: null,
+        currentBlockId: null,
+        currentComponentId: null,
+      });
+
+      // 2. Save properties (if structure has ode.odeProperties)
+      if (structure.ode?.odeProperties?.odeProperty) {
+        const properties = Array.isArray(structure.ode.odeProperties.odeProperty)
+          ? structure.ode.odeProperties.odeProperty
+          : [structure.ode.odeProperties.odeProperty];
+
+        const propertyRecord: Record<string, string> = {};
+        for (const prop of properties) {
+          propertyRecord[prop.key] = String(prop.value || '');
+        }
+
+        if (Object.keys(propertyRecord).length > 0) {
+          await this.propertiesService.upsertMultipleProperties(odeSessionId, propertyRecord);
+        }
+      }
+
+      // 3. Save navigation structures (pages)
+      if (structure.ode?.odeNavStructures?.odeNavStructure) {
+        const navStructures = Array.isArray(structure.ode.odeNavStructures.odeNavStructure)
+          ? structure.ode.odeNavStructures.odeNavStructure
+          : [structure.ode.odeNavStructures.odeNavStructure];
+
+        const navDtos = navStructures.map((nav: any, index: number) => ({
+          odeSessionId,
+          odePageId: nav.odePageId,
+          odeParentPageId: nav.odeParentPageId || null,
+          pageName: nav.pageName,
+          odeNavStructureOrder: nav.odeNavStructureOrder ?? index,
+          properties: nav.odeNavStructureProperties?.odeNavStructureProperty
+            ? (Array.isArray(nav.odeNavStructureProperties.odeNavStructureProperty)
+                ? nav.odeNavStructureProperties.odeNavStructureProperty
+                : [nav.odeNavStructureProperties.odeNavStructureProperty]
+              ).map((prop: any) => ({
+                key: prop.key,
+                value: String(prop.value || ''),
+                description: null,
+              }))
+            : [],
+        }));
+
+        const savedNavStructures = await this.navStructureService.createBulk(navDtos);
+        this.logger.debug(`Persisted ${savedNavStructures.length} navigation structures`);
+
+        // 4. Save page structures (blocks) for each navigation structure
+        for (let i = 0; i < navStructures.length; i++) {
+          const nav = navStructures[i];
+          const savedNav = savedNavStructures[i];
+
+          if (nav.odePagStructures?.odePagStructure) {
+            const pagStructures = Array.isArray(nav.odePagStructures.odePagStructure)
+              ? nav.odePagStructures.odePagStructure
+              : [nav.odePagStructures.odePagStructure];
+
+            const pagDtos = pagStructures.map((pag: any, index: number) => ({
+              odeSessionId,
+              odePageId: pag.odePageId,
+              odeBlockId: pag.odeBlockId,
+              blockName: pag.blockName || null,
+              iconName: pag.iconName || null,
+              odePagStructureOrder: pag.odePagStructureOrder ?? index,
+              odeNavStructureSyncId: savedNav.id,
+              properties: pag.odePagStructureProperties?.odePagStructureProperty
+                ? (Array.isArray(pag.odePagStructureProperties.odePagStructureProperty)
+                    ? pag.odePagStructureProperties.odePagStructureProperty
+                    : [pag.odePagStructureProperties.odePagStructureProperty]
+                  ).map((prop: any) => ({
+                    key: prop.key,
+                    value: String(prop.value || ''),
+                    description: null,
+                  }))
+                : [],
+            }));
+
+            const savedPagStructures = await this.pagStructureService.createBulk(pagDtos);
+            this.logger.debug(`Persisted ${savedPagStructures.length} page structures for page ${nav.odePageId}`);
+
+            // 5. Save components (iDevices) for each block
+            for (let j = 0; j < pagStructures.length; j++) {
+              const pag = pagStructures[j];
+              const savedPag = savedPagStructures[j];
+
+              if (pag.odeComponents?.odeComponent) {
+                const components = Array.isArray(pag.odeComponents.odeComponent)
+                  ? pag.odeComponents.odeComponent
+                  : [pag.odeComponents.odeComponent];
+
+                const componentDtos = components.map((comp: any, index: number) => ({
+                  odeSessionId,
+                  odePageId: comp.odePageId,
+                  odeBlockId: comp.odeBlockId,
+                  odeIdeviceId: comp.odeIdeviceId || uuidv4(),
+                  odeIdeviceTypeName: comp.odeIdeviceTypeName || 'unknown',
+                  htmlView: comp.htmlView || null,
+                  jsonProperties: comp.jsonProperties || null,
+                  odeComponentsSyncOrder: comp.odeComponentsOrder ?? index,
+                  odePagStructureSyncId: savedPag.id,
+                  properties: comp.odeComponentsProperties?.odeComponentsProperty
+                    ? (Array.isArray(comp.odeComponentsProperties.odeComponentsProperty)
+                        ? comp.odeComponentsProperties.odeComponentsProperty
+                        : [comp.odeComponentsProperties.odeComponentsProperty]
+                      ).map((prop: any) => ({
+                        key: prop.key,
+                        value: String(prop.value || ''),
+                        description: null,
+                      }))
+                    : [],
+                }));
+
+                const savedComponents = await this.componentsService.createBulk(componentDtos);
+                this.logger.debug(`Persisted ${savedComponents.length} components for block ${pag.odeBlockId}`);
+              }
+            }
+          }
+        }
+      }
+
+      // 6. Mark all structures as clean (baseline for change detection)
+      // Set timestamps to 1 second before current_ode_users.created_at
+      const baselineDate = new Date(now.getTime() - 1000);
+      await this.navStructureService.markAsClean(odeSessionId, baselineDate);
+      await this.pagStructureService.markAsClean(odeSessionId, baselineDate);
+      await this.componentsService.markAsClean(odeSessionId, baselineDate);
+
+      this.logger.log(`Successfully persisted complete structure for session ${odeSessionId} to database`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to persist structures to database: ${error.message}`,
+        error.stack,
+      );
+      // Clean up created records on error
+      try {
+        await this.currentOdeUsersService.removeAllBySessionId(odeSessionId);
+        await this.propertiesService.deleteAllBySessionId(odeSessionId);
+        await this.navStructureService.deleteBySessionId(odeSessionId);
+        await this.pagStructureService.deleteBySessionId(odeSessionId);
+        await this.componentsService.deleteBySessionId(odeSessionId);
+      } catch (cleanupError) {
+        this.logger.error(
+          `Failed to cleanup after persistence error: ${cleanupError.message}`,
+        );
+      }
+      throw error;
     }
   }
 }

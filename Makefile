@@ -519,11 +519,11 @@ run-app: fail-on-windows
 		[ "$$CLEANED" = "1" ] && return; \
 		CLEANED=1; \
 		echo "🛑 Stopping NestJS server..."; \
-		lsof -ti:3001 | xargs kill -9 2>/dev/null || true; \
+		if command -v lsof >/dev/null 2>&1; then lsof -ti:3001 | xargs kill -9 2>/dev/null || true; fi; \
 	}; \
 	trap cleanup INT TERM EXIT; \
 	echo "🧹 Cleaning up existing processes on port 3001..."; \
-	lsof -ti:3001 | xargs kill -9 2>/dev/null || true; \
+	if command -v lsof >/dev/null 2>&1; then lsof -ti:3001 | xargs kill -9 2>/dev/null || true; else echo "ℹ️ lsof not found; skipping port cleanup"; fi; \
 	sleep 1; \
 	echo "🔧 Starting NestJS backend on port 3001..."; \
 	APP_ONLINE_MODE=0 npm run start:dev & \
@@ -552,7 +552,7 @@ endif
 	@echo "1/4 Updating version in package.json..."
 	@node -e "const fs=require('fs');const p='package.json';const pj=JSON.parse(fs.readFileSync(p,'utf8'));pj.version='$(PACKAGE_VERSION)';fs.writeFileSync(p,JSON.stringify(pj,null,2));"
 	@echo "2/4 Generating production CSS..."
-	@$(MAKE) css-node
+	@npm run css:node
 	@echo "3/4 Compiling TypeScript..."
 	@npm run build
 	@echo "4/4 Building with electron-builder..."

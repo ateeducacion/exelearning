@@ -29,6 +29,10 @@ export interface OpenElpOptions {
   overwrite?: boolean;
   preserveStructure?: boolean;
   validateXml?: boolean;
+  username?: string; // Username opening the project
+  forceCloseSession?: boolean; // Force close existing session
+  odeId?: string; // ODE ID (from XML or generated)
+  odeVersionId?: string; // ODE Version ID (from XML or generated)
 }
 
 /**

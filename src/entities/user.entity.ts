@@ -1,10 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column } from 'typeorm';
+import { BaseEntity } from './base.entity';
 
 @Entity('users')
-export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
-
+export class User extends BaseEntity {
   @Column({ name: 'email', type: 'varchar', length: 180, unique: true })
   email: string;
 
@@ -33,12 +31,6 @@ export class User {
 
   @Column({ name: 'api_token', type: 'varchar', length: 255, nullable: true })
   apiToken: string | null;
-
-  @Column({ name: 'created_at', type: 'datetime', nullable: true })
-  createdAt: Date | null;
-
-  @Column({ name: 'updated_at', type: 'datetime', nullable: true })
-  updatedAt: Date | null;
 
   // Virtual property - not in database
   getGravatarUrl(): string {

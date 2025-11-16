@@ -116,3 +116,4 @@ proxy-server.js
 start-migration-dev.sh
 *.sh
 Makefile
+release/

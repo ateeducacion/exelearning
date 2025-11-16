@@ -111,7 +111,8 @@
     "appId": "es.intef.exelearning",
     "productName": "eXeLearning",
     "directories": {
-      "output": "dist/electron"
+      "output": "release",
+      "app": "."
     },
     "compression": "normal",
     "publish": [

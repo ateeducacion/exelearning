@@ -12,13 +12,13 @@ export default class projectManager {
         this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
         this.clientIntervalUpdate = eXeLearning.config.clientIntervalUpdate;
         this.syncIntervalTime = 250;
-        if (!this.offlineInstallation) {
-            this.realTimeEventNotifier = new RealTimeEventNotifier(
-                this.app.eXeLearning.mercure.url,
-                this.app.eXeLearning.mercure.jwtSecretKey
-            );
-            this.eventSource;
-        }
+        // if (!this.offlineInstallation) {
+        //     this.realTimeEventNotifier = new RealTimeEventNotifier(
+        //         this.app.eXeLearning.mercure.url,
+        //         this.app.eXeLearning.mercure.jwtSecretKey
+        //     );
+        //     this.eventSource;
+        // }
 
         // Collaborative
         this.activeLocks = new Map(); // Map<pageId, { user, gravatar }>

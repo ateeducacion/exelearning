@@ -1,0 +1,56 @@
+<div class="top" id="eXeLearningNavbar">
+    <div class="main-menu">
+        <div class="main-menu-left">
+            {% include 'workarea/menus/menuNavbar.njk' %}
+        </div>
+        <div class="main-menu-right">
+            <button id="head-top-download-button" class="btn" title="Download"  data-testid="download-button">
+                <span class="auto-icon" aria-hidden="true">download</span>
+                <span class="btn-label">Download</span>
+            </button>
+            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center" title="Save" data-testid="save-button">
+                <div class="small-icon save-icon-white"></div>
+                <span>Save</span>
+            </button>
+            <button id="head-bottom-preview" class="btn button-display display-outline button-square d-flex justify-content-center align-items-center" title="Preview">
+                <div class="small-icon preview-icon-green"></div>
+            </button>
+            <button id="dropdownStyles" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="Styles">
+                <span class="medium-icon styles-icon"></span>
+            </button>
+            <button id="head-top-settings-button" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="Settings" data-testid="settings-button">
+                <span class="medium-icon settings-icon"></span>
+            </button>
+            <button id="head-top-share-button" class="btn button-tertiary button-square d-flex justify-content-center align-items-center exe-online" title="Share">
+                <span class="medium-icon share-icon"></span>
+            </button>
+            <div id="exe-last-edition" class="btn">
+                <span class="content"></span>
+            </div>
+            <div id="exe-concurrent-users" class="exe-online">
+                <button id="button-more-exe-concurrent-users" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="Users online">
+                    <span class="medium-icon concurrent-users-icon"></span>
+                </button>
+            </div>
+            <div id="head-bottom-user-logged" class="dropdown" title="{{ user.username }}" data-testid="user-menu" data-user-email="{{ user.username }}">
+                <button class="btn btn-link" type="button" id="exeUserMenuToggler" data-bs-toggle="dropdown" aria-expanded="false" title="User menu">
+                    {% if user.gravatarUrl %}
+                    <img class="exe-gravatar" src="{{ user.gravatarUrl }}" alt="{{ user.username }}" width="50" height="50" data-testid="user-avatar" onerror="this.onerror=null;this.src='/images/default-avatar.svg';this.classList.add('exe-gravatar--fallback');">
+                    {% else %}
+                    <span class="exe-avatar" title="{{ user.username }}" data-testid="user-avatar-initial">{{ user.usernameFirsLetter }}</span>
+                    {% endif %}
+                </button>
+
+                <ul class="dropdown-menu" aria-labelledby="exeUserMenuToggler">
+                    <li><a class="dropdown-item" id="navbar-button-preferences" href="#">Preferences</a></li>
+                    <li class="dropdown-divider"></li>
+                    {% if config.isOfflineInstallation %}
+                    <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">Exit</a></li>
+                    {% else %}
+                    <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">Logout</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import AdmZip = require('adm-zip');
+import JSZip from 'jszip';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import archiver = require('archiver');
+import archiver from 'archiver';
 
 export interface ExtractOptions {
   overwrite?: boolean;
@@ -41,22 +41,27 @@ export class ZipService {
       // Create destination directory
       await fs.ensureDir(destPath);
 
-      // Load ZIP file
-      const zip = new AdmZip(zipPath);
-      const zipEntries = zip.getEntries();
+      // Read ZIP file
+      const zipData = await fs.readFile(zipPath);
 
-      this.logger.debug(`Found ${zipEntries.length} entries in ZIP`);
+      // Load ZIP with JSZip
+      const zip = await JSZip.loadAsync(zipData);
 
-      // Extract all files
-      for (const entry of zipEntries) {
-        if (entry.isDirectory) {
-          const dirPath = path.join(destPath, entry.entryName);
-          await fs.ensureDir(dirPath);
+      // Get all file paths
+      const files = Object.keys(zip.files);
+      this.logger.debug(`Found ${files.length} entries in ZIP`);
+
+      // Extract each file
+      for (const fileName of files) {
+        const zipEntry = zip.files[fileName];
+        const filePath = path.join(destPath, fileName);
+
+        if (zipEntry.dir) {
+          // Create directory
+          await fs.ensureDir(filePath);
         } else {
-          const filePath = path.join(destPath, entry.entryName);
-          const fileDir = path.dirname(filePath);
-
           // Ensure parent directory exists
+          const fileDir = path.dirname(filePath);
           await fs.ensureDir(fileDir);
 
           // Check if file exists and overwrite option
@@ -67,9 +72,10 @@ export class ZipService {
             }
           }
 
-          // Extract file
-          await fs.writeFile(filePath, entry.getData());
-          this.logger.debug(`Extracted: ${entry.entryName}`);
+          // Extract file content
+          const content = await zipEntry.async('nodebuffer');
+          await fs.writeFile(filePath, content);
+          this.logger.debug(`Extracted: ${fileName}`);
         }
       }
 
@@ -171,12 +177,12 @@ export class ZipService {
         throw new Error(`ZIP file not found: ${zipPath}`);
       }
 
-      const zip = new AdmZip(zipPath);
-      const entries = zip.getEntries();
+      const zipData = await fs.readFile(zipPath);
+      const zip = await JSZip.loadAsync(zipData);
 
-      const contents = entries
-        .filter((entry) => !entry.isDirectory)
-        .map((entry) => entry.entryName);
+      const contents = Object.keys(zip.files).filter(
+        (fileName) => !zip.files[fileName].dir,
+      );
 
       this.logger.debug(`Found ${contents.length} files in ZIP`);
       return contents;
@@ -217,15 +223,17 @@ export class ZipService {
         throw new Error(`ZIP file not found: ${zipPath}`);
       }
 
-      const zip = new AdmZip(zipPath);
-      const entry = zip.getEntry(filePath);
+      const zipData = await fs.readFile(zipPath);
+      const zip = await JSZip.loadAsync(zipData);
 
-      if (!entry) {
+      const file = zip.file(filePath);
+
+      if (!file) {
         this.logger.warn(`File not found in ZIP: ${filePath}`);
         return null;
       }
 
-      return entry.getData();
+      return await file.async('nodebuffer');
     } catch (error) {
       this.logger.error(`Failed to get file from ZIP: ${error.message}`);
       throw error;
@@ -243,9 +251,9 @@ export class ZipService {
         return false;
       }
 
-      const zip = new AdmZip(zipPath);
-      // Try to get entries - if it fails, it's not a valid ZIP
-      zip.getEntries();
+      const zipData = await fs.readFile(zipPath);
+      // Try to load the ZIP - if it fails, it's not valid
+      await JSZip.loadAsync(zipData);
       return true;
     } catch (error) {
       this.logger.debug(`Invalid ZIP file: ${zipPath}`);

@@ -1,24 +1,48 @@
 import { Controller, Get, Render, Req, Redirect, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from '../auth/auth.service';
+import { randomBytes } from 'crypto';
 
 @Controller()
 export class PagesController {
   constructor(private readonly authService: AuthService) {}
   @Get('/login')
   @Render('security/login')
-  login(@Req() request: Request) {
-    // Get environment variables for authentication methods
-    const authMethods = ['password', 'guest']; // For now, hardcode. Later read from config
+  async login(@Req() request: any) {
+    const authMethods = this.authService.getAuthMethods();
+    const guestLoginNonce = authMethods.includes('guest') ? randomBytes(8).toString('hex') : null;
+    if (guestLoginNonce && request.session) {
+      (request as any).session.guestLoginNonce = guestLoginNonce;
+    }
+
+    let user = null;
+    if (request.session?.userId) {
+      if (request.session.isGuest) {
+        user = {
+          username: 'Guest',
+          usernameFirsLetter: 'G',
+        };
+      } else {
+        const dbUser = await this.authService.findById(request.session.userId);
+        if (dbUser) {
+          user = {
+            username: dbUser.email.split('@')[0] || dbUser.email,
+            usernameFirsLetter: (dbUser.email[0] || 'U').toUpperCase(),
+          };
+        } else {
+          request.session.destroy();
+        }
+      }
+    }
 
     return {
       app_version: process.env.APP_VERSION || 'v3.0.0',
       auth_methods: authMethods,
-      user: null, // Will be populated from session later
+      user,
       error: null,
-      last_username: '',
+      last_username: request.session?.email || '',
       csrf_token: 'temp-csrf-token', // TODO: Generate real CSRF token
-      guest_login_nonce: null,
+      guest_login_nonce: guestLoginNonce,
       locale: 'en',
     };
   }
@@ -27,6 +51,9 @@ export class PagesController {
   async workarea(@Req() request: any, @Res() res: Response) {
     // Check if user is authenticated
     if (!request.session || !request.session.userId) {
+      if (request.session) {
+        request.session.targetPath = request.originalUrl || '/workarea';
+      }
       // Redirect to login if not authenticated
       return res.redirect('/login');
     }
@@ -63,7 +90,11 @@ export class PagesController {
       };
     }
 
-    // Mock config data
+    const isOfflineInstallation =
+      String(process.env.APP_ONLINE_MODE || '1') === '0' ||
+      (process.env.APP_AUTH_METHODS || '').split(',').map((m) => m.trim().toLowerCase()).includes('none');
+
+    // Mock/derived config data
     const config = {
       platformName: 'exelearning',
       platformType: 'standalone',
@@ -73,7 +104,7 @@ export class PagesController {
       clientIntervalGetLastEdition: 5000,
       clientIntervalUpdate: 3000,
       defaultTheme: 'default',
-      isOfflineInstallation: true, // Set to true until Mercure is configured
+      isOfflineInstallation,
       platformIntegration: false,
       userStyles: 0,
       userIdevices: 0,

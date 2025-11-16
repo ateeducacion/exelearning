@@ -13,7 +13,7 @@ import databaseConfig from './config/database.config';
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '../.env',
+      envFilePath: ['.env', '../.env'], // Load local .env first (takes precedence), then parent .env
       load: [databaseConfig],
     }),
 

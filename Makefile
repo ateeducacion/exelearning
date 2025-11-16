@@ -175,8 +175,8 @@ test-e2e-offline: check-docker check-env css-dev
 	@echo "Running PHPUnit tests..."
 	@docker compose --profile e2e run --rm -e APP_ENV=test -e APP_ONLINE_MODE=0 exelearning composer --no-cache phpunit-e2e-offline
 
-# Test the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
-test-electron: fail-on-windows install-php-bin
+# Test the app locally with yarn, pass DEBUG=1 to enable dev mode
+test-electron: fail-on-windows
 	@echo "Running Electron E2E tests with Playwright..."
 	yarn install
 	#yarn test
@@ -356,21 +356,27 @@ up-local: check-env css-dev
 
 # Start NestJS server with migration setup (Strangler Fig pattern)
 up-node: check-env
-	@echo "\033[32m========================================\033[0m"
-	@echo "\033[32mStarting NestJS Migration Environment\033[0m"
-	@echo "\033[32m========================================\033[0m"
-	@echo ""
-	@echo "\033[33mThis will start:\033[0m"
-	@echo "  2. NestJS server on port 3001"
-	@echo "  3. Proxy server on port 3000"
-	@echo ""
-	@# Kill any existing processes on our ports
-	@echo "\033[33mCleaning up existing processes...\033[0m"
-	@lsof -ti:3000 | xargs kill -9 2>/dev/null || true
-	@lsof -ti:3001 | xargs kill -9 2>/dev/null || true
-	@sleep 1
-	@# Configure NestJS if needed
-	@if [ ! -f "nest-backend/.env" ] || [ ! -d "nest-backend/node_modules" ]; then \
+	@set -e; \
+	echo "\033[32m========================================\033[0m"; \
+	echo "\033[32mStarting NestJS Server\033[0m"; \
+	echo "\033[32m========================================\033[0m"; \
+	echo ""; \
+	echo "\033[33mThis will start:\033[0m"; \
+	echo "  1. NestJS backend on port 3000"; \
+	echo ""; \
+	CLEANED=0; \
+	cleanup() { \
+		[ "$$CLEANED" = "1" ] && return; \
+		CLEANED=1; \
+		echo "\033[33mStopping NestJS server...\033[0m"; \
+		[ -n "$$NEST_PID" ] && kill $$NEST_PID 2>/dev/null || true; \
+		lsof -ti:3000 | xargs kill -9 2>/dev/null || true; \
+	}; \
+	trap cleanup INT TERM EXIT; \
+	echo "\033[33mCleaning up existing processes...\033[0m"; \
+	lsof -ti:3000 | xargs kill -9 2>/dev/null || true; \
+	sleep 1; \
+	if [ ! -f "nest-backend/.env" ] || [ ! -d "nest-backend/node_modules" ]; then \
 		echo "\033[33mConfiguring NestJS...\033[0m"; \
 		TMPDIR=$$(mktemp -d /tmp/exelearning-nestjs-XXXXXX) && \
 		export DB_DRIVER=pdo_sqlite && \
@@ -381,35 +387,37 @@ up-node: check-env
 		export APP_SECRET=mySuperSecretKey && \
 		export JWT_SECRET=nestjs-secret-key && \
 		./02-configure-nestjs.sh; \
-	fi
-	@# Start proxy server
-	@echo "\033[32mStarting Strangler Fig Proxy on port 3000...\033[0m"
-	@echo ""
-	@echo "\033[32m========================================\033[0m"
-	@echo "\033[32mMigration Environment Ready!\033[0m"
-	@echo "\033[32m========================================\033[0m"
-	@echo ""
-	@echo "\033[36mAccess the application at: http://localhost:3000\033[0m"
-	@echo ""
-	@echo "Routes currently handled by NestJS:"
-	@echo "  • /healthcheck"
-	@echo "  • /api/healthcheck"
-	@echo "  • /api/project"
-	@echo ""
-	@echo "All other routes are handled by Symfony (fallback)"
-	@echo ""
-	@echo "\033[33mPress Ctrl+C to stop all services\033[0m"
-	@echo ""
-	@# Start proxy in foreground (so Ctrl+C works)
-	@node proxy-server.js || (echo "\033[31mProxy server stopped\033[0m" && $(MAKE) stop-node)
+	fi; \
+	echo "\033[32mStarting NestJS backend on port 3000...\033[0m"; \
+	( cd nest-backend && npm run start:dev ) & \
+	NEST_PID=$$!; \
+	sleep 3; \
+	if ! kill -0 $$NEST_PID 2>/dev/null; then \
+		echo "\033[31mNestJS failed to start. Check the output above for details.\033[0m"; \
+		exit 1; \
+	fi; \
+	echo ""; \
+	echo "\033[32m========================================\033[0m"; \
+	echo "\033[32mNestJS Server Ready!\033[0m"; \
+	echo "\033[32m========================================\033[0m"; \
+	echo ""; \
+	echo "\033[36mAccess the application at: http://localhost:3000\033[0m"; \
+	echo ""; \
+	echo "Available routes:"; \
+	echo "  • /healthcheck"; \
+	echo "  • /api/healthcheck"; \
+	echo "  • /api/project/open (POST) - Open ELP files"; \
+	echo "  • /api/project/export (POST) - Export to HTML5"; \
+	echo ""; \
+	echo "\033[33mPress Ctrl+C to stop the server\033[0m"; \
+	echo ""; \
+	wait $$NEST_PID
 
-# Stop NestJS migration environment
+# Stop NestJS server
 stop-node:
-	@echo "\033[33mStopping all services...\033[0m"
-	@symfony server:stop 2>/dev/null || true
+	@echo "\033[33mStopping NestJS server...\033[0m"
 	@lsof -ti:3000 | xargs kill -9 2>/dev/null || true
-	@lsof -ti:3001 | xargs kill -9 2>/dev/null || true
-	@echo "\033[32m✓ All services stopped\033[0m"
+	@echo "\033[32m✓ NestJS server stopped\033[0m"
 
 
 # Start the unit tests in a local environment
@@ -522,86 +530,27 @@ export-epub3:
 export-ims:
 	@$(MAKE) export-elpx FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
-install-composer-dependencies:
-	@echo "Install composer dependencies (no dev)"
-	@composer install --no-dev --classmap-authoritative --optimize-autoloader --no-interaction --no-progress
-
-# Temporarily installs nativephp/php-bin, extracts the runtime to runtime/php/...,
-# and removes the dev package so vendor/nativephp/php-bin is not included in the build.
-# Works on macOS, Linux, and Git Bash (MSYS/MINGW/CYGWIN). Does not use PowerShell.
-install-php-bin: install-composer-dependencies
-	@echo "Fetching nativephp/php-bin without dev mode (temp dir)..."
-	@set -e; \
-	TMPDIR="$$(mktemp -d)"; \
-	composer create-project --no-dev --no-scripts --no-interaction --prefer-dist nativephp/php-bin "$$TMPDIR/php-bin"; \
-	OS_NAME="$$(uname -s)"; \
-	extract_zip() { _zip="$$1"; _dest="$$2"; rm -rf "$$_dest"; mkdir -p "$$_dest"; \
-	  if command -v unzip >/dev/null 2>&1; then unzip -q -o "$$_zip" -d "$$_dest"; else bsdtar -xf "$$_zip" -C "$$_dest"; fi; }; \
-	case "$$OS_NAME" in \
-	  Linux) \
-	    echo "Preparing embedded PHP for Linux..."; \
-	    extract_zip "$$TMPDIR/php-bin/bin/linux/x64/php-8.4.zip" "runtime/php/linux/x64"; \
-	    [ -x "runtime/php/linux/x64/php-8.4/bin/php" ] && ln -sf "php-8.4/bin/php" "runtime/php/linux/x64/php" || true ;; \
-	  Darwin) \
-	    echo "Preparing embedded PHP for macOS..."; \
-	    extract_zip "$$TMPDIR/php-bin/bin/mac/arm64/php-8.4.zip" "runtime/php/mac/arm64"; \
-	    extract_zip "$$TMPDIR/php-bin/bin/mac/x64/php-8.4.zip"   "runtime/php/mac/x64"; \
-	    copy_php_bin() { root="$$1"; dest="$$root/php"; src=""; \
-	      for c in "$$root/php" "$$root/php-8.4/php" "$$root/php-8.4/bin/php" "$$root/bin/php"; do [ -x "$$c" ] && src="$$c" && break; done; \
-	      [ -z "$$src" ] && { echo "PHP binary not found under $$root"; exit 1; }; \
-	      [ "$$src" != "$$dest" ] && cp -f "$$src" "$$dest"; chmod +x "$$dest" || true; }; \
-	    copy_php_bin "runtime/php/mac/arm64"; copy_php_bin "runtime/php/mac/x64" ;; \
-	  MINGW*|MSYS*|CYGWIN*) \
-	    echo "Preparing embedded PHP for Windows (Git Bash)..."; \
-	    extract_zip "$$TMPDIR/php-bin/bin/win/x64/php-8.4.zip" "runtime/php/win/x64"; \
-	    if [ -f "runtime/php/win/x64/php-8.4/php.exe" ]; then \
-	      cp -f "runtime/php/win/x64/php-8.4/php.exe" "runtime/php/win/x64/php.exe"; \
-	    elif [ -f "runtime/php/win/x64/php-8.4/bin/php.exe" ]; then \
-	      cp -f "runtime/php/win/x64/php-8.4/bin/php.exe" "runtime/php/win/x64/php.exe"; \
-	    fi ;; \
-	  *) echo "Unsupported OS"; exit 1 ;; \
-	esac; \
-	rm -rf "$$TMPDIR"; \
-	echo "Embedded PHP runtime prepared under runtime/php/*"
-
-
-# Run the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
-run-app: fail-on-windows css-node install-php-bin
+# Run the app locally with yarn, pass DEBUG=1 to enable dev mode
+run-app: fail-on-windows
 ifeq ($(SYSTEM_OS),windows)
-	powershell -Command "$$env:EXELEARNING_DEBUG_MODE='$(DEBUG)'; yarn start"	
-	#set EXELEARNING_DEBUG_MODE=$(DEBUG) && yarn start
+	powershell -Command "cd nest-backend; $$env:EXELEARNING_DEBUG_MODE='$(DEBUG)'; yarn electron:dev"
 else
-	EXELEARNING_DEBUG_MODE=$(DEBUG) yarn start
+	cd nest-backend && EXELEARNING_DEBUG_MODE=$(DEBUG) yarn electron:dev
 endif
 
 # Package the application with the specified version
 # Usage: make package VERSION=1.0.0
-package: fail-on-windows css-node install-php-bin
+package: fail-on-windows
 ifndef VERSION
 	$(error VERSION is not set. Usage: make package VERSION=x.y.z)
 endif
 	$(eval PACKAGE_VERSION := $(patsubst v%,%,$(VERSION)))
 	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
 	$(if $(PACKAGE_VERSION),,$(error Unable to derive package version from '$(VERSION)'))
-	@echo "Packaging application with version $(VERSION)..."
-	@echo " -> Using sanitized package version $(PACKAGE_VERSION) for electron-builder"
-	
-	# Update version in Constants.php and package.json
-	@echo "Updating version in files..."
-	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = '$(VERSION)';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"$(PACKAGE_VERSION)\"|" package.json && rm -f package.json.bak
-
-	# Build & publish for current platform
-	@echo "Building & publishing for current platform..."
-	yarn build $(PUBLISH_ARG)
-	
-	# Restore the fixed version in package.json and Constants.php
-	@echo "Restoring fixed version v0.0.0-alpha in Constants.php and 0.0.0-alpha in package.json..."
-	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = 'v0.0.0-alpha';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"0.0.0-alpha\"|" package.json && rm -f package.json.bak
-	
-	@echo "Package created successfully with version $(VERSION)"
-	@echo "Installer files available in the dist/ directory"
+	@echo "Packaging Nest/Electron application with version $(PACKAGE_VERSION)..."
+	@cd nest-backend && node -e "const fs=require('fs');const p='package.json';const pj=JSON.parse(fs.readFileSync(p,'utf8'));pj.version='$(PACKAGE_VERSION)';fs.writeFileSync(p,JSON.stringify(pj,null,2));"
+	@cd nest-backend && yarn electron:pack $(PUBLISH_ARG)
+	@echo "Package created in nest-backend/dist/electron"
 
 
 ## --------- WINDOWS LOCAL SIGN ---------

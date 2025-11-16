@@ -1,10 +1,31 @@
-import { Controller, Post, Body, Get, Req, UseGuards, Redirect, Res, Put, Param } from '@nestjs/common';
-import { Response } from 'express';
+import { Controller, Post, Body, Get, Req, UseGuards, Redirect, Res, Put, Param, Query } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Response, Request } from 'express';
+import { randomBytes, createHash } from 'crypto';
+import { XMLParser } from 'fast-xml-parser';
 import { AuthService } from './auth.service';
+import { buildAbsoluteUrl, decodeJwtPayload } from './auth.utils';
 
 @Controller()
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  private authMethods(): string[] {
+    return this.authService.getAuthMethods();
+  }
+
+  private targetAfterLogin(req: Request): string {
+    const sessionTarget = (req as any).session?.postLoginRedirect || (req as any).session?.targetPath;
+    if ((req as any).session) {
+      delete (req as any).session.postLoginRedirect;
+      delete (req as any).session.targetPath;
+    }
+
+    return sessionTarget || '/workarea';
+  }
 
   // API endpoints (mantener compatibilidad)
   @Post('api/auth/login')
@@ -119,16 +140,24 @@ export class AuthController {
           path: '/api/ode-export/{odeSessionId}/preview',
           methods: ['GET']
         },
-        api_odes_last_updated: {
-          path: '/api/ode-management/odes/{odeId}/last-updated',
-          methods: ['GET']
-        },
         api_odes_ode_save_manual: {
           path: '/api/ode-management/odes/ode/save/manual',
           methods: ['POST']
         },
         api_odes_ode_save_auto: {
           path: '/api/ode-management/odes/ode/save/auto',
+          methods: ['POST']
+        },
+        api_odes_user_get_ode_list: {
+          path: '/api/project/get/user/ode/list',
+          methods: ['GET']
+        },
+        api_odes_ode_local_elp_open: {
+          path: '/api/project/open',
+          methods: ['POST']
+        },
+        api_odes_ode_local_large_elp_open: {
+          path: '/api/project/open',
           methods: ['POST']
         }
       },
@@ -712,6 +741,304 @@ export class AuthController {
     };
   }
 
+  @Get('login/cas')
+  async casLogin(@Req() req: Request, @Res() res: Response) {
+    const methods = this.authMethods();
+    if (!methods.includes('cas')) {
+      return res.status(404).render('security/error', { error: 'CAS authentication is not enabled.' });
+    }
+
+    const casUrl = (this.configService.get<string>('CAS_URL') || '').replace(/\/$/, '');
+    const casLoginPath = (this.configService.get<string>('CAS_LOGIN_PATH') || '/login').replace(/^\//, '');
+
+    if (!casUrl || !casLoginPath) {
+      return res.status(500).render('security/error', { error: 'CAS authentication is misconfigured.' });
+    }
+
+    const serviceUrl = buildAbsoluteUrl(req, '/login/cas/callback');
+
+    if ((req as any).session) {
+      (req as any).session.authMethodUsed = 'cas';
+      (req as any).session.postLoginRedirect = (req as any).session.targetPath || '/workarea';
+    }
+
+    const loginUrl = `${casUrl}/${casLoginPath}?service=${encodeURIComponent(serviceUrl)}`;
+    return res.redirect(loginUrl);
+  }
+
+  @Get('login/cas/callback')
+  async casCallback(@Req() req: Request, @Res() res: Response, @Query('ticket') ticket?: string) {
+    const methods = this.authMethods();
+    if (!methods.includes('cas')) {
+      return res.status(404).render('security/error', { error: 'CAS authentication is not enabled.' });
+    }
+
+    if (!ticket) {
+      return res.status(400).render('security/error', { error: 'Missing CAS ticket.' });
+    }
+
+    const casUrl = (this.configService.get<string>('CAS_URL') || '').replace(/\/$/, '');
+    const casValidatePath = (this.configService.get<string>('CAS_VALIDATE_PATH') || '/p3/serviceValidate').replace(/^\//, '');
+    if (!casUrl || !casValidatePath) {
+      return res.status(500).render('security/error', { error: 'CAS authentication is misconfigured.' });
+    }
+
+    const serviceUrl = buildAbsoluteUrl(req, '/login/cas/callback');
+    const fetchFn = (global as any).fetch;
+
+    if (!fetchFn) {
+      return res.status(500).render('security/error', { error: 'Fetch API is not available to perform CAS validation.' });
+    }
+
+    try {
+      const validateUrl = `${casUrl}/${casValidatePath}?service=${encodeURIComponent(serviceUrl)}&ticket=${encodeURIComponent(ticket)}`;
+      const response = await fetchFn(validateUrl);
+      const body = await response.text();
+      const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
+      const parsed = parser.parse(body);
+      const authSuccess = parsed?.serviceResponse?.authenticationSuccess;
+      const casUser = authSuccess?.user;
+
+      if (!authSuccess || !casUser) {
+        return res.status(401).render('security/error', { error: 'CAS authentication failed.' });
+      }
+
+      const attributes = authSuccess.attributes || {};
+      const pickAttribute = (value: any) => (Array.isArray(value) ? value[0] : value);
+      const email =
+        pickAttribute(attributes.mail) ||
+        pickAttribute(attributes.email) ||
+        pickAttribute(attributes.mailAddress) ||
+        pickAttribute(attributes['cas:mail']);
+
+      const user = await this.authService.findOrCreateExternalUser(`cas:${casUser}`, email || undefined);
+
+      if ((req as any).session) {
+        (req as any).session.userId = user.id;
+        (req as any).session.email = user.email;
+        (req as any).session.authMethodUsed = 'cas';
+        (req as any).session.isGuest = false;
+        (req as any).session.casAttributes = attributes;
+      }
+
+      return res.redirect(this.targetAfterLogin(req));
+    } catch (error) {
+      console.error('CAS authentication error:', error);
+      return res.status(500).render('security/error', { error: 'CAS authentication failed. Please try again later.' });
+    }
+  }
+
+  @Get('login/openid')
+  async openidLogin(@Req() req: Request, @Res() res: Response) {
+    const methods = this.authMethods();
+    if (!methods.includes('openid')) {
+      return res.status(404).render('security/error', { error: 'OpenID authentication is not enabled.' });
+    }
+
+    const authorizeEndpoint = this.configService.get<string>('OIDC_AUTHORIZATION_ENDPOINT');
+    if (!authorizeEndpoint) {
+      return res.status(500).render('security/error', { error: 'OpenID Connect is misconfigured.' });
+    }
+
+    const state = randomBytes(16).toString('hex');
+    const nonce = randomBytes(16).toString('hex');
+    const codeVerifier = randomBytes(32).toString('hex');
+    const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
+    const redirectUri = buildAbsoluteUrl(req, '/login/openid/callback');
+    const scope = this.configService.get<string>('OIDC_SCOPE') || 'openid email';
+
+    if ((req as any).session) {
+      (req as any).session.authMethodUsed = 'oidc';
+      (req as any).session.oidcState = state;
+      (req as any).session.oidcNonce = nonce;
+      (req as any).session.oidcCodeVerifier = codeVerifier;
+    }
+
+    const params = new URLSearchParams({
+      client_id: this.configService.get<string>('OIDC_CLIENT_ID') || '',
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope,
+      state,
+      nonce,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+      prompt: 'consent',
+    });
+
+    return res.redirect(`${authorizeEndpoint}?${params.toString()}`);
+  }
+
+  @Get('login/openid/callback')
+  async openidCallback(@Req() req: Request, @Res() res: Response, @Query() query: Record<string, string>) {
+    const methods = this.authMethods();
+    if (!methods.includes('openid')) {
+      return res.status(404).render('security/error', { error: 'OpenID authentication is not enabled.' });
+    }
+
+    if (query.error) {
+      return res.status(400).render('security/error', { error: query.error_description || query.error });
+    }
+
+    if ((req as any).session?.oidcState && query.state !== (req as any).session.oidcState) {
+      return res.status(400).render('security/error', { error: 'Invalid OpenID Connect state.' });
+    }
+
+    const tokenEndpoint = this.configService.get<string>('OIDC_TOKEN_ENDPOINT');
+    if (!tokenEndpoint) {
+      return res.status(500).render('security/error', { error: 'OpenID Connect is misconfigured.' });
+    }
+
+    const fetchFn = (global as any).fetch;
+    if (!fetchFn) {
+      return res.status(500).render('security/error', { error: 'Fetch API is not available to perform OpenID Connect flow.' });
+    }
+
+    try {
+      const redirectUri = buildAbsoluteUrl(req, '/login/openid/callback');
+      const tokenResponse = await fetchFn(tokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: this.configService.get<string>('OIDC_CLIENT_ID') || '',
+          client_secret: this.configService.get<string>('OIDC_CLIENT_SECRET') || '',
+          redirect_uri: redirectUri,
+          code: query.code || '',
+          code_verifier: (req as any).session?.oidcCodeVerifier || '',
+        }),
+      });
+
+      const tokenJson = await tokenResponse.json();
+      const accessToken = tokenJson.access_token as string | undefined;
+      const idToken = tokenJson.id_token as string | undefined;
+
+      if ((req as any).session) {
+        (req as any).session.oidcAccessToken = accessToken;
+        (req as any).session.oidcIdToken = idToken;
+      }
+
+      let userEmail: string | undefined;
+      let subject: string | undefined;
+      const idPayload = decodeJwtPayload(idToken);
+      if (idPayload) {
+        userEmail = idPayload.email || idPayload.preferred_username;
+        subject = idPayload.sub;
+      }
+
+      if (!userEmail && accessToken) {
+        const userinfoEndpoint = this.configService.get<string>('OIDC_USERINFO_ENDPOINT');
+        if (userinfoEndpoint) {
+          try {
+            const userinfoResponse = await fetchFn(userinfoEndpoint, {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            const userinfo = await userinfoResponse.json();
+            userEmail = userinfo.email || userinfo.preferred_username;
+            subject = userinfo.sub || subject;
+          } catch (userinfoError) {
+            console.warn('Failed to load userinfo:', userinfoError);
+          }
+        }
+      }
+
+      const identifier = `oidc:${subject || userEmail || 'user'}`;
+      const user = await this.authService.findOrCreateExternalUser(identifier, userEmail);
+
+      if ((req as any).session) {
+        (req as any).session.userId = user.id;
+        (req as any).session.email = user.email;
+        (req as any).session.authMethodUsed = 'oidc';
+        (req as any).session.isGuest = false;
+      }
+
+      const redirectTarget = this.targetAfterLogin(req);
+      const redirectUrl = this.appendAccessToken(redirectTarget, accessToken || idToken);
+
+      if ((req as any).session) {
+        delete (req as any).session.oidcState;
+        delete (req as any).session.oidcCodeVerifier;
+      }
+
+      return res.redirect(redirectUrl);
+    } catch (error) {
+      console.error('OpenID authentication error:', error);
+      return res.status(500).render('security/error', { error: 'OpenID authentication failed. Please try again later.' });
+    }
+  }
+
+  @Get('logout/redirect')
+  async logoutRedirect(@Req() req: Request, @Res() res: Response) {
+    const method = (req as any).session?.authMethodUsed;
+    const idToken = (req as any).session?.oidcIdToken;
+    const accessToken = (req as any).session?.oidcAccessToken;
+    const fetchFn = (global as any).fetch;
+    let redirectUrl: string | null = null;
+
+    try {
+      if (method === 'cas') {
+        const casUrl = (this.configService.get<string>('CAS_URL') || '').replace(/\/$/, '');
+        const casLogoutPath = (this.configService.get<string>('CAS_LOGOUT_PATH') || '/logout').replace(/^\//, '');
+        if (casUrl && casLogoutPath) {
+          const service = buildAbsoluteUrl(req, '/login');
+          redirectUrl = `${casUrl}/${casLogoutPath}?service=${encodeURIComponent(service)}`;
+        }
+      } else if (method === 'oidc') {
+        const issuer = this.configService.get<string>('OIDC_ISSUER') || '';
+        const discoveryUrl = issuer ? `${issuer.replace(/\/$/, '')}/.well-known/openid-configuration` : '';
+        if (discoveryUrl && fetchFn) {
+          try {
+            const discoveryResponse = await fetchFn(discoveryUrl);
+            const discovery = await discoveryResponse.json();
+            const endSession = discovery.end_session_endpoint;
+            if (endSession) {
+              const params = new URLSearchParams({
+                post_logout_redirect_uri: buildAbsoluteUrl(req, '/login'),
+              });
+              if (idToken) {
+                params.append('id_token_hint', idToken);
+              }
+              const clientId = this.configService.get<string>('OIDC_CLIENT_ID');
+              if (clientId) {
+                params.append('client_id', clientId);
+              }
+              redirectUrl = `${endSession}?${params.toString()}`;
+            }
+          } catch (dsError) {
+            console.warn('OIDC discovery failed during logout:', dsError);
+          }
+        }
+
+        if (!redirectUrl && issuer.includes('accounts.google.com') && accessToken && fetchFn) {
+          try {
+            await fetchFn('https://oauth2.googleapis.com/revoke', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({ token: accessToken }),
+            });
+          } catch (revokeError) {
+            console.warn('Failed to revoke Google token:', revokeError);
+          }
+          redirectUrl = '/login';
+        }
+      }
+    } finally {
+      if ((req as any).session) {
+        (req as any).session.destroy(() => {
+          return res.redirect(redirectUrl || '/login');
+        });
+      } else {
+        return res.redirect(redirectUrl || '/login');
+      }
+    }
+  }
+
+  private appendAccessToken(redirectUrl: string, token?: string): string {
+    if (!token) return redirectUrl;
+    const separator = redirectUrl.includes('?') ? '&' : '?';
+    return `${redirectUrl}${separator}access_token=${encodeURIComponent(token)}`;
+  }
+
   // Form-based login endpoints (compatibilidad con Symfony)
   @Post('login_check')
   async loginCheck(
@@ -735,9 +1062,11 @@ export class AuthController {
       // Save user info in session
       req.session.userId = user.id;
       req.session.email = user.email;
+      req.session.authMethodUsed = 'password';
+      req.session.isGuest = false;
 
       console.log('Login successful for:', body.email);
-      return res.redirect(302, '/workarea');
+      return res.redirect(302, this.targetAfterLogin(req));
     } catch (error) {
       console.error('Login error:', error);
       console.error('Error stack:', error.stack);
@@ -753,6 +1082,10 @@ export class AuthController {
   ) {
     console.log('Guest login attempt');
 
+    if (req.session?.guestLoginNonce && body.guest_login_nonce !== req.session.guestLoginNonce) {
+      return res.status(403).render('security/error', { error: 'Invalid guest login request.' });
+    }
+
     // Create temporary guest user ID
     const guestId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const guestEmail = `${guestId}@guest.local`;
@@ -761,19 +1094,19 @@ export class AuthController {
     req.session.userId = guestId;
     req.session.email = guestEmail;
     req.session.isGuest = true;
+    req.session.authMethodUsed = 'guest';
 
     console.log('Guest login successful:', guestId);
-    return res.redirect(302, '/workarea');
+    return res.redirect(302, this.targetAfterLogin(req));
   }
 
   @Get('logout')
   async logout(@Req() req: any, @Res() res: Response) {
-    // Clear session
-    req.session.destroy((err: any) => {
-      if (err) {
-        console.error('Error destroying session:', err);
-      }
-      return res.redirect(302, '/login');
-    });
+    // Defer cleanup to logout/redirect to preserve provider tokens
+    if (req.session) {
+      req.session.postLogoutRedirect = req.session.postLogoutRedirect || '/login';
+    }
+
+    return res.redirect(302, '/logout/redirect');
   }
 }

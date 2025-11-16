@@ -10,6 +10,9 @@ const AdmZip                          = require('adm-zip');
 const http                            = require('http'); // Import the http module to check server availability and downloads
 const https                           = require('https');
 
+// Toggle to use the Nest backend instead of the legacy PHP server (default ON).
+const useNestBackend = process.env.USE_NEST_BACKEND !== '0';
+
 const { initAutoUpdater }             = require('./update-manager');
 
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
@@ -271,11 +274,13 @@ function ensureAllDirectoriesWritable(env) {
 }
 
 function initializePaths() {
-  phpBinaryPath = getPhpBinaryPath(); 
+  phpBinaryPath = useNestBackend ? null : getPhpBinaryPath(); 
   appDataPath = app.getPath('userData');
   databasePath = path.join(appDataPath, 'exelearning.db')
 
-  console.log(`PHP binary path: ${phpBinaryPath}`);
+  if (!useNestBackend) {
+    console.log(`PHP binary path: ${phpBinaryPath}`);
+  }
   console.log(`APP data path: ${appDataPath}`);
   console.log('Database path:', databasePath);
 }
@@ -284,6 +289,7 @@ function initializeEnv() {
 
   const isDev = determineDevMode();
   const appEnv  = isDev ? 'dev' : 'prod';
+  const desiredPort = process.env.NEST_PORT || process.env.APP_PORT || '3001';
 
   // Get the appropriate app data path based on platform
 customEnv = {
@@ -291,7 +297,8 @@ customEnv = {
   APP_DEBUG: process.env.APP_DEBUG ?? (isDev ? 1 : 0),
   EXELEARNING_DEBUG_MODE: (process.env.EXELEARNING_DEBUG_MODE ?? (isDev ? '1' : '0')).toString(),
   APP_SECRET: process.env.APP_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
-  APP_PORT: process.env.APP_PORT || '41309',
+  APP_PORT: desiredPort,
+  NEST_PORT: desiredPort,
   APP_ONLINE_MODE: process.env.APP_ONLINE_MODE ?? 0,
   APP_AUTH_METHODS: process.env.APP_AUTH_METHODS || 'none',
   TEST_USER_EMAIL: process.env.TEST_USER_EMAIL || 'localuser@exelearning.net',
@@ -341,6 +348,19 @@ function combineEnv() {
   env = Object.assign({}, customEnv, process.env);
 }
 
+function applyCombinedEnvToProcess() {
+  // Ensure the spawned backend (Nest) sees the combined env variables.
+  Object.assign(process.env, env || {});
+}
+
+function getServerPort() {
+  try {
+    return Number(customEnv?.NEST_PORT || customEnv?.APP_PORT || process.env.NEST_PORT || process.env.APP_PORT || 3001);
+  } catch (_e) {
+    return 3001;
+  }
+}
+
 // Handler factory: creates an identical handler for any window
 function attachOpenHandler(win) {
   // Get parent size & position
@@ -387,6 +407,7 @@ function createWindow() {
   initializePaths(); // Initialize paths before using them
   initializeEnv();   // Initialize environment variables afterward
   combineEnv();      // Combine the environment
+  applyCombinedEnvToProcess();
 
   // Run-once per version maintenance (cache/logs cleanup, etc.)
   ensurePerVersionSetup();
@@ -397,16 +418,20 @@ function createWindow() {
   // Create the loading window
   createLoadingWindow();
 
-  // Check if the database exists and run Symfony commands
-  checkAndCreateDatabase();
+  if (useNestBackend) {
+    startNestServer();
+  } else {
+    // Check if the database exists and run Symfony commands
+    checkAndCreateDatabase();
 
-  // Check if the php binary is runable exists and run Symfony commands
-  assertWindowsPhpUsableOrGuide();
+    // Check if the php binary is runable exists and run Symfony commands
+    assertWindowsPhpUsableOrGuide();
 
-  runSymfonyCommands();
+    runSymfonyCommands();
 
-  // Start the embedded PHP server
-  startPhpServer();
+    // Start the embedded PHP server
+    startPhpServer();
+  }
 
   // Wait for the PHP server to be available before loading the main window
   waitForServer(() => {
@@ -466,7 +491,7 @@ function createWindow() {
       });
     });
 
-    mainWindow.loadURL(`http://localhost:${customEnv.APP_PORT}`);
+    mainWindow.loadURL(`http://localhost:${getServerPort()}`);
 
     // Check for updates
     mainWindow.webContents.on('did-finish-load', () => {
@@ -630,14 +655,14 @@ function createLoadingWindow() {
 function waitForServer(callback) {
   const options = {
     host: 'localhost',
-    port: customEnv.APP_PORT,
+    port: getServerPort(),
     timeout: 1000, // 1-second timeout
   };
 
   const checkServer = () => {
     const req = http.request(options, (res) => {
       if (res.statusCode >= 200 && res.statusCode <= 400) {
-        console.log('PHP server available.');
+        console.log('Application server available.');
         callback();  // Call the callback to continue opening the window
       } else {
         console.log(`Server status: ${res.statusCode}. Retrying...`);
@@ -670,7 +695,7 @@ function streamToFile(downloadUrl, targetPath, wc, redirects = 0) {
   return new Promise(async (resolve) => {
     try {
       // Resolve absolute URL (support relative paths from renderer)
-      let baseOrigin = `http://localhost:${(customEnv && customEnv.APP_PORT) ? customEnv.APP_PORT : 80}/`;
+      let baseOrigin = `http://localhost:${getServerPort() || 80}/`;
       try {
         if (wc && !wc.isDestroyed?.()) {
           const current = wc.getURL && wc.getURL();
@@ -1178,6 +1203,49 @@ function startPhpServer() {
     });
   } catch (err) {
     showErrorDialog(`Error starting PHP server: ${err.message}`);
+    app.quit();
+  }
+}
+
+/**
+ * Starts the NestJS backend (built output must exist at nest-backend/dist/main.js).
+ * We require it in-process to keep packaging simpler (asar-friendly).
+ */
+function startNestServer() {
+  try {
+    const candidates = [
+      // ExtraResources path (outside asar)
+      path.join(process.resourcesPath, 'nest-backend', 'dist', 'main.js'),
+      // Prefer unpacked path in packaged apps (read/write friendly)
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'nest-backend', 'dist', 'main.js'),
+      // Fallback to asar-packed path (read-only)
+      path.join(app.getAppPath(), 'nest-backend', 'dist', 'main.js'),
+      // Dev path
+      path.join(__dirname, 'nest-backend', 'dist', 'main.js'),
+    ];
+
+    const nestMain = candidates.find((p) => fs.existsSync(p));
+    if (!nestMain) {
+      showErrorDialog('Nest backend build not found. Run "npm run build" inside nest-backend before packaging.');
+      app.quit();
+      return;
+    }
+
+    console.log(`Starting Nest backend from ${nestMain} on port ${getServerPort()}`);
+    applyCombinedEnvToProcess();
+
+    const prevCwd = process.cwd();
+    const targetCwd = path.dirname(nestMain);
+    const canChdir = !targetCwd.includes('.asar') && fs.existsSync(targetCwd) && fs.statSync(targetCwd).isDirectory();
+    try {
+      if (canChdir) process.chdir(targetCwd);
+      require(nestMain);
+    } finally {
+      if (canChdir) process.chdir(prevCwd);
+    }
+  } catch (err) {
+    console.error('Error starting Nest backend:', err);
+    showErrorDialog(`Error starting Nest backend: ${err.message}`);
     app.quit();
   }
 }

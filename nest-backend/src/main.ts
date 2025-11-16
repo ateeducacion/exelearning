@@ -3,6 +3,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import * as nunjucks from 'nunjucks';
 import { join } from 'path';
+import { existsSync } from 'fs';
 import { AppModule } from './app.module';
 
 const session = require('express-session');
@@ -36,12 +37,20 @@ async function bootstrap() {
     whitelist: true,
   }));
 
+  const resourcesPath = (process as any).resourcesPath || join(__dirname, '..', '..');
+  const baseDirCandidates = [
+    join(resourcesPath, 'nest-backend'),
+    join(__dirname, '..', '..'), // ts-node / dev
+    join(__dirname, '..'), // dist/src -> dist
+  ];
+  const baseDir = baseDirCandidates.find((p) => existsSync(p)) || baseDirCandidates[baseDirCandidates.length - 1];
+
   // Configure Nunjucks for template rendering
-  const viewsPath = join(__dirname, '..', 'views');
-  // Public directory - first try nest-backend/public, then fallback to project root
-  const publicPathLocal = join(__dirname, '..', 'public');
+  const viewsPath = join(baseDir, 'views');
+  // Public directory - prefer packaged extraResources, fallback to repo root
+  const publicPathLocal = join(baseDir, 'public');
   const publicPathRoot = join(__dirname, '..', '..', 'public');
-  const publicPath = publicPathLocal;
+  const publicPath = existsSync(publicPathLocal) ? publicPathLocal : publicPathRoot;
 
   const env = nunjucks.configure(viewsPath, {
     autoescape: true,
@@ -62,7 +71,7 @@ async function bootstrap() {
   // Serve static files from the existing public directory
   app.useStaticAssets(publicPath);
 
-  const port = process.env.NEST_PORT || 3001; // Use 3001 to avoid conflict with Symfony
+  const port = process.env.NEST_PORT || 3000; // Default NestJS port
   await app.listen(port);
 
   console.log(`NestJS application is running on: http://localhost:${port}`);

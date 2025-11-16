@@ -1,8 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { User } from '../../entities/user.entity';
 
 @Injectable()
@@ -11,6 +13,7 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   async login(email: string, password: string) {
@@ -51,5 +54,57 @@ export class AuthService {
 
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email } });
+  }
+
+  getAuthMethods(): string[] {
+    const raw = this.configService.get<string>('APP_AUTH_METHODS') || 'password,guest';
+    return raw
+      .split(',')
+      .map((method) => method.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  private canCreateExternalUsers(): boolean {
+    const raw = this.configService.get<string>('AUTH_CREATE_USERS');
+    if (raw === undefined || raw === null) return true;
+
+    return ['1', 'true', 'yes', 'on'].includes(String(raw).toLowerCase());
+  }
+
+  private buildTempEmail(localPart: string): string {
+    const safeLocalPart = localPart.replace(/[^a-zA-Z0-9._-]/g, '') || 'user';
+    const domain = this.configService.get<string>('AUTH_TEMP_EMAIL_DOMAIN') || 'domain.local';
+    return `${safeLocalPart}@${domain}`;
+  }
+
+  async findOrCreateExternalUser(identifier: string, email?: string, roles: string[] = ['ROLE_USER']): Promise<User> {
+    const tempEmail = email || this.buildTempEmail(identifier);
+
+    let user =
+      (await this.userRepository.findOne({ where: { externalIdentifier: identifier } })) ||
+      (await this.userRepository.findOne({ where: { email: tempEmail } }));
+
+    if (user) {
+      return user;
+    }
+
+    if (!this.canCreateExternalUsers()) {
+      throw new UnauthorizedException('External users are not allowed to login.');
+    }
+
+    const password = await bcrypt.hash(randomBytes(12).toString('hex'), 10);
+
+    user = this.userRepository.create({
+      email: tempEmail,
+      userId: identifier.slice(0, 40),
+      password,
+      roles,
+      isLopdAccepted: true,
+      externalIdentifier: identifier,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    return this.userRepository.save(user);
   }
 }

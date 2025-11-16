@@ -1,6 +1,6 @@
 {
     "name": "exelearning",
-    "version": "0.0.0-alpha",
+    "version": "0.0.1-rc3",
     "license": "AGPL-3.0-or-later",
     "description": "eXeLearning 3 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
     "main": "main.js",
@@ -62,13 +62,14 @@
             "main.js",
             "preload.js",
             "update-manager.js",
-            "composer.json",
-            "composer.lock",
             ".env.dist",
-            "translations/en.json",
-            "translations/es.json"
-        ],
-        "fileAssociations": [
+        "translations/en.json",
+        "translations/es.json"
+      ],
+      "extraMetadata": {
+        "USE_NEST_BACKEND": "1"
+      },
+      "fileAssociations": [
             {
                 "ext": "elpx",
                 "name": "eXeLearning Project",
@@ -77,60 +78,55 @@
                 "mimeType": "application/x-exelearning-elpx"
             }
         ],
-        "extraResources": [
-            {
-                "from": "public/",
-                "to": "public/"
-            },
-            {
-                "from": "bin/",
-                "to": "bin/"
-            },
-            {
-                "from": "vendor/",
-                "to": "vendor/"
-            },
-            {
-                "from": "config/",
-                "to": "config/"
-            },
-            {
-                "from": "src/",
-                "to": "src/"
-            },
-            {
-                "from": "templates/",
-                "to": "templates/"
-            },
-            {
-                "from": "translations/",
-                "to": "translations/"
-            },
-            {
-                "from": "migrations/",
-                "to": "migrations/"
-            },
-            {
-                "from": "composer.json",
-                "to": "composer.json"
-            },
-            {
-                "from": "composer.lock",
-                "to": "composer.lock"
-            },
-            {
-                "from": ".env.dist",
-                "to": ".env.dist"
-            },
-            {
-                "from": "packaging/keys/",
-                "to": "keys/"
-            },
-            {
-                "from": "runtime/php",
-                "to": "php"
-            }
-        ],
+      "extraResources": [
+        {
+          "from": "public/",
+          "to": "public/"
+        },
+        {
+          "from": "templates/",
+          "to": "templates/"
+        },
+        {
+          "from": "translations/",
+          "to": "translations/"
+        },
+        {
+          "from": ".env.dist",
+          "to": ".env.dist"
+        },
+        {
+          "from": "packaging/keys/",
+          "to": "keys/"
+        },
+        {
+          "from": "nest-backend/dist/",
+          "to": "nest-backend/dist/"
+        },
+        {
+          "from": "nest-backend/node_modules/",
+          "to": "nest-backend/node_modules/"
+        },
+        {
+          "from": "nest-backend/views/",
+          "to": "nest-backend/views/"
+        },
+        {
+          "from": "nest-backend/public/",
+          "to": "nest-backend/public/"
+        }
+      ],
+      "files": [
+        "main.js",
+        "preload.js",
+        "update-manager.js",
+        ".env.dist",
+        "translations/en.json",
+        "translations/es.json",
+        "nest-backend/dist/**/*",
+        "nest-backend/node_modules/**/*",
+        "nest-backend/package.json"
+      ],
         "win": {
             "target": [
                 {

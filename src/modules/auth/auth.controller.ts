@@ -5,12 +5,14 @@ import { randomBytes, createHash } from 'crypto';
 import { XMLParser } from 'fast-xml-parser';
 import { AuthService } from './auth.service';
 import { buildAbsoluteUrl, decodeJwtPayload } from './auth.utils';
+import { UserPreferencesService } from '../user-preferences/user-preferences.service';
 
 @Controller()
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
+    private readonly userPreferencesService: UserPreferencesService,
   ) {}
 
   private authMethods(): string[] {
@@ -508,14 +510,31 @@ export class AuthController {
 
   @Get('api/user/preferences')
   async getUserPreferences(@Req() req: any) {
-    // Return user preferences with advanced mode enabled
-    // TODO: Implement real user preferences from database
+    // Get user ID from session or use default
+    const userId = req.session?.user?.userId || req.user?.userId || 'user@exelearning.net';
+
+    // Get preferences from database
+    const preferences = await this.userPreferencesService.getPreferencesObject(userId);
+
+    // Convert to expected format { key: { value: 'val' } }
+    const formattedPreferences: Record<string, { value: string }> = {};
+    for (const [key, value] of Object.entries(preferences)) {
+      formattedPreferences[key] = { value };
+    }
+
+    // Set defaults if preferences don't exist
+    if (!preferences['advancedMode']) {
+      formattedPreferences['advancedMode'] = { value: 'true' };
+    }
+    if (!preferences['versionControl']) {
+      formattedPreferences['versionControl'] = { value: 'false' };
+    }
+    if (!preferences['locale']) {
+      formattedPreferences['locale'] = { value: 'en' };
+    }
+
     return {
-      userPreferences: {
-        advancedMode: { value: 'true' },  // Enable advanced mode to show all menu items
-        versionControl: { value: 'false' },
-        locale: { value: 'en' }
-      }
+      userPreferences: formattedPreferences
     };
   }
 

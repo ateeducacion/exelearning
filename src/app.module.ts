@@ -6,6 +6,7 @@ import { WorkareaModule } from './modules/workarea/workarea.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProjectModule } from './modules/project/project.module';
 import { PagesModule } from './modules/pages/pages.module';
+import { UserPreferencesModule } from './modules/user-preferences/user-preferences.module';
 import databaseConfig from './config/database.config';
 
 @Module({
@@ -48,6 +49,7 @@ import databaseConfig from './config/database.config';
     AuthModule,
     ProjectModule,
     PagesModule,
+    UserPreferencesModule,
   ],
   controllers: [],
   providers: [],

@@ -136,12 +136,8 @@
       "translations/en.json",
       "translations/es.json",
       "dist/**/*",
-      "node_modules/**/*",
       "package.json"
     ],
-    "extraMetadata": {
-      "USE_NEST_BACKEND": "1"
-    },
     "fileAssociations": [
       {
         "ext": "elpx",
@@ -171,10 +167,6 @@
       {
         "from": "dist/",
         "to": "dist/"
-      },
-      {
-        "from": "node_modules/",
-        "to": "node_modules/"
       },
       {
         "from": "views/",

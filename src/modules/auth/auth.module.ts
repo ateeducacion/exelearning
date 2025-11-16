@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { User } from '../../entities/user.entity';
+import { UserPreferencesModule } from '../user-preferences/user-preferences.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { User } from '../../entities/user.entity';
       secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
       signOptions: { expiresIn: '1d' },
     }),
+    UserPreferencesModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

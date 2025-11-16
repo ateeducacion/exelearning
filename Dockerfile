@@ -77,6 +77,9 @@ COPY --chown=node:node views/ ./views/
 COPY --chown=node:node public/ ./public/
 COPY --chown=node:node translations/ ./translations/
 
+# Create data directory for SQLite database with proper permissions
+RUN mkdir -p /app/data && chown -R node:node /app/data
+
 # Use non-root user (node user is built-in to node:alpine)
 USER node
 

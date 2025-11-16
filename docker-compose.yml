@@ -30,6 +30,7 @@ services:
 
       # Persistent data
       - mnt-data:/mnt/data:rw
+      - ./data:/app/data:rw  # SQLite database persistence
 
       # Screenshots - DELEGATED (container writes)
       - ./e2e_screenshots:/tmp/e2e_screenshots:delegated

@@ -11,6 +11,15 @@ const session = require('express-session');
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  const secureCookies =
+    ['1', 'true', 'yes', 'on'].includes(String(process.env.COOKIE_SECURE ?? '').toLowerCase());
+  const sameSite = (process.env.COOKIE_SAMESITE as any) || 'lax';
+
+  // If running behind a proxy/https terminator and using secure cookies, trust the proxy for proto detection
+  if (secureCookies) {
+    app.set('trust proxy', 1);
+  }
+
   // Configure session middleware
   app.use(
     session({
@@ -20,7 +29,8 @@ async function bootstrap() {
       cookie: {
         maxAge: 86400000, // 24 hours
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: secureCookies,
+        sameSite,
       },
     }),
   );

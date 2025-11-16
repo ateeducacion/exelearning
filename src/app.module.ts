@@ -11,6 +11,10 @@ import { OdePropertiesSyncModule } from './modules/ode-properties-sync/ode-prope
 import { OdeFilesModule } from './modules/ode-files/ode-files.module';
 import { OdeOperationsLogModule } from './modules/ode-operations-log/ode-operations-log.module';
 import { CurrentOdeUsersModule } from './modules/current-ode-users/current-ode-users.module';
+import { CurrentOdeUsersSyncChangesModule } from './modules/current-ode-users-sync-changes/current-ode-users-sync-changes.module';
+import { OdeSyncStructuresModule } from './modules/ode-sync-structures/ode-sync-structures.module';
+import * as path from 'path';
+import * as fs from 'fs';
 import databaseConfig from './config/database.config';
 
 @Module({
@@ -28,14 +32,22 @@ import databaseConfig from './config/database.config';
       useFactory: async (configService: ConfigService) => {
         const initSqlJs = require('sql.js');
         const SQL = await initSqlJs();
-        const fs = require('fs');
-        const path = require('path');
 
-        const dbPath = path.resolve(__dirname, '../data/exelearning.db');
+        const dbPathFromEnv = configService.get<string>('DB_PATH') || '../data/exelearning.db';
+        const dbPath = path.isAbsolute(dbPathFromEnv)
+          ? dbPathFromEnv
+          : path.resolve(__dirname, dbPathFromEnv);
+        const dbDir = path.dirname(dbPath);
+
+        if (!fs.existsSync(dbDir)) {
+          fs.mkdirSync(dbDir, { recursive: true });
+        }
+
+        const initialDb = fs.existsSync(dbPath) ? fs.readFileSync(dbPath) : new Uint8Array();
 
         return {
           type: 'sqljs',
-          database: fs.existsSync(dbPath) ? fs.readFileSync(dbPath) : new Uint8Array(),
+          database: initialDb,
           location: dbPath,
           autoSave: true,
           autoSaveInterval: 1000,
@@ -59,6 +71,8 @@ import databaseConfig from './config/database.config';
     OdeFilesModule,
     OdeOperationsLogModule,
     CurrentOdeUsersModule,
+    CurrentOdeUsersSyncChangesModule,
+    OdeSyncStructuresModule,
   ],
   controllers: [],
   providers: [],

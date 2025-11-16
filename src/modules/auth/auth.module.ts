@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { User } from '../../entities/user.entity';
 import { UserPreferencesModule } from '../user-preferences/user-preferences.module';
 import { OdePropertiesSyncModule } from '../ode-properties-sync/ode-properties-sync.module';
+import { AuthBootstrapService } from './auth.bootstrap';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { OdePropertiesSyncModule } from '../ode-properties-sync/ode-properties-s
     OdePropertiesSyncModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, AuthBootstrapService],
   exports: [AuthService, TypeOrmModule],
 })
 export class AuthModule {}

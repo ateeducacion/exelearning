@@ -139,6 +139,16 @@ class ElpxImporter {
       // If no ELP files found, workingZip remains as original zip (will fail below if no content.xml)
     }
 
+    // Check for ADC (Aula Digital Canaria) format
+    // ADC packages contain cmi5.json and components.json instead of content.xml
+    const hasAdcFormat = workingZip['cmi5.json'] && workingZip['components.json'];
+    if (hasAdcFormat) {
+      Logger.log('[ElpxImporter] ADC format detected, delegating to AdcImporter...');
+      const adcImporter = new AdcImporter(this.manager, this.assetManager);
+      adcImporter.onProgress = this.onProgress;
+      return await adcImporter.import(workingZip, { clearExisting, parentId });
+    }
+
     // Find content.xml (could be content.xml or contentv3.xml for legacy)
     let contentXml = null;
     let contentFile = workingZip['content.xml'];

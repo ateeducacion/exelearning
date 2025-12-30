@@ -83,6 +83,30 @@
     [
       'legacy/handlerRegistry.js',  // Initializes LegacyHandlerRegistry with all handlers
     ],
+    // Group 0.8: ADC (Aula Digital Canaria) handlers base
+    [
+      'adc/BaseAdcHandler.js',  // Base class for ADC handlers
+    ],
+    // Group 0.85: ADC individual handlers
+    [
+      'adc/handlers/EssayHandler.js',
+      'adc/handlers/VideoHandler.js',
+      'adc/handlers/AudioHandler.js',
+      'adc/handlers/BinaryChoiceHandler.js',
+      'adc/handlers/SingleChoiceHandler.js',
+      'adc/handlers/MultipleChoiceHandler.js',
+      'adc/handlers/DropdownHandler.js',
+      'adc/handlers/MatchingHandler.js',
+      'adc/handlers/DisplayOnlyHandler.js',
+      'adc/handlers/LikertHandler.js',
+      'adc/handlers/MatrixHandler.js',
+      'adc/handlers/DefaultHandler.js',
+    ],
+    // Group 0.9: ADC registry and parser
+    [
+      'adc/handlerRegistry.js',
+      'adc/AdcParser.js',
+    ],
     // Group 1: Core managers (no dependencies between them)
     [
       'YjsDocumentManager.js',
@@ -96,6 +120,7 @@
     ],
     // Group 2: Importers/Exporters and ResourceFetcher (depend on Group 1)
     [
+      'AdcImporter.js',  // ADC (Aula Digital Canaria) importer
       'ElpxImporter.js',
       'ElpxExporter.js',
       'ComponentImporter.js',  // Imports .idevice/.block files

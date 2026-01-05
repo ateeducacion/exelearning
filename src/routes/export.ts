@@ -614,9 +614,12 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     const zipBuffer = await readFile(exportResult.zipPath!);
 
                     // Set headers for download
-                    const filename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    // Sanitize filename for Content-Disposition header (remove non-ASCII chars for basic filename)
+                    const safeFilename = rawFilename.replace(/[^\x20-\x7E]/g, '_');
                     set.headers['content-type'] = format.mimeType;
-                    set.headers['content-disposition'] = `attachment; filename="${filename}"`;
+                    // Use RFC 5987 format for UTF-8 filename support
+                    set.headers['content-disposition'] = `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(rawFilename)}`;
                     set.headers['content-length'] = zipBuffer.length.toString();
 
                     return zipBuffer;
@@ -683,9 +686,12 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     const zipBuffer = await readFile(exportResult.zipPath!);
 
                     // Set headers for download
-                    const filename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    // Sanitize filename for Content-Disposition header (remove non-ASCII chars for basic filename)
+                    const safeFilename = rawFilename.replace(/[^\x20-\x7E]/g, '_');
                     set.headers['content-type'] = format.mimeType;
-                    set.headers['content-disposition'] = `attachment; filename="${filename}"`;
+                    // Use RFC 5987 format for UTF-8 filename support
+                    set.headers['content-disposition'] = `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(rawFilename)}`;
                     set.headers['content-length'] = zipBuffer.length.toString();
 
                     return zipBuffer;

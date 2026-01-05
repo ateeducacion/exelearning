@@ -1,0 +1,105 @@
+<div class="modal exe-modal-fade" tabindex="-1" id="modalPublishToNetlify" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">{{ t.publish_to_netlify or 'Publish to Netlify' }}</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Authentication -->
+                <div id="netlify-auth-step" class="publish-step">
+                    <h5>{{ t.step_1_authenticate or 'Step 1: Enter Access Token' }}</h5>
+                    <p class="text-muted">{{ t.netlify_token_description or 'Enter your Netlify personal access token to publish your project.' }}</p>
+
+                    <div class="alert alert-info">
+                        <p>{{ t.netlify_token_instructions or 'To get your access token:' }}</p>
+                        <ol>
+                            <li>{{ t.netlify_step1 or 'Go to' }} <a href="https://app.netlify.com/user/applications#personal-access-tokens" target="_blank">Netlify User Settings</a></li>
+                            <li>{{ t.netlify_step2 or 'Click "New access token"' }}</li>
+                            <li>{{ t.netlify_step3 or 'Give it a description and copy the token' }}</li>
+                        </ol>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="netlify-token" class="form-label">{{ t.access_token or 'Access Token' }}</label>
+                        <input type="password" id="netlify-token" class="form-control" placeholder="Enter your Netlify token">
+                    </div>
+
+                    <div id="netlify-authenticated" class="alert alert-success d-none">
+                        <span class="small-icon check-icon-green me-2"></span>
+                        {{ t.netlify_connected or 'Connected to Netlify' }}
+                    </div>
+                </div>
+
+                <!-- Step 2: Site Selection -->
+                <div id="netlify-site-step" class="publish-step d-none">
+                    <h5>{{ t.step_2_site or 'Step 2: Select Site' }}</h5>
+                    <p class="text-muted">{{ t.netlify_site_description or 'Choose an existing site or create a new one.' }}</p>
+
+                    <div class="mb-3">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="netlify-site-option" id="netlify-site-existing" value="existing" checked>
+                            <label class="form-check-label" for="netlify-site-existing">{{ t.use_existing_site or 'Use existing site' }}</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="netlify-site-option" id="netlify-site-new" value="new">
+                            <label class="form-check-label" for="netlify-site-new">{{ t.create_new_site or 'Create new site' }}</label>
+                        </div>
+                    </div>
+
+                    <div id="netlify-existing-site" class="mb-3">
+                        <label for="netlify-site-select" class="form-label">{{ t.select_site or 'Select site' }}</label>
+                        <select id="netlify-site-select" class="form-select">
+                            <option value="">{{ t.loading or 'Loading...' }}</option>
+                        </select>
+                    </div>
+
+                    <div id="netlify-new-site" class="mb-3 d-none">
+                        <label for="netlify-site-name" class="form-label">{{ t.site_name or 'Site name' }}</label>
+                        <input type="text" id="netlify-site-name" class="form-control" placeholder="my-exelearning-site">
+                        <small class="text-muted">{{ t.netlify_site_url or 'Your site will be available at: [name].netlify.app' }}</small>
+                    </div>
+                </div>
+
+                <!-- Step 3: Publish -->
+                <div id="netlify-publish-step" class="publish-step d-none">
+                    <h5>{{ t.step_3_publish or 'Step 3: Publish' }}</h5>
+                    <div id="netlify-publish-summary" class="mb-3">
+                        <p>{{ t.ready_to_publish or 'Ready to publish your project to:' }}</p>
+                        <p class="fw-bold" id="netlify-publish-target"></p>
+                    </div>
+                    <div id="netlify-publishing" class="d-none">
+                        <div class="progress mb-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="text-center">{{ t.publishing or 'Publishing...' }}</p>
+                    </div>
+                    <div id="netlify-publish-result" class="d-none">
+                        <div id="netlify-publish-success" class="alert alert-success d-none">
+                            <span class="small-icon check-icon-green me-2"></span>
+                            {{ t.publish_success or 'Published successfully!' }}
+                            <br>
+                            <a id="netlify-site-url" href="#" target="_blank" class="fw-bold">{{ t.view_site or 'View your site' }}</a>
+                        </div>
+                        <div id="netlify-publish-error" class="alert alert-danger d-none">
+                            <span class="small-icon error-icon me-2"></span>
+                            <span id="netlify-error-message"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="netlify-prev-btn" class="btn btn-secondary d-none">{{ t.back or 'Back' }}</button>
+                <button type="button" id="netlify-connect-btn" class="btn btn-primary">{{ t.connect or 'Connect' }}</button>
+                <button type="button" id="netlify-next-btn" class="btn btn-primary d-none">{{ t.next or 'Next' }}</button>
+                <button type="button" id="netlify-publish-btn" class="btn btn-success d-none">
+                    <span class="small-icon upload-icon me-2"></span>
+                    {{ t.publish or 'Publish' }}
+                </button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">{{ t.close or 'Close' }}</button>
+            </div>
+        </div>
+    </div>
+</div>

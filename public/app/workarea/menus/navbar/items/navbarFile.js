@@ -111,6 +111,19 @@ export default class NavbarFile {
         this.leftPanelsTogglerButton = this.menu.navbar.querySelector(
             '#exe-panels-toggler'
         );
+        // Publish buttons (experimental)
+        this.publishToGithubButton = this.menu.navbar.querySelector(
+            '#navbar-button-publish-github'
+        );
+        this.publishToNetlifyButton = this.menu.navbar.querySelector(
+            '#navbar-button-publish-netlify'
+        );
+        this.publishToCloudflareButton = this.menu.navbar.querySelector(
+            '#navbar-button-publish-cloudflare'
+        );
+        this.publishToSurgeButton = this.menu.navbar.querySelector(
+            '#navbar-button-publish-surge'
+        );
     }
 
     /**
@@ -156,8 +169,17 @@ export default class NavbarFile {
         this.setImportElpEvent();
         this.setLeftPanelsTogglerEvents();
 
+        // Publish events (experimental)
+        this.setPublishToGithubEvent();
+        this.setPublishToNetlifyEvent();
+        this.setPublishToCloudflareEvent();
+        this.setPublishToSurgeEvent();
+
         // Check for available templates and show button if any exist
         this.checkAndShowNewFromTemplateButton();
+
+        // Check and show publish options if enabled
+        this.checkAndShowPublishOptions();
     }
 
     /**************************************************************************************
@@ -3262,6 +3284,246 @@ export default class NavbarFile {
                 success: false,
                 error: error.message || 'Failed to convert legacy file'
             };
+        }
+    }
+
+    /**************************************************************************************
+     * PUBLISH TO HOSTING PLATFORMS (EXPERIMENTAL)
+     **************************************************************************************/
+
+    /**
+     * Check if publishing options are enabled and show them
+     */
+    async checkAndShowPublishOptions() {
+        try {
+            const basePath = eXeLearning?.config?.basePath || '';
+            const response = await fetch(`${basePath}/api/publish/config`, {
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                Logger.debug('[NavbarFile] Publish API not available');
+                return;
+            }
+
+            const data = await response.json();
+
+            // Show the publish menu if any provider is enabled
+            const anyEnabled = data.providers?.github?.enabled ||
+                               data.providers?.netlify?.enabled ||
+                               data.providers?.cloudflare?.enabled ||
+                               data.providers?.surge?.enabled;
+
+            if (anyEnabled) {
+                const publishMenu = document.querySelector('#dropdownPublishTo');
+                if (publishMenu?.parentElement) {
+                    publishMenu.parentElement.classList.remove('d-none');
+                }
+
+                // Show individual options based on what's enabled
+                if (data.providers?.github?.enabled && this.publishToGithubButton) {
+                    this.publishToGithubButton.parentElement?.classList.remove('d-none');
+                }
+                if (data.providers?.netlify?.enabled && this.publishToNetlifyButton) {
+                    this.publishToNetlifyButton.parentElement?.classList.remove('d-none');
+                }
+                if (data.providers?.cloudflare?.enabled && this.publishToCloudflareButton) {
+                    this.publishToCloudflareButton.parentElement?.classList.remove('d-none');
+                }
+                if (data.providers?.surge?.enabled && this.publishToSurgeButton) {
+                    this.publishToSurgeButton.parentElement?.classList.remove('d-none');
+                }
+
+                Logger.debug('[NavbarFile] Publish options enabled');
+            }
+        } catch (error) {
+            // Silently ignore - publish options stay hidden
+            Logger.debug('[NavbarFile] Could not check publish options:', error.message);
+        }
+    }
+
+    /**
+     * Publish to GitHub Pages
+     * File -> Publish to -> GitHub Pages
+     */
+    setPublishToGithubEvent() {
+        if (this.publishToGithubButton) {
+            this.publishToGithubButton.addEventListener('click', () => {
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                this.publishToGithubEvent();
+            });
+        }
+    }
+
+    /**
+     * Publish to Netlify
+     * File -> Publish to -> Netlify
+     */
+    setPublishToNetlifyEvent() {
+        if (this.publishToNetlifyButton) {
+            this.publishToNetlifyButton.addEventListener('click', () => {
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                this.publishToNetlifyEvent();
+            });
+        }
+    }
+
+    /**
+     * Publish to Cloudflare Pages
+     * File -> Publish to -> Cloudflare Pages
+     */
+    setPublishToCloudflareEvent() {
+        if (this.publishToCloudflareButton) {
+            this.publishToCloudflareButton.addEventListener('click', () => {
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                this.publishToCloudflareEvent();
+            });
+        }
+    }
+
+    /**
+     * Open GitHub publish modal
+     */
+    async publishToGithubEvent() {
+        // First export as HTML5 if not already done
+        const exported = await this.ensureExported('html5');
+        if (!exported) {
+            eXeLearning.app.modals.alert.show({
+                title: _('Export required'),
+                body: _('Please wait while your project is being exported...'),
+            });
+            return;
+        }
+
+        if (eXeLearning.app.modals?.publishtogithub) {
+            eXeLearning.app.modals.publishtogithub.show();
+        } else {
+            Logger.warn('Publish modal not available');
+        }
+    }
+
+    /**
+     * Open Netlify publish modal
+     */
+    async publishToNetlifyEvent() {
+        // First export as HTML5 if not already done
+        const exported = await this.ensureExported('html5');
+        if (!exported) {
+            eXeLearning.app.modals.alert.show({
+                title: _('Export required'),
+                body: _('Please wait while your project is being exported...'),
+            });
+            return;
+        }
+
+        if (eXeLearning.app.modals?.publishtonetlify) {
+            eXeLearning.app.modals.publishtonetlify.show();
+        } else {
+            Logger.warn('Publish modal not available');
+        }
+    }
+
+    /**
+     * Open Cloudflare publish modal
+     */
+    async publishToCloudflareEvent() {
+        // First export as HTML5 if not already done
+        const exported = await this.ensureExported('html5');
+        if (!exported) {
+            eXeLearning.app.modals.alert.show({
+                title: _('Export required'),
+                body: _('Please wait while your project is being exported...'),
+            });
+            return;
+        }
+
+        if (eXeLearning.app.modals?.publishtocloudflare) {
+            eXeLearning.app.modals.publishtocloudflare.show();
+        } else {
+            Logger.warn('Publish modal not available');
+        }
+    }
+
+    /**
+     * Publish to Surge.sh
+     * File -> Publish to -> Surge.sh
+     */
+    setPublishToSurgeEvent() {
+        if (this.publishToSurgeButton) {
+            this.publishToSurgeButton.addEventListener('click', () => {
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                this.publishToSurgeEvent();
+            });
+        }
+    }
+
+    /**
+     * Open Surge publish modal
+     */
+    async publishToSurgeEvent() {
+        // First export as HTML5 if not already done
+        const exported = await this.ensureExported('html5');
+        if (!exported) {
+            eXeLearning.app.modals.alert.show({
+                title: _('Export required'),
+                body: _('Please wait while your project is being exported...'),
+            });
+            return;
+        }
+
+        if (eXeLearning.app.modals?.publishtosurge) {
+            eXeLearning.app.modals.publishtosurge.show();
+        } else {
+            Logger.warn('Publish modal not available');
+        }
+    }
+
+    /**
+     * Ensure project is exported before publishing
+     * @param {string} exportType - Type of export (html5, scorm12, etc.)
+     * @returns {Promise<boolean>} - True if export is ready
+     */
+    async ensureExported(exportType = 'html5') {
+        try {
+            const basePath = eXeLearning?.config?.basePath || '';
+            const sessionId = eXeLearning.app.project.odeSession;
+
+            // Show export toast
+            const toastData = {
+                title: _('Exporting'),
+                body: _('Preparing your project for publishing...'),
+                icon: 'downloading',
+            };
+            const toast = eXeLearning.app.toasts.createToast(toastData);
+
+            // Get the structure from Yjs document if available
+            let structure = null;
+            if (eXeLearning.app?.api?.buildStructureFromYjs) {
+                structure = eXeLearning.app.api.buildStructureFromYjs();
+            }
+
+            // Trigger export
+            const response = await fetch(`${basePath}/api/export/${sessionId}/${exportType}/download`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ structure }),
+            });
+
+            // Remove toast
+            setTimeout(() => toast.remove(), 500);
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                Logger.error('Export failed:', error);
+                return false;
+            }
+
+            // Export successful - the file is now available
+            return true;
+        } catch (error) {
+            Logger.error('Export error:', error);
+            return false;
         }
     }
 }

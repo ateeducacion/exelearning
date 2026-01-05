@@ -3,6 +3,10 @@ import ModalConfirm from './modals/generic/modalConfirm.js';
 import ModalInfo from './modals/generic/modalInfo.js';
 import ModalUploadGoogleDrive from './modals/pages/modalUploadGoogleDrive.js';
 import ModalUploadDropbox from './modals/pages/modalUploadDropbox.js';
+import ModalPublishToGithub from './modals/pages/modalPublishToGithub.js';
+import ModalPublishToNetlify from './modals/pages/modalPublishToNetlify.js';
+import ModalPublishToCloudflare from './modals/pages/modalPublishToCloudflare.js';
+import ModalPublishToSurge from './modals/pages/modalPublishToSurge.js';
 import ModalFileManager from './modals/pages/modalFileManager.js';
 import ModalOdeBrokenLinks from './modals/pages/modalOdeBrokenLinks.js';
 import ModalOdeUsedFiles from './modals/pages/modalOdeUsedFiles.js';
@@ -30,6 +34,10 @@ export default class ModalsManagement {
         this.confirm = null;
         this.uploadtodrive = null;
         this.uploadtodropbox = null;
+        this.publishtogithub = null;
+        this.publishtonetlify = null;
+        this.publishtocloudflare = null;
+        this.publishtosurge = null;
         this.filemanager = null;
         this.stylemanager = null;
         this.idevicemanager = null;
@@ -59,6 +67,10 @@ export default class ModalsManagement {
         this.confirm = new ModalConfirm(this);
         this.uploadtodrive = new ModalUploadGoogleDrive(this);
         this.uploadtodropbox = new ModalUploadDropbox(this);
+        this.publishtogithub = new ModalPublishToGithub(this);
+        this.publishtonetlify = new ModalPublishToNetlify(this);
+        this.publishtocloudflare = new ModalPublishToCloudflare(this);
+        this.publishtosurge = new ModalPublishToSurge(this);
         this.filemanager = new ModalFileManager(this);
         this.stylemanager = new ModalStyleManager(this);
         this.idevicemanager = new ModalIdeviceManager(this);
@@ -88,6 +100,10 @@ export default class ModalsManagement {
         this.confirm.behaviour();
         this.uploadtodrive.behaviour();
         this.uploadtodropbox.behaviour();
+        this.publishtogithub.behaviour();
+        this.publishtonetlify.behaviour();
+        this.publishtocloudflare.behaviour();
+        this.publishtosurge.behaviour();
         this.filemanager.behaviour();
         this.stylemanager.behaviour();
         this.idevicemanager.behaviour();
@@ -119,6 +135,10 @@ export default class ModalsManagement {
             this.confirm,
             this.uploadtodrive,
             this.uploadtodropbox,
+            this.publishtogithub,
+            this.publishtonetlify,
+            this.publishtocloudflare,
+            this.publishtosurge,
             this.filemanager,
             this.stylemanager,
             this.idevicemanager,

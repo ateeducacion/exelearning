@@ -76,6 +76,26 @@
                             </ul>
                         </li>
                     {% endif %}
+                    {# Publish to hosting platforms (experimental) - hidden by default, shown via JS if enabled #}
+                    <li class="dropdown dropend exe-advanced d-none exe-online">
+                        <a class="dropdown-item dropdown-toggle" href="#" id="dropdownPublishTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="small-icon upload-icon-green"></span> {{ t.publish_to or 'Publish to...' }}
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="dropdownPublishTo">
+                            <li class="d-none"><a id="navbar-button-publish-github" class="dropdown-item" href="#">
+                                <span class="small-icon github-icon"></span> GitHub Pages
+                            </a></li>
+                            <li class="d-none"><a id="navbar-button-publish-netlify" class="dropdown-item" href="#">
+                                <span class="small-icon netlify-icon"></span> Netlify
+                            </a></li>
+                            <li class="d-none"><a id="navbar-button-publish-cloudflare" class="dropdown-item" href="#">
+                                <span class="small-icon cloudflare-icon"></span> Cloudflare Pages
+                            </a></li>
+                            <li class="d-none"><a id="navbar-button-publish-surge" class="dropdown-item" href="#">
+                                <span class="small-icon surge-icon"></span> Surge.sh
+                            </a></li>
+                        </ul>
+                    </li>
                     <li class="dropdown dropend exe-advanced d-none">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownProperties" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ t.metadata or 'Metadata' }}</a>
                         <ul class="dropdown-menu" aria-labelledby="dropdownProperties">

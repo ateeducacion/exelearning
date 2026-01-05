@@ -1,0 +1,120 @@
+<div class="modal exe-modal-fade" tabindex="-1" id="modalPublishToSurge" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">{{ t.publish_to_surge or 'Publish to Surge.sh' }}</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Authentication -->
+                <div id="surge-auth-step" class="publish-step">
+                    <h5>{{ t.step_1_authenticate or 'Step 1: Login to Surge' }}</h5>
+                    <p class="text-muted">{{ t.surge_auth_description or 'Enter your Surge.sh credentials. If you dont have an account, enter your email and a login token will be sent to you.' }}</p>
+
+                    <div class="alert alert-info">
+                        <p>{{ t.surge_info or 'Surge.sh is a free static hosting service. Your project will be available at:' }}</p>
+                        <code>https://[your-project].surge.sh</code>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="surge-email" class="form-label">{{ t.email or 'Email' }}</label>
+                        <input type="email" id="surge-email" class="form-control" placeholder="your@email.com">
+                    </div>
+
+                    <div id="surge-token-request" class="mb-3">
+                        <p class="text-muted">{{ t.surge_no_account or 'Dont have a token? Click to receive one via email:' }}</p>
+                        <button id="surge-request-token-btn" class="btn btn-outline-primary btn-sm">
+                            {{ t.request_token or 'Request Token via Email' }}
+                        </button>
+                        <div id="surge-token-sent" class="alert alert-success mt-2 d-none">
+                            {{ t.surge_token_sent or 'Check your email for the login token!' }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="surge-token" class="form-label">{{ t.token or 'Token' }}</label>
+                        <input type="password" id="surge-token" class="form-control" placeholder="Enter your Surge token">
+                        <small class="text-muted">{{ t.surge_token_hint or 'You can also get your token by running: surge token' }}</small>
+                    </div>
+
+                    <div id="surge-authenticated" class="alert alert-success d-none">
+                        <span class="small-icon check-icon-green me-2"></span>
+                        {{ t.surge_connected or 'Connected to Surge.sh' }}
+                    </div>
+                </div>
+
+                <!-- Step 2: Domain Selection -->
+                <div id="surge-domain-step" class="publish-step d-none">
+                    <h5>{{ t.step_2_domain or 'Step 2: Choose Domain' }}</h5>
+                    <p class="text-muted">{{ t.surge_domain_description or 'Choose a domain for your project. You can use an existing one or create a new subdomain.' }}</p>
+
+                    <div class="mb-3">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="surge-domain-option" id="surge-domain-existing" value="existing" checked>
+                            <label class="form-check-label" for="surge-domain-existing">{{ t.use_existing_domain or 'Use existing domain' }}</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="surge-domain-option" id="surge-domain-new" value="new">
+                            <label class="form-check-label" for="surge-domain-new">{{ t.create_new_domain or 'Create new domain' }}</label>
+                        </div>
+                    </div>
+
+                    <div id="surge-existing-domain" class="mb-3">
+                        <label for="surge-domain-select" class="form-label">{{ t.select_domain or 'Select domain' }}</label>
+                        <select id="surge-domain-select" class="form-select">
+                            <option value="">{{ t.loading or 'Loading...' }}</option>
+                        </select>
+                    </div>
+
+                    <div id="surge-new-domain" class="mb-3 d-none">
+                        <label for="surge-domain-name" class="form-label">{{ t.domain_name or 'Domain name' }}</label>
+                        <div class="input-group">
+                            <input type="text" id="surge-domain-name" class="form-control" placeholder="my-project">
+                            <span class="input-group-text">.surge.sh</span>
+                        </div>
+                        <small class="text-muted">{{ t.surge_domain_hint or 'Use lowercase letters, numbers, and hyphens only' }}</small>
+                    </div>
+                </div>
+
+                <!-- Step 3: Publish -->
+                <div id="surge-publish-step" class="publish-step d-none">
+                    <h5>{{ t.step_3_publish or 'Step 3: Publish' }}</h5>
+                    <div id="surge-publish-summary" class="mb-3">
+                        <p>{{ t.ready_to_publish or 'Ready to publish your project to:' }}</p>
+                        <p class="fw-bold" id="surge-publish-target"></p>
+                    </div>
+                    <div id="surge-publishing" class="d-none">
+                        <div class="progress mb-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="text-center">{{ t.publishing or 'Publishing...' }}</p>
+                    </div>
+                    <div id="surge-publish-result" class="d-none">
+                        <div id="surge-publish-success" class="alert alert-success d-none">
+                            <span class="small-icon check-icon-green me-2"></span>
+                            {{ t.publish_success or 'Published successfully!' }}
+                            <br>
+                            <a id="surge-site-url" href="#" target="_blank" class="fw-bold">{{ t.view_site or 'View your site' }}</a>
+                        </div>
+                        <div id="surge-publish-error" class="alert alert-danger d-none">
+                            <span class="small-icon error-icon me-2"></span>
+                            <span id="surge-error-message"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="surge-prev-btn" class="btn btn-secondary d-none">{{ t.back or 'Back' }}</button>
+                <button type="button" id="surge-connect-btn" class="btn btn-primary">{{ t.connect or 'Connect' }}</button>
+                <button type="button" id="surge-next-btn" class="btn btn-primary d-none">{{ t.next or 'Next' }}</button>
+                <button type="button" id="surge-publish-btn" class="btn btn-success d-none">
+                    <span class="small-icon upload-icon me-2"></span>
+                    {{ t.publish or 'Publish' }}
+                </button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">{{ t.close or 'Close' }}</button>
+            </div>
+        </div>
+    </div>
+</div>

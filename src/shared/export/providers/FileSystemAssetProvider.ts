@@ -127,6 +127,11 @@ export class FileSystemAssetProvider implements AssetProvider {
     async getAllAssets(): Promise<ExportAsset[]> {
         const assets: ExportAsset[] = [];
 
+        // Skip if base path doesn't exist (e.g., Yjs-only sessions have no temp directory)
+        if (!(await fs.pathExists(this.basePath))) {
+            return assets;
+        }
+
         // Common asset directories in ELP files
         const assetDirs = ['resources', 'content', 'images', 'media', 'files'];
 
@@ -148,6 +153,10 @@ export class FileSystemAssetProvider implements AssetProvider {
      * Only collects known asset file types to avoid including XML, etc.
      */
     private async collectRootAssets(assets: ExportAsset[]): Promise<void> {
+        // Skip if base path doesn't exist (e.g., Yjs-only sessions have no temp directory)
+        if (!(await fs.pathExists(this.basePath))) {
+            return;
+        }
         const entries = await fs.readdir(this.basePath, { withFileTypes: true });
         const assetExtensions = new Set([
             '.jpg',

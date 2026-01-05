@@ -10,6 +10,7 @@ import { authRoutes } from './routes/auth';
 import { projectRoutes, symfonyCompatProjectRoutes } from './routes/project';
 import { assetsRoutes } from './routes/assets';
 import { exportRoutes } from './routes/export';
+import { publishRoutes } from './routes/publish';
 import { convertRoutes } from './routes/convert';
 import { pagesRoutes } from './routes/pages';
 import { configRoutes } from './routes/config';
@@ -460,6 +461,7 @@ app.use(healthRoutes)
     .use(symfonyCompatProjectRoutes)
     .use(assetsRoutes)
     .use(exportRoutes)
+    .use(publishRoutes)
     .use(convertRoutes)
     .use(configRoutes)
     .use(idevicesRoutes)

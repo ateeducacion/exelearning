@@ -1,0 +1,110 @@
+<div class="modal exe-modal-fade" tabindex="-1" id="modalPublishToCloudflare" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">{{ t.publish_to_cloudflare or 'Publish to Cloudflare Pages' }}</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Authentication -->
+                <div id="cloudflare-auth-step" class="publish-step">
+                    <h5>{{ t.step_1_authenticate or 'Step 1: Enter Credentials' }}</h5>
+                    <p class="text-muted">{{ t.cloudflare_auth_description or 'Enter your Cloudflare API token and account ID.' }}</p>
+
+                    <div class="alert alert-info">
+                        <p>{{ t.cloudflare_instructions or 'To get your credentials:' }}</p>
+                        <ol>
+                            <li>{{ t.cloudflare_step1 or 'Go to' }} <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare API Tokens</a></li>
+                            <li>{{ t.cloudflare_step2 or 'Create a token with "Cloudflare Pages" permissions' }}</li>
+                            <li>{{ t.cloudflare_step3 or 'Your Account ID is shown on your dashboard' }}</li>
+                        </ol>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cloudflare-token" class="form-label">{{ t.api_token or 'API Token' }}</label>
+                        <input type="password" id="cloudflare-token" class="form-control" placeholder="Enter your Cloudflare API token">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cloudflare-account-id" class="form-label">{{ t.account_id or 'Account ID' }}</label>
+                        <input type="text" id="cloudflare-account-id" class="form-control" placeholder="Enter your Cloudflare Account ID">
+                    </div>
+
+                    <div id="cloudflare-authenticated" class="alert alert-success d-none">
+                        <span class="small-icon check-icon-green me-2"></span>
+                        {{ t.cloudflare_connected or 'Connected to Cloudflare' }}
+                    </div>
+                </div>
+
+                <!-- Step 2: Project Selection -->
+                <div id="cloudflare-project-step" class="publish-step d-none">
+                    <h5>{{ t.step_2_project or 'Step 2: Select Project' }}</h5>
+                    <p class="text-muted">{{ t.cloudflare_project_description or 'Choose an existing project or create a new one.' }}</p>
+
+                    <div class="mb-3">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="cloudflare-project-option" id="cloudflare-project-existing" value="existing" checked>
+                            <label class="form-check-label" for="cloudflare-project-existing">{{ t.use_existing_project or 'Use existing project' }}</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="cloudflare-project-option" id="cloudflare-project-new" value="new">
+                            <label class="form-check-label" for="cloudflare-project-new">{{ t.create_new_project or 'Create new project' }}</label>
+                        </div>
+                    </div>
+
+                    <div id="cloudflare-existing-project" class="mb-3">
+                        <label for="cloudflare-project-select" class="form-label">{{ t.select_project or 'Select project' }}</label>
+                        <select id="cloudflare-project-select" class="form-select">
+                            <option value="">{{ t.loading or 'Loading...' }}</option>
+                        </select>
+                    </div>
+
+                    <div id="cloudflare-new-project" class="mb-3 d-none">
+                        <label for="cloudflare-project-name" class="form-label">{{ t.project_name or 'Project name' }}</label>
+                        <input type="text" id="cloudflare-project-name" class="form-control" placeholder="my-exelearning-project">
+                        <small class="text-muted">{{ t.cloudflare_project_url or 'Your project will be available at: [name].pages.dev' }}</small>
+                    </div>
+                </div>
+
+                <!-- Step 3: Publish -->
+                <div id="cloudflare-publish-step" class="publish-step d-none">
+                    <h5>{{ t.step_3_publish or 'Step 3: Publish' }}</h5>
+                    <div id="cloudflare-publish-summary" class="mb-3">
+                        <p>{{ t.ready_to_publish or 'Ready to publish your project to:' }}</p>
+                        <p class="fw-bold" id="cloudflare-publish-target"></p>
+                    </div>
+                    <div id="cloudflare-publishing" class="d-none">
+                        <div class="progress mb-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="text-center">{{ t.publishing or 'Publishing...' }}</p>
+                    </div>
+                    <div id="cloudflare-publish-result" class="d-none">
+                        <div id="cloudflare-publish-success" class="alert alert-success d-none">
+                            <span class="small-icon check-icon-green me-2"></span>
+                            {{ t.publish_success or 'Published successfully!' }}
+                            <br>
+                            <a id="cloudflare-pages-url" href="#" target="_blank" class="fw-bold">{{ t.view_site or 'View your site' }}</a>
+                        </div>
+                        <div id="cloudflare-publish-error" class="alert alert-danger d-none">
+                            <span class="small-icon error-icon me-2"></span>
+                            <span id="cloudflare-error-message"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cloudflare-prev-btn" class="btn btn-secondary d-none">{{ t.back or 'Back' }}</button>
+                <button type="button" id="cloudflare-connect-btn" class="btn btn-primary">{{ t.connect or 'Connect' }}</button>
+                <button type="button" id="cloudflare-next-btn" class="btn btn-primary d-none">{{ t.next or 'Next' }}</button>
+                <button type="button" id="cloudflare-publish-btn" class="btn btn-success d-none">
+                    <span class="small-icon upload-icon me-2"></span>
+                    {{ t.publish or 'Publish' }}
+                </button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">{{ t.close or 'Close' }}</button>
+            </div>
+        </div>
+    </div>
+</div>

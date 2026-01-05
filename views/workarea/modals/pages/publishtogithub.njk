@@ -1,0 +1,126 @@
+<div class="modal exe-modal-fade" tabindex="-1" id="modalPublishToGithub" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">{{ t.publish_to_github or 'Publish to GitHub Pages' }}</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Authentication -->
+                <div id="github-auth-step" class="publish-step">
+                    <h5>{{ t.step_1_authenticate or 'Step 1: Authenticate with GitHub' }}</h5>
+                    <p class="text-muted">{{ t.github_auth_description or 'Connect your GitHub account to publish your project.' }}</p>
+                    <div id="github-device-flow" class="mt-3 d-none">
+                        <div class="alert alert-info">
+                            <p>{{ t.github_device_instructions or 'To connect your GitHub account:' }}</p>
+                            <ol>
+                                <li>{{ t.github_device_step1 or 'Go to:' }} <a id="github-verification-url" href="#" target="_blank" class="fw-bold"></a></li>
+                                <li>{{ t.github_device_step2 or 'Enter this code:' }} <code id="github-user-code" class="fs-4 user-select-all"></code></li>
+                                <li>{{ t.github_device_step3 or 'Click "Authorize" to connect' }}</li>
+                            </ol>
+                        </div>
+                        <div id="github-auth-waiting" class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">{{ t.waiting or 'Waiting...' }}</span>
+                            </div>
+                            <p class="mt-2">{{ t.github_waiting_auth or 'Waiting for authorization...' }}</p>
+                        </div>
+                    </div>
+                    <div id="github-authenticated" class="mt-3 d-none">
+                        <div class="alert alert-success">
+                            <span class="small-icon check-icon-green me-2"></span>
+                            {{ t.github_authenticated or 'Connected as' }} <strong id="github-username"></strong>
+                        </div>
+                    </div>
+                    <button id="github-connect-btn" class="btn btn-primary">
+                        <span class="small-icon github-icon me-2"></span>
+                        {{ t.connect_github or 'Connect to GitHub' }}
+                    </button>
+                </div>
+
+                <!-- Step 2: Repository Selection -->
+                <div id="github-repo-step" class="publish-step d-none">
+                    <h5>{{ t.step_2_repository or 'Step 2: Select Repository' }}</h5>
+                    <p class="text-muted">{{ t.github_repo_description or 'Choose an existing repository or create a new one.' }}</p>
+
+                    <div class="mb-3">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="github-repo-option" id="github-repo-existing" value="existing" checked>
+                            <label class="form-check-label" for="github-repo-existing">{{ t.use_existing_repo or 'Use existing repository' }}</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="github-repo-option" id="github-repo-new" value="new">
+                            <label class="form-check-label" for="github-repo-new">{{ t.create_new_repo or 'Create new repository' }}</label>
+                        </div>
+                    </div>
+
+                    <div id="github-existing-repo" class="mb-3">
+                        <label for="github-repo-select" class="form-label">{{ t.select_repository or 'Select repository' }}</label>
+                        <select id="github-repo-select" class="form-select">
+                            <option value="">{{ t.loading or 'Loading...' }}</option>
+                        </select>
+                    </div>
+
+                    <div id="github-new-repo" class="mb-3 d-none">
+                        <div class="mb-3">
+                            <label for="github-repo-name" class="form-label">{{ t.repository_name or 'Repository name' }}</label>
+                            <input type="text" id="github-repo-name" class="form-control" placeholder="my-exelearning-project">
+                        </div>
+                        <div class="mb-3">
+                            <label for="github-repo-description" class="form-label">{{ t.description or 'Description' }} ({{ t.optional or 'optional' }})</label>
+                            <input type="text" id="github-repo-description" class="form-control" placeholder="{{ t.project_description or 'eXeLearning project' }}">
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="github-repo-private">
+                            <label class="form-check-label" for="github-repo-private">{{ t.private_repository or 'Private repository' }}</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="github-branch" class="form-label">{{ t.branch or 'Branch' }}</label>
+                        <input type="text" id="github-branch" class="form-control" value="gh-pages">
+                        <small class="text-muted">{{ t.github_branch_info or 'GitHub Pages will serve from this branch' }}</small>
+                    </div>
+                </div>
+
+                <!-- Step 3: Publish -->
+                <div id="github-publish-step" class="publish-step d-none">
+                    <h5>{{ t.step_3_publish or 'Step 3: Publish' }}</h5>
+                    <div id="github-publish-summary" class="mb-3">
+                        <p>{{ t.ready_to_publish or 'Ready to publish your project to:' }}</p>
+                        <p class="fw-bold" id="github-publish-target"></p>
+                    </div>
+                    <div id="github-publishing" class="d-none">
+                        <div class="progress mb-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="text-center">{{ t.publishing or 'Publishing...' }}</p>
+                    </div>
+                    <div id="github-publish-result" class="d-none">
+                        <div id="github-publish-success" class="alert alert-success d-none">
+                            <span class="small-icon check-icon-green me-2"></span>
+                            {{ t.publish_success or 'Published successfully!' }}
+                            <br>
+                            <a id="github-pages-url" href="#" target="_blank" class="fw-bold">{{ t.view_site or 'View your site' }}</a>
+                        </div>
+                        <div id="github-publish-error" class="alert alert-danger d-none">
+                            <span class="small-icon error-icon me-2"></span>
+                            <span id="github-error-message"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="github-prev-btn" class="btn btn-secondary d-none">{{ t.back or 'Back' }}</button>
+                <button type="button" id="github-next-btn" class="btn btn-primary d-none">{{ t.next or 'Next' }}</button>
+                <button type="button" id="github-publish-btn" class="btn btn-success d-none">
+                    <span class="small-icon upload-icon me-2"></span>
+                    {{ t.publish or 'Publish' }}
+                </button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">{{ t.close or 'Close' }}</button>
+            </div>
+        </div>
+    </div>
+</div>

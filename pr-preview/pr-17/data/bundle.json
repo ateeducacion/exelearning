@@ -1,6 +1,6 @@
 {
   "version": "v0.0.0-alpha",
-  "builtAt": "2026-01-10T14:25:15.812Z",
+  "builtAt": "2026-01-10T14:33:35.610Z",
   "parameters": {
     "routes": {
       "api_translations_lists": {
@@ -27828,7 +27828,309 @@
         "downloadable": "1",
         "cssFiles": [
           "style.css"
-        ]
+        ],
+        "icons": {
+          "guide": {
+            "id": "guide",
+            "title": "guide",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/guide.png"
+          },
+          "start": {
+            "id": "start",
+            "title": "start",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/start.png"
+          },
+          "think_alt": {
+            "id": "think_alt",
+            "title": "think_alt",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/think_alt.png"
+          },
+          "ask": {
+            "id": "ask",
+            "title": "ask",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/ask.png"
+          },
+          "info": {
+            "id": "info",
+            "title": "info",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/info.png"
+          },
+          "play": {
+            "id": "play",
+            "title": "play",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/play.png"
+          },
+          "collaborative": {
+            "id": "collaborative",
+            "title": "collaborative",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/collaborative.png"
+          },
+          "file": {
+            "id": "file",
+            "title": "file",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/file.png"
+          },
+          "english": {
+            "id": "english",
+            "title": "english",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/english.png"
+          },
+          "interactive": {
+            "id": "interactive",
+            "title": "interactive",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/interactive.png"
+          },
+          "explore": {
+            "id": "explore",
+            "title": "explore",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/explore.png"
+          },
+          "draw": {
+            "id": "draw",
+            "title": "draw",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/draw.png"
+          },
+          "reflection": {
+            "id": "reflection",
+            "title": "reflection",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/reflection.png"
+          },
+          "music": {
+            "id": "music",
+            "title": "music",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/music.png"
+          },
+          "stop": {
+            "id": "stop",
+            "title": "stop",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/stop.png"
+          },
+          "alert": {
+            "id": "alert",
+            "title": "alert",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/alert.png"
+          },
+          "diary_alt": {
+            "id": "diary_alt",
+            "title": "diary_alt",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/diary_alt.png"
+          },
+          "sport": {
+            "id": "sport",
+            "title": "sport",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/sport.png"
+          },
+          "observe": {
+            "id": "observe",
+            "title": "observe",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/observe.png"
+          },
+          "arts": {
+            "id": "arts",
+            "title": "arts",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/arts.png"
+          },
+          "think": {
+            "id": "think",
+            "title": "think",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/think.png"
+          },
+          "technology": {
+            "id": "technology",
+            "title": "technology",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/technology.png"
+          },
+          "calculate": {
+            "id": "calculate",
+            "title": "calculate",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/calculate.png"
+          },
+          "passport": {
+            "id": "passport",
+            "title": "passport",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/passport.png"
+          },
+          "history": {
+            "id": "history",
+            "title": "history",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/history.png"
+          },
+          "geography": {
+            "id": "geography",
+            "title": "geography",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/geography.png"
+          },
+          "piece": {
+            "id": "piece",
+            "title": "piece",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/piece.png"
+          },
+          "agreement": {
+            "id": "agreement",
+            "title": "agreement",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/agreement.png"
+          },
+          "competencies": {
+            "id": "competencies",
+            "title": "competencies",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/competencies.png"
+          },
+          "letters": {
+            "id": "letters",
+            "title": "letters",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/letters.png"
+          },
+          "case": {
+            "id": "case",
+            "title": "case",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/case.png"
+          },
+          "present": {
+            "id": "present",
+            "title": "present",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/present.png"
+          },
+          "share": {
+            "id": "share",
+            "title": "share",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/share.png"
+          },
+          "gallery": {
+            "id": "gallery",
+            "title": "gallery",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/gallery.png"
+          },
+          "discuss": {
+            "id": "discuss",
+            "title": "discuss",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/discuss.png"
+          },
+          "perform": {
+            "id": "perform",
+            "title": "perform",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/perform.png"
+          },
+          "pieces": {
+            "id": "pieces",
+            "title": "pieces",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/pieces.png"
+          },
+          "experiment": {
+            "id": "experiment",
+            "title": "experiment",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/experiment.png"
+          },
+          "book": {
+            "id": "book",
+            "title": "book",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/book.png"
+          },
+          "activity": {
+            "id": "activity",
+            "title": "activity",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/activity.png"
+          },
+          "download": {
+            "id": "download",
+            "title": "download",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/download.png"
+          },
+          "video": {
+            "id": "video",
+            "title": "video",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/video.png"
+          },
+          "listen": {
+            "id": "listen",
+            "title": "listen",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/listen.png"
+          },
+          "suitcase": {
+            "id": "suitcase",
+            "title": "suitcase",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/suitcase.png"
+          },
+          "nature": {
+            "id": "nature",
+            "title": "nature",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/nature.png"
+          },
+          "objectives": {
+            "id": "objectives",
+            "title": "objectives",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/objectives.png"
+          },
+          "chrono": {
+            "id": "chrono",
+            "title": "chrono",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/chrono.png"
+          },
+          "diary": {
+            "id": "diary",
+            "title": "diary",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/diary.png"
+          },
+          "math": {
+            "id": "math",
+            "title": "math",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/math.png"
+          },
+          "roadmap": {
+            "id": "roadmap",
+            "title": "roadmap",
+            "type": "img",
+            "value": "/files/perm/themes/base/base/icons/roadmap.png"
+          }
+        }
       },
       {
         "id": "zen",
@@ -27842,7 +28144,243 @@
         "downloadable": "1",
         "cssFiles": [
           "style.css"
-        ]
+        ],
+        "icons": {
+          "pageview": {
+            "id": "pageview",
+            "title": "pageview",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/pageview.svg"
+          },
+          "edit_note": {
+            "id": "edit_note",
+            "title": "edit_note",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/edit_note.svg"
+          },
+          "workspace_premiumsvg": {
+            "id": "workspace_premiumsvg",
+            "title": "workspace_premiumsvg",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/workspace_premiumsvg.svg"
+          },
+          "pairs": {
+            "id": "pairs",
+            "title": "pairs",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/pairs.svg"
+          },
+          "local_library": {
+            "id": "local_library",
+            "title": "local_library",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/local_library.svg"
+          },
+          "fact_checksvg": {
+            "id": "fact_checksvg",
+            "title": "fact_checksvg",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/fact_checksvg.svg"
+          },
+          "flag_circle": {
+            "id": "flag_circle",
+            "title": "flag_circle",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/flag_circle.svg"
+          },
+          "lan": {
+            "id": "lan",
+            "title": "lan",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/lan.svg"
+          },
+          "group": {
+            "id": "group",
+            "title": "group",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/group.svg"
+          },
+          "list_alt": {
+            "id": "list_alt",
+            "title": "list_alt",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/list_alt.svg"
+          },
+          "compasssvg": {
+            "id": "compasssvg",
+            "title": "compasssvg",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/compasssvg.svg"
+          },
+          "cloud_done": {
+            "id": "cloud_done",
+            "title": "cloud_done",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/cloud_done.svg"
+          },
+          "smart_display": {
+            "id": "smart_display",
+            "title": "smart_display",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/smart_display.svg"
+          },
+          "forum": {
+            "id": "forum",
+            "title": "forum",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/forum.svg"
+          },
+          "audiotrack": {
+            "id": "audiotrack",
+            "title": "audiotrack",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/audiotrack.svg"
+          },
+          "touch_app": {
+            "id": "touch_app",
+            "title": "touch_app",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/touch_app.svg"
+          },
+          "rule": {
+            "id": "rule",
+            "title": "rule",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/rule.svg"
+          },
+          "attachment": {
+            "id": "attachment",
+            "title": "attachment",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/attachment.svg"
+          },
+          "segment": {
+            "id": "segment",
+            "title": "segment",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/segment.svg"
+          },
+          "help": {
+            "id": "help",
+            "title": "help",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/help.svg"
+          },
+          "send": {
+            "id": "send",
+            "title": "send",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/send.svg"
+          },
+          "check": {
+            "id": "check",
+            "title": "check",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/check.svg"
+          },
+          "person": {
+            "id": "person",
+            "title": "person",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/person.svg"
+          },
+          "share": {
+            "id": "share",
+            "title": "share",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/share.svg"
+          },
+          "lock": {
+            "id": "lock",
+            "title": "lock",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/lock.svg"
+          },
+          "follow_the_signs": {
+            "id": "follow_the_signs",
+            "title": "follow_the_signs",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/follow_the_signs.svg"
+          },
+          "verifiedsvg": {
+            "id": "verifiedsvg",
+            "title": "verifiedsvg",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/verifiedsvg.svg"
+          },
+          "calculate": {
+            "id": "calculate",
+            "title": "calculate",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/calculate.svg"
+          },
+          "room": {
+            "id": "room",
+            "title": "room",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/room.svg"
+          },
+          "mic": {
+            "id": "mic",
+            "title": "mic",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/mic.svg"
+          },
+          "information": {
+            "id": "information",
+            "title": "information",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/information.svg"
+          },
+          "collections": {
+            "id": "collections",
+            "title": "collections",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/collections.svg"
+          },
+          "search": {
+            "id": "search",
+            "title": "search",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/search.svg"
+          },
+          "calendar_today": {
+            "id": "calendar_today",
+            "title": "calendar_today",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/calendar_today.svg"
+          },
+          "psychology": {
+            "id": "psychology",
+            "title": "psychology",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/psychology.svg"
+          },
+          "ads_click": {
+            "id": "ads_click",
+            "title": "ads_click",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/ads_click.svg"
+          },
+          "description": {
+            "id": "description",
+            "title": "description",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/description.svg"
+          },
+          "photo_camera": {
+            "id": "photo_camera",
+            "title": "photo_camera",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/photo_camera.svg"
+          },
+          "checklist_rtl": {
+            "id": "checklist_rtl",
+            "title": "checklist_rtl",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/checklist_rtl.svg"
+          }
+        }
       },
       {
         "id": "neo",
@@ -27856,7 +28394,237 @@
         "downloadable": "1",
         "cssFiles": [
           "style.css"
-        ]
+        ],
+        "icons": {
+          "icon_attached": {
+            "id": "icon_attached",
+            "title": "icon_attached",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_attached.png"
+          },
+          "icon_question": {
+            "id": "icon_question",
+            "title": "icon_question",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_question.png"
+          },
+          "icon_geography": {
+            "id": "icon_geography",
+            "title": "icon_geography",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_geography.png"
+          },
+          "icon_magnifier": {
+            "id": "icon_magnifier",
+            "title": "icon_magnifier",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_magnifier.png"
+          },
+          "icon_math": {
+            "id": "icon_math",
+            "title": "icon_math",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_math.png"
+          },
+          "icon_think": {
+            "id": "icon_think",
+            "title": "icon_think",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_think.png"
+          },
+          "icon_diary": {
+            "id": "icon_diary",
+            "title": "icon_diary",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_diary.png"
+          },
+          "icon_technology": {
+            "id": "icon_technology",
+            "title": "icon_technology",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_technology.png"
+          },
+          "icon_letters": {
+            "id": "icon_letters",
+            "title": "icon_letters",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_letters.png"
+          },
+          "icon_task": {
+            "id": "icon_task",
+            "title": "icon_task",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_task.png"
+          },
+          "icon_java": {
+            "id": "icon_java",
+            "title": "icon_java",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_java.png"
+          },
+          "icon_experiment": {
+            "id": "icon_experiment",
+            "title": "icon_experiment",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_experiment.png"
+          },
+          "icon_competencies": {
+            "id": "icon_competencies",
+            "title": "icon_competencies",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_competencies.png"
+          },
+          "icon_objective": {
+            "id": "icon_objective",
+            "title": "icon_objective",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_objective.png"
+          },
+          "icon_alert": {
+            "id": "icon_alert",
+            "title": "icon_alert",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_alert.png"
+          },
+          "icon_reflection": {
+            "id": "icon_reflection",
+            "title": "icon_reflection",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_reflection.png"
+          },
+          "icon_english": {
+            "id": "icon_english",
+            "title": "icon_english",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_english.png"
+          },
+          "icon_cabinet": {
+            "id": "icon_cabinet",
+            "title": "icon_cabinet",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_cabinet.png"
+          },
+          "icon_nature": {
+            "id": "icon_nature",
+            "title": "icon_nature",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_nature.png"
+          },
+          "icon_reading": {
+            "id": "icon_reading",
+            "title": "icon_reading",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_reading.png"
+          },
+          "icon_preknowledge": {
+            "id": "icon_preknowledge",
+            "title": "icon_preknowledge",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_preknowledge.png"
+          },
+          "icon_tool": {
+            "id": "icon_tool",
+            "title": "icon_tool",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_tool.png"
+          },
+          "icon_share": {
+            "id": "icon_share",
+            "title": "icon_share",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_share.png"
+          },
+          "icon_music": {
+            "id": "icon_music",
+            "title": "icon_music",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_music.png"
+          },
+          "icon_collaborative": {
+            "id": "icon_collaborative",
+            "title": "icon_collaborative",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_collaborative.png"
+          },
+          "icon_write": {
+            "id": "icon_write",
+            "title": "icon_write",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_write.png"
+          },
+          "icon_arts": {
+            "id": "icon_arts",
+            "title": "icon_arts",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_arts.png"
+          },
+          "icon_calc": {
+            "id": "icon_calc",
+            "title": "icon_calc",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_calc.png"
+          },
+          "icon_info": {
+            "id": "icon_info",
+            "title": "icon_info",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_info.png"
+          },
+          "icon_piece": {
+            "id": "icon_piece",
+            "title": "icon_piece",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_piece.png"
+          },
+          "icon_history": {
+            "id": "icon_history",
+            "title": "icon_history",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_history.png"
+          },
+          "icon_download": {
+            "id": "icon_download",
+            "title": "icon_download",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_download.png"
+          },
+          "icon_rss": {
+            "id": "icon_rss",
+            "title": "icon_rss",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_rss.png"
+          },
+          "icon_sport": {
+            "id": "icon_sport",
+            "title": "icon_sport",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_sport.png"
+          },
+          "icon_theater": {
+            "id": "icon_theater",
+            "title": "icon_theater",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_theater.png"
+          },
+          "icon_agreement": {
+            "id": "icon_agreement",
+            "title": "icon_agreement",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_agreement.png"
+          },
+          "icon_picture": {
+            "id": "icon_picture",
+            "title": "icon_picture",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_picture.png"
+          },
+          "icon_wikipedia": {
+            "id": "icon_wikipedia",
+            "title": "icon_wikipedia",
+            "type": "img",
+            "value": "/files/perm/themes/base/neo/icons/icon_wikipedia.png"
+          }
+        }
       },
       {
         "id": "flux",
@@ -27870,7 +28638,243 @@
         "downloadable": "1",
         "cssFiles": [
           "style.css"
-        ]
+        ],
+        "icons": {
+          "pageview": {
+            "id": "pageview",
+            "title": "pageview",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/pageview.svg"
+          },
+          "edit_note": {
+            "id": "edit_note",
+            "title": "edit_note",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/edit_note.svg"
+          },
+          "workspace_premiumsvg": {
+            "id": "workspace_premiumsvg",
+            "title": "workspace_premiumsvg",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/workspace_premiumsvg.svg"
+          },
+          "pairs": {
+            "id": "pairs",
+            "title": "pairs",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/pairs.svg"
+          },
+          "edited_ok": {
+            "id": "edited_ok",
+            "title": "edited_ok",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/edited_ok.svg"
+          },
+          "local_library": {
+            "id": "local_library",
+            "title": "local_library",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/local_library.svg"
+          },
+          "edited_explore": {
+            "id": "edited_explore",
+            "title": "edited_explore",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/edited_explore.svg"
+          },
+          "fact_checksvg": {
+            "id": "fact_checksvg",
+            "title": "fact_checksvg",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/fact_checksvg.svg"
+          },
+          "flag_circle": {
+            "id": "flag_circle",
+            "title": "flag_circle",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/flag_circle.svg"
+          },
+          "lan": {
+            "id": "lan",
+            "title": "lan",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/lan.svg"
+          },
+          "group": {
+            "id": "group",
+            "title": "group",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/group.svg"
+          },
+          "list_alt": {
+            "id": "list_alt",
+            "title": "list_alt",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/list_alt.svg"
+          },
+          "cloud_done": {
+            "id": "cloud_done",
+            "title": "cloud_done",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/cloud_done.svg"
+          },
+          "smart_display": {
+            "id": "smart_display",
+            "title": "smart_display",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/smart_display.svg"
+          },
+          "forum": {
+            "id": "forum",
+            "title": "forum",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/forum.svg"
+          },
+          "audiotrack": {
+            "id": "audiotrack",
+            "title": "audiotrack",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/audiotrack.svg"
+          },
+          "touch_app": {
+            "id": "touch_app",
+            "title": "touch_app",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/touch_app.svg"
+          },
+          "rule": {
+            "id": "rule",
+            "title": "rule",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/rule.svg"
+          },
+          "attachment": {
+            "id": "attachment",
+            "title": "attachment",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/attachment.svg"
+          },
+          "segment": {
+            "id": "segment",
+            "title": "segment",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/segment.svg"
+          },
+          "help": {
+            "id": "help",
+            "title": "help",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/help.svg"
+          },
+          "send": {
+            "id": "send",
+            "title": "send",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/send.svg"
+          },
+          "person": {
+            "id": "person",
+            "title": "person",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/person.svg"
+          },
+          "share": {
+            "id": "share",
+            "title": "share",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/share.svg"
+          },
+          "lock": {
+            "id": "lock",
+            "title": "lock",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/lock.svg"
+          },
+          "follow_the_signs": {
+            "id": "follow_the_signs",
+            "title": "follow_the_signs",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/follow_the_signs.svg"
+          },
+          "verifiedsvg": {
+            "id": "verifiedsvg",
+            "title": "verifiedsvg",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/verifiedsvg.svg"
+          },
+          "calculate": {
+            "id": "calculate",
+            "title": "calculate",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/calculate.svg"
+          },
+          "room": {
+            "id": "room",
+            "title": "room",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/room.svg"
+          },
+          "mic": {
+            "id": "mic",
+            "title": "mic",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/mic.svg"
+          },
+          "information": {
+            "id": "information",
+            "title": "information",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/information.svg"
+          },
+          "collections": {
+            "id": "collections",
+            "title": "collections",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/collections.svg"
+          },
+          "search": {
+            "id": "search",
+            "title": "search",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/search.svg"
+          },
+          "calendar_today": {
+            "id": "calendar_today",
+            "title": "calendar_today",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/calendar_today.svg"
+          },
+          "psychology": {
+            "id": "psychology",
+            "title": "psychology",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/psychology.svg"
+          },
+          "ads_click": {
+            "id": "ads_click",
+            "title": "ads_click",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/ads_click.svg"
+          },
+          "description": {
+            "id": "description",
+            "title": "description",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/description.svg"
+          },
+          "photo_camera": {
+            "id": "photo_camera",
+            "title": "photo_camera",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/photo_camera.svg"
+          },
+          "checklist_rtl": {
+            "id": "checklist_rtl",
+            "title": "checklist_rtl",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/checklist_rtl.svg"
+          }
+        }
       },
       {
         "id": "nova",
@@ -27884,38 +28888,274 @@
         "downloadable": "1",
         "cssFiles": [
           "style.css"
-        ]
+        ],
+        "icons": {
+          "pageview": {
+            "id": "pageview",
+            "title": "pageview",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/pageview.svg"
+          },
+          "edit_note": {
+            "id": "edit_note",
+            "title": "edit_note",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/edit_note.svg"
+          },
+          "workspace_premiumsvg": {
+            "id": "workspace_premiumsvg",
+            "title": "workspace_premiumsvg",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/workspace_premiumsvg.svg"
+          },
+          "pairs": {
+            "id": "pairs",
+            "title": "pairs",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/pairs.svg"
+          },
+          "edited_ok": {
+            "id": "edited_ok",
+            "title": "edited_ok",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/edited_ok.svg"
+          },
+          "local_library": {
+            "id": "local_library",
+            "title": "local_library",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/local_library.svg"
+          },
+          "edited_explore": {
+            "id": "edited_explore",
+            "title": "edited_explore",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/edited_explore.svg"
+          },
+          "fact_checksvg": {
+            "id": "fact_checksvg",
+            "title": "fact_checksvg",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/fact_checksvg.svg"
+          },
+          "flag_circle": {
+            "id": "flag_circle",
+            "title": "flag_circle",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/flag_circle.svg"
+          },
+          "lan": {
+            "id": "lan",
+            "title": "lan",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/lan.svg"
+          },
+          "group": {
+            "id": "group",
+            "title": "group",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/group.svg"
+          },
+          "list_alt": {
+            "id": "list_alt",
+            "title": "list_alt",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/list_alt.svg"
+          },
+          "cloud_done": {
+            "id": "cloud_done",
+            "title": "cloud_done",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/cloud_done.svg"
+          },
+          "smart_display": {
+            "id": "smart_display",
+            "title": "smart_display",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/smart_display.svg"
+          },
+          "forum": {
+            "id": "forum",
+            "title": "forum",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/forum.svg"
+          },
+          "audiotrack": {
+            "id": "audiotrack",
+            "title": "audiotrack",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/audiotrack.svg"
+          },
+          "touch_app": {
+            "id": "touch_app",
+            "title": "touch_app",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/touch_app.svg"
+          },
+          "rule": {
+            "id": "rule",
+            "title": "rule",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/rule.svg"
+          },
+          "attachment": {
+            "id": "attachment",
+            "title": "attachment",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/attachment.svg"
+          },
+          "segment": {
+            "id": "segment",
+            "title": "segment",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/segment.svg"
+          },
+          "help": {
+            "id": "help",
+            "title": "help",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/help.svg"
+          },
+          "send": {
+            "id": "send",
+            "title": "send",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/send.svg"
+          },
+          "person": {
+            "id": "person",
+            "title": "person",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/person.svg"
+          },
+          "share": {
+            "id": "share",
+            "title": "share",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/share.svg"
+          },
+          "lock": {
+            "id": "lock",
+            "title": "lock",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/lock.svg"
+          },
+          "follow_the_signs": {
+            "id": "follow_the_signs",
+            "title": "follow_the_signs",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/follow_the_signs.svg"
+          },
+          "verifiedsvg": {
+            "id": "verifiedsvg",
+            "title": "verifiedsvg",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/verifiedsvg.svg"
+          },
+          "calculate": {
+            "id": "calculate",
+            "title": "calculate",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/calculate.svg"
+          },
+          "room": {
+            "id": "room",
+            "title": "room",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/room.svg"
+          },
+          "mic": {
+            "id": "mic",
+            "title": "mic",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/mic.svg"
+          },
+          "information": {
+            "id": "information",
+            "title": "information",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/information.svg"
+          },
+          "collections": {
+            "id": "collections",
+            "title": "collections",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/collections.svg"
+          },
+          "search": {
+            "id": "search",
+            "title": "search",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/search.svg"
+          },
+          "calendar_today": {
+            "id": "calendar_today",
+            "title": "calendar_today",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/calendar_today.svg"
+          },
+          "psychology": {
+            "id": "psychology",
+            "title": "psychology",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/psychology.svg"
+          },
+          "ads_click": {
+            "id": "ads_click",
+            "title": "ads_click",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/ads_click.svg"
+          },
+          "description": {
+            "id": "description",
+            "title": "description",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/description.svg"
+          },
+          "photo_camera": {
+            "id": "photo_camera",
+            "title": "photo_camera",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/photo_camera.svg"
+          },
+          "checklist_rtl": {
+            "id": "checklist_rtl",
+            "title": "checklist_rtl",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/checklist_rtl.svg"
+          }
+        }
       }
     ]
   },
   "bundleManifest": {
     "buildVersion": "v0.0.0-alpha",
-    "builtAt": "2026-01-10T14:25:14.608Z",
+    "builtAt": "2026-01-10T14:33:34.261Z",
     "themes": {
       "base": {
         "files": 56,
         "size": 113541,
-        "hash": "3c10bc6a7667a59a4010444bbfde500728d2cd457e701438663366c866c3201d"
+        "hash": "da338bd60d260a71f92058af90bb4e1f7faa7b6d294b6955f4ebee059c5df40d"
       },
       "zen": {
         "files": 69,
         "size": 1169587,
-        "hash": "b0c43c385bb5d331adc327350d6715184599c1cc805273b7e221dbc99549a935"
+        "hash": "f99d0d2cd1017968dac665b0796cb1c3a0cb910f8cd30ab647ca2dc0abf25a6b"
       },
       "neo": {
         "files": 75,
         "size": 1109196,
-        "hash": "fe5592b349c15e8ef6780adabfd0164fe8615a7e4fa047062618d8c674436b30"
+        "hash": "3bd0f5819e41edb8dc98a1ee35c7e079e1c2eeb02d1d210b554be7f886147252"
       },
       "flux": {
         "files": 64,
         "size": 381035,
-        "hash": "a958881439625c187877d3703550d310c61007bf9c041e751d5adcf166ada70d"
+        "hash": "924f5fe8662ce87af5811c14fe210aced4a9ad1d5bd19a2af4fb14d8481c5bd1"
       },
       "nova": {
         "files": 63,
         "size": 137201,
-        "hash": "64c40d72c4c04b3e154982572d4a2b2bf22cdb5997132c7994ba2a6fdbb72196"
+        "hash": "224d8697d81921b3162df4f417c2c4a766e3e2ecbb29468b280260daeaf2ffa7"
       }
     },
     "idevices": {
@@ -27967,22 +29207,22 @@
       "count": 43,
       "files": 861,
       "size": 5225075,
-      "hash": "df2e7e4e97d90108c4fcd68ae63f1dd8fe756962a0356976e95685ab5248e24d"
+      "hash": "12ae12b4620b039fff6186f956bc12ed33852f7f36133186a7a1935ee5112f48"
     },
     "libs": {
       "files": 8,
       "size": 300841,
-      "hash": "0fefb87dea9e182881ea645dc104a6476de55cc3a674807f61f8ff897d086d62"
+      "hash": "271a6789978f23619bc6af3b6f8d976eed4f5d0ab19878f3592dcba722eddc32"
     },
     "common": {
       "files": 30,
       "size": 177425,
-      "hash": "9f9bb89b6e20ecc62893638d1ffe592812a31094b1f1ba0bd48e75c426abcc0a"
+      "hash": "b9b06f746ed26da0f02116c8ba1983c00390cce60a8425df92f723b96c23ae5d"
     },
     "contentCss": {
       "files": 4,
       "size": 42920,
-      "hash": "facab8727ec5a411abbaf95a9bfdd00fd3a41f9a489afed9acb47669bcc34584"
+      "hash": "36fb478668a24c7c87aecdf64409805075d30c58d0443ccb422427038f54be63"
     }
   }
 }

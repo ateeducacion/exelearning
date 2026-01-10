@@ -1,6 +1,6 @@
 {
   "version": "v0.0.0-alpha",
-  "builtAt": "2026-01-10T14:55:28.292Z",
+  "builtAt": "2026-01-10T15:25:17.021Z",
   "parameters": {
     "routes": {
       "api_translations_lists": {
@@ -27822,7 +27822,7 @@
         "dirName": "base",
         "title": "Default",
         "type": "base",
-        "url": "/files/perm/themes/base/base",
+        "url": "./files/perm/themes/base/base",
         "description": "Minimally-styled, feature rich responsive style for eXe.\n\niDevice icons by Francisco Javier Pulido Cuadrado.",
         "valid": true,
         "downloadable": "1",
@@ -27834,301 +27834,301 @@
             "id": "guide",
             "title": "guide",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/guide.png"
+            "value": "./files/perm/themes/base/base/icons/guide.png"
           },
           "start": {
             "id": "start",
             "title": "start",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/start.png"
+            "value": "./files/perm/themes/base/base/icons/start.png"
           },
           "think_alt": {
             "id": "think_alt",
             "title": "think_alt",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/think_alt.png"
+            "value": "./files/perm/themes/base/base/icons/think_alt.png"
           },
           "ask": {
             "id": "ask",
             "title": "ask",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/ask.png"
+            "value": "./files/perm/themes/base/base/icons/ask.png"
           },
           "info": {
             "id": "info",
             "title": "info",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/info.png"
+            "value": "./files/perm/themes/base/base/icons/info.png"
           },
           "play": {
             "id": "play",
             "title": "play",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/play.png"
+            "value": "./files/perm/themes/base/base/icons/play.png"
           },
           "collaborative": {
             "id": "collaborative",
             "title": "collaborative",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/collaborative.png"
+            "value": "./files/perm/themes/base/base/icons/collaborative.png"
           },
           "file": {
             "id": "file",
             "title": "file",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/file.png"
+            "value": "./files/perm/themes/base/base/icons/file.png"
           },
           "english": {
             "id": "english",
             "title": "english",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/english.png"
+            "value": "./files/perm/themes/base/base/icons/english.png"
           },
           "interactive": {
             "id": "interactive",
             "title": "interactive",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/interactive.png"
+            "value": "./files/perm/themes/base/base/icons/interactive.png"
           },
           "explore": {
             "id": "explore",
             "title": "explore",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/explore.png"
+            "value": "./files/perm/themes/base/base/icons/explore.png"
           },
           "draw": {
             "id": "draw",
             "title": "draw",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/draw.png"
+            "value": "./files/perm/themes/base/base/icons/draw.png"
           },
           "reflection": {
             "id": "reflection",
             "title": "reflection",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/reflection.png"
+            "value": "./files/perm/themes/base/base/icons/reflection.png"
           },
           "music": {
             "id": "music",
             "title": "music",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/music.png"
+            "value": "./files/perm/themes/base/base/icons/music.png"
           },
           "stop": {
             "id": "stop",
             "title": "stop",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/stop.png"
+            "value": "./files/perm/themes/base/base/icons/stop.png"
           },
           "alert": {
             "id": "alert",
             "title": "alert",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/alert.png"
+            "value": "./files/perm/themes/base/base/icons/alert.png"
           },
           "diary_alt": {
             "id": "diary_alt",
             "title": "diary_alt",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/diary_alt.png"
+            "value": "./files/perm/themes/base/base/icons/diary_alt.png"
           },
           "sport": {
             "id": "sport",
             "title": "sport",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/sport.png"
+            "value": "./files/perm/themes/base/base/icons/sport.png"
           },
           "observe": {
             "id": "observe",
             "title": "observe",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/observe.png"
+            "value": "./files/perm/themes/base/base/icons/observe.png"
           },
           "arts": {
             "id": "arts",
             "title": "arts",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/arts.png"
+            "value": "./files/perm/themes/base/base/icons/arts.png"
           },
           "think": {
             "id": "think",
             "title": "think",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/think.png"
+            "value": "./files/perm/themes/base/base/icons/think.png"
           },
           "technology": {
             "id": "technology",
             "title": "technology",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/technology.png"
+            "value": "./files/perm/themes/base/base/icons/technology.png"
           },
           "calculate": {
             "id": "calculate",
             "title": "calculate",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/calculate.png"
+            "value": "./files/perm/themes/base/base/icons/calculate.png"
           },
           "passport": {
             "id": "passport",
             "title": "passport",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/passport.png"
+            "value": "./files/perm/themes/base/base/icons/passport.png"
           },
           "history": {
             "id": "history",
             "title": "history",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/history.png"
+            "value": "./files/perm/themes/base/base/icons/history.png"
           },
           "geography": {
             "id": "geography",
             "title": "geography",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/geography.png"
+            "value": "./files/perm/themes/base/base/icons/geography.png"
           },
           "piece": {
             "id": "piece",
             "title": "piece",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/piece.png"
+            "value": "./files/perm/themes/base/base/icons/piece.png"
           },
           "agreement": {
             "id": "agreement",
             "title": "agreement",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/agreement.png"
+            "value": "./files/perm/themes/base/base/icons/agreement.png"
           },
           "competencies": {
             "id": "competencies",
             "title": "competencies",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/competencies.png"
+            "value": "./files/perm/themes/base/base/icons/competencies.png"
           },
           "letters": {
             "id": "letters",
             "title": "letters",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/letters.png"
+            "value": "./files/perm/themes/base/base/icons/letters.png"
           },
           "case": {
             "id": "case",
             "title": "case",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/case.png"
+            "value": "./files/perm/themes/base/base/icons/case.png"
           },
           "present": {
             "id": "present",
             "title": "present",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/present.png"
+            "value": "./files/perm/themes/base/base/icons/present.png"
           },
           "share": {
             "id": "share",
             "title": "share",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/share.png"
+            "value": "./files/perm/themes/base/base/icons/share.png"
           },
           "gallery": {
             "id": "gallery",
             "title": "gallery",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/gallery.png"
+            "value": "./files/perm/themes/base/base/icons/gallery.png"
           },
           "discuss": {
             "id": "discuss",
             "title": "discuss",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/discuss.png"
+            "value": "./files/perm/themes/base/base/icons/discuss.png"
           },
           "perform": {
             "id": "perform",
             "title": "perform",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/perform.png"
+            "value": "./files/perm/themes/base/base/icons/perform.png"
           },
           "pieces": {
             "id": "pieces",
             "title": "pieces",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/pieces.png"
+            "value": "./files/perm/themes/base/base/icons/pieces.png"
           },
           "experiment": {
             "id": "experiment",
             "title": "experiment",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/experiment.png"
+            "value": "./files/perm/themes/base/base/icons/experiment.png"
           },
           "book": {
             "id": "book",
             "title": "book",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/book.png"
+            "value": "./files/perm/themes/base/base/icons/book.png"
           },
           "activity": {
             "id": "activity",
             "title": "activity",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/activity.png"
+            "value": "./files/perm/themes/base/base/icons/activity.png"
           },
           "download": {
             "id": "download",
             "title": "download",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/download.png"
+            "value": "./files/perm/themes/base/base/icons/download.png"
           },
           "video": {
             "id": "video",
             "title": "video",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/video.png"
+            "value": "./files/perm/themes/base/base/icons/video.png"
           },
           "listen": {
             "id": "listen",
             "title": "listen",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/listen.png"
+            "value": "./files/perm/themes/base/base/icons/listen.png"
           },
           "suitcase": {
             "id": "suitcase",
             "title": "suitcase",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/suitcase.png"
+            "value": "./files/perm/themes/base/base/icons/suitcase.png"
           },
           "nature": {
             "id": "nature",
             "title": "nature",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/nature.png"
+            "value": "./files/perm/themes/base/base/icons/nature.png"
           },
           "objectives": {
             "id": "objectives",
             "title": "objectives",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/objectives.png"
+            "value": "./files/perm/themes/base/base/icons/objectives.png"
           },
           "chrono": {
             "id": "chrono",
             "title": "chrono",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/chrono.png"
+            "value": "./files/perm/themes/base/base/icons/chrono.png"
           },
           "diary": {
             "id": "diary",
             "title": "diary",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/diary.png"
+            "value": "./files/perm/themes/base/base/icons/diary.png"
           },
           "math": {
             "id": "math",
             "title": "math",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/math.png"
+            "value": "./files/perm/themes/base/base/icons/math.png"
           },
           "roadmap": {
             "id": "roadmap",
             "title": "roadmap",
             "type": "img",
-            "value": "/files/perm/themes/base/base/icons/roadmap.png"
+            "value": "./files/perm/themes/base/base/icons/roadmap.png"
           }
         }
       },
@@ -28138,7 +28138,7 @@
         "dirName": "zen",
         "title": "Zen",
         "type": "base",
-        "url": "/files/perm/themes/base/zen",
+        "url": "./files/perm/themes/base/zen",
         "description": "Equilibrio y claridad.\n\niDevice icons by Google (https://fonts.google.com/icons), under the 2.0 version of the Apache License (https://www.apache.org/licenses/LICENSE-2.0.html).\n\nInter Font, by Rasmus Andersson, under the SIL Open Font License, Version 1.1. Copyright (c) 2016-2020 The Inter Project Authors (https://github.com/rsms/inter).",
         "valid": true,
         "downloadable": "1",
@@ -28150,235 +28150,235 @@
             "id": "pageview",
             "title": "pageview",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/pageview.svg"
+            "value": "./files/perm/themes/base/zen/icons/pageview.svg"
           },
           "edit_note": {
             "id": "edit_note",
             "title": "edit_note",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/edit_note.svg"
+            "value": "./files/perm/themes/base/zen/icons/edit_note.svg"
           },
           "workspace_premiumsvg": {
             "id": "workspace_premiumsvg",
             "title": "workspace_premiumsvg",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/workspace_premiumsvg.svg"
+            "value": "./files/perm/themes/base/zen/icons/workspace_premiumsvg.svg"
           },
           "pairs": {
             "id": "pairs",
             "title": "pairs",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/pairs.svg"
+            "value": "./files/perm/themes/base/zen/icons/pairs.svg"
           },
           "local_library": {
             "id": "local_library",
             "title": "local_library",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/local_library.svg"
+            "value": "./files/perm/themes/base/zen/icons/local_library.svg"
           },
           "fact_checksvg": {
             "id": "fact_checksvg",
             "title": "fact_checksvg",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/fact_checksvg.svg"
+            "value": "./files/perm/themes/base/zen/icons/fact_checksvg.svg"
           },
           "flag_circle": {
             "id": "flag_circle",
             "title": "flag_circle",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/flag_circle.svg"
+            "value": "./files/perm/themes/base/zen/icons/flag_circle.svg"
           },
           "lan": {
             "id": "lan",
             "title": "lan",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/lan.svg"
+            "value": "./files/perm/themes/base/zen/icons/lan.svg"
           },
           "group": {
             "id": "group",
             "title": "group",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/group.svg"
+            "value": "./files/perm/themes/base/zen/icons/group.svg"
           },
           "list_alt": {
             "id": "list_alt",
             "title": "list_alt",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/list_alt.svg"
+            "value": "./files/perm/themes/base/zen/icons/list_alt.svg"
           },
           "compasssvg": {
             "id": "compasssvg",
             "title": "compasssvg",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/compasssvg.svg"
+            "value": "./files/perm/themes/base/zen/icons/compasssvg.svg"
           },
           "cloud_done": {
             "id": "cloud_done",
             "title": "cloud_done",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/cloud_done.svg"
+            "value": "./files/perm/themes/base/zen/icons/cloud_done.svg"
           },
           "smart_display": {
             "id": "smart_display",
             "title": "smart_display",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/smart_display.svg"
+            "value": "./files/perm/themes/base/zen/icons/smart_display.svg"
           },
           "forum": {
             "id": "forum",
             "title": "forum",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/forum.svg"
+            "value": "./files/perm/themes/base/zen/icons/forum.svg"
           },
           "audiotrack": {
             "id": "audiotrack",
             "title": "audiotrack",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/audiotrack.svg"
+            "value": "./files/perm/themes/base/zen/icons/audiotrack.svg"
           },
           "touch_app": {
             "id": "touch_app",
             "title": "touch_app",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/touch_app.svg"
+            "value": "./files/perm/themes/base/zen/icons/touch_app.svg"
           },
           "rule": {
             "id": "rule",
             "title": "rule",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/rule.svg"
+            "value": "./files/perm/themes/base/zen/icons/rule.svg"
           },
           "attachment": {
             "id": "attachment",
             "title": "attachment",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/attachment.svg"
+            "value": "./files/perm/themes/base/zen/icons/attachment.svg"
           },
           "segment": {
             "id": "segment",
             "title": "segment",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/segment.svg"
+            "value": "./files/perm/themes/base/zen/icons/segment.svg"
           },
           "help": {
             "id": "help",
             "title": "help",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/help.svg"
+            "value": "./files/perm/themes/base/zen/icons/help.svg"
           },
           "send": {
             "id": "send",
             "title": "send",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/send.svg"
+            "value": "./files/perm/themes/base/zen/icons/send.svg"
           },
           "check": {
             "id": "check",
             "title": "check",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/check.svg"
+            "value": "./files/perm/themes/base/zen/icons/check.svg"
           },
           "person": {
             "id": "person",
             "title": "person",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/person.svg"
+            "value": "./files/perm/themes/base/zen/icons/person.svg"
           },
           "share": {
             "id": "share",
             "title": "share",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/share.svg"
+            "value": "./files/perm/themes/base/zen/icons/share.svg"
           },
           "lock": {
             "id": "lock",
             "title": "lock",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/lock.svg"
+            "value": "./files/perm/themes/base/zen/icons/lock.svg"
           },
           "follow_the_signs": {
             "id": "follow_the_signs",
             "title": "follow_the_signs",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/follow_the_signs.svg"
+            "value": "./files/perm/themes/base/zen/icons/follow_the_signs.svg"
           },
           "verifiedsvg": {
             "id": "verifiedsvg",
             "title": "verifiedsvg",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/verifiedsvg.svg"
+            "value": "./files/perm/themes/base/zen/icons/verifiedsvg.svg"
           },
           "calculate": {
             "id": "calculate",
             "title": "calculate",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/calculate.svg"
+            "value": "./files/perm/themes/base/zen/icons/calculate.svg"
           },
           "room": {
             "id": "room",
             "title": "room",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/room.svg"
+            "value": "./files/perm/themes/base/zen/icons/room.svg"
           },
           "mic": {
             "id": "mic",
             "title": "mic",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/mic.svg"
+            "value": "./files/perm/themes/base/zen/icons/mic.svg"
           },
           "information": {
             "id": "information",
             "title": "information",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/information.svg"
+            "value": "./files/perm/themes/base/zen/icons/information.svg"
           },
           "collections": {
             "id": "collections",
             "title": "collections",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/collections.svg"
+            "value": "./files/perm/themes/base/zen/icons/collections.svg"
           },
           "search": {
             "id": "search",
             "title": "search",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/search.svg"
+            "value": "./files/perm/themes/base/zen/icons/search.svg"
           },
           "calendar_today": {
             "id": "calendar_today",
             "title": "calendar_today",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/calendar_today.svg"
+            "value": "./files/perm/themes/base/zen/icons/calendar_today.svg"
           },
           "psychology": {
             "id": "psychology",
             "title": "psychology",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/psychology.svg"
+            "value": "./files/perm/themes/base/zen/icons/psychology.svg"
           },
           "ads_click": {
             "id": "ads_click",
             "title": "ads_click",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/ads_click.svg"
+            "value": "./files/perm/themes/base/zen/icons/ads_click.svg"
           },
           "description": {
             "id": "description",
             "title": "description",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/description.svg"
+            "value": "./files/perm/themes/base/zen/icons/description.svg"
           },
           "photo_camera": {
             "id": "photo_camera",
             "title": "photo_camera",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/photo_camera.svg"
+            "value": "./files/perm/themes/base/zen/icons/photo_camera.svg"
           },
           "checklist_rtl": {
             "id": "checklist_rtl",
             "title": "checklist_rtl",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/checklist_rtl.svg"
+            "value": "./files/perm/themes/base/zen/icons/checklist_rtl.svg"
           }
         }
       },
@@ -28388,7 +28388,7 @@
         "dirName": "neo",
         "title": "Neo",
         "type": "base",
-        "url": "/files/perm/themes/base/neo",
+        "url": "./files/perm/themes/base/neo",
         "description": "Innovación con propósito.\n\nNunito Font, by Vernon Adams (vern@newtypography.co.uk), under the SIL Open Font License, Version 1.1. Copyright (c) 2014, Vernon Adams (vern@newtypography.co.uk), with Reserved Font Name \"Nunito\".",
         "valid": true,
         "downloadable": "1",
@@ -28400,229 +28400,229 @@
             "id": "icon_attached",
             "title": "icon_attached",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_attached.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_attached.png"
           },
           "icon_question": {
             "id": "icon_question",
             "title": "icon_question",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_question.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_question.png"
           },
           "icon_geography": {
             "id": "icon_geography",
             "title": "icon_geography",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_geography.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_geography.png"
           },
           "icon_magnifier": {
             "id": "icon_magnifier",
             "title": "icon_magnifier",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_magnifier.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_magnifier.png"
           },
           "icon_math": {
             "id": "icon_math",
             "title": "icon_math",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_math.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_math.png"
           },
           "icon_think": {
             "id": "icon_think",
             "title": "icon_think",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_think.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_think.png"
           },
           "icon_diary": {
             "id": "icon_diary",
             "title": "icon_diary",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_diary.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_diary.png"
           },
           "icon_technology": {
             "id": "icon_technology",
             "title": "icon_technology",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_technology.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_technology.png"
           },
           "icon_letters": {
             "id": "icon_letters",
             "title": "icon_letters",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_letters.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_letters.png"
           },
           "icon_task": {
             "id": "icon_task",
             "title": "icon_task",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_task.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_task.png"
           },
           "icon_java": {
             "id": "icon_java",
             "title": "icon_java",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_java.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_java.png"
           },
           "icon_experiment": {
             "id": "icon_experiment",
             "title": "icon_experiment",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_experiment.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_experiment.png"
           },
           "icon_competencies": {
             "id": "icon_competencies",
             "title": "icon_competencies",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_competencies.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_competencies.png"
           },
           "icon_objective": {
             "id": "icon_objective",
             "title": "icon_objective",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_objective.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_objective.png"
           },
           "icon_alert": {
             "id": "icon_alert",
             "title": "icon_alert",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_alert.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_alert.png"
           },
           "icon_reflection": {
             "id": "icon_reflection",
             "title": "icon_reflection",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_reflection.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_reflection.png"
           },
           "icon_english": {
             "id": "icon_english",
             "title": "icon_english",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_english.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_english.png"
           },
           "icon_cabinet": {
             "id": "icon_cabinet",
             "title": "icon_cabinet",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_cabinet.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_cabinet.png"
           },
           "icon_nature": {
             "id": "icon_nature",
             "title": "icon_nature",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_nature.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_nature.png"
           },
           "icon_reading": {
             "id": "icon_reading",
             "title": "icon_reading",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_reading.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_reading.png"
           },
           "icon_preknowledge": {
             "id": "icon_preknowledge",
             "title": "icon_preknowledge",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_preknowledge.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_preknowledge.png"
           },
           "icon_tool": {
             "id": "icon_tool",
             "title": "icon_tool",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_tool.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_tool.png"
           },
           "icon_share": {
             "id": "icon_share",
             "title": "icon_share",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_share.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_share.png"
           },
           "icon_music": {
             "id": "icon_music",
             "title": "icon_music",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_music.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_music.png"
           },
           "icon_collaborative": {
             "id": "icon_collaborative",
             "title": "icon_collaborative",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_collaborative.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_collaborative.png"
           },
           "icon_write": {
             "id": "icon_write",
             "title": "icon_write",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_write.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_write.png"
           },
           "icon_arts": {
             "id": "icon_arts",
             "title": "icon_arts",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_arts.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_arts.png"
           },
           "icon_calc": {
             "id": "icon_calc",
             "title": "icon_calc",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_calc.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_calc.png"
           },
           "icon_info": {
             "id": "icon_info",
             "title": "icon_info",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_info.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_info.png"
           },
           "icon_piece": {
             "id": "icon_piece",
             "title": "icon_piece",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_piece.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_piece.png"
           },
           "icon_history": {
             "id": "icon_history",
             "title": "icon_history",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_history.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_history.png"
           },
           "icon_download": {
             "id": "icon_download",
             "title": "icon_download",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_download.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_download.png"
           },
           "icon_rss": {
             "id": "icon_rss",
             "title": "icon_rss",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_rss.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_rss.png"
           },
           "icon_sport": {
             "id": "icon_sport",
             "title": "icon_sport",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_sport.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_sport.png"
           },
           "icon_theater": {
             "id": "icon_theater",
             "title": "icon_theater",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_theater.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_theater.png"
           },
           "icon_agreement": {
             "id": "icon_agreement",
             "title": "icon_agreement",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_agreement.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_agreement.png"
           },
           "icon_picture": {
             "id": "icon_picture",
             "title": "icon_picture",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_picture.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_picture.png"
           },
           "icon_wikipedia": {
             "id": "icon_wikipedia",
             "title": "icon_wikipedia",
             "type": "img",
-            "value": "/files/perm/themes/base/neo/icons/icon_wikipedia.png"
+            "value": "./files/perm/themes/base/neo/icons/icon_wikipedia.png"
           }
         }
       },
@@ -28632,7 +28632,7 @@
         "dirName": "flux",
         "title": "Flux",
         "type": "base",
-        "url": "/files/perm/themes/base/flux",
+        "url": "./files/perm/themes/base/flux",
         "description": "Energía en movimiento.\n\niDevice icons by Google (https://fonts.google.com/icons), under the 2.0 version of the Apache License (https://www.apache.org/licenses/LICENSE-2.0.html).\n\nFredoka Font, by Milena Brandao, under the SIL Open Font License, Version 1.1. Copyright (c) 2021, Milena Brandao.",
         "valid": true,
         "downloadable": "1",
@@ -28644,235 +28644,235 @@
             "id": "pageview",
             "title": "pageview",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/pageview.svg"
+            "value": "./files/perm/themes/base/flux/icons/pageview.svg"
           },
           "edit_note": {
             "id": "edit_note",
             "title": "edit_note",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/edit_note.svg"
+            "value": "./files/perm/themes/base/flux/icons/edit_note.svg"
           },
           "workspace_premiumsvg": {
             "id": "workspace_premiumsvg",
             "title": "workspace_premiumsvg",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/workspace_premiumsvg.svg"
+            "value": "./files/perm/themes/base/flux/icons/workspace_premiumsvg.svg"
           },
           "pairs": {
             "id": "pairs",
             "title": "pairs",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/pairs.svg"
+            "value": "./files/perm/themes/base/flux/icons/pairs.svg"
           },
           "edited_ok": {
             "id": "edited_ok",
             "title": "edited_ok",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/edited_ok.svg"
+            "value": "./files/perm/themes/base/flux/icons/edited_ok.svg"
           },
           "local_library": {
             "id": "local_library",
             "title": "local_library",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/local_library.svg"
+            "value": "./files/perm/themes/base/flux/icons/local_library.svg"
           },
           "edited_explore": {
             "id": "edited_explore",
             "title": "edited_explore",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/edited_explore.svg"
+            "value": "./files/perm/themes/base/flux/icons/edited_explore.svg"
           },
           "fact_checksvg": {
             "id": "fact_checksvg",
             "title": "fact_checksvg",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/fact_checksvg.svg"
+            "value": "./files/perm/themes/base/flux/icons/fact_checksvg.svg"
           },
           "flag_circle": {
             "id": "flag_circle",
             "title": "flag_circle",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/flag_circle.svg"
+            "value": "./files/perm/themes/base/flux/icons/flag_circle.svg"
           },
           "lan": {
             "id": "lan",
             "title": "lan",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/lan.svg"
+            "value": "./files/perm/themes/base/flux/icons/lan.svg"
           },
           "group": {
             "id": "group",
             "title": "group",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/group.svg"
+            "value": "./files/perm/themes/base/flux/icons/group.svg"
           },
           "list_alt": {
             "id": "list_alt",
             "title": "list_alt",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/list_alt.svg"
+            "value": "./files/perm/themes/base/flux/icons/list_alt.svg"
           },
           "cloud_done": {
             "id": "cloud_done",
             "title": "cloud_done",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/cloud_done.svg"
+            "value": "./files/perm/themes/base/flux/icons/cloud_done.svg"
           },
           "smart_display": {
             "id": "smart_display",
             "title": "smart_display",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/smart_display.svg"
+            "value": "./files/perm/themes/base/flux/icons/smart_display.svg"
           },
           "forum": {
             "id": "forum",
             "title": "forum",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/forum.svg"
+            "value": "./files/perm/themes/base/flux/icons/forum.svg"
           },
           "audiotrack": {
             "id": "audiotrack",
             "title": "audiotrack",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/audiotrack.svg"
+            "value": "./files/perm/themes/base/flux/icons/audiotrack.svg"
           },
           "touch_app": {
             "id": "touch_app",
             "title": "touch_app",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/touch_app.svg"
+            "value": "./files/perm/themes/base/flux/icons/touch_app.svg"
           },
           "rule": {
             "id": "rule",
             "title": "rule",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/rule.svg"
+            "value": "./files/perm/themes/base/flux/icons/rule.svg"
           },
           "attachment": {
             "id": "attachment",
             "title": "attachment",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/attachment.svg"
+            "value": "./files/perm/themes/base/flux/icons/attachment.svg"
           },
           "segment": {
             "id": "segment",
             "title": "segment",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/segment.svg"
+            "value": "./files/perm/themes/base/flux/icons/segment.svg"
           },
           "help": {
             "id": "help",
             "title": "help",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/help.svg"
+            "value": "./files/perm/themes/base/flux/icons/help.svg"
           },
           "send": {
             "id": "send",
             "title": "send",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/send.svg"
+            "value": "./files/perm/themes/base/flux/icons/send.svg"
           },
           "person": {
             "id": "person",
             "title": "person",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/person.svg"
+            "value": "./files/perm/themes/base/flux/icons/person.svg"
           },
           "share": {
             "id": "share",
             "title": "share",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/share.svg"
+            "value": "./files/perm/themes/base/flux/icons/share.svg"
           },
           "lock": {
             "id": "lock",
             "title": "lock",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/lock.svg"
+            "value": "./files/perm/themes/base/flux/icons/lock.svg"
           },
           "follow_the_signs": {
             "id": "follow_the_signs",
             "title": "follow_the_signs",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/follow_the_signs.svg"
+            "value": "./files/perm/themes/base/flux/icons/follow_the_signs.svg"
           },
           "verifiedsvg": {
             "id": "verifiedsvg",
             "title": "verifiedsvg",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/verifiedsvg.svg"
+            "value": "./files/perm/themes/base/flux/icons/verifiedsvg.svg"
           },
           "calculate": {
             "id": "calculate",
             "title": "calculate",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/calculate.svg"
+            "value": "./files/perm/themes/base/flux/icons/calculate.svg"
           },
           "room": {
             "id": "room",
             "title": "room",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/room.svg"
+            "value": "./files/perm/themes/base/flux/icons/room.svg"
           },
           "mic": {
             "id": "mic",
             "title": "mic",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/mic.svg"
+            "value": "./files/perm/themes/base/flux/icons/mic.svg"
           },
           "information": {
             "id": "information",
             "title": "information",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/information.svg"
+            "value": "./files/perm/themes/base/flux/icons/information.svg"
           },
           "collections": {
             "id": "collections",
             "title": "collections",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/collections.svg"
+            "value": "./files/perm/themes/base/flux/icons/collections.svg"
           },
           "search": {
             "id": "search",
             "title": "search",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/search.svg"
+            "value": "./files/perm/themes/base/flux/icons/search.svg"
           },
           "calendar_today": {
             "id": "calendar_today",
             "title": "calendar_today",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/calendar_today.svg"
+            "value": "./files/perm/themes/base/flux/icons/calendar_today.svg"
           },
           "psychology": {
             "id": "psychology",
             "title": "psychology",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/psychology.svg"
+            "value": "./files/perm/themes/base/flux/icons/psychology.svg"
           },
           "ads_click": {
             "id": "ads_click",
             "title": "ads_click",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/ads_click.svg"
+            "value": "./files/perm/themes/base/flux/icons/ads_click.svg"
           },
           "description": {
             "id": "description",
             "title": "description",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/description.svg"
+            "value": "./files/perm/themes/base/flux/icons/description.svg"
           },
           "photo_camera": {
             "id": "photo_camera",
             "title": "photo_camera",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/photo_camera.svg"
+            "value": "./files/perm/themes/base/flux/icons/photo_camera.svg"
           },
           "checklist_rtl": {
             "id": "checklist_rtl",
             "title": "checklist_rtl",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/checklist_rtl.svg"
+            "value": "./files/perm/themes/base/flux/icons/checklist_rtl.svg"
           }
         }
       },
@@ -28882,7 +28882,7 @@
         "dirName": "nova",
         "title": "Nova",
         "type": "base",
-        "url": "/files/perm/themes/base/nova",
+        "url": "./files/perm/themes/base/nova",
         "description": "Aprender, crecer, avanzar.\n\niDevice icons by Google (https://fonts.google.com/icons), under the 2.0 version of the Apache License (https://www.apache.org/licenses/LICENSE-2.0.html).\n\nOpen Sans Font, by The Open Sans Project Authors, under the SIL Open Font License, Version 1.1. Copyright 2020 The Open Sans Project Authors (https://github.com/googlefonts/opensans).",
         "valid": true,
         "downloadable": "1",
@@ -28894,235 +28894,235 @@
             "id": "pageview",
             "title": "pageview",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/pageview.svg"
+            "value": "./files/perm/themes/base/nova/icons/pageview.svg"
           },
           "edit_note": {
             "id": "edit_note",
             "title": "edit_note",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/edit_note.svg"
+            "value": "./files/perm/themes/base/nova/icons/edit_note.svg"
           },
           "workspace_premiumsvg": {
             "id": "workspace_premiumsvg",
             "title": "workspace_premiumsvg",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/workspace_premiumsvg.svg"
+            "value": "./files/perm/themes/base/nova/icons/workspace_premiumsvg.svg"
           },
           "pairs": {
             "id": "pairs",
             "title": "pairs",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/pairs.svg"
+            "value": "./files/perm/themes/base/nova/icons/pairs.svg"
           },
           "edited_ok": {
             "id": "edited_ok",
             "title": "edited_ok",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/edited_ok.svg"
+            "value": "./files/perm/themes/base/nova/icons/edited_ok.svg"
           },
           "local_library": {
             "id": "local_library",
             "title": "local_library",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/local_library.svg"
+            "value": "./files/perm/themes/base/nova/icons/local_library.svg"
           },
           "edited_explore": {
             "id": "edited_explore",
             "title": "edited_explore",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/edited_explore.svg"
+            "value": "./files/perm/themes/base/nova/icons/edited_explore.svg"
           },
           "fact_checksvg": {
             "id": "fact_checksvg",
             "title": "fact_checksvg",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/fact_checksvg.svg"
+            "value": "./files/perm/themes/base/nova/icons/fact_checksvg.svg"
           },
           "flag_circle": {
             "id": "flag_circle",
             "title": "flag_circle",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/flag_circle.svg"
+            "value": "./files/perm/themes/base/nova/icons/flag_circle.svg"
           },
           "lan": {
             "id": "lan",
             "title": "lan",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/lan.svg"
+            "value": "./files/perm/themes/base/nova/icons/lan.svg"
           },
           "group": {
             "id": "group",
             "title": "group",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/group.svg"
+            "value": "./files/perm/themes/base/nova/icons/group.svg"
           },
           "list_alt": {
             "id": "list_alt",
             "title": "list_alt",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/list_alt.svg"
+            "value": "./files/perm/themes/base/nova/icons/list_alt.svg"
           },
           "cloud_done": {
             "id": "cloud_done",
             "title": "cloud_done",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/cloud_done.svg"
+            "value": "./files/perm/themes/base/nova/icons/cloud_done.svg"
           },
           "smart_display": {
             "id": "smart_display",
             "title": "smart_display",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/smart_display.svg"
+            "value": "./files/perm/themes/base/nova/icons/smart_display.svg"
           },
           "forum": {
             "id": "forum",
             "title": "forum",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/forum.svg"
+            "value": "./files/perm/themes/base/nova/icons/forum.svg"
           },
           "audiotrack": {
             "id": "audiotrack",
             "title": "audiotrack",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/audiotrack.svg"
+            "value": "./files/perm/themes/base/nova/icons/audiotrack.svg"
           },
           "touch_app": {
             "id": "touch_app",
             "title": "touch_app",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/touch_app.svg"
+            "value": "./files/perm/themes/base/nova/icons/touch_app.svg"
           },
           "rule": {
             "id": "rule",
             "title": "rule",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/rule.svg"
+            "value": "./files/perm/themes/base/nova/icons/rule.svg"
           },
           "attachment": {
             "id": "attachment",
             "title": "attachment",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/attachment.svg"
+            "value": "./files/perm/themes/base/nova/icons/attachment.svg"
           },
           "segment": {
             "id": "segment",
             "title": "segment",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/segment.svg"
+            "value": "./files/perm/themes/base/nova/icons/segment.svg"
           },
           "help": {
             "id": "help",
             "title": "help",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/help.svg"
+            "value": "./files/perm/themes/base/nova/icons/help.svg"
           },
           "send": {
             "id": "send",
             "title": "send",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/send.svg"
+            "value": "./files/perm/themes/base/nova/icons/send.svg"
           },
           "person": {
             "id": "person",
             "title": "person",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/person.svg"
+            "value": "./files/perm/themes/base/nova/icons/person.svg"
           },
           "share": {
             "id": "share",
             "title": "share",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/share.svg"
+            "value": "./files/perm/themes/base/nova/icons/share.svg"
           },
           "lock": {
             "id": "lock",
             "title": "lock",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/lock.svg"
+            "value": "./files/perm/themes/base/nova/icons/lock.svg"
           },
           "follow_the_signs": {
             "id": "follow_the_signs",
             "title": "follow_the_signs",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/follow_the_signs.svg"
+            "value": "./files/perm/themes/base/nova/icons/follow_the_signs.svg"
           },
           "verifiedsvg": {
             "id": "verifiedsvg",
             "title": "verifiedsvg",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/verifiedsvg.svg"
+            "value": "./files/perm/themes/base/nova/icons/verifiedsvg.svg"
           },
           "calculate": {
             "id": "calculate",
             "title": "calculate",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/calculate.svg"
+            "value": "./files/perm/themes/base/nova/icons/calculate.svg"
           },
           "room": {
             "id": "room",
             "title": "room",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/room.svg"
+            "value": "./files/perm/themes/base/nova/icons/room.svg"
           },
           "mic": {
             "id": "mic",
             "title": "mic",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/mic.svg"
+            "value": "./files/perm/themes/base/nova/icons/mic.svg"
           },
           "information": {
             "id": "information",
             "title": "information",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/information.svg"
+            "value": "./files/perm/themes/base/nova/icons/information.svg"
           },
           "collections": {
             "id": "collections",
             "title": "collections",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/collections.svg"
+            "value": "./files/perm/themes/base/nova/icons/collections.svg"
           },
           "search": {
             "id": "search",
             "title": "search",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/search.svg"
+            "value": "./files/perm/themes/base/nova/icons/search.svg"
           },
           "calendar_today": {
             "id": "calendar_today",
             "title": "calendar_today",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/calendar_today.svg"
+            "value": "./files/perm/themes/base/nova/icons/calendar_today.svg"
           },
           "psychology": {
             "id": "psychology",
             "title": "psychology",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/psychology.svg"
+            "value": "./files/perm/themes/base/nova/icons/psychology.svg"
           },
           "ads_click": {
             "id": "ads_click",
             "title": "ads_click",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/ads_click.svg"
+            "value": "./files/perm/themes/base/nova/icons/ads_click.svg"
           },
           "description": {
             "id": "description",
             "title": "description",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/description.svg"
+            "value": "./files/perm/themes/base/nova/icons/description.svg"
           },
           "photo_camera": {
             "id": "photo_camera",
             "title": "photo_camera",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/photo_camera.svg"
+            "value": "./files/perm/themes/base/nova/icons/photo_camera.svg"
           },
           "checklist_rtl": {
             "id": "checklist_rtl",
             "title": "checklist_rtl",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/checklist_rtl.svg"
+            "value": "./files/perm/themes/base/nova/icons/checklist_rtl.svg"
           }
         }
       }
@@ -29130,32 +29130,32 @@
   },
   "bundleManifest": {
     "buildVersion": "v0.0.0-alpha",
-    "builtAt": "2026-01-10T14:55:27.004Z",
+    "builtAt": "2026-01-10T15:25:15.693Z",
     "themes": {
       "base": {
         "files": 56,
         "size": 113541,
-        "hash": "6bcc0c91c8d5749ab2832ec9b05704a758ec7f0e222c8c23768357d8e2113130"
+        "hash": "0e98f4d679696a35b346299625dcb0cdd59a02a9523a9f81bcfdc56cda18e689"
       },
       "zen": {
         "files": 69,
         "size": 1169587,
-        "hash": "0bbf03e49f0223970a394b4aea02063870313b5315a95509aee3c04aca6dffe8"
+        "hash": "4c452192310bf022e6c8ada459094d5fe55034f191665a7690b7fe1752046ac0"
       },
       "neo": {
         "files": 75,
         "size": 1109196,
-        "hash": "e8600f21c58a2b3863388947cf3c39719ac1edcec7eb612d1370d02b3ed03337"
+        "hash": "3ed98e2423d9a9891d7d6f93f02059f857e389d09bc22180883d7eaf75dc4dad"
       },
       "flux": {
         "files": 64,
         "size": 381035,
-        "hash": "8d094585523c7d2c0f270c4091a88a1600acf37d5010cca6a34aa2140174cdfc"
+        "hash": "16bd29b6f5fa9efc5e6297500ab9003b3c5fbd4b5dff8719b1d875fd69d07137"
       },
       "nova": {
         "files": 63,
         "size": 137201,
-        "hash": "3bb45cdd45f5e7ee9ca5f3486befc17f2b55154933e20ce9be44de476e8f1ae7"
+        "hash": "e4a47e7f2109e14a6cd2a0d87d391ea81036dbd2aee38dbe3a342708f09bc2b7"
       }
     },
     "idevices": {
@@ -29207,22 +29207,22 @@
       "count": 43,
       "files": 861,
       "size": 5225075,
-      "hash": "70d94435b16c59dda0e81991b18ccd22f4aadfc597eea3f35321d65aea73bec9"
+      "hash": "3a1f9216f75bad1de3ee7ac6a79432aa8c5c8845e72d91ffafab9d9f9689da4c"
     },
     "libs": {
       "files": 8,
       "size": 300841,
-      "hash": "6e6ff1a71358eed961785e37219e9cbfb1643268fe615951b9f774768a955ae5"
+      "hash": "84583388be1849a58900d1060689e6af297e50a54c951213b93bfc07d95c9204"
     },
     "common": {
       "files": 30,
       "size": 177425,
-      "hash": "4342cd3a4c8148460907c79370b783dc520819bd30b49a899b9b4666baf3d375"
+      "hash": "22f2f8104ea579d145c338215029e71a4439ce01943e8203f9c72c93448bf498"
     },
     "contentCss": {
       "files": 4,
       "size": 42920,
-      "hash": "f9690e5588ded7cbee1b874338a6df81283f763c3f8dec49d372b1613806c2e5"
+      "hash": "7d957e0bdeea8f51d1d85d9d4283345d5d14cbcdc960eba336cd18dfee074192"
     }
   }
 }

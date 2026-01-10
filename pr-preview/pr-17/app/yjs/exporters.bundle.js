@@ -7951,6 +7951,9 @@ ${formatValidationErrors(validation)}`);
       const cleanPath = path.startsWith("/") ? path.slice(1) : path;
       if (options.isStaticMode) {
         const basePath2 = options.basePath || ".";
+        if (basePath2.endsWith("/")) {
+          return `${basePath2}${cleanPath}`;
+        }
         return `${basePath2}/${cleanPath}`;
       }
       const baseUrl = options.baseUrl || "";

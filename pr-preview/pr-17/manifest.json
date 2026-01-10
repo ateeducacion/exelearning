@@ -1,0 +1,27 @@
+{
+  "name": "eXeLearning Editor",
+  "short_name": "eXeLearning",
+  "description": "Create interactive educational content offline",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a73e8",
+  "icons": [
+    {
+      "src": "./favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./index.html",
+      "accept": {
+        "application/x-exelearning": [
+          ".elpx",
+          ".elp"
+        ]
+      }
+    }
+  ]
+}

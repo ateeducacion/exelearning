@@ -31,8 +31,16 @@
         .exe-online { display: block !important; }
         li.exe-online { display: list-item !important; }
         /* Hide exe-online items that don't make sense in static mode (Save, Share) */
-        #navbar-button-save.exe-online,
-        #navbar-button-share { display: none !important; }
+        /* Note: exe-online class is on the parent <li>, not on the <a> element */
+        li.exe-online:has(#navbar-button-save),
+        li.exe-online:has(#navbar-button-share),
+        li.exe-online:has(#mobile-navbar-button-save) { display: none !important; }
+        /* Ensure icon sizes inside flex buttons */
+        #head-bottom-preview .small-icon {
+            min-width: 16px;
+            width: 16px;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body id="main">
@@ -49,6 +57,15 @@
         window.__APP_DEBUG__ = "0";
         window.__APP_ONLINE_MODE__ = false;
 
+        // Get saved locale from localStorage, fallback to browser language
+        function getSavedLocale() {
+            try {
+                const prefs = JSON.parse(localStorage.getItem('exelearning_user_preferences') || '{}');
+                if (prefs.locale) return prefs.locale;
+            } catch (e) {}
+            return navigator.language?.split('-')[0] || 'en';
+        }
+
         window.eXeLearning = {
             version: "v0.0.0-alpha",
             expires: "",
@@ -62,7 +79,7 @@
             config: JSON.stringify({
                 isOfflineInstallation: true,
                 isStaticMode: true,
-                locale: navigator.language?.split('-')[0] || 'en',
+                locale: getSavedLocale(),
                 basePath: '.',
                 baseURL: '.',
                 fullURL: '.',
@@ -242,8 +259,6 @@
                         </ul>
                     </li>
                     
-                    <li><a id="navbar-button-import-elp" class="dropdown-item" href="#"><span class="small-icon import-icon-green"></span> Import (.elpx…)</a></li>
-                    
                     <li class="dropdown-divider exe-online"></li>
                     <li class="exe-online"><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> Save</a></li>
                     <li class="d-none"><a id="navbar-button-save-as" class="dropdown-item exe-online" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S"><span class="small-icon save-icon"></span>Save as</a></li>
@@ -260,7 +275,7 @@
                         </ul>
                     </li>
                     <li class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> Settings</a></li>
+                    
                     <li class="exe-online"><a class="dropdown-item" id="navbar-button-share" href="#" data-shortcut="Mod+Alt+S" aria-keyshortcuts="Control+Alt+S Meta+Alt+S"><span class="small-icon share-icon"></span> Share</a></li>
                     
                         <li><a class="dropdown-item" id="navbar-button-open-offline" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> Open</a></li>
@@ -286,13 +301,6 @@
                     
                     <li class="dropdown-divider"></li>
                     <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> Print</a></li>
-                    
-                        <li class="dropdown dropend exe-advanced">
-                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Upload to</a>
-                            <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
-                                <li><a id="navbar-button-uploadtoplatform" class="dropdown-item" href="#"></a></li>
-                            </ul>
-                        </li>
                     
                     <li class="dropdown dropend exe-advanced d-none">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownProperties" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Metadata</a>
@@ -349,7 +357,7 @@
                 <span>Save</span>
             </button>
             <button id="head-bottom-preview" class="btn button-display display-outline button-square d-flex justify-content-center align-items-center" title="Preview">
-                <div class="small-icon preview-icon-green"></div>
+                <span class="small-icon preview-icon-green"></span>
             </button>
             <button id="dropdownStyles" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="Styles">
                 <span class="medium-icon styles-icon"></span>

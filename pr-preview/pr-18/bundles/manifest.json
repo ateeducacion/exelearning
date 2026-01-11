@@ -1,0 +1,97 @@
+{
+  "buildVersion": "v0.0.0-alpha",
+  "builtAt": "2026-01-11T02:26:17.141Z",
+  "themes": {
+    "base": {
+      "files": 56,
+      "size": 113541,
+      "hash": "bb756806e067f656b177d21694ffd04980ac121167421ddb28f9fd6098ec90aa"
+    },
+    "zen": {
+      "files": 69,
+      "size": 1169587,
+      "hash": "4b012aa3e293b077f3309a71a998468dc8224bf57a2e5a354628ec3e31b9b0ae"
+    },
+    "neo": {
+      "files": 75,
+      "size": 1109196,
+      "hash": "29ac581c2c73f02ccd1e73dc0b1b0b19047984e4dfb614a00678c98caa030b7b"
+    },
+    "flux": {
+      "files": 64,
+      "size": 381035,
+      "hash": "1f5f342e6f06f1a8307c18e9e3032838878658e744880b21d10ab3542bb653dd"
+    },
+    "nova": {
+      "files": 63,
+      "size": 137201,
+      "hash": "34538e0014e6c78116d83be8f244092f7b51b8692220c64e4a1af1205cfe1976"
+    }
+  },
+  "idevices": {
+    "digcompedu": 3,
+    "discover": 26,
+    "mathematicaloperations": 18,
+    "rubric": 2,
+    "interactive-video": 8,
+    "dragdrop": 18,
+    "word-search": 25,
+    "download-source-file": 4,
+    "challenge": 24,
+    "quick-questions-video": 27,
+    "hidden-image": 14,
+    "casestudy": 3,
+    "example": 3,
+    "map": 158,
+    "identify": 25,
+    "progress-report": 9,
+    "quick-questions-multiple-choice": 27,
+    "magnifier": 7,
+    "geogebra-activity": 6,
+    "mathproblems": 18,
+    "text": 4,
+    "checklist": 8,
+    "sort": 27,
+    "beforeafter": 18,
+    "trivial": 41,
+    "form": 13,
+    "complete": 17,
+    "trueorfalse": 21,
+    "external-website": 2,
+    "az-quiz-game": 32,
+    "udl-content": 8,
+    "puzzle": 26,
+    "guess": 31,
+    "crossword": 23,
+    "flipcards": 22,
+    "select-media-files": 25,
+    "scrambled-list": 14,
+    "quick-questions": 26,
+    "periodic-table": 14,
+    "padlock": 13,
+    "relate": 22,
+    "image-gallery": 6,
+    "classify": 23
+  },
+  "idevicesBundle": {
+    "count": 43,
+    "files": 861,
+    "size": 5225075,
+    "hash": "faad58435ee45c0643c557d47a7ec85d13133c1a4b68db98ab8434ddd35ee442"
+  },
+  "libs": {
+    "files": 8,
+    "size": 300860,
+    "hash": "4678d38965b54a0cab213ff42d2abbf4cca7448250604d3d8df056d93d7fe620"
+  },
+  "common": {
+    "files": 30,
+    "size": 177425,
+    "hash": "a90c056638d4b3d06d4804cae8737168c967621320793e1ed5967e2e02f9180b"
+  },
+  "contentCss": {
+    "files": 4,
+    "size": 42920,
+    "hash": "5fc7aca361d9519a780736f60cb7896c71504a5fbb04bd269395a0ca8686b054"
+  }
+}

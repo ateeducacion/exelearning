@@ -27,14 +27,19 @@
 
     <!-- Static mode overrides -->
     <style>
-        /* Show exe-online items in static mode (they contain Open and Recent Projects) */
-        .exe-online { display: block !important; }
+        /* Show exe-online menu items in static mode (they contain Open and Recent Projects) */
         li.exe-online { display: list-item !important; }
-        /* Hide exe-online items that don't make sense in static mode (Save, Share) */
-        /* Note: exe-online class is on the parent <li>, not on the <a> element */
+        /* Hide exe-online items that don't make sense in static mode (Save, Share, Logout) */
         li.exe-online:has(#navbar-button-save),
         li.exe-online:has(#navbar-button-share),
-        li.exe-online:has(#mobile-navbar-button-save) { display: none !important; }
+        li.exe-online:has(#mobile-navbar-button-save),
+        li.exe-online:has(#head-bottom-logout-button) { display: none !important; }
+        /* Hide Exit button (for Electron only) and its divider in static mode */
+        li.exe-electron { display: none !important; }
+        li.dropdown-divider.exe-online.exe-electron { display: none !important; }
+        /* Avatar: show exe logo (exe-offline), hide user avatar (exe-online) */
+        #exeUserMenuToggler .exe-offline { display: inline-block !important; }
+        #exeUserMenuToggler .exe-online { display: none !important; }
         /* Ensure icon sizes inside flex buttons */
         #head-bottom-preview .small-icon {
             min-width: 16px;
@@ -385,11 +390,8 @@
             <div id="head-bottom-user-logged" class="dropdown" title="" data-testid="user-menu" data-user-email="">
                 <button class="btn btn-link" type="button" id="exeUserMenuToggler" data-bs-toggle="dropdown" aria-expanded="false" title="User menu">
                     
-                    <img class="exe-gravatar exe-gravatar--offline" src="./exelearning.png" alt="eXeLearning" width="50" height="50" data-testid="user-avatar">
+                    <img class="exe-gravatar exe-gravatar--offline exe-offline" src="./exelearning.png" alt="eXeLearning" width="50" height="50" data-testid="user-avatar-offline">
                     
-                    <img class="exe-gravatar" src="" alt="" width="50" height="50" data-testid="user-avatar" onerror="this.onerror=null;this.src='./images/default-avatar.svg';this.classList.add('exe-gravatar--fallback');">
-                    
-                    <span class="exe-avatar" title="" data-testid="user-avatar-initial"></span>
                     
                 </button>
 
@@ -424,12 +426,9 @@
 
                     
                     <li><a class="dropdown-item" id="navbar-button-preferences" href="#">Preferences</a></li>
-                    <li class="dropdown-divider"></li>
-                    
-                    <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">Exit</a></li>
-                    
-                    <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">Logout</a></li>
-                    
+                    <li class="dropdown-divider exe-online exe-electron"></li>
+                    <li class="exe-online"><a class="dropdown-item" id="head-bottom-logout-button" href="#">Logout</a></li>
+                    <li class="exe-electron"><a class="dropdown-item" id="head-bottom-exit-button" href="#">Exit</a></li>
                 </ul>
             </div>
         </div>
@@ -1058,7 +1057,7 @@
             </div>
             <div class="modal-body help-modal help-modal-with-logo">
                 <div class="help-modal-top">
-                    <img src="" class="exe-logo content" alt="Logo eXeLearning">
+                    <img src="./style/workarea/images/exelearning.svg" class="exe-logo content" alt="Logo eXeLearning">
                 </div>
                 <div class="help-modal-content">
                     <h1 class="lead mb-4">Changelog</h1>
@@ -1082,7 +1081,7 @@
             </div>
             <div class="modal-body help-modal help-modal-with-logo">
                 <div class="help-modal-top">
-                    <img src="" class="exe-logo content" alt="Logo eXeLearning">
+                    <img src="./style/workarea/images/exelearning.svg" class="exe-logo content" alt="Logo eXeLearning">
                 </div>
                 <div class="help-modal-content">
                     <ul class="exe-form-tabs">
@@ -1150,7 +1149,7 @@
             </div>
             <div class="modal-body help-modal help-modal-with-logo">
                 <div class="help-modal-top">
-                    <img src="" class="exe-logo content" alt="Logo eXeLearning">
+                    <img src="./style/workarea/images/exelearning.svg" class="exe-logo content" alt="Logo eXeLearning">
                 </div>
                 <div class="help-modal-content">
                     <h1 class="lead mb-4">eXeLearning </h1>

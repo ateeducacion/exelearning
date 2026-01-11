@@ -1,6 +1,6 @@
 {
   "version": "v0.0.0-alpha",
-  "builtAt": "2026-01-11T15:36:04.865Z",
+  "builtAt": "2026-01-11T16:03:27.785Z",
   "parameters": {
     "routes": {
       "api_translations_lists": {
@@ -29139,32 +29139,32 @@
   },
   "bundleManifest": {
     "buildVersion": "v0.0.0-alpha",
-    "builtAt": "2026-01-11T15:36:03.573Z",
+    "builtAt": "2026-01-11T16:03:26.514Z",
     "themes": {
       "base": {
         "files": 56,
         "size": 113541,
-        "hash": "46b24cd73a261dfe25d62a64945849b6ad77491ca5f8dcec47d9c6d895ed114d"
+        "hash": "f2ad32b985dabe6a5116b1063ed03924eecf1a3ccc5d2cf175fccce94bb75bbe"
       },
       "zen": {
         "files": 69,
         "size": 1169587,
-        "hash": "476af14c0ec14d2bd848adc652a54afe3bf5dd9a843745599583aa762a9009c1"
+        "hash": "30fbc9cb5fedbfadeb101a036003cb98b7dbe999b9d69d7b88fbf9ff97247d1f"
       },
       "neo": {
         "files": 75,
         "size": 1109196,
-        "hash": "2a7a8c9f7d54704d6bab1d18c8639c38942a20e6afb5b17c3cffbeeafd08af5f"
+        "hash": "4b5291278e64f1e1b3d9e5af2f6954a4b19aee4b9d1caae98ff77d79697d482b"
       },
       "flux": {
         "files": 64,
         "size": 381035,
-        "hash": "f6316c175dac4241a8c9ab4063754fdb4617e4d26aae09bbb470aacb3a7feaf5"
+        "hash": "aa8a9d7309c0b9f0c7e081014bcac6112c415bf2806cc7c5d6ac008c6cfc4c37"
       },
       "nova": {
         "files": 63,
         "size": 137201,
-        "hash": "46b510a732794f765cea0bed6a1e707d2bbf4c6526d7daaff2694e9447c64b55"
+        "hash": "468281b36945173d1263ea4d86ebaeef002586256b8b5efd021c3b5bf38daf2b"
       }
     },
     "idevices": {
@@ -29216,22 +29216,22 @@
       "count": 43,
       "files": 861,
       "size": 5225075,
-      "hash": "5fa34d647ae8fc362bf8a6b1055be137354aa0f02a724d20882bc7a740bffa2c"
+      "hash": "b8f311f9a85b1f2800279b3be59ed1395513d6b09d17cdb6bcdbe9bd41d687a5"
     },
     "libs": {
       "files": 8,
       "size": 300860,
-      "hash": "5bcfdf9d2be441b0a9ea5b954858174a62e115ff370e8f7d962d2c2737e25812"
+      "hash": "693ae4e192f7af0007be53fb5810e7f90b9099e11a671cd7ddc72777a14096e9"
     },
     "common": {
       "files": 30,
       "size": 177425,
-      "hash": "d00abb9d0ef832025cf913e7ae74d489905f1ff1a55aaa5120ab32dc325ec105"
+      "hash": "817ebf9fc6f05659eee210fde428e3a403b48d57370c5cdb91706c1a08b7b000"
     },
     "contentCss": {
       "files": 4,
-      "size": 42920,
-      "hash": "5149390d7afa7a79e28196b13eb750ab60144753c3268a084592187e3840d3ea"
+      "size": 42946,
+      "hash": "f36573421857742d17202c7e711100411037e5afed45cab455732ce6c74d3c57"
     }
   }
 }

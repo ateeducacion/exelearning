@@ -9417,48 +9417,6 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
     URL.revokeObjectURL(url);
     return result;
   }
-  async function generatePreview(documentManager, resourceFetcher, options) {
-    try {
-      const result = await generatePreviewForSW(
-        documentManager,
-        null,
-        // assetCache
-        resourceFetcher,
-        null,
-        // assetManager
-        options
-      );
-      if (!result.success || !result.files) {
-        return { success: false, error: result.error || "Preview generation failed" };
-      }
-      const indexBuffer = result.files["index.html"];
-      if (!indexBuffer) {
-        return { success: false, error: "index.html not found in preview files" };
-      }
-      const decoder = new TextDecoder("utf-8");
-      let html = decoder.decode(new Uint8Array(indexBuffer));
-      if (options?.userThemeCss || options?.userThemeJs) {
-        const headClose = html.lastIndexOf("</head>");
-        if (headClose !== -1) {
-          let inject = "";
-          if (options.userThemeCss) {
-            inject += `<style id="user-theme-css">${options.userThemeCss}</style>`;
-          }
-          if (options.userThemeJs) {
-            inject += `<script id="user-theme-js">${options.userThemeJs}<\/script>`;
-          }
-          html = html.slice(0, headClose) + inject + html.slice(headClose);
-        }
-      }
-      return { success: true, html };
-    } catch (error) {
-      console.error("[SharedExporters] generatePreview failed:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error)
-      };
-    }
-  }
   async function generatePrintPreview(documentManager, resourceFetcher, options) {
     const document2 = new YjsDocumentAdapter(documentManager);
     const resources = resourceFetcher ? new BrowserResourceProvider(resourceFetcher) : createNullResourceProvider();
@@ -9525,10 +9483,8 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
       createExporter,
       quickExport,
       exportAndDownload,
-      // Preview functions
+      // SW-based preview functions
       generatePreviewForSW,
-      generatePreview,
-      // Legacy compatibility - wraps generatePreviewForSW
       // Print preview functions
       generatePrintPreview,
       createPrintPreviewExporter,

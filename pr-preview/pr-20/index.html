@@ -72,7 +72,7 @@
         }
 
         window.eXeLearning = {
-            version: "v0.0.0-pr20-202601171856",
+            version: "v0.0.0-pr20-202601171911",
             expires: "",
             extension: "elpx",
             user: JSON.stringify({
@@ -132,7 +132,7 @@
 
     <!-- Load Screen (visible by default in static mode) -->
     <div id="load-screen-main" class="load-screen loading" data-testid="loading-main" data-visible="true">
-        <span>eXeLearning v0.0.0-pr20-202601171856</span>
+        <span>eXeLearning v0.0.0-pr20-202601171911</span>
     </div>
 
     <!-- Main Workarea Container (visible by default in static mode) -->
@@ -1152,7 +1152,7 @@
                     <img src="./style/workarea/images/exelearning.svg" class="exe-logo content" alt="Logo eXeLearning">
                 </div>
                 <div class="help-modal-content">
-                    <h1 class="lead mb-4">eXeLearning v0.0.0-pr20-202601171856</h1>
+                    <h1 class="lead mb-4">eXeLearning v0.0.0-pr20-202601171911</h1>
                     
                     <p class="alert alert-warning mb-4">
                         <strong>This is a demo version!</strong>
@@ -1742,14 +1742,30 @@
     <!-- Main Application Bundle -->
     <script src="./app/app.bundle.js"></script>
 
-    <!-- Register Service Worker for PWA -->
+    <!-- Register Service Worker for PWA (only when installed as standalone app) -->
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js')
-                    .then(reg => console.log('[PWA] Service worker registered'))
-                    .catch(err => console.log('[PWA] Service worker registration failed:', err));
-            });
+            // Only register SW when installed as PWA (standalone mode)
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches
+                       || window.navigator.standalone === true;  // iOS Safari
+
+            if (isPWA) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('./service-worker.js')
+                        .then(reg => console.log('[PWA] Service worker registered'))
+                        .catch(err => console.log('[PWA] Service worker registration failed:', err));
+                });
+            } else {
+                // Unregister any existing SW when not in PWA mode
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                    regs.forEach(reg => {
+                        if (reg.active?.scriptURL.includes('service-worker.js')) {
+                            reg.unregister();
+                            console.log('[Static] Service worker unregistered (not in PWA mode)');
+                        }
+                    });
+                });
+            }
         }
     </script>
 </body>

@@ -3,7 +3,7 @@
  * Provides offline-first caching for PWA
  */
 
-const CACHE_NAME = 'exelearning-static-v0.0.0-pr20-202601171856-d4de360';
+const CACHE_NAME = 'exelearning-static-v0.0.0-pr20-202601171911-fb3a79f';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -47,34 +47,36 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch: Cache-first strategy
+// Fetch: Network-first strategy (always online when possible)
 self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
 
     event.respondWith(
-        caches.match(event.request)
-            .then(cached => {
-                if (cached) {
-                    return cached;
+        fetch(event.request)
+            .then(response => {
+                // Network succeeded - update cache and return
+                if (response.ok) {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, clone);
+                    });
                 }
-
-                return fetch(event.request).then(response => {
-                    // Cache successful responses
-                    if (response.ok) {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then(cache => {
-                            cache.put(event.request, clone);
-                        });
-                    }
-                    return response;
-                });
+                return response;
             })
             .catch(() => {
-                // Offline fallback for navigation
-                if (event.request.mode === 'navigate') {
-                    return caches.match('./index.html');
-                }
+                // Network failed - try cache (offline fallback)
+                return caches.match(event.request).then(cached => {
+                    if (cached) {
+                        console.log('[SW] Serving from cache (offline):', event.request.url);
+                        return cached;
+                    }
+                    // Navigation fallback
+                    if (event.request.mode === 'navigate') {
+                        return caches.match('./index.html');
+                    }
+                    return new Response('Offline', { status: 503 });
+                });
             })
     );
 });

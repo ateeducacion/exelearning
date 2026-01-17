@@ -2782,8 +2782,9 @@ ${contentHtml}
       const searchBoxHtml = addSearchBox ? `<div id="exe-client-search" data-block-order-string="Caja %e" data-no-results-string="Sin resultados.">
 </div>` : "";
       const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe() : "";
-      const navHtml = hideNavigation ? "" : this.renderNavigation(allPages, page.id, basePath);
-      const navButtonsHtml = hideNavButtons ? "" : this.renderNavButtons(page, allPages, basePath, language);
+      const pageFilenameMap = options.pageFilenameMap;
+      const navHtml = hideNavigation ? "" : this.renderNavigation(allPages, page.id, basePath, pageFilenameMap);
+      const navButtonsHtml = hideNavButtons ? "" : this.renderNavButtons(page, allPages, basePath, language, pageFilenameMap);
       return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? "index" : page.id}">
 <head>
@@ -2919,11 +2920,11 @@ ${extraHeadScripts}`;
      * @param basePath - Base path for links
      * @returns Navigation HTML
      */
-    renderNavigation(allPages, currentPageId, basePath) {
+    renderNavigation(allPages, currentPageId, basePath, pageFilenameMap) {
       const rootPages = allPages.filter((p) => !p.parentId);
       let html = '<nav id="siteNav">\n<ul>\n';
       for (const page of rootPages) {
-        html += this.renderNavItem(page, allPages, currentPageId, basePath);
+        html += this.renderNavItem(page, allPages, currentPageId, basePath, pageFilenameMap);
       }
       html += "</ul>\n</nav>";
       return html;
@@ -2934,9 +2935,10 @@ ${extraHeadScripts}`;
      * @param allPages - All pages
      * @param currentPageId - Current page ID
      * @param basePath - Base path
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional)
      * @returns Navigation item HTML
      */
-    renderNavItem(page, allPages, currentPageId, basePath) {
+    renderNavItem(page, allPages, currentPageId, basePath, pageFilenameMap) {
       if (!this.isPageVisible(page, allPages)) {
         return "";
       }
@@ -2946,7 +2948,7 @@ ${extraHeadScripts}`;
       const isAncestor = this.isAncestorOf(page.id, currentPageId, allPages);
       const isFirstPage = page.id === allPages[0]?.id;
       const liClass = isCurrent ? ' id="active" class="active"' : isAncestor ? ' class="current-page-parent"' : "";
-      const link = this.getPageLink(page, allPages, basePath);
+      const link = this.getPageLink(page, allPages, basePath, pageFilenameMap);
       const linkClasses = [];
       if (isCurrent) linkClasses.push("active");
       if (isFirstPage) linkClasses.push("main-node");
@@ -2960,7 +2962,7 @@ ${extraHeadScripts}`;
       if (hasChildren) {
         html += '<ul class="other-section">\n';
         for (const child of children) {
-          html += this.renderNavItem(child, allPages, currentPageId, basePath);
+          html += this.renderNavItem(child, allPages, currentPageId, basePath, pageFilenameMap);
         }
         html += "</ul>\n";
       }
@@ -3046,15 +3048,17 @@ ${extraHeadScripts}`;
      * @param page - Page
      * @param allPages - All pages
      * @param basePath - Base path
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      * @returns Link URL
      */
-    getPageLink(page, allPages, basePath) {
+    getPageLink(page, allPages, basePath, pageFilenameMap) {
       const isFirstPage = page.id === allPages[0]?.id;
       if (isFirstPage) {
         return basePath ? `${basePath}index.html` : "index.html";
       }
-      const filename = this.sanitizeFilename(page.title);
-      return `${basePath}html/${filename}.html`;
+      const mapFilename = pageFilenameMap?.get(page.id);
+      const filename = mapFilename || `${this.sanitizeFilename(page.title)}.html`;
+      return `${basePath}html/${filename}`;
     }
     /**
      * Sanitize title for use as filename
@@ -3150,13 +3154,13 @@ ${extraHeadScripts}`;
      * @param _language - Deprecated, translation now happens at runtime via $exe_i18n
      * @returns Navigation buttons HTML
      */
-    renderNavButtons(page, allPages, basePath, _language = "en") {
+    renderNavButtons(page, allPages, basePath, _language = "en", pageFilenameMap) {
       const currentIndex = allPages.findIndex((p) => p.id === page.id);
       const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
       const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
       const parts = ['<div class="nav-buttons">'];
       if (prevPage) {
-        const link = this.getPageLink(prevPage, allPages, basePath);
+        const link = this.getPageLink(prevPage, allPages, basePath, pageFilenameMap);
         parts.push(
           `<a href="${link}" title="Previous" class="nav-button nav-button-left" data-i18n="previous"><span>Previous</span></a>`
         );
@@ -3166,7 +3170,7 @@ ${extraHeadScripts}`;
         );
       }
       if (nextPage) {
-        const link = this.getPageLink(nextPage, allPages, basePath);
+        const link = this.getPageLink(nextPage, allPages, basePath, pageFilenameMap);
         parts.push(
           `<a href="${link}" title="Next" class="nav-button nav-button-right" data-i18n="next"><span>Next</span></a>`
         );
@@ -3237,17 +3241,19 @@ ${userFooterHtml}</div></footer>`;
     /**
      * Generate search data JSON for client-side search functionality
      * @param allPages - All pages in the project
-     * @param basePath - Base path for URLs
+     * @param _basePath - Base path for URLs (unused but kept for API compatibility)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      * @returns JSON string with page structure
      */
-    generateSearchData(allPages, _basePath) {
+    generateSearchData(allPages, _basePath, pageFilenameMap) {
       const pagesData = {};
       for (let i = 0; i < allPages.length; i++) {
         const page = allPages[i];
         const isIndex = i === 0;
         const prevPage = i > 0 ? allPages[i - 1] : null;
         const nextPage = i < allPages.length - 1 ? allPages[i + 1] : null;
-        const fileName = isIndex ? "index.html" : `${this.sanitizeFilename(page.title)}.html`;
+        const mapFilename = pageFilenameMap?.get(page.id);
+        const fileName = isIndex ? "index.html" : mapFilename || `${this.sanitizeFilename(page.title)}.html`;
         const fileUrl = isIndex ? "index.html" : `html/${fileName}`;
         const blocksData = {};
         for (const block of page.blocks || []) {
@@ -3282,10 +3288,11 @@ ${userFooterHtml}</div></footer>`;
      * Generate the content for search_index.js file
      * @param allPages - All pages in the project
      * @param basePath - Base path for URLs
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      * @returns JavaScript file content with window.exeSearchData assignment
      */
-    generateSearchIndexFile(allPages, basePath) {
-      const searchDataJson = this.generateSearchData(allPages, basePath);
+    generateSearchIndexFile(allPages, basePath, pageFilenameMap) {
+      const searchDataJson = this.generateSearchData(allPages, basePath, pageFilenameMap);
       return `window.exeSearchData = ${searchDataJson};`;
     }
     /**
@@ -4053,13 +4060,60 @@ ${this.renderLicense({ author, license })}
       return clonedPages;
     }
     /**
+     * Build a map of page IDs to unique filenames
+     * Handles collisions by incrementing trailing numbers or appending -1, -2, etc.
+     * First page is always index.html, others are {sanitized-title}.html
+     *
+     * For filenames ending with a number (e.g., "new-page-1"), collisions increment
+     * that number (e.g., "new-page-2", "new-page-3") instead of appending another number.
+     */
+    buildPageFilenameMap(pages) {
+      const filenameMap = /* @__PURE__ */ new Map();
+      const usedFilenames = /* @__PURE__ */ new Set();
+      const maxAttempts = 20;
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        if (i === 0) {
+          filenameMap.set(page.id, "index.html");
+          usedFilenames.add("index.html");
+          continue;
+        }
+        const baseFilename = this.sanitizePageFilename(page.title);
+        let filename = `${baseFilename}.html`;
+        if (usedFilenames.has(filename)) {
+          const match = baseFilename.match(/^(.*?)-?(\d+)$/);
+          if (match) {
+            const base = match[1] ? `${match[1]}-` : "";
+            const startNum = parseInt(match[2], 10);
+            let counter = startNum + 1;
+            while (counter <= startNum + maxAttempts) {
+              filename = `${base}${counter}.html`;
+              if (!usedFilenames.has(filename)) break;
+              counter++;
+            }
+          } else {
+            let counter = 2;
+            while (usedFilenames.has(filename) && counter <= maxAttempts + 1) {
+              filename = `${baseFilename}-${counter}.html`;
+              counter++;
+            }
+          }
+        }
+        usedFilenames.add(filename);
+        filenameMap.set(page.id, filename);
+      }
+      return filenameMap;
+    }
+    /**
      * Build a map of page IDs to their export URLs
      * Used for internal link (exe-node:) conversion
      */
     buildPageUrlMap(pages) {
       const map = /* @__PURE__ */ new Map();
+      const filenameMap = this.buildPageFilenameMap(pages);
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
+        const filename = filenameMap.get(page.id) || "page.html";
         const isFirstPage = i === 0;
         if (isFirstPage) {
           map.set(page.id, {
@@ -4067,10 +4121,9 @@ ${this.renderLicense({ author, license })}
             urlFromSubpage: "../index.html"
           });
         } else {
-          const filename = this.sanitizePageFilename(page.title);
           map.set(page.id, {
-            url: `html/${filename}.html`,
-            urlFromSubpage: `${filename}.html`
+            url: `html/${filename}`,
+            urlFromSubpage: filename
           });
         }
       }
@@ -5114,6 +5167,7 @@ if (typeof module !== 'undefined' && module.exports) {
         const themeName = html5Options?.theme || meta.theme || "base";
         const needsElpxDownload = this.needsElpxDownloadSupport(pages);
         pages = await this.preprocessPagesForExport(pages);
+        const pageFilenameMap = this.buildPageFilenameMap(pages);
         const fileList = needsElpxDownload ? [] : null;
         const addFile = (path, content) => {
           this.zip.addFile(path, content);
@@ -5133,7 +5187,16 @@ if (typeof module !== 'undefined' && module.exports) {
         let mermaidWasRendered = false;
         for (let i = 0; i < pages.length; i++) {
           const page = pages[i];
-          let html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
+          let html = this.generatePageHtml(
+            page,
+            pages,
+            meta,
+            i === 0,
+            i,
+            themeRootFiles,
+            faviconInfo,
+            pageFilenameMap
+          );
           if (!meta.addMathJax) {
             if (options?.preRenderDataGameLatex) {
               try {
@@ -5182,11 +5245,12 @@ if (typeof module !== 'undefined' && module.exports) {
               console.warn("[Html5Exporter] Mermaid pre-render failed for page:", page.title, error);
             }
           }
-          const pageFilename = i === 0 ? "index.html" : `html/${this.sanitizePageFilename(page.title)}.html`;
+          const filename = pageFilenameMap.get(page.id) || "page.html";
+          const pageFilename = i === 0 ? "index.html" : `html/${filename}`;
           pageHtmlMap.set(pageFilename, html);
         }
         if (meta.addSearchBox) {
-          const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, "");
+          const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, "", pageFilenameMap);
           addFile("search_index.js", searchIndexContent);
         }
         if (meta.exportSource !== false) {
@@ -5301,7 +5365,8 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         for (let i = 0; i < pages.length; i++) {
           const page = pages[i];
-          const filename = i === 0 ? "index.html" : `html/${this.sanitizePageFilename(page.title)}.html`;
+          const pageFilename = pageFilenameMap.get(page.id) || "page.html";
+          const filename = i === 0 ? "index.html" : `html/${pageFilename}`;
           let html = pageHtmlMap.get(filename) || "";
           if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
             const basePath = i === 0 ? "" : "../";
@@ -5332,8 +5397,10 @@ if (typeof module !== 'undefined' && module.exports) {
      * @param isIndex - Whether this is the index page
      * @param pageIndex - Page index for page counter
      * @param themeFiles - List of root-level theme CSS/JS files
+     * @param faviconInfo - Favicon info (optional)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
-    generatePageHtml(page, allPages, meta, isIndex, pageIndex, themeFiles, faviconInfo) {
+    generatePageHtml(page, allPages, meta, isIndex, pageIndex, themeFiles, faviconInfo, pageFilenameMap) {
       const basePath = isIndex ? "" : "../";
       const usedIdevices = this.getUsedIdevicesForPage(page);
       const currentPageIndex = pageIndex ?? allPages.findIndex((p) => p.id === page.id);
@@ -5380,7 +5447,9 @@ if (typeof module !== 'undefined' && module.exports) {
         themeFiles: themeFiles || [],
         // Favicon options
         faviconPath: faviconInfo?.path,
-        faviconType: faviconInfo?.type
+        faviconType: faviconInfo?.type,
+        // Page filename map for navigation links (handles title collisions)
+        pageFilenameMap
       });
     }
     /**
@@ -5473,6 +5542,7 @@ if (typeof module !== 'undefined' && module.exports) {
         const themeName = options?.theme || meta.theme || "base";
         const needsElpxDownload = this.needsElpxDownloadSupport(pages);
         pages = await this.preprocessPagesForExport(pages);
+        const pageFilenameMap = this.buildPageFilenameMap(pages);
         const fileList = needsElpxDownload ? [] : null;
         const addFile = (path, content) => {
           files.set(path, content);
@@ -5489,7 +5559,16 @@ if (typeof module !== 'undefined' && module.exports) {
         let mermaidWasRendered = false;
         for (let i = 0; i < pages.length; i++) {
           const page = pages[i];
-          let html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
+          let html = this.generatePageHtml(
+            page,
+            pages,
+            meta,
+            i === 0,
+            i,
+            themeRootFiles,
+            faviconInfo,
+            pageFilenameMap
+          );
           if (!meta.addMathJax) {
             if (options?.preRenderDataGameLatex) {
               try {
@@ -5522,11 +5601,12 @@ if (typeof module !== 'undefined' && module.exports) {
             } catch {
             }
           }
-          const pageFilename = i === 0 ? "index.html" : `html/${this.sanitizePageFilename(page.title)}.html`;
+          const uniqueFilename = pageFilenameMap.get(page.id) || "page.html";
+          const pageFilename = i === 0 ? "index.html" : `html/${uniqueFilename}`;
           pageHtmlMap.set(pageFilename, html);
         }
         if (meta.addSearchBox) {
-          const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, "");
+          const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, "", pageFilenameMap);
           addFile("search_index.js", searchIndexContent);
         }
         const contentCssFiles = await this.resources.fetchContentCss();
@@ -5632,7 +5712,8 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         for (let i = 0; i < pages.length; i++) {
           const page = pages[i];
-          const filename = i === 0 ? "index.html" : `html/${this.sanitizePageFilename(page.title)}.html`;
+          const uniqueFilename = pageFilenameMap.get(page.id) || "page.html";
+          const filename = i === 0 ? "index.html" : `html/${uniqueFilename}`;
           let html = pageHtmlMap.get(filename) || "";
           if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
             const basePath = i === 0 ? "" : "../";
@@ -6299,6 +6380,7 @@ html {
         const themeName = options?.theme || meta.theme || "base";
         const projectId = this.generateProjectId();
         pages = await this.preprocessPagesForExport(pages);
+        const pageFilenameMap = this.buildPageFilenameMap(pages);
         this.manifestGenerator = new Scorm12ManifestGenerator(projectId, pages, {
           title: meta.title || "eXeLearning",
           language: meta.language || "en",
@@ -6320,7 +6402,16 @@ html {
         for (let i = 0; i < pages.length; i++) {
           const page = pages[i];
           const isIndex = i === 0;
-          let html = this.generateScormPageHtml(page, pages, meta, isIndex, themeRootFiles, i, faviconInfo);
+          let html = this.generateScormPageHtml(
+            page,
+            pages,
+            meta,
+            isIndex,
+            themeRootFiles,
+            i,
+            faviconInfo,
+            pageFilenameMap
+          );
           if (!meta.addMathJax && options?.preRenderLatex) {
             try {
               const result = await options.preRenderLatex(html);
@@ -6335,7 +6426,8 @@ html {
               console.warn("[Scorm12Exporter] LaTeX pre-render failed for page:", page.title, error);
             }
           }
-          const pageFilename = isIndex ? "index.html" : `html/${this.sanitizePageFilename(page.title)}.html`;
+          const uniqueFilename = pageFilenameMap.get(page.id) || "page.html";
+          const pageFilename = isIndex ? "index.html" : `html/${uniqueFilename}`;
           this.zip.addFile(pageFilename, html);
           pageFiles[page.id] = {
             fileUrl: pageFilename,
@@ -6446,8 +6538,10 @@ html {
      * @param isIndex - Whether this is the index page
      * @param themeFiles - List of root-level theme CSS/JS files
      * @param pageIndex - Index of the current page (for page counter)
+     * @param faviconInfo - Favicon info (optional)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
-    generateScormPageHtml(page, allPages, meta, isIndex, themeFiles, pageIndex, faviconInfo) {
+    generateScormPageHtml(page, allPages, meta, isIndex, themeFiles, pageIndex, faviconInfo, pageFilenameMap) {
       const basePath = isIndex ? "" : "../";
       const usedIdevices = this.getUsedIdevicesForPage(page);
       return this.pageRenderer.render(page, {
@@ -6485,7 +6579,9 @@ html {
         themeFiles: themeFiles || [],
         // Favicon options
         faviconPath: faviconInfo?.path,
-        faviconType: faviconInfo?.type
+        faviconType: faviconInfo?.type,
+        // Page filename map for navigation links (handles title collisions)
+        pageFilenameMap
       });
     }
     /**
@@ -6924,6 +7020,7 @@ ${indentStr}</imsss:sequencing>
         const themeName = options?.theme || meta.theme || "base";
         const projectId = this.generateProjectId();
         pages = await this.preprocessPagesForExport(pages);
+        const pageFilenameMap = this.buildPageFilenameMap(pages);
         this.manifestGenerator = new Scorm2004ManifestGenerator(projectId, pages, {
           title: meta.title || "eXeLearning",
           language: meta.language || "en",
@@ -6945,7 +7042,16 @@ ${indentStr}</imsss:sequencing>
         for (let i = 0; i < pages.length; i++) {
           const page = pages[i];
           const isIndex = i === 0;
-          let html = this.generateScorm2004PageHtml(page, pages, meta, isIndex, themeRootFiles, i, faviconInfo);
+          let html = this.generateScorm2004PageHtml(
+            page,
+            pages,
+            meta,
+            isIndex,
+            themeRootFiles,
+            i,
+            faviconInfo,
+            pageFilenameMap
+          );
           if (!meta.addMathJax && options?.preRenderLatex) {
             try {
               const result = await options.preRenderLatex(html);
@@ -6960,7 +7066,8 @@ ${indentStr}</imsss:sequencing>
               console.warn("[Scorm2004Exporter] LaTeX pre-render failed for page:", page.title, error);
             }
           }
-          const pageFilename = isIndex ? "index.html" : `html/${this.sanitizePageFilename(page.title)}.html`;
+          const uniqueFilename = pageFilenameMap.get(page.id) || "page.html";
+          const pageFilename = isIndex ? "index.html" : `html/${uniqueFilename}`;
           this.zip.addFile(pageFilename, html);
           pageFiles[page.id] = {
             fileUrl: pageFilename,
@@ -7071,8 +7178,10 @@ ${indentStr}</imsss:sequencing>
      * @param isIndex - Whether this is the index page
      * @param themeFiles - List of root-level theme CSS/JS files
      * @param pageIndex - Index of the current page (for page counter)
+     * @param faviconInfo - Favicon info (optional)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
-    generateScorm2004PageHtml(page, allPages, meta, isIndex, themeFiles, pageIndex, faviconInfo) {
+    generateScorm2004PageHtml(page, allPages, meta, isIndex, themeFiles, pageIndex, faviconInfo, pageFilenameMap) {
       const basePath = isIndex ? "" : "../";
       const usedIdevices = this.getUsedIdevicesForPage(page);
       return this.pageRenderer.render(page, {
@@ -7110,7 +7219,9 @@ ${indentStr}</imsss:sequencing>
         themeFiles: themeFiles || [],
         // Favicon options
         faviconPath: faviconInfo?.path,
-        faviconType: faviconInfo?.type
+        faviconType: faviconInfo?.type,
+        // Page filename map for navigation links (handles title collisions)
+        pageFilenameMap
       });
     }
     /**
@@ -7568,6 +7679,7 @@ function setScore(score, maxScore, minScore) {
         const themeName = options?.theme || meta.theme || "base";
         const projectId = this.generateProjectId();
         pages = await this.preprocessPagesForExport(pages);
+        const pageFilenameMap = this.buildPageFilenameMap(pages);
         this.manifestGenerator = new ImsManifestGenerator(projectId, pages, {
           title: meta.title || "eXeLearning",
           language: meta.language || "en",
@@ -7582,7 +7694,16 @@ function setScore(score, maxScore, minScore) {
         for (let i = 0; i < pages.length; i++) {
           const page = pages[i];
           const isIndex = i === 0;
-          let html = this.generateImsPageHtml(page, pages, meta, isIndex, themeRootFiles, i, faviconInfo);
+          let html = this.generateImsPageHtml(
+            page,
+            pages,
+            meta,
+            isIndex,
+            themeRootFiles,
+            i,
+            faviconInfo,
+            pageFilenameMap
+          );
           if (!meta.addMathJax && options?.preRenderLatex) {
             try {
               const result = await options.preRenderLatex(html);
@@ -7597,7 +7718,8 @@ function setScore(score, maxScore, minScore) {
               console.warn("[ImsExporter] LaTeX pre-render failed for page:", page.title, error);
             }
           }
-          const pageFilename = isIndex ? "index.html" : `html/${this.sanitizePageFilename(page.title)}.html`;
+          const uniqueFilename = pageFilenameMap.get(page.id) || "page.html";
+          const pageFilename = isIndex ? "index.html" : `html/${uniqueFilename}`;
           this.zip.addFile(pageFilename, html);
           pageFiles[page.id] = {
             fileUrl: pageFilename,
@@ -7689,8 +7811,10 @@ function setScore(score, maxScore, minScore) {
      * @param isIndex - Whether this is the index page
      * @param themeFiles - List of root-level theme CSS/JS files
      * @param pageIndex - Index of the current page (for page counter)
+     * @param faviconInfo - Favicon info (optional)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
-    generateImsPageHtml(page, allPages, meta, isIndex, themeFiles, pageIndex, faviconInfo) {
+    generateImsPageHtml(page, allPages, meta, isIndex, themeFiles, pageIndex, faviconInfo, pageFilenameMap) {
       const basePath = isIndex ? "" : "../";
       const usedIdevices = this.getUsedIdevicesForPage(page);
       return this.pageRenderer.render(page, {
@@ -7722,7 +7846,9 @@ function setScore(score, maxScore, minScore) {
         themeFiles: themeFiles || [],
         // Favicon options
         faviconPath: faviconInfo?.path,
-        faviconType: faviconInfo?.type
+        faviconType: faviconInfo?.type,
+        // Page filename map for navigation links (handles title collisions)
+        pageFilenameMap
       });
     }
   };
@@ -7809,16 +7935,19 @@ function setScore(score, maxScore, minScore) {
         const themeName = epub3Options?.theme || meta.theme || "base";
         const bookId = epub3Options?.bookId || this.generateBookId();
         pages = await this.preprocessPagesForExport(pages);
+        const pageFilenameMap = this.buildPageFilenameMap(pages);
         const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
         this.zip.addFile("mimetype", EPUB3_MIMETYPE);
         this.zip.addFile("META-INF/container.xml", this.generateContainerXml());
-        const navXhtml = this.generateNavXhtml(pages, meta);
+        const navXhtml = this.generateNavXhtml(pages, meta, pageFilenameMap);
         this.zip.addFile("EPUB/nav.xhtml", navXhtml);
         this.addManifestItem("nav", "nav.xhtml", "application/xhtml+xml", "nav");
         for (let i = 0; i < pages.length; i++) {
           const page = pages[i];
           const xhtml = this.generatePageXhtml(page, pages, meta, i === 0, themeRootFiles, faviconInfo);
-          const filename = i === 0 ? "index.xhtml" : `html/${this.sanitizePageFilename(page.title)}.xhtml`;
+          const mapFilename = pageFilenameMap.get(page.id) || "page.html";
+          const xhtmlFilename = mapFilename.replace(/\.html$/, ".xhtml");
+          const filename = i === 0 ? "index.xhtml" : `html/${xhtmlFilename}`;
           this.zip.addFile(`EPUB/${filename}`, xhtml);
           const pageId = this.generateUniqueId(`page-${i}`);
           this.addManifestItem(pageId, filename, "application/xhtml+xml", "scripted");
@@ -8042,8 +8171,11 @@ function setScore(score, maxScore, minScore) {
     }
     /**
      * Generate nav.xhtml (EPUB3 navigation document)
+     * @param pages - All pages
+     * @param meta - Export metadata
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
-    generateNavXhtml(pages, meta) {
+    generateNavXhtml(pages, meta, pageFilenameMap) {
       const lang = meta.language || "en";
       let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
@@ -8057,7 +8189,7 @@ function setScore(score, maxScore, minScore) {
   <nav epub:type="toc" id="toc">
     <h1>${this.escapeXml(meta.title || "Table of Contents")}</h1>
     <ol>`;
-      xml += this.buildNavList(pages, pages);
+      xml += this.buildNavList(pages, pages, null, pageFilenameMap);
       xml += `
     </ol>
   </nav>
@@ -8067,19 +8199,23 @@ function setScore(score, maxScore, minScore) {
     }
     /**
      * Build navigation list recursively
+     * @param pages - All pages
+     * @param allPages - All pages (for first page detection)
+     * @param parentId - Parent page ID (null for root)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
-    buildNavList(pages, allPages, parentId = null) {
+    buildNavList(pages, allPages, parentId = null, pageFilenameMap) {
       const children = parentId === null ? pages.filter((p) => !p.parentId) : pages.filter((p) => p.parentId === parentId);
       if (children.length === 0) return "";
       let html = "";
       for (const page of children) {
-        const filename = this.getPageFilename(page, allPages);
+        const filename = this.getPageFilename(page, allPages, pageFilenameMap);
         const grandchildren = pages.filter((p) => p.parentId === page.id);
         html += `
       <li><a href="${filename}">${this.escapeXml(page.title)}</a>`;
         if (grandchildren.length > 0) {
           html += `
-        <ol>${this.buildNavList(pages, allPages, page.id)}
+        <ol>${this.buildNavList(pages, allPages, page.id, pageFilenameMap)}
         </ol>`;
         }
         html += `</li>`;
@@ -8088,11 +8224,18 @@ function setScore(score, maxScore, minScore) {
     }
     /**
      * Get page filename for navigation
+     * @param page - Page data
+     * @param allPages - All pages (for first page detection)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
-    getPageFilename(page, allPages) {
+    getPageFilename(page, allPages, pageFilenameMap) {
       const isFirst = page.id === allPages[0]?.id;
       if (isFirst) {
         return "index.xhtml";
+      }
+      const mapFilename = pageFilenameMap?.get(page.id);
+      if (mapFilename) {
+        return `html/${mapFilename.replace(/\.html$/, ".xhtml")}`;
       }
       return `html/${this.sanitizePageFilename(page.title)}.xhtml`;
     }
@@ -8324,15 +8467,26 @@ td, th {
         const meta = this.getMetadata();
         const themeName = elpxOptions?.theme || meta.theme || "base";
         pages = await this.preprocessPagesForExport(pages);
+        const pageFilenameMap = this.buildPageFilenameMap(pages);
         const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
         for (let i = 0; i < pages.length; i++) {
           const page = pages[i];
-          const html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
-          const pageFilename = i === 0 ? "index.html" : `html/${this.sanitizePageFilename(page.title)}.html`;
+          const html = this.generatePageHtml(
+            page,
+            pages,
+            meta,
+            i === 0,
+            i,
+            themeRootFiles,
+            faviconInfo,
+            pageFilenameMap
+          );
+          const uniqueFilename = pageFilenameMap.get(page.id) || "page.html";
+          const pageFilename = i === 0 ? "index.html" : `html/${uniqueFilename}`;
           this.zip.addFile(pageFilename, html);
         }
         if (meta.addSearchBox) {
-          const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, "");
+          const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, "", pageFilenameMap);
           this.zip.addFile("search_index.js", searchIndexContent);
         }
         const contentCssFiles = await this.resources.fetchContentCss();

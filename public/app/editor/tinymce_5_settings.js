@@ -40,8 +40,22 @@ var $exeTinyMCE = {
     },
     contextmenu: 'exelink | inserttable | cell row column deletetable',
     language: 'all', // We set all so we can use eXe's i18n mechanism in all.js,
-    edicuatex_url: '/app/common/edicuatex/index.html',
-    edicuatex_mathjax_url: '/app/common/exe_math/tex-mml-svg.js',
+    /**
+     * Resolves edicuatex equation editor URL at runtime.
+     * Uses eXeLearning.resolveAssetUrl() for proper BASE_PATH/version handling.
+     * @returns {string} Full URL to edicuatex editor
+     */
+    get edicuatex_url() {
+        return eXeLearning.resolveAssetUrl('/app/common/edicuatex/index.html');
+    },
+    /**
+     * Resolves MathJax library URL for the edicuatex editor at runtime.
+     * Uses eXeLearning.resolveAssetUrl() for proper BASE_PATH/version handling.
+     * @returns {string} Full URL to MathJax tex-mml-svg.js
+     */
+    get edicuatex_mathjax_url() {
+        return eXeLearning.resolveAssetUrl('/app/common/exe_math/tex-mml-svg.js');
+    },
     getTemplates: function () {
         return [
             {
@@ -111,13 +125,8 @@ var $exeTinyMCE = {
     },
 
     getAssetURL: function (url) {
-        // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/...)
-        let assetUrl =
-            eXeLearning.config.baseURL +
-            eXeLearning.config.basePath +
-            '/' +
-            eXeLearning.version;
-        return assetUrl + url;
+        // For full URLs including origin, combine baseURL with resolveAssetUrl path
+        return eXeLearning.config.baseURL + eXeLearning.resolveAssetUrl(url);
     },
 
     /**
@@ -285,8 +294,8 @@ var $exeTinyMCE = {
             rel_list: this.rel_list,
 
             // Math plugin
-            edicuatex_url: this.getAssetURL(this.edicuatex_url),
-            edicuatex_mathjax_url: this.getAssetURL(this.edicuatex_mathjax_url),
+            edicuatex_url: eXeLearning.config.baseURL + this.edicuatex_url,
+            edicuatex_mathjax_url: eXeLearning.config.baseURL + this.edicuatex_mathjax_url,
 
             // Images
             image_advtab: true,
@@ -623,10 +632,8 @@ var $exeTinyMCE = {
         return (
             themePath +
             'style.css,' +
-            eXeLearning.app.api.apiUrlBase +
-            '/app/editor/tinymce_5_extra.css,' +
-            eXeLearning.app.api.apiUrlBase +
-            '/libs/bootstrap/bootstrap.min.css'
+            eXeLearning.resolveAssetUrl('/app/editor/tinymce_5_extra.css') + ',' +
+            eXeLearning.resolveAssetUrl('/libs/bootstrap/bootstrap.min.css')
         );
     },
 

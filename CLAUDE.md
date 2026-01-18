@@ -558,6 +558,67 @@ The application MUST support importing legacy .elp files from pre-v3.0 eXeLearni
 - Use `assets/styles/components/_collaborative.scss` for Yjs/collaboration-related styles
 - The only exception is dynamically loading external CSS files (themes, iDevices) at runtime via `loadStyleByInsertingIt()`
 
+### Frontend Asset URLs — Use `resolveAssetUrl()`
+
+**NEVER construct asset URLs manually** in frontend JavaScript. Always use `eXeLearning.resolveAssetUrl()` to get properly versioned URLs with the correct basePath.
+
+#### Why?
+
+The application can be installed at different URL paths (e.g., `/`, `/exelearning/`, `/web/app/`). Additionally, static assets are cache-busted with a version string. Manually constructing URLs will break when:
+- The app is deployed at a non-root path (`BASE_PATH` environment variable)
+- The version changes (cache invalidation)
+
+#### How to use
+
+```javascript
+// BAD - Manual URL construction (NEVER do this)
+const url = '/libs/jquery/jquery.min.js';
+const url = basePath + '/app/common/mermaid.js';
+const url = `${eXeLearning.config.basePath}/libs/tinymce/tinymce.min.js`;
+
+// GOOD - Use resolveAssetUrl()
+const url = eXeLearning.resolveAssetUrl('/libs/jquery/jquery.min.js');
+// Returns: /basepath/v4.0.0/libs/jquery/jquery.min.js
+```
+
+#### Context-specific usage
+
+| Context | How to use |
+|---------|-----------|
+| **Workarea (main app)** | `eXeLearning.resolveAssetUrl(path)` |
+| **iframes** (e.g., interactive-video editor) | `window.parent.eXeLearning?.resolveAssetUrl?.(path)` with fallback |
+| **Exports** | Use relative paths (`./libs/` or `../libs/`) - function not available |
+
+#### In iframes (check availability first)
+
+```javascript
+// In iframe code (e.g., iDevice editors)
+const parentResolveAssetUrl = window.parent.eXeLearning?.resolveAssetUrl?.bind(window.parent.eXeLearning);
+const basePath = window.parent.eXeLearning?.config?.basePath || '';
+
+const assetUrl = (path) => parentResolveAssetUrl
+    ? parentResolveAssetUrl(path)
+    : basePath + path;  // Fallback for exports
+```
+
+#### What resolveAssetUrl returns
+
+```javascript
+// With basePath="/exelearning" and version="v4.0.0"
+eXeLearning.resolveAssetUrl('/libs/jquery.js')
+// → "/exelearning/v4.0.0/libs/jquery.js"
+
+// With empty basePath and version="v4.0.0"
+eXeLearning.resolveAssetUrl('/app/common/mermaid.js')
+// → "/v4.0.0/app/common/mermaid.js"
+```
+
+#### Where it's defined
+
+- **Definition**: `views/workarea/workarea.njk` (in the global `eXeLearning` object)
+- **Available in**: All frontend JavaScript after page loads
+- **NOT available in**: Exported HTML (use relative paths instead)
+
 ## E2E Testing with Playwright
 
 ### Test Credentials

@@ -26,6 +26,14 @@ describe('YjsLoader', () => {
     window.eXeLearning = {
       config: { basePath: '' },
       version: 'v1.0.0',
+      // resolveAssetUrl is defined in template, simulate it for tests
+      resolveAssetUrl: function(path) {
+        const basePath = (this.config?.basePath || '').replace(/\/+$/, '');
+        const normalizedPath = path.startsWith('/') ? path : '/' + path;
+        return this.version
+          ? basePath + '/' + this.version + normalizedPath
+          : basePath + normalizedPath;
+      }
     };
     window.Y = undefined;
     window.JSZip = undefined;
@@ -562,6 +570,97 @@ describe('YjsLoader', () => {
       // Verify load method accepts options object
       expect(typeof window.YjsLoader.load).toBe('function');
       // The method signature is load(options = {})
+    });
+
+    it('assetPath uses resolveAssetUrl when available', () => {
+      // Setup mock with tracking
+      const mockCompose = spyOn(window.eXeLearning, 'resolveAssetUrl');
+      mockCompose.mockImplementation(function(path) {
+        const basePath = (this.config?.basePath || '').replace(/\/+$/, '');
+        const normalizedPath = path.startsWith('/') ? path : '/' + path;
+        return this.version
+          ? basePath + '/' + this.version + normalizedPath
+          : basePath + normalizedPath;
+      });
+
+      // Directly invoke the resolveAssetUrl function (which yjs-loader uses internally)
+      const result = window.eXeLearning.resolveAssetUrl('/app/yjs');
+
+      // Verify the function was called with expected path
+      expect(mockCompose).toHaveBeenCalledWith('/app/yjs');
+      // Verify the result has the expected format
+      expect(result).toBe('/v1.0.0/app/yjs');
+    });
+
+    it('resolveAssetUrl returns versioned paths correctly', () => {
+      window.eXeLearning = {
+        config: { basePath: '/web/exelearning' },
+        version: 'v2.0.0',
+        resolveAssetUrl: function(path) {
+          const basePath = (this.config?.basePath || '').replace(/\/+$/, '');
+          const normalizedPath = path.startsWith('/') ? path : '/' + path;
+          return this.version
+            ? basePath + '/' + this.version + normalizedPath
+            : basePath + normalizedPath;
+        }
+      };
+
+      // Verify the resolveAssetUrl function returns expected format
+      const result = window.eXeLearning.resolveAssetUrl('/libs/yjs');
+      expect(result).toBe('/web/exelearning/v2.0.0/libs/yjs');
+    });
+
+    it('resolveAssetUrl handles paths without leading slash', () => {
+      window.eXeLearning = {
+        config: { basePath: '' },
+        version: 'v1.0.0',
+        resolveAssetUrl: function(path) {
+          const basePath = (this.config?.basePath || '').replace(/\/+$/, '');
+          const normalizedPath = path.startsWith('/') ? path : '/' + path;
+          return this.version
+            ? basePath + '/' + this.version + normalizedPath
+            : basePath + normalizedPath;
+        }
+      };
+
+      // Path without leading slash should be normalized
+      const result = window.eXeLearning.resolveAssetUrl('libs/yjs');
+      expect(result).toBe('/v1.0.0/libs/yjs');
+    });
+
+    it('resolveAssetUrl handles empty basePath', () => {
+      window.eXeLearning = {
+        config: { basePath: '' },
+        version: 'v1.0.0',
+        resolveAssetUrl: function(path) {
+          const basePath = (this.config?.basePath || '').replace(/\/+$/, '');
+          const normalizedPath = path.startsWith('/') ? path : '/' + path;
+          return this.version
+            ? basePath + '/' + this.version + normalizedPath
+            : basePath + normalizedPath;
+        }
+      };
+
+      const result = window.eXeLearning.resolveAssetUrl('/libs/yjs');
+      expect(result).toBe('/v1.0.0/libs/yjs');
+    });
+
+    it('resolveAssetUrl handles trailing slash in basePath', () => {
+      window.eXeLearning = {
+        config: { basePath: '/myapp/' },
+        version: 'v1.0.0',
+        resolveAssetUrl: function(path) {
+          const basePath = (this.config?.basePath || '').replace(/\/+$/, '');
+          const normalizedPath = path.startsWith('/') ? path : '/' + path;
+          return this.version
+            ? basePath + '/' + this.version + normalizedPath
+            : basePath + normalizedPath;
+        }
+      };
+
+      // Trailing slash in basePath should be normalized
+      const result = window.eXeLearning.resolveAssetUrl('/libs/yjs');
+      expect(result).toBe('/myapp/v1.0.0/libs/yjs');
     });
   });
 

@@ -26,6 +26,13 @@ describe('ApiCallManager', () => {
           basePath: '/exelearning',
           changelogURL: 'http://localhost/changelog',
         },
+        version: 'v3.0.0',
+        // resolveAssetUrl must reference the current version at call time
+        resolveAssetUrl: function(path) {
+          const version = global.eXeLearning?.version || this.version || 'v1.0.0';
+          const basePath = this.config?.basePath || '';
+          return `${basePath}/${version}${path.startsWith('/') ? path : '/' + path}`;
+        },
       },
       common: {
         getVersionTimeStamp: vi.fn(() => '123456'),

@@ -226,12 +226,6 @@ $exeABCmusic = {
   appendFilesAbcNotation() {
     if (window.eXeLearning === undefined) return; // Not load the scripts dynamically in the export
 
-    // Use versioned path for cache busting: {basePath}/{version}/libs/...
-    const basePath = eXeLearning.config.basePath || '';
-    const version = eXeLearning.version || 'v1.0.0';
-    let libsPath = `${basePath}/${version}/libs`;
-    let abcmusicPath = `${libsPath}/tinymce_5/js/tinymce/plugins/abcmusic`;
-
     let head = document.querySelector("head");
 
     if (!head.querySelector('script.abcjs-basic-js')) {
@@ -239,7 +233,8 @@ $exeABCmusic = {
       abcjsScript.classList.add("abcjs-basic-js");
       abcjsScript.classList.add("exe");
       abcjsScript.type = "text/javascript";
-      abcjsScript.src = `${libsPath}/abcjs/abcjs-basic-min.js`;
+      // Use global helper for versioned asset URLs
+      abcjsScript.src = eXeLearning.resolveAssetUrl('/libs/abcjs/abcjs-basic-min.js');
       head.append(abcjsScript);
     }
 
@@ -247,7 +242,8 @@ $exeABCmusic = {
       let abcjsAudioCss = document.createElement("link");
       abcjsAudioCss.classList.add("abcjs-basic-css");
       abcjsAudioCss.classList.add("exe");
-      abcjsAudioCss.href = `${libsPath}/abcjs/abcjs-audio.css`;
+      // Use global helper for versioned asset URLs
+      abcjsAudioCss.href = eXeLearning.resolveAssetUrl('/libs/abcjs/abcjs-audio.css');
       abcjsAudioCss.rel = "stylesheet";
       abcjsAudioCss.type = "text/css";
       head.append(abcjsAudioCss);

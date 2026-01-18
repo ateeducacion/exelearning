@@ -62,8 +62,10 @@ describe('common.js $exe helpers', () => {
     expect(global.$exe.getIdeviceInstalledExportPath('text')).toBe('/export/path');
   });
 
-  it('hasTooltips loads tooltip script when tooltips are present', () => {
-    global.eXeLearning = { symfony: { fullURL: 'http://example.com' } };
+  it('hasTooltips loads tooltip script when tooltips are present with resolveAssetUrl', () => {
+    global.eXeLearning = {
+      resolveAssetUrl: (path) => `/basepath/v1.0.0${path}`,
+    };
     document.body.innerHTML = '<a class="exe-tooltip" href="#"></a>';
 
     const loadSpy = vi.spyOn(global.$exe, 'loadScript').mockImplementation(() => {});
@@ -71,8 +73,8 @@ describe('common.js $exe helpers', () => {
     global.$exe.hasTooltips();
 
     expect(loadSpy).toHaveBeenCalledWith(
-      'http://example.com/app/common/exe_tooltips/exe_tooltips.js',
-      "$exe.tooltips.init('http://example.com/app/common/exe_tooltips/')"
+      '/basepath/v1.0.0/app/common/exe_tooltips/exe_tooltips.js',
+      "$exe.tooltips.init('/basepath/v1.0.0/app/common/exe_tooltips/')"
     );
   });
 
@@ -161,6 +163,67 @@ describe('common.js $exe helpers', () => {
       global.$exe.math.init();
       expect(document.body.classList.contains('exe-auto-math')).toBe(true);
     });
+
+    it('init skips MathJax loading when LaTeX is pre-rendered', () => {
+      // Content with pre-rendered LaTeX - ALL LaTeX was pre-rendered during export
+      document.body.innerHTML = '<div class="exe-math-rendered" data-display="block"><svg></svg></div>';
+
+      // Spy on loadMathJax to verify it's not called
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax').mockImplementation(() => {});
+      const createLinksSpy = vi.spyOn(global.$exe.math, 'createLinks').mockImplementation(() => {});
+
+      global.$exe.math.init();
+
+      // loadMathJax should NOT be called when content is pre-rendered
+      expect(loadMathJaxSpy).not.toHaveBeenCalled();
+      // createLinks should still be called to add links to math elements
+      expect(createLinksSpy).toHaveBeenCalled();
+    });
+
+    it('init skips MathJax even if raw LaTeX patterns exist alongside pre-rendered (export pre-renders ALL)', () => {
+      // If there's pre-rendered math, the export already processed ALL LaTeX
+      // Any remaining LaTeX-like patterns are in attributes or non-content areas
+      document.body.innerHTML = `
+        <div class="exe-math-rendered"><svg></svg></div>
+        <p>Some text</p>
+      `;
+
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax').mockImplementation(() => {});
+      const createLinksSpy = vi.spyOn(global.$exe.math, 'createLinks').mockImplementation(() => {});
+
+      global.$exe.math.init();
+
+      // loadMathJax should NOT be called - pre-rendered means ALL LaTeX was processed
+      expect(loadMathJaxSpy).not.toHaveBeenCalled();
+      expect(createLinksSpy).toHaveBeenCalled();
+    });
+
+    it('init loads MathJax when there is no pre-rendered content and raw LaTeX exists', () => {
+      document.body.innerHTML = '<p>Formula: \\[E = mc^2\\]</p>';
+
+      // Reset body class from previous test
+      document.body.classList.remove('exe-auto-math');
+
+      global.$exe.math.init();
+
+      // Body should have exe-auto-math class (MathJax path was taken)
+      expect(document.body.classList.contains('exe-auto-math')).toBe(true);
+    });
+
+    it('init skips MathJax for pre-rendered content with data attributes containing LaTeX', () => {
+      // Pre-rendered content may have data attributes with original LaTeX
+      // The presence of exe-math-rendered means ALL was pre-rendered
+      document.body.innerHTML = '<div class="exe-math-rendered" data-original="\\begin{equation}x^2\\end{equation}"><svg></svg></div>';
+
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax').mockImplementation(() => {});
+      const createLinksSpy = vi.spyOn(global.$exe.math, 'createLinks').mockImplementation(() => {});
+
+      global.$exe.math.init();
+
+      // loadMathJax should NOT be called - content is pre-rendered
+      expect(loadMathJaxSpy).not.toHaveBeenCalled();
+      expect(createLinksSpy).toHaveBeenCalled();
+    });
   });
 
   describe('$exe.mermaid', () => {
@@ -177,6 +240,46 @@ describe('common.js $exe helpers', () => {
       const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
       global.$exe.mermaid.loadMermaid();
       expect(appendChildSpy).toHaveBeenCalled();
+    });
+
+    it('init skips loading Mermaid when diagrams are pre-rendered', () => {
+      // Pre-rendered mermaid diagrams have class exe-mermaid-rendered
+      document.body.innerHTML = '<div class="exe-mermaid-rendered"><svg></svg></div>';
+
+      const loadMermaidSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});
+
+      global.$exe.mermaid.init();
+
+      // loadMermaid should NOT be called when content is pre-rendered
+      expect(loadMermaidSpy).not.toHaveBeenCalled();
+    });
+
+    it('init loads Mermaid when there are .mermaid elements and no pre-rendered', () => {
+      // Raw mermaid elements need the library
+      document.body.innerHTML = '<pre class="mermaid">graph TD; A-->B</pre>';
+
+      const loadMermaidSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});
+
+      global.$exe.mermaid.init();
+
+      // loadMermaid should be called for raw mermaid elements
+      expect(loadMermaidSpy).toHaveBeenCalled();
+    });
+
+    it('init skips Mermaid even if .mermaid elements exist alongside pre-rendered', () => {
+      // If exe-mermaid-rendered exists, ALL diagrams were pre-rendered during export
+      // Any remaining .mermaid elements are artifacts that won't render anyway
+      document.body.innerHTML = `
+        <div class="exe-mermaid-rendered"><svg></svg></div>
+        <pre class="mermaid">should be ignored</pre>
+      `;
+
+      const loadMermaidSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});
+
+      global.$exe.mermaid.init();
+
+      // loadMermaid should NOT be called - pre-rendered means ALL was processed
+      expect(loadMermaidSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -421,14 +524,43 @@ describe('common.js $exe helpers', () => {
   });
 
   describe('$exe.hasTooltips edge cases', () => {
-    it('loads script when tooltips are present and not in eXe', () => {
+    it('loads script when tooltips are present and not in eXe (export context - index page)', () => {
+      delete global.eXeLearning;
+      document.body.innerHTML = '<a class="exe-tooltip" href="#"></a><div id="exe-index"></div>';
+      const loadSpy = vi.spyOn(global.$exe, 'loadScript').mockImplementation(() => {});
+
+      global.$exe.hasTooltips();
+
+      expect(loadSpy).toHaveBeenCalledWith(
+        'libs/exe_tooltips/exe_tooltips.js',
+        "$exe.tooltips.init('libs/exe_tooltips/')"
+      );
+    });
+
+    it('loads script when tooltips are present and not in eXe (export context - subpage)', () => {
       delete global.eXeLearning;
       document.body.innerHTML = '<a class="exe-tooltip" href="#"></a>';
       const loadSpy = vi.spyOn(global.$exe, 'loadScript').mockImplementation(() => {});
 
       global.$exe.hasTooltips();
 
-      expect(loadSpy).toHaveBeenCalled();
+      expect(loadSpy).toHaveBeenCalledWith(
+        '../libs/exe_tooltips/exe_tooltips.js',
+        "$exe.tooltips.init('../libs/exe_tooltips/')"
+      );
+    });
+
+    it('uses relative paths when eXeLearning exists but resolveAssetUrl is not a function', () => {
+      global.eXeLearning = { config: {} }; // No resolveAssetUrl
+      document.body.innerHTML = '<a class="exe-tooltip" href="#"></a><div id="exe-index"></div>';
+      const loadSpy = vi.spyOn(global.$exe, 'loadScript').mockImplementation(() => {});
+
+      global.$exe.hasTooltips();
+
+      expect(loadSpy).toHaveBeenCalledWith(
+        'libs/exe_tooltips/exe_tooltips.js',
+        "$exe.tooltips.init('libs/exe_tooltips/')"
+      );
     });
   });
 
@@ -578,16 +710,18 @@ describe('common.js $exe helpers', () => {
       expect(loadSpy).not.toHaveBeenCalled();
     });
 
-    it('init loads mermaid when there are unprocessed mermaid elements alongside pre-rendered', () => {
-      // Both pre-rendered and raw mermaid elements
+    it('init skips mermaid when there are unprocessed mermaid elements alongside pre-rendered', () => {
+      // If exe-mermaid-rendered exists, ALL diagrams were pre-rendered during export
+      // Any remaining .mermaid elements are artifacts from the original content
+      // The export process pre-renders ALL mermaid diagrams
       document.body.innerHTML = `
         <div class="exe-mermaid-rendered" data-mermaid="graph TD; A-->B"><svg></svg></div>
         <div class="mermaid">graph TD; C-->D</div>
       `;
       const loadSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});
       global.$exe.mermaid.init();
-      // loadMermaid SHOULD be called when there are raw mermaid elements
-      expect(loadSpy).toHaveBeenCalled();
+      // loadMermaid should NOT be called - pre-rendered means export processed ALL mermaid
+      expect(loadSpy).not.toHaveBeenCalled();
     });
 
     it('init loads mermaid when elements have data-processed="pending" (failed previous render)', () => {
@@ -1683,9 +1817,14 @@ describe('common.js $exeDevices', () => {
       const math = getMath();
       // Save originals
       const originalMathJax = window.MathJax;
+      const originalExeLearning = window.eXeLearning;
 
       // Remove MathJax completely to force script creation
       delete window.MathJax;
+
+      // Ensure window.eXeLearning is undefined so code uses export path fallback
+      // (resolveAssetUrl is checked with optional chaining so this won't error)
+      delete window.eXeLearning;
 
       // Reset internal loading state
       math._loading = false;
@@ -1701,6 +1840,7 @@ describe('common.js $exeDevices', () => {
 
       // Restore
       window.MathJax = originalMathJax;
+      window.eXeLearning = originalExeLearning;
     });
 
     it('updateLatex does not throw for invalid target', () => {

@@ -54,7 +54,29 @@
             extension: "{{ extension }}",
             user: `{{ user | dump | safe }}`,
             config: `{{ config | dump | safe }}`,
-            projectId: {% if projectId %}"{{ projectId }}"{% else %}null{% endif %}
+            projectId: {% if projectId %}"{{ projectId }}"{% else %}null{% endif %},
+            /**
+             * Resolve an asset path to a versioned URL with basePath
+             * URL pattern: {basePath}/{version}/path
+             * @param {string} path - Asset path (e.g., '/libs/yjs/yjs.min.js')
+             * @returns {string} Full versioned URL
+             */
+            resolveAssetUrl: function(path) {
+                // Handle config being either string (before parsing) or object (after parsing)
+                let basePath = '';
+                if (typeof this.config === 'string') {
+                    try {
+                        basePath = JSON.parse(this.config.replace(/&quot;/g, '"')).basePath || '';
+                    } catch (e) {
+                        basePath = '';
+                    }
+                } else if (this.config && typeof this.config === 'object') {
+                    basePath = this.config.basePath || '';
+                }
+                const version = this.version || 'v1.0.0';
+                const normalizedPath = path.startsWith('/') ? path : '/' + path;
+                return basePath + '/' + version + normalizedPath;
+            }
         }
     </script>
     {# TinyMCE #}

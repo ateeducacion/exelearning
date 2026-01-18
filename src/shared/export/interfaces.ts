@@ -362,6 +362,8 @@ export interface ExportOptions {
 export interface Html5ExportOptions extends ExportOptions {
     /** Export as single page (anchor navigation) */
     singlePage?: boolean;
+    /** Absolute URL for MathJax script (bypasses Service Worker in preview mode) */
+    mathJaxAbsoluteUrl?: string;
 }
 
 /**
@@ -514,6 +516,8 @@ export interface PageRenderOptions {
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
     addMathJax?: boolean;
+    /** Absolute URL for MathJax script (bypasses Service Worker in preview mode) */
+    mathJaxAbsoluteUrl?: string;
 
     // Custom head content
     extraHeadContent?: string;

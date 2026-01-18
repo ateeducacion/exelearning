@@ -239,26 +239,17 @@ export class Html5Exporter extends BaseExporter {
             addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
 
             // 8. Detect and fetch additional required libraries based on content
-            // Skip MathJax if LaTeX was pre-rendered to SVG+MathML (unless explicitly requested)
-            // Skip Mermaid if diagrams were pre-rendered to static SVG
             // Note: exe-package:elp is still in the content at this point (transformation happens in PageRenderer)
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
                 allHtmlContent,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                    includeMathJax: meta.addMathJax === true,
-                    skipMathJax: latexWasRendered && !meta.addMathJax, // Don't skip if explicitly requested
-                    skipMermaid: mermaidWasRendered,
-                },
+                this.getLibraryDetectionOptions(meta, latexWasRendered),
             );
 
             if (latexWasRendered) {
                 console.log('[Html5Exporter] LaTeX pre-rendered - skipping MathJax library (~1MB saved)');
             }
-            if (mermaidWasRendered) {
-                console.log('[Html5Exporter] Mermaid pre-rendered - skipping Mermaid library (~2.7MB saved)');
-            }
+            // Mermaid is always pre-rendered, so we always skip it (no conditional log needed)
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
@@ -376,6 +367,8 @@ export class Html5Exporter extends BaseExporter {
         themeFiles?: string[],
         faviconInfo?: FaviconInfo | null,
         pageFilenameMap?: Map<string, string>,
+        /** Extra render options to override defaults (e.g., mathJaxAbsoluteUrl for preview) */
+        extraRenderOptions?: { mathJaxAbsoluteUrl?: string },
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -422,6 +415,8 @@ export class Html5Exporter extends BaseExporter {
             addSearchBox: meta.addSearchBox ?? false,
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             addMathJax: meta.addMathJax ?? false,
+            // MathJax absolute URL for preview mode (bypasses Service Worker)
+            mathJaxAbsoluteUrl: extraRenderOptions?.mathJaxAbsoluteUrl,
             // Custom head content
             extraHeadContent: meta.extraHeadContent,
             // Theme files for HTML head includes
@@ -576,6 +571,8 @@ export class Html5Exporter extends BaseExporter {
                     themeRootFiles,
                     faviconInfo,
                     pageFilenameMap,
+                    // Pass mathJaxAbsoluteUrl for preview mode (bypasses Service Worker)
+                    options?.mathJaxAbsoluteUrl ? { mathJaxAbsoluteUrl: options.mathJaxAbsoluteUrl } : undefined,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
@@ -691,12 +688,7 @@ export class Html5Exporter extends BaseExporter {
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
                 allHtmlContent,
-                {
-                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                    includeMathJax: meta.addMathJax === true,
-                    skipMathJax: latexWasRendered && !meta.addMathJax,
-                    skipMermaid: mermaidWasRendered,
-                },
+                this.getLibraryDetectionOptions(meta, latexWasRendered),
             );
 
             try {
@@ -761,6 +753,28 @@ export class Html5Exporter extends BaseExporter {
             console.error('[Html5Exporter] generateForPreview failed:', error);
             throw error;
         }
+    }
+
+    /**
+     * Build library detection options based on metadata and pre-render status.
+     * Centralizes the logic for skipping MathJax when pre-rendered and always skipping Mermaid.
+     *
+     * @param meta - Project metadata with library preferences
+     * @param latexWasRendered - Whether LaTeX was pre-rendered to SVG+MathML
+     * @returns Library detection options for getAllRequiredFilesWithPatterns
+     */
+    private getLibraryDetectionOptions(
+        meta: ExportMetadata,
+        latexWasRendered: boolean,
+    ): import('../interfaces').LibraryDetectionOptions {
+        return {
+            includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+            includeMathJax: meta.addMathJax === true,
+            // Don't skip MathJax if explicitly requested via addMathJax
+            skipMathJax: latexWasRendered && !meta.addMathJax,
+            // Always skip Mermaid - eXeLearning ALWAYS pre-renders to SVG (~2.7MB saved)
+            skipMermaid: true,
+        };
     }
 
     /**

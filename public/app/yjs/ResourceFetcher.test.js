@@ -17,12 +17,17 @@ describe('ResourceFetcher', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock eXeLearning global
+    // Mock eXeLearning global with resolveAssetUrl
     global.eXeLearning = {
       config: {
         basePath: '/web/exelearning',
       },
       version: 'v3.1.0',
+      // Mock resolveAssetUrl to match the real implementation
+      resolveAssetUrl: path => {
+        const normalizedPath = path.startsWith('/') ? path : '/' + path;
+        return `/web/exelearning/v3.1.0${normalizedPath}`;
+      },
     };
 
     // Mock fetch
@@ -72,6 +77,40 @@ describe('ResourceFetcher', () => {
       delete global.eXeLearning;
       const fetcher = new ResourceFetcher();
       expect(fetcher.version).toBe('v0.0.0');
+    });
+
+    it('uses global resolveAssetUrl when available', () => {
+      const fetcher = new ResourceFetcher();
+      expect(typeof fetcher.resolveAssetUrl).toBe('function');
+      expect(fetcher.resolveAssetUrl('/libs/jquery.js')).toBe('/web/exelearning/v3.1.0/libs/jquery.js');
+    });
+
+    it('creates fallback resolveAssetUrl when global not available', () => {
+      delete global.eXeLearning;
+      const fetcher = new ResourceFetcher();
+      expect(typeof fetcher.resolveAssetUrl).toBe('function');
+      // Fallback uses empty basePath and v0.0.0 version
+      expect(fetcher.resolveAssetUrl('/libs/test.js')).toBe('/v0.0.0/libs/test.js');
+    });
+
+    it('fallback resolveAssetUrl normalizes paths without leading slash', () => {
+      delete global.eXeLearning;
+      const fetcher = new ResourceFetcher();
+      // Path without leading slash should be normalized
+      expect(fetcher.resolveAssetUrl('libs/test.js')).toBe('/v0.0.0/libs/test.js');
+    });
+
+    it('fallback resolveAssetUrl uses basePath and version from config', () => {
+      // Set up global with basePath and version but without resolveAssetUrl
+      global.eXeLearning = {
+        config: {
+          basePath: '/custom/path',
+        },
+        version: 'v2.0.0',
+        // No resolveAssetUrl - force fallback
+      };
+      const fetcher = new ResourceFetcher();
+      expect(fetcher.resolveAssetUrl('/app/test.js')).toBe('/custom/path/v2.0.0/app/test.js');
     });
   });
 

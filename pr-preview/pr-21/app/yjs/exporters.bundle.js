@@ -300,9 +300,6 @@
       return "cc cc-by-nc";
     }
     if (cleanName.includes("by-nd") || cleanName.includes("non derived")) {
-      return "cc cc-by-nc";
-    }
-    if (cleanName.includes("by-nd") || cleanName.includes("non derived")) {
       return "cc cc-by-nd";
     }
     if (cleanName.includes("by-sa") || cleanName.includes("share alike")) {
@@ -311,10 +308,62 @@
     if (cleanName.includes("public domain") || cleanName.includes("cc0")) {
       return "cc cc-0";
     }
-    if (cleanName.includes("creative commons") || cleanName.includes("attribution")) {
+    if (cleanName.includes("creative commons") || cleanName.includes("attribution") || cleanName === "cc-by") {
       return "cc";
     }
     return "cc cc-by-sa";
+  }
+  var LICENSE_DISPLAY_MAP = {
+    // Short codes
+    "cc-by": "creative commons: attribution 4.0",
+    "cc-by-sa": "creative commons: attribution - share alike 4.0",
+    "cc-by-nd": "creative commons: attribution - non derived work 4.0",
+    "cc-by-nc": "creative commons: attribution - non commercial 4.0",
+    "cc-by-nc-sa": "creative commons: attribution - non commercial - share alike 4.0",
+    "cc-by-nc-nd": "creative commons: attribution - non derived work - non commercial 4.0",
+    "cc0": "public domain",
+    "cc-0": "public domain",
+    // Already full names (for case normalization)
+    "creative commons: attribution 4.0": "creative commons: attribution 4.0",
+    "creative commons: attribution - share alike 4.0": "creative commons: attribution - share alike 4.0",
+    "creative commons: attribution - non derived work 4.0": "creative commons: attribution - non derived work 4.0",
+    "creative commons: attribution - non commercial 4.0": "creative commons: attribution - non commercial 4.0",
+    "creative commons: attribution - non commercial - share alike 4.0": "creative commons: attribution - non commercial - share alike 4.0",
+    "creative commons: attribution - non derived work - non commercial 4.0": "creative commons: attribution - non derived work - non commercial 4.0",
+    "public domain": "public domain",
+    "propietary license": "propietary license"
+  };
+  function formatLicenseText(licenseName) {
+    if (!licenseName) return "creative commons: attribution - share alike 4.0";
+    const cleaned = licenseName.toLowerCase().trim();
+    if (LICENSE_DISPLAY_MAP[cleaned]) {
+      return LICENSE_DISPLAY_MAP[cleaned];
+    }
+    if (cleaned.includes("by-nc-nd") || cleaned.includes("non derived") && cleaned.includes("non commercial")) {
+      return "creative commons: attribution - non derived work - non commercial 4.0";
+    }
+    if (cleaned.includes("by-nc-sa") || cleaned.includes("non commercial") && cleaned.includes("share alike")) {
+      return "creative commons: attribution - non commercial - share alike 4.0";
+    }
+    if (cleaned.includes("by-nc") || cleaned.includes("non commercial")) {
+      return "creative commons: attribution - non commercial 4.0";
+    }
+    if (cleaned.includes("by-nd") || cleaned.includes("non derived")) {
+      return "creative commons: attribution - non derived work 4.0";
+    }
+    if (cleaned.includes("by-sa") || cleaned.includes("share alike")) {
+      return "creative commons: attribution - share alike 4.0";
+    }
+    if (cleaned.includes("public domain") || cleaned.includes("cc0") || cleaned.includes("cc-0")) {
+      return "public domain";
+    }
+    if (cleaned.includes("propietary")) {
+      return "propietary license";
+    }
+    if (cleaned.includes("creative commons") || cleaned.includes("attribution") || cleaned.includes("cc-by")) {
+      return "creative commons: attribution 4.0";
+    }
+    return "creative commons: attribution - share alike 4.0";
   }
   var SCORM_12_NAMESPACES = {
     imscp: "http://www.imsproject.org/xsd/imscp_rootv1p1p2",
@@ -2790,7 +2839,7 @@ ${contentHtml}
 <head>
 ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType })}
 </head>
-<body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
+<body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"<\/script>
 <div class="exe-content exe-export pre-js siteNav-hidden"> ${navHtml}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
@@ -2947,7 +2996,7 @@ ${extraHeadScripts}`;
       const hasChildren = children.length > 0;
       const isAncestor = this.isAncestorOf(page.id, currentPageId, allPages);
       const isFirstPage = page.id === allPages[0]?.id;
-      const liClass = isCurrent ? ' id="active" class="active"' : isAncestor ? ' class="current-page-parent"' : "";
+      const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : "";
       const link = this.getPageLink(page, allPages, basePath, pageFilenameMap);
       const linkClasses = [];
       if (isCurrent) linkClasses.push("active");
@@ -3084,8 +3133,8 @@ ${extraHeadScripts}`;
       const pageHeaderStyle = hideTitle ? ' style="display:none"' : "";
       const subtitleHtml = projectSubtitle ? `
 <p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : "";
-      return `${pageCounterHtml}<header class="main-header">
-<div class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${subtitleHtml}</div>
+      return `<header class="main-header">${pageCounterHtml}
+<div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${subtitleHtml}</div>
 <div class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></div>
 </header>`;
     }
@@ -3162,22 +3211,16 @@ ${extraHeadScripts}`;
       if (prevPage) {
         const link = this.getPageLink(prevPage, allPages, basePath, pageFilenameMap);
         parts.push(
-          `<a href="${link}" title="Previous" class="nav-button nav-button-left" data-i18n="previous"><span>Previous</span></a>`
+          `<a href="${link}" title="Previous" class="nav-button nav-button-left"><span>Previous</span></a>`
         );
       } else {
-        parts.push(
-          '<span class="nav-button nav-button-left" aria-hidden="true" data-i18n="previous"><span>Previous</span></span>'
-        );
+        parts.push('<span class="nav-button nav-button-left" aria-hidden="true"><span>Previous</span></span>');
       }
       if (nextPage) {
         const link = this.getPageLink(nextPage, allPages, basePath, pageFilenameMap);
-        parts.push(
-          `<a href="${link}" title="Next" class="nav-button nav-button-right" data-i18n="next"><span>Next</span></a>`
-        );
+        parts.push(`<a href="${link}" title="Next" class="nav-button nav-button-right"><span>Next</span></a>`);
       } else {
-        parts.push(
-          '<span class="nav-button nav-button-right" aria-hidden="true" data-i18n="next"><span>Next</span></span>'
-        );
+        parts.push('<span class="nav-button nav-button-right" aria-hidden="true"><span>Next</span></span>');
       }
       parts.push("</div>");
       return parts.join("\n");
@@ -3206,7 +3249,8 @@ ${extraHeadScripts}`;
         userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>
 </div>`;
       }
-      return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${getLicenseClass(license)}"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${this.escapeHtml(license)}</a></p>
+      const licenseText = formatLicenseText(license);
+      return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${getLicenseClass(license)}"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${licenseText}</a></p>
 </div>
 ${userFooterHtml}</div></footer>`;
     }
@@ -3319,19 +3363,23 @@ ${userFooterHtml}</div></footer>`;
         language = "en",
         customStyles = "",
         usedIdevices = [],
-        author = "",
-        license = "CC-BY-SA",
+        license = "creative commons: attribution - share alike 4.0",
+        licenseUrl = "https://creativecommons.org/licenses/by-sa/4.0/",
         faviconPath = "libs/favicon.ico",
-        faviconType = "image/x-icon"
+        faviconType = "image/x-icon",
+        addExeLink = true,
+        userFooterContent = ""
       } = options;
       let contentHtml = "";
       for (const page of allPages) {
         const hideTitle = this.shouldHidePageTitle(page);
         const effectiveTitle = this.getEffectivePageTitle(page);
         const pageHeaderStyle = hideTitle ? ' style="display:none"' : "";
-        contentHtml += `<section id="section-${page.id}" class="single-page-section">
-<header class="page-header"${pageHeaderStyle}>
-<h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2>
+        contentHtml += `<section>
+<header class="main-header">
+<div class="page-header"${pageHeaderStyle}>
+<h1 class="page-title">${this.escapeHtml(effectiveTitle)}</h1>
+</div>
 </header>
 <div class="page-content">
 ${this.renderPageContent(page, "", projectTitle)}
@@ -3371,16 +3419,17 @@ ${customStyles ? `<style>
 ${customStyles}
 </style>` : ""}
 </head>
-<body class="exe-export exe-single-page" lang="${language}">
+<body class="exe-export exe-single-page">
 <script>document.body.className+=" js"<\/script>
 <div class="exe-content exe-export pre-js siteNav-hidden">
-<main class="single-page-content">
-<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${projectSubtitle ? `
+<main class="page">
+<header class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${projectSubtitle ? `
 <p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ""}</header>
 ${contentHtml}
 </main>
-${this.renderLicense({ author, license })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
+${addExeLink ? this.renderMadeWithEXe() : ""}
 </body>
 </html>`;
     }
@@ -7838,7 +7887,7 @@ function setScore(score, maxScore, minScore) {
         addPagination: true,
         totalPages: allPages.length,
         currentPageIndex: pageIndex ?? 0,
-        bodyClass: "exe-export exe-web-site exe-ims",
+        bodyClass: "exe-export exe-ims",
         // Hide navigation elements - LMS handles navigation in IMS
         hideNavigation: true,
         hideNavButtons: true,
@@ -7944,7 +7993,7 @@ function setScore(score, maxScore, minScore) {
         this.addManifestItem("nav", "nav.xhtml", "application/xhtml+xml", "nav");
         for (let i = 0; i < pages.length; i++) {
           const page = pages[i];
-          const xhtml = this.generatePageXhtml(page, pages, meta, i === 0, themeRootFiles, faviconInfo);
+          const xhtml = this.generatePageXhtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
           const mapFilename = pageFilenameMap.get(page.id) || "page.html";
           const xhtmlFilename = mapFilename.replace(/\.html$/, ".xhtml");
           const filename = i === 0 ? "index.xhtml" : `html/${xhtmlFilename}`;
@@ -8248,7 +8297,7 @@ function setScore(score, maxScore, minScore) {
      * @param themeFiles - List of root-level theme CSS/JS files
      * @param faviconInfo - Favicon info for theme or default
      */
-    generatePageXhtml(page, allPages, meta, isIndex, themeFiles, faviconInfo) {
+    generatePageXhtml(page, allPages, meta, isIndex, pageIndex, themeFiles, faviconInfo) {
       const lang = meta.language || "en";
       const basePath = isIndex ? "" : "../";
       const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -8283,7 +8332,15 @@ function setScore(score, maxScore, minScore) {
         themeFiles: themeFiles || [],
         // Favicon options
         faviconPath: faviconInfo?.path,
-        faviconType: faviconInfo?.type
+        faviconType: faviconInfo?.type,
+        // Hide navigation - EPUB uses nav.xhtml for TOC, not embedded nav
+        hideNavigation: true,
+        // Hide nav buttons - EPUB reader handles navigation
+        hideNavButtons: true,
+        // Page counter (only if user has the option enabled)
+        addPagination: meta.addPagination === true,
+        totalPages: allPages.length,
+        currentPageIndex: pageIndex
       });
       return this.htmlToXhtml(pageHtml, lang);
     }
@@ -8718,7 +8775,7 @@ ${formatValidationErrors(validation)}`);
       const bodyContent = `<div class="exe-content exe-export pre-js">
 ${this.renderSinglePageNav(pages)}
 <main class="single-page-content">
-<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
+<header class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
 ${sectionsHtml}
 </main>
 ${this.renderFooterSection({ license, userFooterContent })}
@@ -8775,7 +8832,7 @@ ${madeWithExeHtml}`;
 <head>
 ${this.generateHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar, detectedLibraries)}
 </head>
-<body class="exe-web-site exe-export exe-single-page exe-preview" lang="${lang}">
+<body class="exe-web-site exe-export exe-single-page exe-preview">
 <script>document.body.className+=" js"<\/script>
 ${finalBodyContent}
 ${this.generateScripts(themeName, usedIdevices, options, addAccessibilityToolbar, detectedLibraries)}

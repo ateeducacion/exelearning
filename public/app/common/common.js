@@ -24,43 +24,13 @@
 */
 
 window.MathJax = window.MathJax || (function() {
-    var isWorkarea = typeof window.eXeLearning !== 'undefined' || document.querySelector('script[src*="app/common/exe_math"]');
+    // Detect context: workarea vs export
+    // In workarea: eXeLearning.resolveAssetUrl is defined in template before any script loads
+    // In exports: use relative paths (./libs or ../libs)
+    var isWorkarea = typeof window.eXeLearning?.resolveAssetUrl === 'function';
     var isIndex = document.documentElement.id === 'exe-index';
-    // For workarea: use versioned path from eXeLearning config or detect from script tags
-    // For exports: use relative paths (./libs or ../libs)
-    var version = (window.eXeLearning && window.eXeLearning.version) || '';
-    var configBasePath = '';
-    if (isWorkarea) {
-        // Try to detect version and basePath from existing script tags (e.g., /web/exelearning/v0.0.0-alpha/app/...)
-        var scriptTag = document.querySelector('script[src*="/app/common/"]');
-        if (scriptTag) {
-            var src = scriptTag.src;
-            // Extract version (e.g., v0.0.0-alpha)
-            var versionMatch = src.match(/\/(v[\d.]+[^/]*)\//);
-            if (versionMatch) version = versionMatch[1];
-            // Extract basePath - everything before /v... or /app/
-            // URL might be: /web/exelearning/v0.0.0/app/common/... or /v0.0.0/app/common/...
-            try {
-                var url = new URL(src);
-                var pathname = url.pathname;
-                // Find where the versioned path or /app/ starts
-                var appIndex = pathname.indexOf('/app/common/');
-                if (appIndex > 0) {
-                    var beforeApp = pathname.substring(0, appIndex);
-                    // If there's a version, remove it from the path
-                    if (version && beforeApp.endsWith('/' + version)) {
-                        configBasePath = beforeApp.substring(0, beforeApp.length - version.length - 1);
-                    } else {
-                        configBasePath = beforeApp;
-                    }
-                }
-            } catch (e) {
-                // If URL parsing fails, leave configBasePath empty
-            }
-        }
-    }
     var basePath = isWorkarea
-        ? (version ? configBasePath + '/' + version + '/app/common/exe_math' : configBasePath + '/app/common/exe_math')
+        ? window.eXeLearning.resolveAssetUrl('/app/common/exe_math')
         : (isIndex ? './libs/exe_math' : '../libs/exe_math');
     
     var externalExtensions = [
@@ -200,6 +170,18 @@ var $exe = {
         },
         // Load MathJax or just create the links to the code and/or image
         init: function () {
+            // Check if LaTeX is already pre-rendered to SVG
+            // Pre-rendered content has class exe-math-rendered
+            var preRenderedMath = $(".exe-math-rendered").length > 0;
+
+            // If we have pre-rendered math, ALL LaTeX was pre-rendered during export
+            // No need to load MathJax library (~1MB)
+            if (preRenderedMath) {
+                // All LaTeX is pre-rendered - just create links, no MathJax needed
+                $exe.math.createLinks();
+                return;
+            }
+
             $("body").addClass("exe-auto-math"); // Always load it
             var math = $(".exe-math");
             var mathjax = false;
@@ -273,7 +255,12 @@ var $exe = {
         loadMermaid: function () {
             if (typeof window.mermaid === 'undefined') {
                 const script = document.createElement("script");
-                script.src = this.engine;
+                // Load Mermaid from the right path
+                // In workarea: resolveAssetUrl is defined in template
+                // In exports: use this.engine (relative path set above)
+                script.src = typeof window.eXeLearning?.resolveAssetUrl === 'function'
+                    ? window.eXeLearning.resolveAssetUrl('/app/common/mermaid/mermaid.min.js')
+                    : this.engine;
                 script.async = true;
                 script.onload = function () {
                     mermaid = window.mermaid;
@@ -357,9 +344,17 @@ var $exe = {
             }
         },
         init: function () {
+            // Check if Mermaid diagrams are already pre-rendered to SVG
+            // Pre-rendered diagrams have class exe-mermaid-rendered
+            var preRenderedMermaid = $(".exe-mermaid-rendered").length > 0;
+
+            // If we have pre-rendered mermaid, ALL diagrams were pre-rendered during export
+            // No need to load the Mermaid library (~2.7MB)
+            if (preRenderedMermaid) {
+                return;
+            }
+
             // Check for mermaid elements that need rendering
-            // Pre-rendered diagrams have class exe-mermaid-rendered (not .mermaid)
-            // so they won't be matched by this selector.
             // Include ALL .mermaid elements (even data-processed="pending" which means
             // a previous render failed) so Mermaid library gets loaded and they can retry.
             var mermaidNodes = $(".mermaid");
@@ -611,18 +606,12 @@ var $exe = {
     hasTooltips: function () {
         if ($("A.exe-tooltip").length > 0) {
             var p = "";
-            if (typeof (eXeLearning) !== 'undefined') {
-                // TODO: UNIFY - Fallback for branch compatibility.
-                // In 'main' branch: eXeLearning.symfony.fullURL exists (added by Symfony backend)
-                // In this branch: only eXeLearning.config.fullURL exists (set in workarea.njk)
-                // To unify: Either add 'symfony' property to workarea.njk template,
-                // or update main branch to use 'config' consistently.
-                p = (eXeLearning.symfony?.fullURL || eXeLearning.config?.fullURL || '') + "/app/common/exe_tooltips/";
+            if (typeof eXeLearning !== 'undefined' && typeof eXeLearning.resolveAssetUrl === 'function') {
+                // Workarea context - use resolveAssetUrl for proper basePath and versioning
+                p = eXeLearning.resolveAssetUrl('/app/common/exe_tooltips/');
             } else {
-                var ref = window.location.href;
-                // Check if it's the home page
-                p = "libs/exe_tooltips/";
-                if (!document.getElementById("exe-index")) p = "../" + p;
+                // Export context - use relative paths
+                p = document.getElementById("exe-index") ? "libs/exe_tooltips/" : "../libs/exe_tooltips/";
             }
             $exe.loadScript(p + "exe_tooltips.js", "$exe.tooltips.init('" + p + "')")
         }
@@ -1453,46 +1442,18 @@ var $exeDevices = {
                     }
 
                     self._loading = true;
-                    // For exports: use relative paths. For workarea: use versioned path if available
-                    var isExport = $("html").prop("id") == "exe-index" || !document.querySelector('script[src*="/app/common/"]');
-                    var basePath;
-                    if (isExport) {
-                        basePath = $("html").prop("id") == "exe-index" ? "./libs/exe_math" : "../libs/exe_math";
-                    } else {
-                        // Workarea: detect version and basePath from script tags
-                        var version = (window.eXeLearning && window.eXeLearning.version) || '';
-                        var configBasePath = '';
-                        // Try to get basePath from parsed config first (if available)
-                        if (window.eXeLearning && window.eXeLearning.config && typeof window.eXeLearning.config === 'object') {
-                            configBasePath = window.eXeLearning.config.basePath || '';
-                        }
-                        // Detect version and basePath from script tags as fallback
-                        var scriptTag = document.querySelector('script[src*="/app/common/"]');
-                        if (scriptTag) {
-                            var src = scriptTag.src;
-                            if (!version) {
-                                var versionMatch = src.match(/\/(v[\d.]+[^/]*)\//);
-                                if (versionMatch) version = versionMatch[1];
-                            }
-                            // Detect basePath from script src if not already set
-                            if (!configBasePath) {
-                                try {
-                                    var url = new URL(src);
-                                    var pathname = url.pathname;
-                                    var appIndex = pathname.indexOf('/app/common/');
-                                    if (appIndex > 0) {
-                                        var beforeApp = pathname.substring(0, appIndex);
-                                        if (version && beforeApp.endsWith('/' + version)) {
-                                            configBasePath = beforeApp.substring(0, beforeApp.length - version.length - 1);
-                                        } else {
-                                            configBasePath = beforeApp;
-                                        }
-                                    }
-                                } catch (e) {}
-                            }
-                        }
-                        basePath = version ? configBasePath + '/' + version + '/app/common/exe_math' : configBasePath + '/app/common/exe_math';
-                    }
+                    // Detect context: workarea vs export
+                    // In workarea: resolveAssetUrl is defined in template
+                    // In exports: use relative paths (./libs or ../libs)
+                    var isWorkarea = typeof window.eXeLearning?.resolveAssetUrl === 'function';
+                    var isIndex = $("html").prop("id") == "exe-index";
+                    var basePath = isWorkarea
+                        ? window.eXeLearning.resolveAssetUrl('/app/common/exe_math')
+                        : (isIndex ? "./libs/exe_math" : "../libs/exe_math");
+                    // Script source: use resolveAssetUrl in workarea, relative path in exports
+                    var scriptSrc = isWorkarea
+                        ? window.eXeLearning.resolveAssetUrl('/app/common/exe_math/tex-mml-svg.js')
+                        : (isIndex ? "./libs/exe_math/tex-mml-svg.js" : "../libs/exe_math/tex-mml-svg.js");
                     if (!window.MathJax) {
                         window.MathJax = self.engineConfig;
                     }
@@ -1500,7 +1461,7 @@ var $exeDevices = {
                     if (!window.MathJax.loader.paths) window.MathJax.loader.paths = {};
                     window.MathJax.loader.paths.mathjax = basePath;
                     var script = document.createElement('script');
-                    script.src = self.engine;
+                    script.src = scriptSrc;
                     script.async = true;
                     script.onload = function () {
                         var checkReady = function () {

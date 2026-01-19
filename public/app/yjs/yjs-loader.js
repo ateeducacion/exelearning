@@ -31,11 +31,9 @@
   window.Logger = window.AppLogger;
   const Logger = window.Logger;
 
-  // Get basePath and version from eXeLearning (set by pages.controller.ts)
-  const getBasePath = () => window.eXeLearning?.config?.basePath || '';
-  const getVersion = () => window.eXeLearning?.version || 'v1.0.0';
-  // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/yjs/yjs.min.js)
-  const assetPath = (path) => `${getBasePath()}/${getVersion()}${path.startsWith('/') ? path : '/' + path}`;
+  // Use global helper for versioned asset URLs
+  // resolveAssetUrl is defined in the template (workarea.njk) before any script loads
+  const assetPath = (path) => window.eXeLearning.resolveAssetUrl(path);
 
   // Paths are computed lazily to ensure eXeLearning globals are available
   const getLIBS_PATH = () => assetPath('/libs/yjs');

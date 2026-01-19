@@ -490,14 +490,8 @@ export default class App {
             });
         }
 
-        // COMPATIBILITY SHIM: Create eXeLearning.symfony for legacy iDevices
-        // Legacy iDevices (like interactive-video) reference eXeLearning.symfony.baseURL
-        // This shim maps them to the new eXeLearning.config structure
-        window.eXeLearning.symfony = {
-            baseURL: window.eXeLearning.config.baseURL || '',
-            basePath: window.eXeLearning.config.basePath || '',
-            fullURL: window.eXeLearning.config.fullURL || '',
-        };
+        // Note: resolveAssetUrl is defined in the template (workarea.njk) to ensure
+        // it's available before any script loads, including common.js IIFE
     }
 
     setupSessionMonitor() {

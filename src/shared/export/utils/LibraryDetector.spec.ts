@@ -129,6 +129,23 @@ describe('LibraryDetector', () => {
             expect(result.libraries[0].name).toBe('mermaid');
         });
 
+        it('should detect mermaid with other classes', () => {
+            const html = '<pre class="other mermaid more">graph TD; A-->B;</pre>';
+            const result = detector.detectLibraries(html);
+
+            expect(result.count).toBe(1);
+            expect(result.libraries[0].name).toBe('mermaid');
+        });
+
+        it('should NOT detect mermaid in pre-rendered wrapper class', () => {
+            // Pre-rendered mermaid uses exe-mermaid-rendered class, not mermaid
+            const html = '<div class="exe-mermaid-rendered" data-mermaid="graph TD; A-->B"><svg>...</svg></div>';
+            const result = detector.detectLibraries(html);
+
+            // Should not detect mermaid library (it's already rendered to SVG)
+            expect(result.libraries.find(l => l.name === 'mermaid')).toBeUndefined();
+        });
+
         it('should detect jquery-ui for ordena iDevice', () => {
             const html = '<div class="ordena-IDevice">Sortable</div>';
             const result = detector.detectLibraries(html);

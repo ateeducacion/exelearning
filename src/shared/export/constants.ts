@@ -251,10 +251,12 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
     },
 
     // Mermaid diagrams
+    // Use regex to match exact class "mermaid", not substrings like "exe-mermaid-rendered"
+    // Pattern: class="(optional-classes )?mermaid( optional-classes)?"
     {
         name: 'mermaid',
-        type: 'class',
-        pattern: 'mermaid',
+        type: 'regex',
+        pattern: /class="([^"]*\s)?mermaid(\s[^"]*)?"/i,
         files: ['mermaid/mermaid.min.js'],
     },
 

@@ -141,80 +141,13 @@
     }
 
     /**
-     * Load Mermaid library dynamically if not already loaded
-     * @param {number} timeout - Timeout in ms (default 5000)
-     * @returns {Promise<void>}
-     */
-    async function loadMermaidLibrary(timeout = 5000) {
-        if (typeof mermaid !== 'undefined') {
-            return; // Already loaded
-        }
-
-        // Skip in test environments without proper DOM
-        if (typeof document === 'undefined' || !document.head) {
-            throw new Error('Mermaid library could not be loaded (no DOM)');
-        }
-
-        // Determine the correct path for Mermaid library
-        const isWorkarea = document.querySelector('html')?.id === 'exe-workarea';
-        const mermaidPath = isWorkarea
-            ? '../app/common/mermaid/mermaid.min.js'
-            : './libs/mermaid/mermaid.min.js';
-
-        console.log('[MermaidPreRenderer] Loading Mermaid library from:', mermaidPath);
-
-        return new Promise((resolve, reject) => {
-            // Add timeout to prevent hanging forever
-            const timeoutId = setTimeout(() => {
-                reject(new Error('Mermaid library load timeout'));
-            }, timeout);
-
-            const script = document.createElement('script');
-            script.src = mermaidPath;
-            script.async = true;
-            script.onload = () => {
-                clearTimeout(timeoutId);
-                console.log('[MermaidPreRenderer] Mermaid library loaded successfully');
-                resolve();
-            };
-            script.onerror = () => {
-                // Try alternative path
-                const altPath = isWorkarea
-                    ? './libs/mermaid/mermaid.min.js'
-                    : '../app/common/mermaid/mermaid.min.js';
-                console.log('[MermaidPreRenderer] Trying alternative path:', altPath);
-
-                const altScript = document.createElement('script');
-                altScript.src = altPath;
-                altScript.async = true;
-                altScript.onload = () => {
-                    clearTimeout(timeoutId);
-                    console.log('[MermaidPreRenderer] Mermaid library loaded from alternative path');
-                    resolve();
-                };
-                altScript.onerror = () => {
-                    clearTimeout(timeoutId);
-                    reject(new Error('Failed to load Mermaid library'));
-                };
-                document.head.appendChild(altScript);
-            };
-            document.head.appendChild(script);
-        });
-    }
-
-    /**
      * Initialize Mermaid for pre-rendering
-     * Loads Mermaid dynamically if not available
+     * Mermaid must already be loaded in the workarea (no dynamic loading)
      * @returns {Promise<void>}
      */
     async function initMermaid() {
-        // Load Mermaid if not available
         if (typeof mermaid === 'undefined') {
-            await loadMermaidLibrary();
-        }
-
-        if (typeof mermaid === 'undefined') {
-            throw new Error('Mermaid library could not be loaded');
+            throw new Error('Mermaid library not available');
         }
 
         // Initialize with optimal settings for pre-rendering

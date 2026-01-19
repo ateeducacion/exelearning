@@ -14,6 +14,7 @@ globalThis.eXeLearning = {
     basePath: '/exelearning',
     themeBaseType: 'XHTML',
   },
+  resolveAssetUrl: (path) => `/exelearning/v3.0.0${path.startsWith('/') ? path : '/' + path}`,
   app: {
     common: {
       getVersionTimeStamp: vi.fn(() => '12345'),
@@ -216,10 +217,22 @@ describe('TinyMCE 5 Settings', () => {
       expect(result).toBe('http://localhost/exelearning/v3.0.0/libs/test.js');
     });
 
-    it('getContentCSS returns comma-separated URLs', () => {
+    it('getContentCSS returns comma-separated URLs with resolveAssetUrl', () => {
       const result = globalThis.$exeTinyMCE.getContentCSS();
       expect(result).toContain('/theme/path/style.css');
-      expect(result).toContain('/app/editor/tinymce_5_extra.css');
+      // Non-theme assets should use resolveAssetUrl (includes basePath and version)
+      expect(result).toContain('/exelearning/v3.0.0/app/editor/tinymce_5_extra.css');
+      expect(result).toContain('/exelearning/v3.0.0/libs/bootstrap/bootstrap.min.css');
+    });
+
+    it('edicuatex_url getter returns composed URL', () => {
+      const result = globalThis.$exeTinyMCE.edicuatex_url;
+      expect(result).toBe('/exelearning/v3.0.0/app/common/edicuatex/index.html');
+    });
+
+    it('edicuatex_mathjax_url getter returns composed URL', () => {
+      const result = globalThis.$exeTinyMCE.edicuatex_mathjax_url;
+      expect(result).toBe('/exelearning/v3.0.0/app/common/exe_math/tex-mml-svg.js');
     });
 
     it('getContentCSS falls back to base theme when missing', () => {

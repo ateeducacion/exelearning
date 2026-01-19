@@ -151,43 +151,86 @@ describe('App utility methods', () => {
 
       window.location = originalLocation;
     });
+  });
 
-    it('creates symfony compatibility shim from config', () => {
+  describe('resolveAssetUrl', () => {
+    // resolveAssetUrl is defined in the template (workarea.njk) before app.js loads
+    // Simulate this by defining it in beforeEach before calling parseExelearningConfig
+    beforeEach(() => {
       window.eXeLearning.user = '{"id":1}';
-      window.eXeLearning.config = '{"isOfflineInstallation":false,"baseURL":"http://localhost","basePath":"/app","fullURL":"http://localhost/app"}';
+      window.eXeLearning.config = '{"basePath": "/mybase"}';
+      window.eXeLearning.version = 'v1.0.0';
+
+      // Define resolveAssetUrl as the template would (before any script runs)
+      window.eXeLearning.resolveAssetUrl = function(path) {
+        const basePath = (this.config?.basePath || '').replace(/\/+$/, '');
+        const normalizedPath = path.startsWith('/') ? path : '/' + path;
+        return this.version
+          ? basePath + '/' + this.version + normalizedPath
+          : basePath + normalizedPath;
+      };
 
       const originalLocation = window.location;
       delete window.location;
       window.location = { href: 'http://localhost/test', protocol: 'http:' };
 
       appInstance.parseExelearningConfig();
-
-      // Verify symfony compatibility shim is created
-      expect(window.eXeLearning.symfony).toBeDefined();
-      expect(window.eXeLearning.symfony.baseURL).toBe('http://localhost');
-      expect(window.eXeLearning.symfony.basePath).toBe('/app');
-      expect(window.eXeLearning.symfony.fullURL).toBe('http://localhost/app');
 
       window.location = originalLocation;
     });
 
-    it('creates symfony compatibility shim with empty defaults', () => {
-      window.eXeLearning.user = '{"id":1}';
-      window.eXeLearning.config = '{"isOfflineInstallation":true}';
+    it('composes URL with basePath and version', () => {
+      expect(window.eXeLearning.resolveAssetUrl('/app/test.js')).toBe(
+        '/mybase/v1.0.0/app/test.js'
+      );
+    });
 
-      const originalLocation = window.location;
-      delete window.location;
-      window.location = { href: 'http://localhost/test', protocol: 'http:' };
+    it('handles nested basePath', () => {
+      window.eXeLearning.config = { basePath: '/a/b/c' };
+      expect(window.eXeLearning.resolveAssetUrl('/libs/x.js')).toBe(
+        '/a/b/c/v1.0.0/libs/x.js'
+      );
+    });
 
-      appInstance.parseExelearningConfig();
+    it('handles empty basePath', () => {
+      window.eXeLearning.config = { basePath: '' };
+      expect(window.eXeLearning.resolveAssetUrl('/app/x.js')).toBe(
+        '/v1.0.0/app/x.js'
+      );
+    });
 
-      // Verify symfony compatibility shim defaults to empty strings
-      expect(window.eXeLearning.symfony).toBeDefined();
-      expect(window.eXeLearning.symfony.baseURL).toBe('');
-      expect(window.eXeLearning.symfony.basePath).toBe('');
-      expect(window.eXeLearning.symfony.fullURL).toBe('');
+    it('normalizes path without leading slash', () => {
+      expect(window.eXeLearning.resolveAssetUrl('app/test.js')).toBe(
+        '/mybase/v1.0.0/app/test.js'
+      );
+    });
 
-      window.location = originalLocation;
+    it('handles missing version', () => {
+      window.eXeLearning.version = '';
+      expect(window.eXeLearning.resolveAssetUrl('/app/x.js')).toBe(
+        '/mybase/app/x.js'
+      );
+    });
+
+    it('handles undefined version', () => {
+      window.eXeLearning.version = undefined;
+      expect(window.eXeLearning.resolveAssetUrl('/app/x.js')).toBe(
+        '/mybase/app/x.js'
+      );
+    });
+
+    it('strips trailing slashes from basePath', () => {
+      window.eXeLearning.config = { basePath: '/mybase///' };
+      expect(window.eXeLearning.resolveAssetUrl('/app/x.js')).toBe(
+        '/mybase/v1.0.0/app/x.js'
+      );
+    });
+
+    it('handles undefined config', () => {
+      window.eXeLearning.config = undefined;
+      expect(window.eXeLearning.resolveAssetUrl('/app/x.js')).toBe(
+        '/v1.0.0/app/x.js'
+      );
     });
   });
 

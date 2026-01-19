@@ -19,6 +19,14 @@ import { IdeviceRenderer } from './IdeviceRenderer';
 import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText } from '../constants';
 
 /**
+ * Libraries that are always pre-rendered to SVG by eXeLearning.
+ * These should never be included in exports since their output is already baked into the HTML.
+ * Currently includes:
+ * - mermaid: Diagrams are pre-rendered to SVG (~2.7MB library saved)
+ */
+const ALWAYS_SKIP_LIBRARIES = new Set(['mermaid']);
+
+/**
  * PageRenderer class
  * Renders complete HTML pages for export
  */
@@ -88,6 +96,8 @@ export class PageRenderer {
             // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
             hideNavigation = false,
             hideNavButtons = false,
+            // Theme icons config
+            themeIcons,
         } = options;
 
         const pageTitle = isIndex ? projectTitle : page.title || 'Page';
@@ -98,7 +108,7 @@ export class PageRenderer {
         const detectedLibraries = this.detectContentLibraries(originalContent);
 
         // Render page content (includes exe-package:elp → onclick transformation)
-        const pageContent = this.renderPageContent(page, basePath, projectTitle);
+        const pageContent = this.renderPageContent(page, basePath, projectTitle, themeIcons);
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -175,6 +185,8 @@ ${madeWithExeHtml}
         licenseUrl?: string;
         addAccessibilityToolbar?: boolean;
         addMathJax?: boolean;
+        /** Absolute URL for MathJax script (bypasses Service Worker in preview mode) */
+        mathJaxAbsoluteUrl?: string;
         extraHeadContent?: string;
         addSearchBox?: boolean;
         detectedLibraries?: string[];
@@ -193,6 +205,7 @@ ${madeWithExeHtml}
             licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
             addAccessibilityToolbar = false,
             addMathJax = false,
+            mathJaxAbsoluteUrl,
             extraHeadContent = '',
             addSearchBox = false,
             detectedLibraries = [],
@@ -301,7 +314,9 @@ ${madeWithExeHtml}
 
         // MathJax library (for math formulas with accessibility features)
         if (addMathJax) {
-            head += `\n<script src="${basePath}libs/exe_math/tex-mml-svg.js"> </script>`;
+            // Use absolute URL if provided (bypasses Service Worker in preview mode)
+            const mathJaxSrc = mathJaxAbsoluteUrl || `${basePath}libs/exe_math/tex-mml-svg.js`;
+            head += `\n<script src="${mathJaxSrc}"> </script>`;
         }
 
         // Custom head content (from project properties)
@@ -573,15 +588,22 @@ ${madeWithExeHtml}
      * @param page - Page
      * @param basePath - Base path
      * @param projectTitle - Project title (for exe-package:elp transformation)
+     * @param themeIcons - Theme icons config map for correct icon extensions
      * @returns Content HTML
      */
-    renderPageContent(page: ExportPage, basePath: string, projectTitle?: string): string {
+    renderPageContent(
+        page: ExportPage,
+        basePath: string,
+        projectTitle?: string,
+        themeIcons?: Record<string, { value?: string }>,
+    ): string {
         let html = '';
 
         for (const block of page.blocks || []) {
             html += this.ideviceRenderer.renderBlock(block, {
                 basePath,
                 includeDataAttributes: true,
+                themeIcons,
             });
         }
 
@@ -997,6 +1019,11 @@ ${addExeLink ? this.renderMadeWithEXe() : ''}
         const detectedLibs: Set<string> = new Set();
 
         for (const lib of LIBRARY_PATTERNS) {
+            // Skip libraries that are always pre-rendered (uses module-level constant)
+            if (ALWAYS_SKIP_LIBRARIES.has(lib.name)) {
+                continue;
+            }
+
             let found = false;
 
             switch (lib.type) {

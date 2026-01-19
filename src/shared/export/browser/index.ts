@@ -491,7 +491,17 @@ export async function generatePreviewForSW(
         const latexHooks = getLatexPreRendererHooks();
         // Wire up Mermaid pre-renderer hooks if available in browser context
         const mermaidHooks = getMermaidPreRendererHooks();
-        const exportOptions = { ...options, ...latexHooks, ...mermaidHooks };
+
+        // Compute absolute URL for MathJax (bypasses Service Worker in preview mode)
+        // This allows MathJax to load directly from the server instead of SW cache
+        const windowEXE = (globalThis as unknown as { eXeLearning?: { resolveAssetUrl?: (path: string) => string } })
+            .eXeLearning;
+        const mathJaxAbsoluteUrl =
+            typeof windowEXE?.resolveAssetUrl === 'function'
+                ? windowEXE.resolveAssetUrl('/app/common/exe_math/tex-mml-svg.js')
+                : undefined;
+
+        const exportOptions = { ...options, ...latexHooks, ...mermaidHooks, mathJaxAbsoluteUrl };
 
         // Generate preview files (Map<string, Uint8Array | string>)
         const filesMap = await exporter.generateForPreview(exportOptions);

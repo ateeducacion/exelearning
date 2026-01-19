@@ -523,9 +523,10 @@ var $exeDevice = {
             $(
                 '#modalGenericIframeContainer,#modalGenericIframeContainerCSS'
             ).remove();
+            // API endpoints don't use versioning, just basePath
             const editorURL =
-                eXeLearning.symfony.baseURL +
-                eXeLearning.symfony.basePath +
+                eXeLearning.config.baseURL +
+                (eXeLearning.config.basePath || '') +
                 '/api/idevices/download-file-resources?resource=' +
                 filePath +
                 'editor/index.html';

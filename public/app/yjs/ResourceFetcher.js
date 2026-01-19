@@ -41,6 +41,9 @@ class ResourceFetcher {
     this.apiBase = `${this.basePath}/api/resources`;
     // Version for cache-busting static file URLs
     this.version = window.eXeLearning?.version || 'v0.0.0';
+    // Unified URL composition - use global resolveAssetUrl or fallback
+    this.resolveAssetUrl =
+      window.eXeLearning?.resolveAssetUrl?.bind(window.eXeLearning) || this._createFallbackResolveAssetUrl();
     // Persistent IndexedDB cache (set via init() or setResourceCache())
     this.resourceCache = null;
     // Bundle manifest (loaded on init)
@@ -50,6 +53,21 @@ class ResourceFetcher {
     // User theme files (from .elpx imports, stored in Yjs)
     // Map<themeName, Object<relativePath, Uint8Array>>
     this.userThemeFiles = new Map();
+  }
+
+  /**
+   * Create a fallback resolveAssetUrl function when the global one is not available.
+   * This ensures ResourceFetcher works even without the full eXeLearning environment.
+   * @returns {Function} A function that resolves versioned asset URLs
+   * @private
+   */
+  _createFallbackResolveAssetUrl() {
+    const basePath = this.basePath;
+    const version = this.version;
+    return path => {
+      const normalizedPath = path.startsWith('/') ? path : '/' + path;
+      return version ? `${basePath}/${version}${normalizedPath}` : `${basePath}${normalizedPath}`;
+    };
   }
 
   /**
@@ -841,14 +859,8 @@ class ResourceFetcher {
 
     // Try the most likely path first (with version for cache busting)
     const possiblePaths = isThirdParty
-      ? [
-          `${this.basePath}/${this.version}/libs/${path}`,
-          `${this.basePath}/${this.version}/app/common/${path}`,
-        ]
-      : [
-          `${this.basePath}/${this.version}/app/common/${path}`,
-          `${this.basePath}/${this.version}/libs/${path}`,
-        ];
+      ? [this.resolveAssetUrl(`/libs/${path}`), this.resolveAssetUrl(`/app/common/${path}`)]
+      : [this.resolveAssetUrl(`/app/common/${path}`), this.resolveAssetUrl(`/libs/${path}`)];
 
     for (const url of possiblePaths) {
       try {
@@ -1052,7 +1064,7 @@ class ResourceFetcher {
       return this.cache.get(cacheKey);
     }
 
-    const logoUrl = `${this.basePath}/${this.version}/app/common/exe_powered_logo/exe_powered_logo.png`;
+    const logoUrl = this.resolveAssetUrl('/app/common/exe_powered_logo/exe_powered_logo.png');
     try {
       const response = await fetch(logoUrl);
       if (response.ok) {

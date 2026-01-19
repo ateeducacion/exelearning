@@ -1976,4 +1976,207 @@ describe('Html5Exporter', () => {
             expect(files.has('index.html')).toBe(true);
         });
     });
+
+    describe('Mermaid Library Never Included', () => {
+        // eXeLearning ALWAYS pre-renders Mermaid to SVG, so the ~2.7MB library
+        // should NEVER be included in exports or preview
+
+        it('should never include mermaid library in export even when content has mermaid class', async () => {
+            // Create pages with raw mermaid content
+            const pagesWithMermaid: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page with Mermaid',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<pre class="mermaid">graph TD; A-->B</pre>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithMermaid);
+
+            // Track what library files are requested
+            let requestedLibraryFiles: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requestedLibraryFiles = files;
+                return new Map();
+            };
+
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export({
+                preRenderMermaid: async (html: string) => ({
+                    html: html.replace(
+                        /<pre class="mermaid">[^<]*<\/pre>/g,
+                        '<div class="exe-mermaid-rendered"><svg></svg></div>',
+                    ),
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            // Mermaid library files should NOT be requested
+            expect(requestedLibraryFiles).not.toContain('mermaid/mermaid.min.js');
+            expect(requestedLibraryFiles.some((f: string) => f.includes('mermaid'))).toBe(false);
+        });
+
+        it('should never include mermaid library in export even without preRenderMermaid hook', async () => {
+            // Create pages with raw mermaid content
+            const pagesWithMermaid: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page with Mermaid',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<pre class="mermaid">graph TD; A-->B</pre>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithMermaid);
+
+            // Track what library files are requested
+            let requestedLibraryFiles: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requestedLibraryFiles = files;
+                return new Map();
+            };
+
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            // Export WITHOUT preRenderMermaid hook
+            await exporter.export();
+
+            // Mermaid library files should STILL NOT be requested (skipMermaid is always true)
+            expect(requestedLibraryFiles).not.toContain('mermaid/mermaid.min.js');
+            expect(requestedLibraryFiles.some((f: string) => f.includes('mermaid'))).toBe(false);
+        });
+
+        it('should never include mermaid library in preview even when content has mermaid class', async () => {
+            // Create pages with raw mermaid content
+            const pagesWithMermaid: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page with Mermaid',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<pre class="mermaid">graph TD; A-->B</pre>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithMermaid);
+
+            // Track what library files are requested
+            let requestedLibraryFiles: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requestedLibraryFiles = files;
+                return new Map();
+            };
+
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.generateForPreview({
+                preRenderMermaid: async (html: string) => ({
+                    html: html.replace(
+                        /<pre class="mermaid">[^<]*<\/pre>/g,
+                        '<div class="exe-mermaid-rendered"><svg></svg></div>',
+                    ),
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            // Mermaid library files should NOT be requested
+            expect(requestedLibraryFiles).not.toContain('mermaid/mermaid.min.js');
+            expect(requestedLibraryFiles.some((f: string) => f.includes('mermaid'))).toBe(false);
+        });
+
+        it('should never include mermaid library in preview even without preRenderMermaid hook', async () => {
+            // Create pages with raw mermaid content
+            const pagesWithMermaid: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page with Mermaid',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<pre class="mermaid">graph TD; A-->B</pre>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithMermaid);
+
+            // Track what library files are requested
+            let requestedLibraryFiles: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requestedLibraryFiles = files;
+                return new Map();
+            };
+
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            // Preview WITHOUT preRenderMermaid hook
+            await exporter.generateForPreview();
+
+            // Mermaid library files should STILL NOT be requested (skipMermaid is always true)
+            expect(requestedLibraryFiles).not.toContain('mermaid/mermaid.min.js');
+            expect(requestedLibraryFiles.some((f: string) => f.includes('mermaid'))).toBe(false);
+        });
+    });
 });

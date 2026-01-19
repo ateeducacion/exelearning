@@ -375,14 +375,14 @@ describe('MermaidPreRenderer', () => {
             }
         });
 
-        test('throws when Mermaid not available and cannot be loaded', async () => {
+        test('throws immediately when Mermaid not available', async () => {
             originalMermaid = globalThis.mermaid;
             delete globalThis.mermaid;
 
-            // In test environment, script loading will fail, so initMermaid should throw
+            // Should throw immediately without trying to load dynamically
             await expect(MermaidPreRenderer._initMermaid())
-                .rejects.toThrow(/Mermaid library/);
-        }, 10000);
+                .rejects.toThrow('Mermaid library not available');
+        });
 
         test('calls mermaid.initialize with correct options', async () => {
             originalMermaid = globalThis.mermaid;
@@ -624,13 +624,11 @@ describe('MermaidPreRenderer', () => {
         });
     });
 
-    describe('dynamic Mermaid loading', () => {
+    describe('preRender when Mermaid not available', () => {
         let originalMermaid;
-        let originalDocument;
 
         beforeEach(() => {
             originalMermaid = globalThis.mermaid;
-            originalDocument = globalThis.document;
         });
 
         afterEach(() => {
@@ -639,13 +637,10 @@ describe('MermaidPreRenderer', () => {
             } else {
                 delete globalThis.mermaid;
             }
-            if (originalDocument !== undefined) {
-                globalThis.document = originalDocument;
-            }
         });
 
-        test('skips loading when mermaid is already available', async () => {
-            // Set up mermaid as already loaded
+        test('renders when mermaid is available', async () => {
+            // Set up mermaid as loaded
             globalThis.mermaid = {
                 initialize: vi.fn(),
                 render: vi.fn(async () => ({ svg: '<svg></svg>' })),
@@ -654,28 +649,20 @@ describe('MermaidPreRenderer', () => {
             const html = '<pre class="mermaid">graph TD; A-->B</pre>';
             const result = await MermaidPreRenderer.preRender(html);
 
-            // Should work without needing to load
             expect(result.mermaidRendered).toBe(true);
         });
 
-        test('attempts to load mermaid dynamically when not available', async () => {
+        test('returns original HTML when mermaid not available', async () => {
             delete globalThis.mermaid;
 
             const html = '<pre class="mermaid">graph TD; A-->B</pre>';
             const result = await MermaidPreRenderer.preRender(html);
 
-            // In test environment, loading will fail but should not throw
+            // Should return original HTML when mermaid is not available
             expect(result.hasMermaid).toBe(true);
             expect(result.mermaidRendered).toBe(false);
-        }, 10000);
-
-        test('initMermaid throws when mermaid cannot be loaded', async () => {
-            delete globalThis.mermaid;
-
-            // In test environment, script loading will timeout/fail
-            await expect(MermaidPreRenderer._initMermaid())
-                .rejects.toThrow(/Mermaid library/);
-        }, 10000);
+            expect(result.html).toBe(html);
+        });
 
         test('initMermaid succeeds when mermaid is pre-loaded', async () => {
             globalThis.mermaid = {
@@ -686,39 +673,6 @@ describe('MermaidPreRenderer', () => {
             await MermaidPreRenderer._initMermaid();
 
             expect(globalThis.mermaid.initialize).toHaveBeenCalled();
-        });
-
-        test('preRender returns original HTML when mermaid loading fails', async () => {
-            delete globalThis.mermaid;
-
-            const html = '<pre class="mermaid">graph TD; A-->B</pre>';
-            const result = await MermaidPreRenderer.preRender(html);
-
-            // Should return original HTML when mermaid cannot be loaded
-            expect(result.hasMermaid).toBe(true);
-            expect(result.mermaidRendered).toBe(false);
-            expect(result.html).toBe(html);
-        }, 10000);
-
-        test('preRender continues with rendering after dynamic load', async () => {
-            // Start without mermaid
-            delete globalThis.mermaid;
-
-            // Simulate that mermaid gets loaded during initMermaid
-            // by mocking the initialize call to set up mermaid
-            const mockMermaid = {
-                initialize: vi.fn(),
-                render: vi.fn(async () => ({ svg: '<svg>dynamically loaded</svg>' })),
-            };
-
-            // Pre-set mermaid before the test (simulating successful dynamic load)
-            globalThis.mermaid = mockMermaid;
-
-            const html = '<pre class="mermaid">graph TD; A-->B</pre>';
-            const result = await MermaidPreRenderer.preRender(html);
-
-            expect(result.mermaidRendered).toBe(true);
-            expect(result.html).toContain('dynamically loaded');
         });
     });
 

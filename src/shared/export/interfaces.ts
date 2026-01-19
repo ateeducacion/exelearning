@@ -249,6 +249,8 @@ export interface ThemeData {
     themeRootFiles: string[];
     /** Detected favicon info, or null if not found in theme */
     faviconInfo: FaviconInfo | null;
+    /** Theme icons config map extracted from icons/ directory */
+    themeIcons?: Record<string, { value?: string }>;
 }
 
 // =============================================================================
@@ -362,6 +364,8 @@ export interface ExportOptions {
 export interface Html5ExportOptions extends ExportOptions {
     /** Export as single page (anchor navigation) */
     singlePage?: boolean;
+    /** Absolute URL for MathJax script (bypasses Service Worker in preview mode) */
+    mathJaxAbsoluteUrl?: string;
 }
 
 /**
@@ -514,6 +518,8 @@ export interface PageRenderOptions {
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
     addMathJax?: boolean;
+    /** Absolute URL for MathJax script (bypasses Service Worker in preview mode) */
+    mathJaxAbsoluteUrl?: string;
 
     // Custom head content
     extraHeadContent?: string;
@@ -556,6 +562,9 @@ export interface PageRenderOptions {
      * If not provided, filenames are generated directly from titles.
      */
     pageFilenameMap?: Map<string, string>;
+
+    /** Theme icons config map (iconId -> { value: "icons/name.svg", ... }) */
+    themeIcons?: Record<string, { value?: string }>;
 }
 
 /**
@@ -572,6 +581,8 @@ export interface ComponentRenderOptions {
 export interface BlockRenderOptions extends ComponentRenderOptions {
     /** Base path for theme icons (e.g., '/files/perm/themes/base/base/icons/' for preview) */
     themeIconBasePath?: string;
+    /** Theme icons config map (iconId -> { value: "icons/name.svg", ... }) */
+    themeIcons?: Record<string, { value?: string }>;
 }
 
 // =============================================================================

@@ -1173,6 +1173,24 @@ describe('PageRenderer', () => {
             const libs = renderer.detectContentLibraries(html);
             expect(libs).toContain('exe_highlighter');
         });
+
+        it('should NEVER detect mermaid library (always pre-rendered to SVG)', () => {
+            // eXeLearning ALWAYS pre-renders mermaid diagrams to SVG
+            // The mermaid library (~2.7MB) should NEVER be included
+            const html = '<pre class="mermaid">graph TD; A-->B</pre>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).not.toContain('mermaid');
+        });
+
+        it('should NEVER detect mermaid even with multiple mermaid elements', () => {
+            const html = `
+                <pre class="mermaid">graph TD; A-->B</pre>
+                <pre class="mermaid other-class">sequenceDiagram</pre>
+                <div class="mermaid-wrapper"><pre class="mermaid">pie chart</pre></div>
+            `;
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).not.toContain('mermaid');
+        });
     });
 
     describe('renderHead with detected libraries', () => {

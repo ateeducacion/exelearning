@@ -154,7 +154,13 @@ ${contentHtml}
         block: ExportBlock,
         options: BlockRenderOptions = { basePath: '', includeDataAttributes: true },
     ): string {
-        const { basePath = '', includeDataAttributes = true, themeIconBasePath, themeIcons, assetExportPathMap } = options;
+        const {
+            basePath = '',
+            includeDataAttributes = true,
+            themeIconBasePath,
+            themeIcons,
+            assetExportPathMap,
+        } = options;
 
         const blockId = block.id;
         const blockName = block.name || '';

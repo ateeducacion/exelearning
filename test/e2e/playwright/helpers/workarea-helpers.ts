@@ -1166,6 +1166,9 @@ export async function exportPage(page: Page, nodeId: string): Promise<Download> 
  * @param page - Playwright page
  */
 export async function addTextIdevice(page: Page): Promise<void> {
+    // Ensure a non-root page is selected first (like addIdevice does)
+    await selectFirstPage(page);
+
     // Expand "Information and presentation" category
     const infoCategory = page
         .locator('.idevice_category')
@@ -1334,7 +1337,33 @@ export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex:
 
     // 6. Wait for modal to close
     await page.waitForFunction(() => !document.querySelector('.modal.show .option-block-icon'), { timeout: 5000 });
-    await page.waitForTimeout(500);
+
+    // 7. Wait for icon to be fully rendered in the DOM
+    if (iconIndex === 0) {
+        // Wait for empty icon state (SVG placeholder)
+        await page.waitForFunction(
+            idx => {
+                const block = document.querySelectorAll('#node-content article.box')[idx] as HTMLElement;
+                if (!block) return false;
+                const iconBtn = block.querySelector('header.box-head button.box-icon');
+                return iconBtn?.classList.contains('exe-no-icon') || iconBtn?.querySelector('svg') !== null;
+            },
+            blockIndex,
+            { timeout: 5000 },
+        );
+    } else {
+        // Wait for icon image to be loaded
+        await page.waitForFunction(
+            idx => {
+                const block = document.querySelectorAll('#node-content article.box')[idx] as HTMLElement;
+                if (!block) return false;
+                const img = block.querySelector('header.box-head button.box-icon img') as HTMLImageElement;
+                return img?.complete && img.naturalWidth > 0;
+            },
+            blockIndex,
+            { timeout: 5000 },
+        );
+    }
 }
 
 /**

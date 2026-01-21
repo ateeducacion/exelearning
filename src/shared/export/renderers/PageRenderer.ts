@@ -96,6 +96,8 @@ export class PageRenderer {
             // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
             hideNavigation = false,
             hideNavButtons = false,
+            // Asset URL transformation map
+            assetExportPathMap,
             // Theme icons config
             themeIcons,
         } = options;
@@ -108,7 +110,7 @@ export class PageRenderer {
         const detectedLibraries = this.detectContentLibraries(originalContent);
 
         // Render page content (includes exe-package:elp → onclick transformation)
-        const pageContent = this.renderPageContent(page, basePath, projectTitle, themeIcons);
+        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap, themeIcons);
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -588,6 +590,7 @@ ${madeWithExeHtml}
      * @param page - Page
      * @param basePath - Base path
      * @param projectTitle - Project title (for exe-package:elp transformation)
+     * @param assetExportPathMap - Map of asset UUID to export path for URL transformation
      * @param themeIcons - Theme icons config map for correct icon extensions
      * @returns Content HTML
      */
@@ -595,6 +598,7 @@ ${madeWithExeHtml}
         page: ExportPage,
         basePath: string,
         projectTitle?: string,
+        assetExportPathMap?: Map<string, string>,
         themeIcons?: Record<string, { value?: string }>,
     ): string {
         let html = '';
@@ -603,6 +607,7 @@ ${madeWithExeHtml}
             html += this.ideviceRenderer.renderBlock(block, {
                 basePath,
                 includeDataAttributes: true,
+                assetExportPathMap,
                 themeIcons,
             });
         }

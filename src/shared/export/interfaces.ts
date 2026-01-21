@@ -563,6 +563,12 @@ export interface PageRenderOptions {
      */
     pageFilenameMap?: Map<string, string>;
 
+    /**
+     * Map of asset UUID to export path for URL transformation (new format asset://uuid.ext).
+     * Used to convert asset:// URLs to content/resources/ paths in export output.
+     */
+    assetExportPathMap?: Map<string, string>;
+
     /** Theme icons config map (iconId -> { value: "icons/name.svg", ... }) */
     themeIcons?: Record<string, { value?: string }>;
 }
@@ -573,6 +579,8 @@ export interface PageRenderOptions {
 export interface ComponentRenderOptions {
     basePath: string;
     includeDataAttributes: boolean;
+    /** Map of asset UUID to export path for URL transformation (new format asset://uuid.ext) */
+    assetExportPathMap?: Map<string, string>;
 }
 
 /**

@@ -246,6 +246,8 @@ export class Html5Exporter extends BaseExporter {
             addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
 
             // 8. Detect and fetch additional required libraries based on content
+            // Skip MathJax if LaTeX was pre-rendered to SVG+MathML (unless explicitly requested)
+            // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
             // Note: exe-package:elp is still in the content at this point (transformation happens in PageRenderer)
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
@@ -415,9 +417,9 @@ export class Html5Exporter extends BaseExporter {
             isIndex,
             usedIdevices,
             author: meta.author || '',
-            license: meta.license || 'creative commons: attribution - share alike 4.0',
+            license: meta.license || '',
             description: meta.description || '',
-            licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
+            licenseUrl: meta.licenseUrl || '',
             // Page counter options
             totalPages: allPages.length,
             currentPageIndex,
@@ -716,6 +718,7 @@ export class Html5Exporter extends BaseExporter {
             addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
 
             // 8. Detect and fetch additional required libraries based on content
+            // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
                 allHtmlContent,

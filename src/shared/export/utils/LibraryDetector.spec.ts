@@ -121,20 +121,26 @@ describe('LibraryDetector', () => {
             expect(result.libraries[0].name).toBe('abcjs');
         });
 
-        it('should detect mermaid by class pattern', () => {
+        it('should NOT include mermaid library (always pre-rendered to SVG)', () => {
+            // Mermaid diagrams are always pre-rendered to static SVG in the workarea
+            // The mermaid.min.js library (~2.7MB) is NEVER included in exports
             const html = '<div class="mermaid">graph TD; A-->B;</div>';
             const result = detector.detectLibraries(html);
 
-            expect(result.count).toBe(1);
-            expect(result.libraries[0].name).toBe('mermaid');
+            // Mermaid should NOT be detected
+            expect(result.libraries.find(l => l.name === 'mermaid')).toBeUndefined();
+            expect(result.files).not.toContain('mermaid/mermaid.min.js');
         });
 
-        it('should detect mermaid with other classes', () => {
+        it('should NOT detect mermaid even with other classes (always pre-rendered)', () => {
+            // Mermaid diagrams are always pre-rendered to static SVG in the workarea
+            // The mermaid.min.js library (~2.7MB) is NEVER included in exports
             const html = '<pre class="other mermaid more">graph TD; A-->B;</pre>';
             const result = detector.detectLibraries(html);
 
-            expect(result.count).toBe(1);
-            expect(result.libraries[0].name).toBe('mermaid');
+            // Mermaid should NOT be detected - always pre-rendered
+            expect(result.libraries.find(l => l.name === 'mermaid')).toBeUndefined();
+            expect(result.files).not.toContain('mermaid/mermaid.min.js');
         });
 
         it('should NOT detect mermaid in pre-rendered wrapper class', () => {

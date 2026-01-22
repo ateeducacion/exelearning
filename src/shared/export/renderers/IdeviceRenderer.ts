@@ -154,13 +154,7 @@ ${contentHtml}
         block: ExportBlock,
         options: BlockRenderOptions = { basePath: '', includeDataAttributes: true },
     ): string {
-        const {
-            basePath = '',
-            includeDataAttributes = true,
-            themeIconBasePath,
-            themeIcons,
-            assetExportPathMap,
-        } = options;
+        const { basePath = '', includeDataAttributes = true, themeIconBasePath, assetExportPathMap } = options;
 
         const blockId = block.id;
         const blockName = block.name || '';
@@ -196,17 +190,10 @@ ${contentHtml}
         // Build icon HTML if iconName exists
         let iconHtml = '';
         if (hasIcon) {
-            // Get icon file name from theme icons config (like Symfony legacy did)
-            // themeIcons[iconName].value = "icons/verifiedsvg.svg" or "/v0.0.0/files/.../icons/verifiedsvg.svg"
-            let iconFile = `${iconName}.png`; // Fallback to .png
-            if (themeIcons?.[iconName]?.value) {
-                const parts = themeIcons[iconName].value.split('/');
-                iconFile = parts[parts.length - 1]; // Extract filename with correct extension
-            }
             // Icon path: use themeIconBasePath if provided (for preview), otherwise use basePath + theme/icons/
             const iconPath = themeIconBasePath
-                ? `${themeIconBasePath}${iconFile}`
-                : `${basePath}theme/icons/${iconFile}`;
+                ? `${themeIconBasePath}${iconName}.png`
+                : `${basePath}theme/icons/${iconName}.png`;
             iconHtml = `<div class="box-icon exe-icon">
 <img src="${this.escapeAttr(iconPath)}" alt="">
 </div>

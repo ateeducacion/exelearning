@@ -1,6 +1,6 @@
 import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
-import { addTextIdevice } from '../../helpers/workarea-helpers';
+import type { Page } from '@playwright/test';
 
 /**
  * E2E Tests for Text iDevice
@@ -11,6 +11,93 @@ import { addTextIdevice } from '../../helpers/workarea-helpers';
  * - TinyMCE mind map editor (exemindmap)
  * - Text formatting and persistence
  */
+
+/**
+ * Helper to add a text iDevice by selecting the page and clicking the text iDevice
+ */
+async function addTextIdeviceFromPanel(page: Page): Promise<void> {
+    // First, select a page in the navigation tree (click on "New page" text)
+    // The page node might be a span or button inside the tree structure
+    const pageNodeSelectors = [
+        '.nav-element-text:has-text("New page")',
+        '.nav-element-text:has-text("Nueva página")',
+        '[data-testid="nav-node-text"]',
+        '.structure-tree li .nav-element-text',
+    ];
+
+    let pageSelected = false;
+    for (const selector of pageNodeSelectors) {
+        const element = page.locator(selector).first();
+        if ((await element.count()) > 0) {
+            try {
+                // Force click since element might be partially hidden
+                await element.click({ force: true, timeout: 5000 });
+                pageSelected = true;
+                break;
+            } catch {
+                // Try next selector
+            }
+        }
+    }
+
+    if (!pageSelected) {
+        // Try clicking on the page icon or the whole tree item
+        const treeItem = page.locator('#menu_structure .structure-tree li').first();
+        if ((await treeItem.count()) > 0) {
+            await treeItem.click({ force: true });
+        }
+    }
+
+    // Wait for the page content area to switch from metadata to page editor
+    await page.waitForTimeout(1000);
+
+    // Wait for node-content to show page content (not project metadata)
+    await page
+        .waitForFunction(
+            () => {
+                const nodeContent = document.querySelector('#node-content');
+                const metadata = document.querySelector('#properties-node-content-form');
+                // Either metadata is hidden or node-content shows page content
+                return nodeContent && (!metadata || !metadata.closest('.show'));
+            },
+            { timeout: 10000 },
+        )
+        .catch(() => {
+            // Continue anyway
+        });
+
+    // Try to use quick access button first (at bottom of page content area)
+    const quickTextButton = page
+        .locator('[data-testid="quick-idevice-text"], .quick-idevice-btn[data-idevice="text"]')
+        .first();
+    if ((await quickTextButton.count()) > 0 && (await quickTextButton.isVisible())) {
+        await quickTextButton.click();
+    } else {
+        // Expand "Information and presentation" category in iDevices panel
+        const infoCategory = page
+            .locator('#menu_idevices .accordion-item')
+            .filter({
+                hasText: /Information|Información/i,
+            })
+            .locator('.accordion-button');
+
+        if ((await infoCategory.count()) > 0) {
+            const isCollapsed = await infoCategory.first().evaluate(el => el.classList.contains('collapsed'));
+            if (isCollapsed) {
+                await infoCategory.first().click();
+                await page.waitForTimeout(500);
+            }
+        }
+
+        // Find and click the text iDevice
+        const textIdevice = page.locator('.idevice_item[id="text"], [data-testid="idevice-text"]').first();
+        await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
+        await textIdevice.click();
+    }
+
+    // Wait for iDevice to appear in content area
+    await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 15000 });
+}
 
 test.describe('Text iDevice', () => {
     test.describe('Basic Operations', () => {
@@ -35,7 +122,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice using the panel
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             // Verify iDevice was added
             const textIdevice = page.locator('#node-content article .idevice_node.text').first();
@@ -75,7 +162,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add and edit text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
             const uniqueContent = `Unique content for persistence test ${Date.now()}`;
             await workarea.editFirstTextIdevice(uniqueContent);
 
@@ -134,7 +221,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             // Check if already in edit mode (TinyMCE visible) or need to click edit button
             const tinyMceMenubar = page.locator('.tox-menubar');
@@ -214,7 +301,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             const block = page.locator('#node-content article .idevice_node.text').last();
             await block.waitFor({ timeout: 10000 });
@@ -253,8 +340,8 @@ test.describe('Text iDevice', () => {
             const dialog = page.locator('.tox-dialog');
             await expect(dialog).toBeVisible({ timeout: 10000 });
 
-            // Get the codemagic frame (served via resolveAssetUrl)
-            const codemagicFrame = page.frameLocator('iframe[src*="codemagic.html"]');
+            // Get the codemagic frame (now served via API endpoint)
+            const codemagicFrame = page.frameLocator('iframe[src*="codemagic-editor"]');
 
             // Wait for CodeMirror to be initialized
             await codemagicFrame.locator('.CodeMirror').waitFor({ timeout: 10000 });
@@ -264,7 +351,7 @@ test.describe('Text iDevice', () => {
             const testHtml = `<p id="test-${uniqueId}">HTML edited via CodeMagic</p>`;
 
             // Get the iframe element and use evaluate to set CodeMirror content
-            const iframeHandle = await page.locator('iframe[src*="codemagic.html"]').elementHandle();
+            const iframeHandle = await page.locator('iframe[src*="codemagic-editor"]').elementHandle();
             const frame = await iframeHandle?.contentFrame();
             if (frame) {
                 // Wait for CodeMirror element to be available (it stores a reference on the DOM element)
@@ -338,7 +425,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             // Check if already in edit mode (TinyMCE visible) or need to click edit button
             const tinyMceMenubar = page.locator('.tox-menubar');
@@ -451,7 +538,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             const block = page.locator('#node-content article .idevice_node.text').last();
             await block.waitFor({ timeout: 10000 });
@@ -506,7 +593,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             const block = page.locator('#node-content article .idevice_node.text').last();
             await block.waitFor({ timeout: 10000 });
@@ -705,7 +792,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             const block = page.locator('#node-content article .idevice_node.text').last();
             await block.waitFor({ timeout: 10000 });
@@ -843,7 +930,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice with mermaid diagram
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             const block = page.locator('#node-content article .idevice_node.text').last();
             await block.waitFor({ timeout: 10000 });
@@ -998,7 +1085,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             // Check if already in edit mode (TinyMCE visible) or need to click edit button
             const tinyMceMenubar = page.locator('.tox-menubar');
@@ -1123,7 +1210,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             const block = page.locator('#node-content article .idevice_node.text').last();
             await block.waitFor({ timeout: 10000 });
@@ -1269,7 +1356,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             const block = page.locator('#node-content article .idevice_node.text').last();
             await block.waitFor({ timeout: 10000 });
@@ -1343,7 +1430,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             const block = page.locator('#node-content article .idevice_node.text').last();
             await block.waitFor({ timeout: 10000 });
@@ -1441,7 +1528,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             const block = page.locator('#node-content article .idevice_node.text').last();
             await block.waitFor({ timeout: 10000 });
@@ -1622,7 +1709,7 @@ test.describe('Text iDevice', () => {
             );
 
             // 3. Add text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             // 4. Enter edit mode
             const block = page.locator('#node-content article .idevice_node.text').first();
@@ -1782,7 +1869,7 @@ test.describe('Text iDevice', () => {
             );
 
             // 3. Add text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             // 4. Enter edit mode
             const block = page.locator('#node-content article .idevice_node.text').first();
@@ -1957,7 +2044,7 @@ test.describe('Text iDevice', () => {
             }
 
             // Add a text iDevice on the first page
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             const block = page.locator('#node-content article .idevice_node.text').last();
             await block.waitFor({ timeout: 10000 });
@@ -2167,7 +2254,7 @@ test.describe('Text iDevice', () => {
             }
 
             // Add text iDevice with internal link
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             const block = page.locator('#node-content article .idevice_node.text').last();
             await block.waitFor({ timeout: 10000 });
@@ -2334,7 +2421,7 @@ test.describe('Text iDevice', () => {
             await waitForLoadingScreenHidden(page);
 
             // Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             // Get TinyMCE editor and add content with exe-package:elp link
             await page.waitForSelector('.tox-editor-header', { timeout: 15000 });
@@ -2491,7 +2578,7 @@ test.describe('Text iDevice', () => {
             );
 
             // 2. Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             // Wait for iDevice to be visible
             const block = page.locator('#node-content article .idevice_node.text').last();
@@ -2633,7 +2720,7 @@ test.describe('Text iDevice', () => {
             );
 
             // 2. Add a text iDevice
-            await addTextIdevice(page);
+            await addTextIdeviceFromPanel(page);
 
             // Wait for iDevice to be visible
             const block = page.locator('#node-content article .idevice_node.text').last();

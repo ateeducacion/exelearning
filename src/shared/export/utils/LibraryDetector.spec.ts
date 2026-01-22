@@ -132,26 +132,6 @@ describe('LibraryDetector', () => {
             expect(result.files).not.toContain('mermaid/mermaid.min.js');
         });
 
-        it('should NOT detect mermaid even with other classes (always pre-rendered)', () => {
-            // Mermaid diagrams are always pre-rendered to static SVG in the workarea
-            // The mermaid.min.js library (~2.7MB) is NEVER included in exports
-            const html = '<pre class="other mermaid more">graph TD; A-->B;</pre>';
-            const result = detector.detectLibraries(html);
-
-            // Mermaid should NOT be detected - always pre-rendered
-            expect(result.libraries.find(l => l.name === 'mermaid')).toBeUndefined();
-            expect(result.files).not.toContain('mermaid/mermaid.min.js');
-        });
-
-        it('should NOT detect mermaid in pre-rendered wrapper class', () => {
-            // Pre-rendered mermaid uses exe-mermaid-rendered class, not mermaid
-            const html = '<div class="exe-mermaid-rendered" data-mermaid="graph TD; A-->B"><svg>...</svg></div>';
-            const result = detector.detectLibraries(html);
-
-            // Should not detect mermaid library (it's already rendered to SVG)
-            expect(result.libraries.find(l => l.name === 'mermaid')).toBeUndefined();
-        });
-
         it('should detect jquery-ui for ordena iDevice', () => {
             const html = '<div class="ordena-IDevice">Sortable</div>';
             const result = detector.detectLibraries(html);

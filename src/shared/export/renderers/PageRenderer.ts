@@ -19,14 +19,6 @@ import { IdeviceRenderer } from './IdeviceRenderer';
 import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText, shouldShowLicenseFooter } from '../constants';
 
 /**
- * Libraries that are always pre-rendered to SVG by eXeLearning.
- * These should never be included in exports since their output is already baked into the HTML.
- * Currently includes:
- * - mermaid: Diagrams are pre-rendered to SVG (~2.7MB library saved)
- */
-const ALWAYS_SKIP_LIBRARIES = new Set(['mermaid']);
-
-/**
  * PageRenderer class
  * Renders complete HTML pages for export
  */
@@ -98,8 +90,6 @@ export class PageRenderer {
             hideNavButtons = false,
             // Asset URL transformation map
             assetExportPathMap,
-            // Theme icons config
-            themeIcons,
         } = options;
 
         const pageTitle = isIndex ? projectTitle : page.title || 'Page';
@@ -110,7 +100,7 @@ export class PageRenderer {
         const detectedLibraries = this.detectContentLibraries(originalContent);
 
         // Render page content (includes exe-package:elp → onclick transformation)
-        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap, themeIcons);
+        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap);
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -187,8 +177,6 @@ ${madeWithExeHtml}
         licenseUrl?: string;
         addAccessibilityToolbar?: boolean;
         addMathJax?: boolean;
-        /** Absolute URL for MathJax script (bypasses Service Worker in preview mode) */
-        mathJaxAbsoluteUrl?: string;
         extraHeadContent?: string;
         addSearchBox?: boolean;
         detectedLibraries?: string[];
@@ -207,7 +195,6 @@ ${madeWithExeHtml}
             licenseUrl = '',
             addAccessibilityToolbar = false,
             addMathJax = false,
-            mathJaxAbsoluteUrl,
             extraHeadContent = '',
             addSearchBox = false,
             detectedLibraries = [],
@@ -315,9 +302,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
 
         // MathJax library (for math formulas with accessibility features)
         if (addMathJax) {
-            // Use absolute URL if provided (bypasses Service Worker in preview mode)
-            const mathJaxSrc = mathJaxAbsoluteUrl || `${basePath}libs/exe_math/tex-mml-svg.js`;
-            head += `\n<script src="${mathJaxSrc}"> </script>`;
+            head += `\n<script src="${basePath}libs/exe_math/tex-mml-svg.js"> </script>`;
         }
 
         // Custom head content (from project properties)
@@ -593,7 +578,6 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      * @param basePath - Base path
      * @param projectTitle - Project title (for exe-package:elp transformation)
      * @param assetExportPathMap - Map of asset UUID to export path for URL transformation
-     * @param themeIcons - Theme icons config map for correct icon extensions
      * @returns Content HTML
      */
     renderPageContent(
@@ -601,7 +585,6 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         projectTitle?: string,
         assetExportPathMap?: Map<string, string>,
-        themeIcons?: Record<string, { value?: string }>,
     ): string {
         let html = '';
 
@@ -610,7 +593,6 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                 basePath,
                 includeDataAttributes: true,
                 assetExportPathMap,
-                themeIcons,
             });
         }
 
@@ -1045,11 +1027,6 @@ ${addExeLink ? this.renderMadeWithEXe() : ''}
         const detectedLibs: Set<string> = new Set();
 
         for (const lib of LIBRARY_PATTERNS) {
-            // Skip libraries that are always pre-rendered (uses module-level constant)
-            if (ALWAYS_SKIP_LIBRARIES.has(lib.name)) {
-                continue;
-            }
-
             let found = false;
 
             switch (lib.type) {

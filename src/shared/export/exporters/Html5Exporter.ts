@@ -77,7 +77,6 @@ export class Html5Exporter extends BaseExporter {
                 themeFilesMap,
                 themeRootFiles,
                 faviconInfo: detectedFavicon,
-                themeIcons,
             } = await this.prepareThemeData(themeName);
             if (themeFilesMap) {
                 console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFilesMap.size}`);
@@ -108,8 +107,6 @@ export class Html5Exporter extends BaseExporter {
                     faviconInfo,
                     pageFilenameMap,
                     assetExportPathMap,
-                    undefined, // extraRenderOptions
-                    themeIcons,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
@@ -252,13 +249,16 @@ export class Html5Exporter extends BaseExporter {
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
                 allHtmlContent,
-                this.getLibraryDetectionOptions(meta, latexWasRendered),
+                {
+                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                    includeMathJax: meta.addMathJax === true,
+                    skipMathJax: latexWasRendered && !meta.addMathJax, // Don't skip if explicitly requested
+                },
             );
 
             if (latexWasRendered) {
                 console.log('[Html5Exporter] LaTeX pre-rendered - skipping MathJax library (~1MB saved)');
             }
-            // Mermaid is always pre-rendered, so we always skip it (no conditional log needed)
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
@@ -367,8 +367,6 @@ export class Html5Exporter extends BaseExporter {
      * @param faviconInfo - Favicon info (optional)
      * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      * @param assetExportPathMap - Map of asset UUID to export path for URL transformation
-     * @param extraRenderOptions - Extra render options to override defaults (e.g., mathJaxAbsoluteUrl for preview)
-     * @param themeIcons - Theme icons config map for correct icon extensions (optional)
      */
     generatePageHtml(
         page: ExportPage,
@@ -380,10 +378,6 @@ export class Html5Exporter extends BaseExporter {
         faviconInfo?: FaviconInfo | null,
         pageFilenameMap?: Map<string, string>,
         assetExportPathMap?: Map<string, string>,
-        /** Extra render options to override defaults (e.g., mathJaxAbsoluteUrl for preview) */
-        extraRenderOptions?: { mathJaxAbsoluteUrl?: string },
-        /** Theme icons config map for correct icon extensions */
-        themeIcons?: Record<string, { value?: string }>,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -430,8 +424,6 @@ export class Html5Exporter extends BaseExporter {
             addSearchBox: meta.addSearchBox ?? false,
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             addMathJax: meta.addMathJax ?? false,
-            // MathJax absolute URL for preview mode (bypasses Service Worker)
-            mathJaxAbsoluteUrl: extraRenderOptions?.mathJaxAbsoluteUrl,
             // Custom head content
             extraHeadContent: meta.extraHeadContent,
             // Theme files for HTML head includes
@@ -443,8 +435,6 @@ export class Html5Exporter extends BaseExporter {
             pageFilenameMap,
             // Asset URL transformation map
             assetExportPathMap,
-            // Theme icons config for correct icon extensions (SVG, PNG, etc.)
-            themeIcons,
         });
     }
 
@@ -464,28 +454,20 @@ export class Html5Exporter extends BaseExporter {
     }
 
     /**
-     * Prepare theme data for export: fetch theme files, extract root-level CSS/JS, detect favicon, extract icons
+     * Prepare theme data for export: fetch theme files, extract root-level CSS/JS, detect favicon
      * @param themeName - Name of the theme to fetch
-     * @returns ThemeData with files, root files list, favicon info, and icons config
+     * @returns ThemeData with files, root files list, and favicon info
      */
     protected async prepareThemeData(themeName: string): Promise<ThemeData> {
         const themeRootFiles: string[] = [];
         let themeFilesMap: Map<string, Uint8Array> | null = null;
         let faviconInfo: FaviconInfo | null = null;
-        const themeIcons: Record<string, { value?: string }> = {};
 
         try {
             themeFilesMap = await this.resources.fetchTheme(themeName);
             for (const [filePath] of themeFilesMap) {
                 if (!filePath.includes('/') && (filePath.endsWith('.css') || filePath.endsWith('.js'))) {
                     themeRootFiles.push(filePath);
-                }
-                // Extract icon files from icons/ directory
-                // Icons can be .png, .svg, .gif, .jpg, .jpeg
-                if (filePath.startsWith('icons/') && /\.(png|svg|gif|jpe?g)$/i.test(filePath)) {
-                    const filename = filePath.substring(6); // Remove "icons/" prefix
-                    const iconId = filename.replace(/\.(png|svg|gif|jpe?g)$/i, '');
-                    themeIcons[iconId] = { value: `icons/${filename}` };
                 }
             }
             faviconInfo = this.detectFavicon(themeFilesMap);
@@ -494,7 +476,7 @@ export class Html5Exporter extends BaseExporter {
             themeRootFiles.push('style.css', 'style.js');
         }
 
-        return { themeFilesMap, themeRootFiles, faviconInfo, themeIcons };
+        return { themeFilesMap, themeRootFiles, faviconInfo };
     }
 
     /**
@@ -575,7 +557,6 @@ export class Html5Exporter extends BaseExporter {
                 themeFilesMap,
                 themeRootFiles,
                 faviconInfo: detectedFavicon,
-                themeIcons,
             } = await this.prepareThemeData(themeName);
 
             // Override favicon if provided in options
@@ -603,9 +584,6 @@ export class Html5Exporter extends BaseExporter {
                     faviconInfo,
                     pageFilenameMap,
                     assetExportPathMap,
-                    // Pass mathJaxAbsoluteUrl for preview mode (bypasses Service Worker)
-                    options?.mathJaxAbsoluteUrl ? { mathJaxAbsoluteUrl: options.mathJaxAbsoluteUrl } : undefined,
-                    themeIcons,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
@@ -722,7 +700,11 @@ export class Html5Exporter extends BaseExporter {
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
                 allHtmlContent,
-                this.getLibraryDetectionOptions(meta, latexWasRendered),
+                {
+                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                    includeMathJax: meta.addMathJax === true,
+                    skipMathJax: latexWasRendered && !meta.addMathJax,
+                },
             );
 
             try {
@@ -787,28 +769,6 @@ export class Html5Exporter extends BaseExporter {
             console.error('[Html5Exporter] generateForPreview failed:', error);
             throw error;
         }
-    }
-
-    /**
-     * Build library detection options based on metadata and pre-render status.
-     * Centralizes the logic for skipping MathJax when pre-rendered and always skipping Mermaid.
-     *
-     * @param meta - Project metadata with library preferences
-     * @param latexWasRendered - Whether LaTeX was pre-rendered to SVG+MathML
-     * @returns Library detection options for getAllRequiredFilesWithPatterns
-     */
-    private getLibraryDetectionOptions(
-        meta: ExportMetadata,
-        latexWasRendered: boolean,
-    ): import('../interfaces').LibraryDetectionOptions {
-        return {
-            includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-            includeMathJax: meta.addMathJax === true,
-            // Don't skip MathJax if explicitly requested via addMathJax
-            skipMathJax: latexWasRendered && !meta.addMathJax,
-            // Always skip Mermaid - eXeLearning ALWAYS pre-renders to SVG (~2.7MB saved)
-            skipMermaid: true,
-        };
     }
 
     /**

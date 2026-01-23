@@ -377,11 +377,26 @@ export default class FormProperties {
 
     makeRowElementLabel(id, property) {
         const propertyTitle = document.createElement('label');
-        // Translate the property title
-        let propertyTitleText = _(property.title);
-        if (property.required) propertyTitleText = '* ' + propertyTitleText;
-        propertyTitle.innerHTML = propertyTitleText;
         propertyTitle.setAttribute('for', id);
+
+        // Translate the property title
+        const translatedText = _(property.title);
+
+        if (property.required) {
+            // For required fields, use a span so DOMTranslator doesn't overwrite the asterisk
+            propertyTitle.textContent = '* ';
+            const textSpan = document.createElement('span');
+            textSpan.setAttribute('data-i18n', property.title);
+            textSpan.textContent = translatedText;
+            propertyTitle.appendChild(textSpan);
+        } else {
+            // For non-required fields, translate the label directly
+            propertyTitle.textContent = translatedText;
+            if (property.title) {
+                propertyTitle.setAttribute('data-i18n', property.title);
+            }
+        }
+
         return propertyTitle;
     }
 

@@ -52,8 +52,8 @@ describe('Locale translations', () => {
     await locale.loadTranslationsStrings();
 
     expect(mockApp.api.getTranslations).toHaveBeenCalledWith('es');
-    // The code extracts result.translations || result, so strings is directly the translations object
-    expect(locale.strings.hello).toBe('~Hola');
+    // The result object is stored directly, with translations in the translations property
+    expect(locale.strings.translations.hello).toBe('~Hola');
   });
 
   it('getGUITranslation returns cleaned translation with tilde removed', () => {
@@ -88,6 +88,16 @@ describe('Locale translations', () => {
     expect(contentResult).toBe('file.elpx');
   });
 
+  it('window _ with idevice parameter uses idevice-specific translation', () => {
+    locale.strings = translations; // Already includes 'idevice.hello': 'Idevice Hola'
+
+    // Without idevice: uses getGUITranslation (removes ~ prefix)
+    expect(window._('hello')).toBe('Hola');
+
+    // With idevice: uses getTranslation with idevice support
+    expect(window._('hello', 'idevice')).toBe('Idevice Hola');
+  });
+
   it('loadContentTranslationsStrings stores content translations from api', async () => {
     const contentPayload = {
       translations: {
@@ -99,8 +109,8 @@ describe('Locale translations', () => {
     await locale.loadContentTranslationsStrings('en');
 
     expect(mockApp.api.getTranslations).toHaveBeenCalledWith('en');
-    // The code extracts result.translations || result, so c_strings is directly the translations object
-    expect(locale.c_strings).toEqual({ notes: 'Notas' });
+    // The result object is stored directly, with translations in the translations property
+    expect(locale.c_strings).toEqual({ translations: { notes: 'Notas' } });
   });
 
   it('getContentTranslation returns sanitized fallback when missing', () => {

@@ -26,6 +26,12 @@ import * as path from 'path';
 import { execSync } from 'child_process';
 import { XMLParser } from 'fast-xml-parser';
 
+// Import centralized configuration
+import { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES } from './static-bundle/static-config';
+
+// Re-export config for external use
+export { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES };
+
 const projectRoot = path.resolve(import.meta.dir, '..');
 const outputDir = path.join(projectRoot, 'dist/static');
 
@@ -42,34 +48,21 @@ try {
     buildHash = Date.now().toString(36);
 }
 
-// Supported locales (from translations/)
-const LOCALES = ['ca', 'en', 'eo', 'es', 'eu', 'gl', 'pt', 'ro', 'va'];
+// Export version info for testing
+export function getBuildVersion(): string {
+    return buildVersion;
+}
 
-// Locale display names
-const LOCALE_NAMES: Record<string, string> = {
-    ca: 'Català',
-    en: 'English',
-    eo: 'Esperanto',
-    es: 'Español',
-    eu: 'Euskara',
-    gl: 'Galego',
-    pt: 'Português',
-    ro: 'Română',
-    va: 'Valencià',
-};
+export function getBuildHash(): string {
+    return buildHash;
+}
 
 /**
- * Parse XLF file to extract translations
+ * Parse XLF content string to extract translations (pure function, testable)
  */
-function parseXlfFile(filePath: string): Record<string, string> {
+export function parseXlfContent(content: string): Record<string, string> {
     const translations: Record<string, string> = {};
 
-    if (!fs.existsSync(filePath)) {
-        console.warn(`Translation file not found: ${filePath}`);
-        return translations;
-    }
-
-    const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new XMLParser({
         ignoreAttributes: false,
         attributeNamePrefix: '@_',
@@ -93,11 +86,24 @@ function parseXlfFile(filePath: string): Record<string, string> {
                 translations[transUnits.source] = transUnits.target;
             }
         }
-    } catch (error) {
-        console.error(`Error parsing ${filePath}:`, error);
+    } catch {
+        // Return empty translations on parse error
     }
 
     return translations;
+}
+
+/**
+ * Parse XLF file to extract translations
+ */
+export function parseXlfFile(filePath: string): Record<string, string> {
+    if (!fs.existsSync(filePath)) {
+        console.warn(`Translation file not found: ${filePath}`);
+        return {};
+    }
+
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return parseXlfContent(content);
 }
 
 /**
@@ -120,7 +126,7 @@ function loadAllTranslations(): Record<string, { translations: Record<string, st
     return result;
 }
 
-interface IdeviceConfig {
+export interface IdeviceConfig {
     name: string;
     id: string;
     title: string;
@@ -169,7 +175,7 @@ function readTemplateContent(basePath: string, folder: string, filename: string)
 /**
  * Parse iDevice config.xml (same logic as server)
  */
-function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: string): IdeviceConfig | null {
+export function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: string): IdeviceConfig | null {
     try {
         const getValue = (tag: string): string => {
             const match = xmlContent.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
@@ -451,25 +457,92 @@ function buildThemesList(): { themes: Theme[] } {
 }
 
 /**
- * Process a Nunjucks template file and convert to static HTML
+ * Process Nunjucks template content and convert to static HTML (pure function, testable)
  * Replaces Nunjucks syntax with static values
+ *
+ * @param content - The template content string
+ * @param version - The build version string (for app_version replacement)
+ * @returns Processed HTML string
  */
-function processNjkTemplate(filePath: string): string {
-    if (!fs.existsSync(filePath)) {
-        console.warn(`  Template not found: ${filePath}`);
-        return '';
-    }
-
-    let content = fs.readFileSync(filePath, 'utf-8');
-
+export function processNjkTemplateContent(content: string, version: string): string {
     // Remove Nunjucks comments {# ... #} (can span multiple lines)
     content = content.replace(/\{#[\s\S]*?#\}/g, '');
 
-    // Replace {{ 'string' | trans }} with 'string'
-    content = content.replace(/\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}/g, '$1');
+    // =============================================================================
+    // TRANSLATION HANDLING FOR STATIC MODE
+    // Transform {{ 'string' | trans }} and {{ t.xxx or 'default' }} patterns
+    // into elements/attributes with data-i18n-* for client-side translation
+    // =============================================================================
 
-    // Replace {{ t.something or 'default' }} with 'default'
-    content = content.replace(/\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}/g, '$1');
+    // STEP 1: Handle translations in ATTRIBUTES first (before content processing)
+    // This prevents inserting <span> tags inside attribute values (invalid HTML)
+
+    // 1a. Handle {{ 'Text' | trans }} in known attributes
+    content = content.replace(
+        /title="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g,
+        'title="$1" data-i18n-title="$1"'
+    );
+    content = content.replace(
+        /placeholder="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g,
+        'placeholder="$1" data-i18n-placeholder="$1"'
+    );
+    content = content.replace(
+        /aria-label="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g,
+        'aria-label="$1" data-i18n-aria-label="$1"'
+    );
+    content = content.replace(
+        /alt="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g,
+        'alt="$1" data-i18n-alt="$1"'
+    );
+
+    // 1b. Handle {{ t.xxx or 'Text' }} in known attributes
+    content = content.replace(
+        /title="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g,
+        'title="$1" data-i18n-title="$1"'
+    );
+    content = content.replace(
+        /placeholder="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g,
+        'placeholder="$1" data-i18n-placeholder="$1"'
+    );
+    content = content.replace(
+        /aria-label="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g,
+        'aria-label="$1" data-i18n-aria-label="$1"'
+    );
+    content = content.replace(
+        /alt="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g,
+        'alt="$1" data-i18n-alt="$1"'
+    );
+
+    // 1c. Handle translations in OTHER attributes (just use text, can't add data-i18n)
+    // This catches data-*, aria-*, and any other attributes we don't specifically handle
+    content = content.replace(
+        /(\w[-\w]*)="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g,
+        '$1="$2"'
+    );
+    content = content.replace(
+        /(\w[-\w]*)="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g,
+        '$1="$2"'
+    );
+
+    // STEP 2: Handle translations in ELEMENT CONTENT
+
+    // 2a. Handle {{ 'Text' | trans }} that is the SOLE content of an element
+    content = content.replace(
+        />(\s*)\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}(\s*)</g,
+        ' data-i18n="$2">$1$2$3<'
+    );
+
+    // 2b. Handle remaining {{ 'Text' | trans }} (mixed with other content)
+    content = content.replace(
+        /\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}/g,
+        '<span data-i18n="$1">$1</span>'
+    );
+
+    // 2c. Handle {{ t.xxx or 'Text' }} in content (wrap in span)
+    content = content.replace(
+        /\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}/g,
+        '<span data-i18n="$1">$1</span>'
+    );
 
     // Replace {{ basePath }}/path with ./path (relative paths for static mode)
     content = content.replace(/\{\{\s*basePath\s*\}\}\//g, './');
@@ -479,11 +552,11 @@ function processNjkTemplate(filePath: string): string {
     content = content.replace(/\{\{\s*['"]([^'"]+)['"]\s*\|\s*asset\s*\}\}/g, './$1');
 
     // Replace {{ app_version }} with the actual build version
-    content = content.replace(/\{\{\s*app_version\s*\}\}/g, buildVersion);
+    content = content.replace(/\{\{\s*app_version\s*\}\}/g, version);
 
     // Handle {% if '-' in app_version %}...{% endif %} conditional
     // Keep content if version contains '-', remove otherwise
-    if (buildVersion.includes('-')) {
+    if (version.includes('-')) {
         // Keep the content, just remove the conditional tags
         content = content.replace(
             /\{%\s*if\s+'-'\s+in\s+app_version\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/g,
@@ -529,6 +602,20 @@ function processNjkTemplate(filePath: string): string {
     content = content.replace(/\{%[\s\S]*?%\}/g, '');
 
     return content;
+}
+
+/**
+ * Process a Nunjucks template file and convert to static HTML
+ * Replaces Nunjucks syntax with static values
+ */
+export function processNjkTemplate(filePath: string): string {
+    if (!fs.existsSync(filePath)) {
+        console.warn(`  Template not found: ${filePath}`);
+        return '';
+    }
+
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return processNjkTemplateContent(content, buildVersion);
 }
 
 /**
@@ -608,7 +695,7 @@ function generateModalsHtml(): string {
 /**
  * Build API parameters object (minimal version for static mode)
  */
-interface ApiParameters {
+export interface ApiParameters {
     routes: Record<string, { path: string; methods: string[] }>;
     userPreferencesConfig: Record<string, unknown>;
     ideviceInfoFieldsConfig: Record<string, unknown>;
@@ -621,32 +708,7 @@ interface ApiParameters {
     odePagStructureSyncPropertiesConfig: Record<string, unknown>;
 }
 
-// Package locales for project language selection
-const PACKAGE_LOCALES: Record<string, string> = {
-    ca: 'Català',
-    en: 'English',
-    eo: 'Esperanto',
-    es: 'Español',
-    eu: 'Euskara',
-    gl: 'Galego',
-    pt: 'Português',
-    ro: 'Română',
-    va: 'Valencià',
-};
-
-// Available licenses
-const LICENSES: Record<string, string> = {
-    'creative commons: attribution 4.0': 'creative commons: attribution 4.0 (BY)',
-    'creative commons: attribution - share alike 4.0': 'creative commons: attribution - share alike 4.0 (BY-SA)',
-    'creative commons: attribution - non derived work 4.0': 'creative commons: attribution - non derived work 4.0 (BY-ND)',
-    'creative commons: attribution - non commercial 4.0': 'creative commons: attribution - non commercial 4.0 (BY-NC)',
-    'creative commons: attribution - non commercial - share alike 4.0': 'creative commons: attribution - non commercial - share alike 4.0 (BY-NC-SA)',
-    'creative commons: attribution - non derived work - non commercial 4.0': 'creative commons: attribution - non derived work - non commercial 4.0 (BY-NC-ND)',
-    'public domain': 'public domain',
-    'propietary license': 'proprietary license',
-};
-
-function buildApiParameters(): ApiParameters {
+export function buildApiParameters(): ApiParameters {
     // Group titles for project properties
     const GROUPS_TITLE = {
         properties_package: 'Content metadata',
@@ -905,520 +967,35 @@ function buildApiParameters(): ApiParameters {
 
 /**
  * Generate the static index.html
+ * Reads the HTML template and replaces placeholders with dynamic content
  */
 function generateStaticHtml(bundleData: object): string {
-    const workareaTemplate = fs.readFileSync(
-        path.join(projectRoot, 'views/workarea/workarea.njk'),
-        'utf-8'
-    );
+    // Read the HTML template
+    const templatePath = path.join(import.meta.dir, 'static-bundle/static-index.html');
+    let html = fs.readFileSync(templatePath, 'utf-8');
 
-    // Build a simplified static HTML version
-    // We can't use Nunjucks at runtime, so we pre-render a static version
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#00a99d">
-    <meta name="description" content="Create interactive educational content offline. Open source authoring tool for educators.">
-    <title>eXeLearning - Static Editor</title>
-    <link rel="icon" type="image/x-icon" href="./favicon.ico">
-    <link rel="manifest" href="./manifest.json">
-    <link rel="apple-touch-icon" href="./exelearning.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="eXeLearning">
+    // Replace placeholders with dynamic content
+    html = html.replace(/\{\{BUILD_VERSION\}\}/g, buildVersion);
+    html = html.replace('{{MENU_STRUCTURE_HTML}}', generateMenuStructureHtml());
+    html = html.replace('{{MENU_IDEVICES_HTML}}', generateMenuIdevicesHtml());
+    html = html.replace('{{MENU_HEAD_TOP_HTML}}', generateMenuHeadTopHtml());
+    html = html.replace('{{MENU_HEAD_BOTTOM_HTML}}', generateMenuHeadBottomHtml());
+    html = html.replace('{{MODALS_HTML}}', generateModalsHtml());
 
-    <!-- Styles -->
-    <link rel="stylesheet" href="./libs/bootstrap/bootstrap.min.css">
-    <link rel="stylesheet" href="./style/workarea/main.css">
-    <link rel="stylesheet" href="./style/workarea/base.css">
-    <link rel="stylesheet" href="./style/workarea/custom.css">
-    <link rel="stylesheet" href="./app/common/exe_effects/exe_effects.css">
-    <link rel="stylesheet" href="./app/common/exe_games/exe_games.css">
-    <link rel="stylesheet" href="./app/common/exe_highlighter/exe_highlighter.css">
-    <link rel="stylesheet" href="./app/common/exe_lightbox/exe_lightbox.css">
-    <link rel="stylesheet" href="./app/common/exe_media/exe_media.css">
-    <link rel="stylesheet" href="./app/common/exe_wikipedia/exe_wikipedia.css">
-
-    <!-- Static mode overrides -->
-    <style>
-        /* Show exe-online menu items in static mode (they contain Open and Recent Projects) */
-        li.exe-online { display: list-item !important; }
-        /* Hide exe-online items that don't make sense in static mode (Save, Share, Logout) */
-        li.exe-online:has(#navbar-button-save),
-        li.exe-online:has(#navbar-button-share),
-        li.exe-online:has(#mobile-navbar-button-save),
-        li.exe-online:has(#head-bottom-logout-button) { display: none !important; }
-        /* Hide Exit button (for Electron only) and its divider in static mode */
-        li.exe-electron { display: none !important; }
-        li.dropdown-divider.exe-online.exe-electron { display: none !important; }
-        /* Avatar: show exe logo (exe-offline), hide user avatar (exe-online) */
-        #exeUserMenuToggler .exe-offline { display: inline-block !important; }
-        #exeUserMenuToggler .exe-online { display: none !important; }
-        /* Ensure icon sizes inside flex buttons */
-        #head-bottom-preview .small-icon {
-            min-width: 16px;
-            width: 16px;
-            flex-shrink: 0;
-        }
-    </style>
-</head>
-<body id="main">
-    <!-- Static Mode Configuration -->
-    <script>
-        // Static mode flag
-        window.__EXE_STATIC_MODE__ = true;
-
-        // Pre-bundled API data (loaded on demand from bundle.json)
-        window.__EXE_STATIC_DATA__ = null;
-
-        // eXeLearning configuration
-        window.__APP_ENV__ = "prod";
-        window.__APP_DEBUG__ = "0";
-        window.__APP_ONLINE_MODE__ = false;
-
-        // Get saved locale from localStorage, fallback to browser language
-        function getSavedLocale() {
-            try {
-                const prefs = JSON.parse(localStorage.getItem('exelearning_user_preferences') || '{}');
-                if (prefs.locale) return prefs.locale;
-            } catch (e) {}
-            return navigator.language?.split('-')[0] || 'en';
-        }
-
-        window.eXeLearning = {
-            version: "${buildVersion}",
-            expires: "",
-            extension: "elpx",
-            user: JSON.stringify({
-                id: 0,
-                username: "guest",
-                email: "guest@local",
-                roles: ["ROLE_USER"]
-            }),
-            config: JSON.stringify({
-                isOfflineInstallation: true,
-                isStaticMode: true,
-                locale: getSavedLocale(),
-                basePath: '',
-                baseURL: '.',
-                fullURL: '.',
-                yjsEnabled: true,
-                userStyles: false,
-                defaultTheme: 'base',
-                themeBaseType: 'base',
-                themeTypeBase: 'base',
-                themeTypeUser: 'user',
-                clientCallWaitingTime: 5000
-            }),
-            projectId: null
-        };
-
-        // MathJax configuration with relative paths for static mode
-        // Must be defined BEFORE common.js loads to override version-based path detection
-        var externalExtensions = [
-            'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel',
-            'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose',
-            'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem', 'noerrors',
-            'physics', 'tagformat', 'textcomp', 'unicode', 'upgreek', 'verb',
-            'setoptions'
-        ];
-        window.MathJax = {
-            tex: {
-                inlineMath: [["\\\\(", "\\\\)"]],
-                displayMath: [["$$", "$$"], ["\\\\[", "\\\\]"]],
-                processEscapes: true,
-                tags: 'ams',
-                packages: { '[+]': externalExtensions }
-            },
-            loader: {
-                paths: { mathjax: './app/common/exe_math' },
-                load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
-            },
-            options: {
-                // Exclude navbar dropdown menus from MathJax processing (File, Edit, etc.)
-                // Note: nav-element is NOT excluded - page titles with LaTeX must be processed
-                ignoreHtmlClass: 'tex2jax_ignore|dropdown-menu|dropdown-item|modal',
-                // Skip processing inside these HTML tags
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-            }
-        };
-    </script>
-
-    <!-- Load Screen (visible by default in static mode) -->
-    <div id="load-screen-main" class="load-screen loading" data-testid="loading-main" data-visible="true">
-        <span>eXeLearning ${buildVersion}</span>
-    </div>
-
-    <!-- Main Workarea Container (visible by default in static mode) -->
-    <div id="workarea" class="container-fluid d-flex flex-nowrap" data-preview-pinned="false">
-        <aside class="asideleft col-md-4 col-lg-3 bg-light vh-100">
-            <div class="content-info">
-                <div id="exe-title" class="title-not-editing">
-                    <h2 class="exe-title content" id="change_title">...</h2>
-                    <button class="btn button-square button-tertiary tertiary-green title-menu-button exe-app-tooltip"
-                            data-bs-toggle="tooltip" data-bs-placement="bottom" title="Change title" aria-label="Change title">
-                        <span class="exe-icon small-icon edit-icon-green"></span>
-                    </button>
-                </div>
-            </div>
-            <div class="accordion" id="menus_content">
-                ${generateMenuStructureHtml()}
-                ${generateMenuIdevicesHtml()}
-            </div>
-        </aside>
-        <main>
-            <header id="head">
-                <nav class="navbar bg-transparent">
-                    ${generateMenuHeadTopHtml()}
-                    ${generateMenuHeadBottomHtml()}
-                </nav>
-            </header>
-            <div id="main-content-wrapper" class="main-content-wrapper">
-                <section id="node-content-container" class="exe-content js flex-grow-1 d-flex flex-column">
-                    <div id="load-screen-node-content" class="load-screen hide" data-testid="loading-content" data-visible="false"></div>
-                    <div id="node-content" class="content" drop='["idevice","box"]' data-testid="node-content" data-ready="false">
-                        <div>
-                            <div id="header-node-content" class="header"></div>
-                            <h1 id="page-title-node-content" class="page-title" data-testid="page-title"></h1>
-                        </div>
-                    </div>
-                    <div id="idevices-bottom" class="idevices-bottom-menu" data-testid="idevices-quickbar"></div>
-                </section>
-                <aside id="preview-pinned-container" class="preview-pinned" aria-label="Preview">
-                    <div class="preview-pinned-header">
-                        <h2 class="preview-pinned-title">Preview</h2>
-                        <div class="preview-pinned-actions">
-                            <button id="preview-pinned-extract-button" class="btn button-square button-tertiary" title="Open in new tab">
-                                <span class="small-icon external-link-icon"></span>
-                            </button>
-                            <button id="preview-unpin-button" class="btn button-square button-tertiary" title="Unpin preview">
-                                <span class="small-icon unpin-icon"></span>
-                            </button>
-                            <button id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="Refresh preview">
-                                <span class="small-icon refresh-icon"></span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="preview-pinned-body">
-                        <iframe id="preview-pinned-iframe" class="preview-iframe" title="Content preview"
-                                sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
-                    </div>
-                </aside>
-            </div>
-        </main>
-    </div>
-
-    <!-- Preview Sidebar -->
-    <div id="previewsidenav-content" class="preview-panel-container">
-        <div id="preview-sidenav-overlay" class="sidenav-overlay"></div>
-        <aside id="previewsidenav" class="preview-sidenav" role="complementary">
-            <div class="preview-panel-header">
-                <h1 class="preview-title">Preview</h1>
-                <div class="preview-header-actions">
-                    <button id="preview-extract-button" class="btn button-square button-tertiary" title="Open in new tab">
-                        <span class="small-icon external-link-icon"></span>
-                    </button>
-                    <button id="preview-pin-button" class="btn button-square button-tertiary" title="Pin preview">
-                        <span class="small-icon pin-icon"></span>
-                    </button>
-                    <button id="preview-refresh-button" class="btn button-square button-tertiary" title="Refresh preview">
-                        <span class="small-icon refresh-icon"></span>
-                    </button>
-                    <div id="previewsidenavclose" class="navbar-close" role="button" tabindex="0" aria-label="Close">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-            <div class="preview-panel-body">
-                <iframe id="preview-iframe" class="preview-iframe" title="Content preview"
-                        sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
-            </div>
-        </aside>
-    </div>
-
-    <!-- Styles Sidebar -->
-    <div id="stylessidenav-content" class="relative z-50 navbar-menu">
-        <div id="sidenav-overlay" class="sidenav-overlay"></div>
-        <aside id="stylessidenav" class="sidenav" role="complementary">
-            <div class="content-styles-header">
-                <h1 class="styles-title">Styles</h1>
-                <div id="stylessidenavclose" class="navbar-close">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </div>
-            </div>
-            <div class="content-tabs">
-                <ul class="nav nav-tabs" id="styleslist" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="exestylescontent-tab" data-bs-toggle="tab"
-                                data-bs-target="#exestylescontent" type="button" role="tab"
-                                aria-controls="exestylescontent" aria-selected="true">System</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="importedstylescontent-tab" data-bs-toggle="tab"
-                                data-bs-target="#importedstylescontent" type="button" role="tab"
-                                aria-controls="importedstylescontent" aria-selected="false">Imported</button>
-                    </li>
-                </ul>
-            </div>
-            <div class="tab-content mt-3" id="styleslistContent">
-                <div class="tab-pane fade show active" id="exestylescontent" role="tabpanel" aria-labelledby="exestylescontent-tab"></div>
-                <div class="tab-pane fade" id="importedstylescontent" role="tabpanel" aria-labelledby="importedstylescontent-tab"></div>
-            </div>
-        </aside>
-    </div>
-
-    <!-- Modals Container -->
-    <div class="modals-container">
-        ${generateModalsHtml()}
-    </div>
-
-    <!-- Toasts Container -->
-    <div class="toasts-container">
-        <div id="toastDefault" class="toast" role="alert" data-bs-autohide="false" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <span class="toast-icon exe-icon rounded me-2">info</span>
-                <strong class="toast-title me-auto"></strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body"></div>
-        </div>
-    </div>
-
-    <!-- External Libraries -->
-    <script src="./libs/jquery/jquery.min.js"></script>
-    <script src="./libs/jquery-ui/jquery-ui.min.js"></script>
-    <script src="./libs/bootstrap/bootstrap.bundle.min.js"></script>
-    <script src="./libs/multi-dropdown.js"></script>
-    <script src="./libs/interact/interact.min.js"></script>
-    <script src="./libs/showdown/showdown.min.js"></script>
-    <script src="./libs/fflate/fflate.umd.js"></script>
-
-    <!-- Asset URL Resolver -->
-    <script src="./app/common/asset_url_resolver.js"></script>
-
-    <!-- eXeLearning Common -->
-    <script type="module" src="./app/common/app_common.js"></script>
-    <script src="./app/common/common_i18n.js"></script>
-    <script src="./app/common/common_edition.js"></script>
-    <script src="./app/common/common.js"></script>
-    <script src="./app/common/exe_effects/exe_effects.js"></script>
-    <script src="./app/common/exe_games/exe_games.js"></script>
-    <script src="./app/common/exe_highlighter/exe_highlighter.js"></script>
-    <script src="./app/common/exe_lightbox/exe_lightbox.js"></script>
-    <script src="./app/common/exe_media/exe_media.js"></script>
-    <script src="./app/common/exe_math/tex-mml-svg.js"></script>
-    <script src="./app/common/LatexPreRenderer.js"></script>
-    <script src="./app/common/MermaidPreRenderer.js"></script>
-    <script src="./app/common/fix_webm_duration/fix_webm_duration.js"></script>
-    <script src="./libs/abcjs/exe_abc_music.js"></script>
-
-    <!-- TinyMCE -->
-    <script src="./libs/tinymce_5/js/tinymce/tinymce.min.js"></script>
-    <script src="./app/editor/tinymce_5_settings.js"></script>
-
-    <!-- Yjs Collaborative Editing -->
-    <script src="./libs/yjs/yjs.min.js"></script>
-    <script src="./libs/yjs/y-indexeddb.min.js"></script>
-    <script src="./app/yjs/yjs-loader.js"></script>
-
-    <!-- Connection Monitor -->
-    <script type="module" src="./app/common/connectionMonitor.js"></script>
-
-    <!-- Static Mode Initialization -->
-    <script>
-        // Load static data bundle
-        async function loadStaticData() {
-            try {
-                const response = await fetch('./data/bundle.json');
-                window.__EXE_STATIC_DATA__ = await response.json();
-                console.log('[Static] Loaded bundle.json');
-            } catch (e) {
-                console.error('[Static] Failed to load bundle.json:', e);
-                window.__EXE_STATIC_DATA__ = {
-                    parameters: { routes: {} },
-                    translations: {},
-                    idevices: { idevices: [] },
-                    themes: { themes: [] }
-                };
-            }
-        }
-
-        // UUID generation with fallback for non-secure contexts
-        function generateUUID() {
-            // Use crypto.randomUUID if available (secure contexts only)
-            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-                return crypto.randomUUID();
-            }
-            // Fallback using crypto.getRandomValues (works in all contexts)
-            if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-                return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-                    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-                );
-            }
-            // Last resort fallback using Math.random (not cryptographically secure)
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-                const r = Math.random() * 16 | 0;
-                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-            });
-        }
-
-        // Initialize static mode - auto-start with blank project
-        async function initStaticMode() {
-            await loadStaticData();
-
-            // Generate UUID and set project ID
-            const uuid = generateUUID();
-            window.eXeLearning.projectId = uuid;
-
-            // Start the app
-            if (window.__startExeApp) {
-                window.__startExeApp();
-            }
-
-            // Setup File menu handlers after app bundle loads
-            setTimeout(() => {
-                setupFileMenuHandlers();
-            }, 100);
-        }
-
-        // Setup File menu handlers for static mode
-        function setupFileMenuHandlers() {
-            // File > New - create new blank project
-            const newBtn = document.getElementById('navbar-button-new');
-            if (newBtn) {
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    if (confirm('Create a new project? Unsaved changes will be lost.')) {
-                        window.newProject();
-                    }
-                });
-            }
-
-            // File > Open is handled by navbarFile.js openUserOdeFilesEvent()
-            // which detects __EXE_STATIC_MODE__ and uses openFileInputStatic()
-
-            // Populate Recent Projects menu
-            populateRecentProjects();
-        }
-
-        // Populate recent projects submenu
-        async function populateRecentProjects() {
-            const recentMenu = document.getElementById('navbar-dropdown-menu-recent-projects');
-            if (!recentMenu) return;
-
-            if (window.indexedDB?.databases) {
-                try {
-                    const dbs = await window.indexedDB.databases();
-                    const projects = dbs.filter(db => db.name?.startsWith('exelearning-project-'));
-
-                    if (projects.length > 0) {
-                        recentMenu.innerHTML = '';
-                        for (const db of projects.slice(0, 10)) {
-                            const uuid = db.name.replace('exelearning-project-', '');
-                            const li = document.createElement('li');
-                            li.innerHTML = \`
-                                <a class="dropdown-item" href="#" onclick="event.preventDefault(); openProject('\${uuid}')">
-                                    \${uuid.substring(0, 8)}...
-                                </a>
-                            \`;
-                            recentMenu.appendChild(li);
-                        }
-                    } else {
-                        recentMenu.innerHTML = '<li class="dropdown-item text-muted">No recent projects</li>';
-                    }
-                } catch (e) {
-                    console.log('[Static] Could not list IndexedDB databases');
-                    recentMenu.innerHTML = '<li class="dropdown-item text-muted">No recent projects</li>';
-                }
-            }
-        }
-
-        // Create new blank project
-        window.newProject = function() {
-            const uuid = generateUUID();
-            window.eXeLearning.projectId = uuid;
-            // Reload the page to start fresh
-            location.reload();
-        };
-
-        // Open existing project from recent list
-        window.openProject = async function(uuid) {
-            window.eXeLearning.projectId = uuid;
-            // Reload the page with the new project ID
-            location.reload();
-        };
-
-        // Delete project
-        window.deleteProject = async function(uuid) {
-            if (confirm('Delete this project? This cannot be undone.')) {
-                try {
-                    await new Promise((resolve, reject) => {
-                        const req = indexedDB.deleteDatabase('exelearning-project-' + uuid);
-                        req.onsuccess = resolve;
-                        req.onerror = reject;
-                    });
-                    await new Promise((resolve, reject) => {
-                        const req = indexedDB.deleteDatabase('exelearning-assets-' + uuid);
-                        req.onsuccess = resolve;
-                        req.onerror = reject;
-                    });
-                    populateRecentProjects();
-                } catch (e) {
-                    console.error('Failed to delete project:', e);
-                }
-            }
-        };
-
-        // Start initialization
-        initStaticMode();
-    </script>
-
-    <!-- Main Application Bundle -->
-    <script src="./app/app.bundle.js"></script>
-
-    <!-- Register Service Worker for PWA (only when installed as standalone app) -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            // Only register SW when installed as PWA (standalone mode)
-            const isPWA = window.matchMedia('(display-mode: standalone)').matches
-                       || window.navigator.standalone === true;  // iOS Safari
-
-            if (isPWA) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('./service-worker.js')
-                        .then(reg => console.log('[PWA] Service worker registered'))
-                        .catch(err => console.log('[PWA] Service worker registration failed:', err));
-                });
-            } else {
-                // Unregister any existing SW when not in PWA mode
-                navigator.serviceWorker.getRegistrations().then(regs => {
-                    regs.forEach(reg => {
-                        if (reg.active?.scriptURL.includes('service-worker.js')) {
-                            reg.unregister();
-                            console.log('[Static] Service worker unregistered (not in PWA mode)');
-                        }
-                    });
-                });
-            }
-        }
-    </script>
-</body>
-</html>`;
+    return html;
 }
 
 /**
- * Generate PWA manifest.json
+ * Generate PWA manifest.json (pure function, testable)
  * Creates a complete manifest for installable PWA
+ *
+ * @param version - The build version string
+ * @param hash - The build hash string
+ * @returns JSON string of the manifest
  */
-function generatePwaManifest(): string {
+export function generatePwaManifestContent(version: string, hash: string): string {
     return JSON.stringify({
-        name: `eXeLearning Editor (${buildVersion})`,
+        name: `eXeLearning Editor (${version})`,
         short_name: 'eXeLearning',
         description: 'Create interactive educational content offline. Open source authoring tool for educators.',
         start_url: './index.html',
@@ -1473,20 +1050,31 @@ function generatePwaManifest(): string {
         launch_handler: {
             client_mode: 'navigate-existing',
         },
-        id: `exelearning-${buildVersion}-${buildHash}`,
+        id: `exelearning-${version}-${hash}`,
     }, null, 2);
 }
 
 /**
- * Generate service worker
+ * Generate PWA manifest.json using current build version and hash
  */
-function generateServiceWorker(): string {
+export function generatePwaManifest(): string {
+    return generatePwaManifestContent(buildVersion, buildHash);
+}
+
+/**
+ * Generate service worker content (pure function, testable)
+ *
+ * @param version - The build version string
+ * @param hash - The build hash string
+ * @returns Service worker JavaScript code
+ */
+export function generateServiceWorkerContent(version: string, hash: string): string {
     return `/**
  * Service Worker for eXeLearning Static Mode
  * Provides offline-first caching for PWA
  */
 
-const CACHE_NAME = 'exelearning-static-${buildVersion}-${buildHash}';
+const CACHE_NAME = 'exelearning-static-${version}-${hash}';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -1564,6 +1152,13 @@ self.addEventListener('fetch', (event) => {
     );
 });
 `;
+}
+
+/**
+ * Generate service worker using current build version and hash
+ */
+export function generateServiceWorker(): string {
+    return generateServiceWorkerContent(buildVersion, buildHash);
 }
 
 /**
@@ -1745,5 +1340,7 @@ async function buildStaticBundle() {
     console.log('='.repeat(60));
 }
 
-// Run build
-buildStaticBundle().catch(console.error);
+// Run build only when executed directly (not when imported for testing)
+if (import.meta.main) {
+    buildStaticBundle().catch(console.error);
+}

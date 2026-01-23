@@ -4,7 +4,12 @@ export default class Locale {
         this.lang = null;
         this.strings = {};
         this.c_strings = {};
-        window._ = (s) => {
+        window._ = (s, idevice) => {
+            // If idevice is passed, use getTranslation with iDevice support
+            // Otherwise, use getGUITranslation (which has special processing: ~prefix, \\/)
+            if (idevice) {
+                return this.getTranslation(s, null, idevice);
+            }
             return this.getGUITranslation(s);
         };
         window.c_ = (s) => {
@@ -29,8 +34,9 @@ export default class Locale {
 
     async loadContentTranslationsStrings(lang) {
         // Use ApiCallManager which handles both static and server modes internally
+        // Result structure: { translations: { "key": "value", ... }, count?: number }
         const result = await this.app.api.getTranslations(lang);
-        this.c_strings = result?.translations || result || {};
+        this.c_strings = result || {};
     }
 
     /**
@@ -47,8 +53,9 @@ export default class Locale {
      */
     async loadTranslationsStrings() {
         // Use ApiCallManager which handles both static and server modes internally
+        // Result structure: { translations: { "key": "value", ... }, count?: number }
         const result = await this.app.api.getTranslations(this.lang);
-        this.strings = result?.translations || result || {};
+        this.strings = result || {};
     }
 
     getGUITranslation(string) {

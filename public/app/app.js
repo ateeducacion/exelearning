@@ -21,6 +21,8 @@ import SessionMonitor from './common/sessionMonitor.js';
 // Core infrastructure - mode detection
 import { RuntimeConfig } from './core/RuntimeConfig.js';
 import { Capabilities } from './core/Capabilities.js';
+// DOM translation for static mode
+import DOMTranslator from './locate/domTranslator.js';
 
 export default class App {
     constructor(eXeLearning) {
@@ -66,14 +68,15 @@ export default class App {
         // Register preview Service Worker (for unified preview/export rendering)
         this.registerPreviewServiceWorker();
 
+        // Load locale strings FIRST - required before initializing UI components
+        // that use _() for translations (modals, toasts, etc.)
+        await this.loadLocale();
         // Compose and initialized toasts
         this.initializedToasts();
         // Compose and initialized modals
         this.initializedModals();
         // Load api routes (uses DataProvider in static mode)
         await this.loadApiParameters();
-        // Load locale strings
-        await this.loadLocale();
         // Load idevices installed
         await this.loadIdevicesInstalled();
         // Load themes installed
@@ -843,6 +846,25 @@ export default class App {
      */
     async loadLocale() {
         await this.locale.init();
+
+        // Initialize DOM translator for static mode
+        // This translates elements with data-i18n attributes after translations are loaded
+        if (this.runtimeConfig?.isStaticMode()) {
+            this._domTranslator = new DOMTranslator();
+            this._domTranslator.translateAll();
+            this._domTranslator.observeDOM();
+            console.log('[App] DOM translator initialized for static mode');
+        }
+    }
+
+    /**
+     * Re-translate all DOM elements (useful when language changes)
+     * Only applicable in static mode where DOMTranslator is used
+     */
+    refreshTranslations() {
+        if (this._domTranslator) {
+            this._domTranslator.refresh();
+        }
     }
 
     /**

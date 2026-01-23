@@ -2044,10 +2044,9 @@ class YjsProjectBridge {
 
     // Check and handle theme from imported package
     // Only import theme when opening a file (clearExisting=true), not when importing into existing project
-    // Skip only when remote storage is explicitly disabled (capabilities available and disabled)
+    // Theme import works in all modes - _checkAndImportTheme handles mode-specific behavior internally
     const clearExisting = options.clearExisting !== false; // default is true
-    const hasRemoteStorage = !capabilities || capabilities.storage?.remote;
-    if (stats && stats.theme && clearExisting && hasRemoteStorage) {
+    if (stats && stats.theme && clearExisting) {
       await this._checkAndImportTheme(stats.theme, file);
     }
 

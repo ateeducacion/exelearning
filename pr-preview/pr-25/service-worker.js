@@ -3,7 +3,7 @@
  * Provides offline-first caching for PWA
  */
 
-const CACHE_NAME = 'exelearning-static-v0.0.0-pr25-202601230752-334905b';
+const CACHE_NAME = 'exelearning-static-v0.0.0-pr25-202601230952-7518f67';
 const STATIC_ASSETS = [
     './',
     './index.html',

@@ -62,7 +62,7 @@
         window.__APP_DEBUG__ = "0";
         window.__APP_ONLINE_MODE__ = false;
 
-        // Get saved locale from localStorage, fallback to browser language
+        // Get saved locale from localStorage (returns null if not saved)
         function getSavedLocale() {
             try {
                 const prefs = JSON.parse(localStorage.getItem('exe_user_preferences') || '{}');
@@ -71,7 +71,48 @@
                 // Also check flat format { locale: 'eu' } for backwards compatibility
                 if (prefs.locale) return prefs.locale;
             } catch (e) {}
+            return null; // No saved preference
+        }
+
+        // Get validated locale: saved > browser language (if available) > English
+        function getValidatedLocale(availableLocales) {
+            const saved = getSavedLocale();
+            if (saved && availableLocales.includes(saved)) {
+                return saved;
+            }
+            // Try browser language
+            const browserLang = navigator.language?.split('-')[0];
+            if (browserLang && availableLocales.includes(browserLang)) {
+                return browserLang;
+            }
+            // Default to English
+            return 'en';
+        }
+
+        // Preliminary locale (will be validated after bundle.json loads)
+        function getPreliminaryLocale() {
+            const saved = getSavedLocale();
+            if (saved) return saved;
             return navigator.language?.split('-')[0] || 'en';
+        }
+
+        // UUID generation with fallback for non-secure contexts
+        function generateUUID() {
+            // Use crypto.randomUUID if available (secure contexts only)
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                return crypto.randomUUID();
+            }
+            // Fallback using crypto.getRandomValues (works in all contexts)
+            if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+                return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+                    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+                );
+            }
+            // Last resort fallback using Math.random (not cryptographically secure)
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                const r = Math.random() * 16 | 0;
+                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            });
         }
 
         window.eXeLearning = {
@@ -99,7 +140,7 @@
                 themeTypeUser: 'user',
                 clientCallWaitingTime: 5000
             }),
-            projectId: null
+            projectId: generateUUID()  // Set synchronously so app.bundle.js can start
         };
 
         // MathJax configuration with relative paths for static mode
@@ -336,36 +377,27 @@
             }
         }
 
-        // UUID generation with fallback for non-secure contexts
-        function generateUUID() {
-            // Use crypto.randomUUID if available (secure contexts only)
-            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-                return crypto.randomUUID();
-            }
-            // Fallback using crypto.getRandomValues (works in all contexts)
-            if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-                return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-                    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-                );
-            }
-            // Last resort fallback using Math.random (not cryptographically secure)
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-                const r = Math.random() * 16 | 0;
-                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-            });
-        }
-
-        // Initialize static mode - auto-start with blank project
+        // Initialize static mode - load bundle data and validate locale
         async function initStaticMode() {
             await loadStaticData();
 
-            // Generate UUID and set project ID
-            const uuid = generateUUID();
-            window.eXeLearning.projectId = uuid;
+            // Validate and set locale after bundle.json is loaded
+            const localeOptions = window.__EXE_STATIC_DATA__?.parameters?.userPreferencesConfig?.locale?.options;
+            if (localeOptions) {
+                const availableLocales = Object.keys(localeOptions);
+                const validatedLocale = getValidatedLocale(availableLocales);
 
-            // Start the app
-            if (window.__startExeApp) {
-                window.__startExeApp();
+                // Update the config with validated locale
+                // Note: config may be a string (before app.js runs) or object (after app.js parses it)
+                if (typeof window.eXeLearning.config === 'string') {
+                    const config = JSON.parse(window.eXeLearning.config);
+                    config.locale = validatedLocale;
+                    window.eXeLearning.config = JSON.stringify(config);
+                } else if (typeof window.eXeLearning.config === 'object') {
+                    window.eXeLearning.config.locale = validatedLocale;
+                }
+
+                console.log('[Static] Locale validated:', validatedLocale, '(browser:', navigator.language, ')');
             }
 
             // Setup File menu handlers after app bundle loads

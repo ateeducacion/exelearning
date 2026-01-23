@@ -116,6 +116,22 @@ export default class UserPreferences {
                 }
             }
 
+            // If no saved locale preference, use the app's current locale (validated in initStaticMode)
+            if (this.preferences.locale && !this.preferences.locale.value) {
+                // Config may be string (before app.js parses) or object (after)
+                let appConfig = window.eXeLearning?.config;
+                if (typeof appConfig === 'string') {
+                    try {
+                        appConfig = JSON.parse(appConfig);
+                    } catch (e) {
+                        appConfig = {};
+                    }
+                }
+                if (appConfig?.locale) {
+                    this.preferences.locale.value = appConfig.locale;
+                }
+            }
+
             // Apply preferences to UI
             if (this.preferences.advancedMode) {
                 this.manager.reloadMode(this.preferences.advancedMode.value);

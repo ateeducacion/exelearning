@@ -68,15 +68,17 @@ export default class App {
         // Register preview Service Worker (for unified preview/export rendering)
         this.registerPreviewServiceWorker();
 
-        // Load locale strings FIRST - required before initializing UI components
+        // Load api routes FIRST - required before any API calls
+        // (uses DataProvider in static mode)
+        await this.loadApiParameters();
+
+        // Load locale strings - required before initializing UI components
         // that use _() for translations (modals, toasts, etc.)
         await this.loadLocale();
         // Compose and initialized toasts
         this.initializedToasts();
         // Compose and initialized modals
         this.initializedModals();
-        // Load api routes (uses DataProvider in static mode)
-        await this.loadApiParameters();
         // Load idevices installed
         await this.loadIdevicesInstalled();
         // Load themes installed

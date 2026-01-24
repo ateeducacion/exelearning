@@ -1054,32 +1054,10 @@ function createMacOSMenu() {
             ],
         },
         {
-            label: i18n.__('menu.edit') || 'Edit',
-            submenu: [
-                { role: 'undo' },
-                { role: 'redo' },
-                { type: 'separator' },
-                { role: 'cut' },
-                { role: 'copy' },
-                { role: 'paste' },
-                { role: 'pasteAndMatchStyle' },
-                { role: 'delete' },
-                { role: 'selectAll' },
-            ],
+            role: 'editMenu',
         },
         {
-            label: i18n.__('menu.view') || 'View',
-            submenu: [
-                { role: 'reload' },
-                { role: 'forceReload' },
-                { role: 'toggleDevTools' },
-                { type: 'separator' },
-                { role: 'resetZoom' },
-                { role: 'zoomIn' },
-                { role: 'zoomOut' },
-                { type: 'separator' },
-                { role: 'togglefullscreen' },
-            ],
+            role: 'viewMenu',
         },
         {
             // windowMenu role automatically includes:

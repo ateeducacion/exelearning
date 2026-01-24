@@ -1,10 +1,11 @@
 /**
  * Static Bundle Configuration
  *
- * Centralized configuration constants for the static bundle build script.
- * This is the single source of truth for locales and license options.
+ * Re-exports from canonical sources for static bundle generation.
+ * This eliminates duplication and ensures consistency with the main codebase.
  */
 
+import { LOCALES as LOCALE_NAMES_MAP, PACKAGE_LOCALES } from '../../src/services/translation';
 import { LICENSE_REGISTRY } from '../../src/shared/export/constants';
 
 // =============================================================================
@@ -14,29 +15,22 @@ import { LICENSE_REGISTRY } from '../../src/shared/export/constants';
 /**
  * Supported GUI locales (for translation files).
  * These correspond to translation files in translations/messages.{locale}.xlf
+ * Derived from LOCALES in src/services/translation.ts
  */
-export const LOCALES = ['ca', 'en', 'eo', 'es', 'eu', 'gl', 'pt', 'ro', 'va'] as const;
+export const LOCALES = Object.keys(LOCALE_NAMES_MAP) as readonly string[];
 
 /**
  * Locale display names for UI dropdowns
+ * Re-exported from src/services/translation.ts
  */
-export const LOCALE_NAMES: Record<string, string> = {
-    ca: 'Català',
-    en: 'English',
-    eo: 'Esperanto',
-    es: 'Español',
-    eu: 'Euskara',
-    gl: 'Galego',
-    pt: 'Português',
-    ro: 'Română',
-    va: 'Valencià',
-};
+export const LOCALE_NAMES = LOCALE_NAMES_MAP;
 
 /**
  * Package locales for project language selection.
- * Currently matches LOCALE_NAMES but can be extended independently.
+ * Full list of ~40 locales for content packages.
+ * Re-exported from src/services/translation.ts
  */
-export const PACKAGE_LOCALES: Record<string, string> = LOCALE_NAMES;
+export { PACKAGE_LOCALES };
 
 // =============================================================================
 // Licenses (derived from LICENSE_REGISTRY)
@@ -58,4 +52,4 @@ export const LICENSES: Record<string, string> = Object.fromEntries(
 // Type exports
 // =============================================================================
 
-export type LocaleCode = (typeof LOCALES)[number];
+export type LocaleCode = keyof typeof LOCALE_NAMES_MAP;

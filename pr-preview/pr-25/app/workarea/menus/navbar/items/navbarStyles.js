@@ -22,6 +22,10 @@ export default class NavbarFile {
             JSON.stringify(configSource?.themeEditionFieldsConfig || {})
         );
         this.updateThemes();
+
+        // Translate static sidebar elements
+        this.translateSidebarElements();
+
         const exeStylesTab = document.querySelector('#exestylescontent-tab');
         if (exeStylesTab) {
             exeStylesTab.addEventListener('click', () => {
@@ -33,6 +37,28 @@ export default class NavbarFile {
             importedStylesTab.addEventListener('click', () => {
                 this.buildUserListThemes();
             });
+        }
+    }
+
+    /**
+     * Translate static sidebar elements that are defined in HTML
+     */
+    translateSidebarElements() {
+        // Translate sidebar title
+        const titleEl = document.querySelector('.styles-title');
+        if (titleEl) {
+            titleEl.textContent = _('Styles');
+        }
+
+        // Translate tab buttons
+        const systemTab = document.querySelector('#exestylescontent-tab');
+        if (systemTab) {
+            systemTab.textContent = _('System');
+        }
+
+        const importedTab = document.querySelector('#importedstylescontent-tab');
+        if (importedTab) {
+            importedTab.textContent = _('Imported');
         }
     }
 
@@ -954,7 +980,7 @@ export default class NavbarFile {
         const label = document.createElement('label');
         label.classList.add('form-label', 'theme-info-key');
         label.setAttribute('for', 'theme-info-key-' + key);
-        label.textContent = config.title;
+        label.textContent = _(config.title);
         group.appendChild(label);
 
         switch (config.tag) {
@@ -1115,7 +1141,7 @@ export default class NavbarFile {
         const label = document.createElement('label');
         label.classList.add('form-label', 'theme-edit-key');
         label.setAttribute('for', `${themeId}-${key}-field`);
-        label.innerHTML = `${config.title}`;
+        label.textContent = _(config.title);
         return label;
     }
 

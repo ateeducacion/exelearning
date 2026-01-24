@@ -954,13 +954,27 @@ export default class IdeviceBlockNode {
                 null,
                 assetManager
             );
-            const result = await exporter.exportAndDownload(odeBlockId, null);
-            if (!result.success) {
+            // Use exportComponent instead of exportAndDownload to support Electron save dialog
+            const result = await exporter.exportComponent(odeBlockId, null);
+            if (!result.success || !result.data || !result.filename) {
                 eXeLearning.app.modals.alert.show({
                     title: _('Download error'),
                     body: result.error || _('Failed to export block'),
                     contentId: 'error',
                 });
+                return;
+            }
+
+            // Use downloadComponentFile for proper Electron support (always show Save As dialog)
+            const blob = new Blob([result.data], { type: 'application/zip' });
+            const url = window.URL.createObjectURL(blob);
+            try {
+                await downloadComponentFile(url, result.filename, {
+                    typeKeySuffix: 'block',
+                    alwaysAskLocation: true,
+                });
+            } finally {
+                window.URL.revokeObjectURL(url);
             }
         } catch (error) {
             console.error('[blockNode] Export failed:', error);

@@ -1,6 +1,6 @@
 {
-  "version": "v0.0.0-pr26-202601241215",
-  "builtAt": "2026-01-24T12:15:31.623Z",
+  "version": "v0.0.0-pr26-202601241228",
+  "builtAt": "2026-01-24T12:28:08.382Z",
   "parameters": {
     "routes": {
       "api_translations_lists": {
@@ -41,15 +41,62 @@
         "value": null,
         "type": "select",
         "options": {
+          "am": "አማርኛ",
+          "ar": "العربية",
+          "ast": "asturianu",
+          "bg": "Български",
+          "bn": "বাংলা",
+          "br": "Brezhoneg",
           "ca": "Català",
+          "va": "Valencià",
+          "cs": "Čeština, český jazyk",
+          "da": "Dansk",
+          "de": "Deutsch",
+          "dz": "རྫོང་ཁ་",
+          "ee": "Eʋegbe",
+          "el": "Ελληνικά",
           "en": "English",
           "eo": "Esperanto",
           "es": "Español",
+          "et": "Eesti",
           "eu": "Euskara",
+          "fa": "فارسی",
+          "fi": "Suomi",
+          "fr": "Français",
           "gl": "Galego",
+          "he": "עברית",
+          "hr": "Hrvatski",
+          "hu": "Magyar",
+          "id": "Bahasa Indonesia",
+          "ig": "Asụsụ Igbo",
+          "is": "Íslenska",
+          "it": "Italiano",
+          "ja": "日本語",
+          "km": "ភាសាខ្មែរ",
+          "lo": "ພາສາລາວ",
+          "mi": "Māori",
+          "nb": "Norsk bokmål",
+          "nl": "Nederlands",
+          "pl": "Język polski",
           "pt": "Português",
+          "pt_br": "Português do Brazil",
           "ro": "Română",
-          "va": "Valencià"
+          "ru": "Русский",
+          "sk": "Slovenčina",
+          "sl": "Slovenščina",
+          "sr": "Српски / srpski",
+          "sv": "Svenska",
+          "th": "ไทย",
+          "tl": "Wikang Tagalog",
+          "tg": "тоҷикӣ",
+          "tr": "Türkçe",
+          "tw": "Twi",
+          "uk": "Українська",
+          "vi": "Tiếng Việt",
+          "yo": "Yorùbá",
+          "zh_CN": "简体中文",
+          "zh_TW": "正體中文（台灣)",
+          "zu": "isiZulu"
         },
         "category": "General settings"
       },
@@ -185,15 +232,62 @@
           "alwaysVisible": true,
           "type": "select",
           "options": {
+            "am": "አማርኛ",
+            "ar": "العربية",
+            "ast": "asturianu",
+            "bg": "Български",
+            "bn": "বাংলা",
+            "br": "Brezhoneg",
             "ca": "Català",
+            "va": "Valencià",
+            "cs": "Čeština, český jazyk",
+            "da": "Dansk",
+            "de": "Deutsch",
+            "dz": "རྫོང་ཁ་",
+            "ee": "Eʋegbe",
+            "el": "Ελληνικά",
             "en": "English",
             "eo": "Esperanto",
             "es": "Español",
+            "et": "Eesti",
             "eu": "Euskara",
+            "fa": "فارسی",
+            "fi": "Suomi",
+            "fr": "Français",
             "gl": "Galego",
+            "he": "עברית",
+            "hr": "Hrvatski",
+            "hu": "Magyar",
+            "id": "Bahasa Indonesia",
+            "ig": "Asụsụ Igbo",
+            "is": "Íslenska",
+            "it": "Italiano",
+            "ja": "日本語",
+            "km": "ភាសាខ្មែរ",
+            "lo": "ພາສາລາວ",
+            "mi": "Māori",
+            "nb": "Norsk bokmål",
+            "nl": "Nederlands",
+            "pl": "Język polski",
             "pt": "Português",
+            "pt_br": "Português do Brazil",
             "ro": "Română",
-            "va": "Valencià"
+            "ru": "Русский",
+            "sk": "Slovenčina",
+            "sl": "Slovenščina",
+            "sr": "Српски / srpski",
+            "sv": "Svenska",
+            "th": "ไทย",
+            "tl": "Wikang Tagalog",
+            "tg": "тоҷикӣ",
+            "tr": "Türkçe",
+            "tw": "Twi",
+            "uk": "Українська",
+            "vi": "Tiếng Việt",
+            "yo": "Yorùbá",
+            "zh_CN": "简体中文",
+            "zh_TW": "正體中文（台灣)",
+            "zu": "isiZulu"
           },
           "category": "properties",
           "groups": {
@@ -29390,32 +29484,32 @@
   },
   "bundleManifest": {
     "buildVersion": "v0.0.0-alpha",
-    "builtAt": "2026-01-24T12:15:30.393Z",
+    "builtAt": "2026-01-24T12:28:06.640Z",
     "themes": {
       "base": {
         "files": 56,
         "size": 126283,
-        "hash": "9b7ff9b2fcd64526cbcd12ec3cfbca15c37bdf7f26224fd8ad0e95dab5f76adf"
+        "hash": "2a18d68cc14a7ff4a8b2a8d8ef515a1e169b644b4ed9946be262feb01ca3d57f"
       },
       "zen": {
         "files": 80,
         "size": 1187334,
-        "hash": "d5f0a6883120ae8518c1341453c70db85d9d0585e477162eab8f7d9484be0d57"
+        "hash": "f66664d69db54c15447480a4959b06bb73563998a8bb746d477230824ff43918"
       },
       "neo": {
         "files": 87,
         "size": 1167190,
-        "hash": "d7e30ca3790a3950d90f9049439e478e5af3ff5315b18967045d9e94f69582e2"
+        "hash": "b7584cefc05cab051117cc1ac69e30d44f3e9ac16af8797d19b8b06f597fc800"
       },
       "flux": {
         "files": 75,
         "size": 370854,
-        "hash": "6fa555abe911abc8776d7e91c1890609217dc1d86e08dc31e4e7996c51b74dc1"
+        "hash": "29c940422481e11ff14403a194714e7036484d5baa0a603edd3f828deacb8df8"
       },
       "nova": {
         "files": 74,
         "size": 209439,
-        "hash": "c4ce9cd1efcd57a0cfeccac706931a39de61ec4e6b4c3d1c741fb9985c5e0c43"
+        "hash": "dbeced1377a7f985bbfd7dff98ccb8dc2b1c155af36410e9c32a182b006d26c1"
       }
     },
     "idevices": {
@@ -29467,22 +29561,22 @@
       "count": 43,
       "files": 862,
       "size": 4079122,
-      "hash": "d10b4f09a3372f0ca94c4842fb705939b13a8a905674ce777a9e4ac9857f3eb4"
+      "hash": "1020bb2311dbfe9fe34ec6904f7f74b837fa070a96533c9bc7086a82b1b01f77"
     },
     "libs": {
       "files": 9,
       "size": 313777,
-      "hash": "9a1ed02b7d54ea44dc894e8306dc1086f030cca95badfef407694876c038e379"
+      "hash": "e6fb3014be983a3b397188eca3d8f30645c2adbc251f0a078ca0617f15bbd624"
     },
     "common": {
       "files": 30,
       "size": 169143,
-      "hash": "b2f657f1f0e836ca362f6e6d39ecc8f826d9b12ea91de80eaf3d3b3559bff56b"
+      "hash": "ad0fae0f0d49865a7ee2a5657c070b312bbd18ade6ffb6bbb0554a4cc69901b5"
     },
     "contentCss": {
       "files": 4,
       "size": 43078,
-      "hash": "ec05f3ec32ee17ef3ded3a82156a6a74f7c60930973e509dd72212ee1f169786"
+      "hash": "394f6e3194fdbc631a788caed954908b1874411715c51345638e511d2fd07c34"
     }
   }
 }

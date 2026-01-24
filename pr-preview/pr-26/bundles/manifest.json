@@ -1,31 +1,31 @@
 {
-  "buildVersion": "v0.0.0-alpha",
-  "builtAt": "2026-01-24T15:30:39.282Z",
+  "buildVersion": "v0.0.1-rc",
+  "builtAt": "2026-01-24T15:45:49.934Z",
   "themes": {
     "base": {
       "files": 56,
       "size": 126283,
-      "hash": "d71f8293dc8a6901e19ce5a3b943c26dc927335eb06361e9d576e124ffb101ed"
+      "hash": "1c7dd8b3c8e1a6d84bdc0a28f1855b2a1270260f98ee31016546aa44d3ea8b1a"
     },
     "zen": {
       "files": 80,
       "size": 1187334,
-      "hash": "8fbc454d4de05b05350986939cf40186a65bc10dd36917d649f770d3bec94a6d"
+      "hash": "b77e99882ca75b3cc170652ec79a632132c97f9031df493a7f027af61d42dacf"
     },
     "neo": {
       "files": 87,
       "size": 1167190,
-      "hash": "993b4dcdda91266622032e9b293e594002565c3f10650f937bd0cc9d95d27e82"
+      "hash": "913cc80fa695e138c6740611a64ec294c80a8335be746a64affbba7883a1afba"
     },
     "flux": {
       "files": 75,
       "size": 370854,
-      "hash": "bb8e8fe74d29135288d3d2a8b2c414b9bf3931046464956c7708ffed18459009"
+      "hash": "d9c2f5f0b605e9205b1b6b7ba6ac91ad5b1a5ba1e16dfbf8f708eaa432eb837e"
     },
     "nova": {
       "files": 74,
       "size": 209439,
-      "hash": "8a24d39d77aa6d9a46553581c7dad44d703d2499cda8b34404dc21540f13f4e5"
+      "hash": "7c1c53e64e215a0bbb393ce8a7df805cc33b4949412d54fd64c736a21e16b15b"
     }
   },
   "idevices": {
@@ -77,21 +77,21 @@
     "count": 43,
     "files": 862,
     "size": 4079122,
-    "hash": "968549139f259915861b0812c5997be87fd50af1d41637614d6d26eb4e255e26"
+    "hash": "dc892dbe0df40b58b91e3a1ea7334179f27b7bc8b80db7436cfdd6883196b1cb"
   },
   "libs": {
     "files": 9,
     "size": 313961,
-    "hash": "7d3d1340c42f4612b48861785ea1feaf2bc3325709610796ab179344ba5b54d2"
+    "hash": "4c44e83336a09c14ba5ea65bc6cf0ef9ac03c1e21513e0d4f0db1ba7595c1609"
   },
   "common": {
     "files": 30,
     "size": 169143,
-    "hash": "d68333413644f3863ffab3dc87ed256d7a07424efe4bac98197eb6b7429c4a4b"
+    "hash": "25a1c5485e53f58c05da9b1d6f75a86b795be3b50a26937beb3ef18968592de8"
   },
   "contentCss": {
     "files": 4,
     "size": 43078,
-    "hash": "8e92f5a65dcf789014b37132c8874aec5e53f056f819395eb5984a43401b3b46"
+    "hash": "f8f92caba27b864b8d2521b5b86a38285115c70bbcbaf71a00589a4f83417f2c"
   }
 }

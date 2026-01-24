@@ -2362,6 +2362,14 @@ export default class ApiCallManager {
      * @returns {Promise<Object>} Response with project sharing info
      */
     async getProject(projectId) {
+        // Static mode - return default private visibility (no server available)
+        if (this._isStaticMode()) {
+            return {
+                responseMessage: 'OK',
+                project: { visibility: 'private' },
+            };
+        }
+
         const url = this._buildProjectUrl(projectId, '/sharing');
 
         const authToken =

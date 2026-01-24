@@ -7,6 +7,26 @@
  * - IndexedDB persistent cache via ResourceCache
  * - Fallback to individual file fetches for user themes
  *
+ * Resource Loading Chain:
+ *
+ * SERVER MODE (full chain):
+ * 1. Memory cache
+ * 2. User themes (Yjs)
+ * 3. IndexedDB user themes
+ * 4. IndexedDB server theme cache
+ * 5. Server ZIP bundles
+ * 6. Individual file fallback
+ *
+ * STATIC MODE (simplified chain):
+ * 1. Memory cache
+ * 2. User themes (Yjs)
+ * 3. IndexedDB user themes
+ * 4. Local ZIP bundles (from /bundles/ directory)
+ * Note: No server bundles or individual file fallback in static mode
+ *
+ * Mode detection uses app.capabilities (derived from RuntimeConfig) as single
+ * source of truth. Do NOT check window.__EXE_STATIC_MODE__ directly.
+ *
  * Usage:
  *   const fetcher = new ResourceFetcher();
  *   await fetcher.init();  // Initialize cache
@@ -51,11 +71,13 @@ class ResourceFetcher {
     // Map<themeName, Object<relativePath, Uint8Array>>
     this.userThemeFiles = new Map();
     // Whether running in static mode (no server backend)
+    // Set during init() from app.capabilities (derived from RuntimeConfig)
     this.isStaticMode = false;
   }
 
   /**
-   * Initialize ResourceFetcher with optional ResourceCache
+   * Initialize ResourceFetcher with optional ResourceCache.
+   * Mode detection uses app.capabilities (derived from RuntimeConfig) as single source of truth.
    * @param {ResourceCache} [resourceCache] - Optional ResourceCache instance
    * @returns {Promise<void>}
    */
@@ -64,16 +86,18 @@ class ResourceFetcher {
       this.resourceCache = resourceCache;
     }
 
-    // Skip bundle manifest loading in static mode - bundles not available
+    // Detect static mode from capabilities (single source of truth via RuntimeConfig)
     const app = window.eXeLearning?.app;
     this.isStaticMode = app?.capabilities?.storage?.remote === false;
+
     if (this.isStaticMode) {
+      // Static mode: bundles are loaded from local ZIP files, not server API
       this.bundlesAvailable = false;
       console.log('[ResourceFetcher] Static mode - using local file paths');
       return;
     }
 
-    // Load bundle manifest to check what bundles are available
+    // Server mode: load bundle manifest to check what bundles are available
     await this.loadBundleManifest();
   }
 
@@ -83,6 +107,30 @@ class ResourceFetcher {
    */
   setResourceCache(resourceCache) {
     this.resourceCache = resourceCache;
+  }
+
+  /**
+   * Get the resource loading chain order for the current mode.
+   * Useful for debugging and understanding resource resolution.
+   * @returns {string[]} Array of loading steps in priority order
+   */
+  getLoadingChain() {
+    if (this.isStaticMode) {
+      return [
+        'Memory cache',
+        'User themes (Yjs)',
+        'IndexedDB user themes',
+        'Local ZIP bundles (/bundles/)',
+      ];
+    }
+    return [
+      'Memory cache',
+      'User themes (Yjs)',
+      'IndexedDB user themes',
+      'IndexedDB server cache',
+      'Server ZIP bundles',
+      'Individual file fallback',
+    ];
   }
 
   /**
@@ -299,13 +347,20 @@ class ResourceFetcher {
    * - User themes (from .elpx imports, stored in Yjs via setUserThemeFiles or IndexedDB)
    * - Server themes (base/site themes, fetched via bundle or individual files)
    *
-   * Priority order:
+   * Priority order (SERVER MODE):
    * 1. Memory cache (includes user themes registered via setUserThemeFiles)
    * 2. userThemeFiles (Yjs) - rebuild cache if needed
    * 3. IndexedDB user themes - persistent local storage
    * 4. IndexedDB server theme cache - version-based cache
-   * 5. Server bundles
-   * 6. Server fallback
+   * 5. Server ZIP bundles
+   * 6. Individual file fallback
+   *
+   * Priority order (STATIC MODE - simplified):
+   * 1. Memory cache
+   * 2. userThemeFiles (Yjs)
+   * 3. IndexedDB user themes
+   * 4. Local ZIP bundles from /bundles/themes/{themeName}.zip
+   * Note: No server fallback in static mode
    *
    * @param {string} themeName - Theme name (e.g., 'base', 'blue', 'clean', or user theme)
    * @returns {Promise<Map<string, Blob>>} Map of relative path -> blob

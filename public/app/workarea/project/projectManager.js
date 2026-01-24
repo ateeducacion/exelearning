@@ -127,12 +127,12 @@ export default class projectManager {
                               eXeLearning?.config?.token ||
                               localStorage.getItem('authToken');
 
-            // Determine if we should use local-only mode (no WebSocket sync)
-            // Note: WebSocket works without auth in development - offline mode only for explicit offline installations
-            const localOnlyMode = this.offlineInstallation === true;
+            // Determine mode from capabilities (derived from RuntimeConfig - single source of truth)
+            // Note: this.offlineInstallation is a legacy field kept for backward compatibility
+            const collaborationEnabled = this.app?.capabilities?.collaboration?.enabled ?? !this.offlineInstallation;
 
-            if (localOnlyMode) {
-                Logger.log('[ProjectManager] Yjs local-only mode (offline installation)');
+            if (!collaborationEnabled) {
+                Logger.log('[ProjectManager] Yjs local-only mode (collaboration disabled)');
             } else {
                 Logger.log('[ProjectManager] Yjs collaborative mode (WebSocket + IndexedDB)');
             }
@@ -159,9 +159,9 @@ export default class projectManager {
                 Logger.log('[ProjectManager] Enabling Yjs mode for project:', projectId, isNewProject ? '(new)' : '(existing)');
                 await this.enableYjsMode(projectId, authToken, {
                     treeContainerId: 'structure-menu-nav',
-                    enableWebSocket: !localOnlyMode,  // Only enable WebSocket with auth
+                    enableWebSocket: collaborationEnabled,
                     enableIndexedDB: true,
-                    offline: localOnlyMode,
+                    offline: !collaborationEnabled,
                     isNewProject: isNewProject,  // Skip server load for new projects
                 });
                 Logger.log('[ProjectManager] Yjs collaborative editing enabled');
@@ -226,17 +226,19 @@ export default class projectManager {
                           eXeLearning?.config?.token ||
                           localStorage.getItem('authToken');
 
-        // Determine mode
-        const localOnlyMode = this.offlineInstallation === true;
+        // Determine mode from capabilities (derived from RuntimeConfig - single source of truth)
+        // Note: this.offlineInstallation is a legacy field kept for backward compatibility
+        // New code should use app.capabilities instead
+        const collaborationEnabled = this.app?.capabilities?.collaboration?.enabled ?? !this.offlineInstallation;
 
         // Create new bridge (constructor takes app, not projectId)
         this._yjsBridge = new YjsProjectBridge(this.app);
 
         // Initialize the bridge with projectUuid
         await this._yjsBridge.initialize(projectUuid, authToken, {
-            enableWebSocket: !localOnlyMode,
+            enableWebSocket: collaborationEnabled,
             enableIndexedDB: true,
-            offline: localOnlyMode,
+            offline: !collaborationEnabled,
             isNewProject: options.isNewProject,
             skipSyncWait: options.skipSyncWait ?? false,
         });

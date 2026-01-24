@@ -2,20 +2,29 @@
  * RuntimeConfig - Immutable bootstrap configuration.
  * This is the ONLY place that checks window.__EXE_STATIC_MODE__.
  * All other code should use capabilities or injected adapters.
+ *
+ * Supported modes:
+ * - 'server': Full server mode with API, WebSocket, collaboration
+ * - 'static': Static build (PWA) or Electron app, local-only
+ * - 'embedded': Running in iframe (LMS, WordPress, etc.), communicates via postMessage
  */
 export class RuntimeConfig {
     /**
      * @param {Object} options
-     * @param {'server'|'static'} options.mode - Runtime mode
+     * @param {'server'|'static'|'embedded'} options.mode - Runtime mode
      * @param {string} options.baseUrl - Base URL for API calls
-     * @param {string|null} options.wsUrl - WebSocket URL (null in static mode)
+     * @param {string|null} options.wsUrl - WebSocket URL (null in static/embedded mode)
      * @param {string|null} options.staticDataPath - Path to bundle.json (null in server mode)
+     * @param {boolean} options.isEmbedded - Whether running in an iframe
+     * @param {string|null} options.parentOrigin - Parent window origin (for embedded mode)
      */
     constructor(options) {
         this.mode = options.mode;
         this.baseUrl = options.baseUrl;
         this.wsUrl = options.wsUrl;
         this.staticDataPath = options.staticDataPath;
+        this.isEmbedded = options.isEmbedded || false;
+        this.parentOrigin = options.parentOrigin || null;
         Object.freeze(this);
     }
 
@@ -25,6 +34,9 @@ export class RuntimeConfig {
      * @returns {RuntimeConfig}
      */
     static fromEnvironment() {
+        // Detect if running in an iframe (embedded mode)
+        const isInIframe = window.parent !== window;
+
         // Check for static mode flag (set by build-static-bundle.ts)
         if (window.__EXE_STATIC_MODE__) {
             return new RuntimeConfig({
@@ -32,6 +44,8 @@ export class RuntimeConfig {
                 baseUrl: '.',
                 wsUrl: null,
                 staticDataPath: './data/bundle.json',
+                isEmbedded: isInIframe,
+                parentOrigin: null, // Will be set when parent sends first message
             });
         }
 
@@ -43,16 +57,25 @@ export class RuntimeConfig {
                 baseUrl: window.location.origin,
                 wsUrl: null, // Electron doesn't use WebSocket collaboration
                 staticDataPath: null,
+                isEmbedded: false, // Electron is never embedded
+                parentOrigin: null,
             });
         }
 
-        // Default: server mode
+        // Check for explicit embedded mode flag (set by parent via postMessage or URL param)
+        // This allows server-mode instances to be embedded in LMS iframes
+        const urlParams = new URLSearchParams(window.location.search);
+        const isExplicitlyEmbedded = urlParams.get('embedded') === 'true';
+
+        // Default: server mode (may be embedded in iframe)
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         return new RuntimeConfig({
             mode: 'server',
             baseUrl: window.location.origin,
             wsUrl: `${protocol}//${window.location.host}`,
             staticDataPath: null,
+            isEmbedded: isInIframe || isExplicitlyEmbedded,
+            parentOrigin: null, // Will be set when parent sends first message
         });
     }
 
@@ -72,6 +95,16 @@ export class RuntimeConfig {
      */
     isServerMode() {
         return this.mode === 'server';
+    }
+
+    /**
+     * Check if running embedded in an iframe.
+     * Can be true for both server and static modes.
+     * When embedded, communication with parent happens via postMessage.
+     * @returns {boolean}
+     */
+    isEmbeddedMode() {
+        return this.isEmbedded;
     }
 }
 

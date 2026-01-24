@@ -13,6 +13,7 @@ export class Capabilities {
     constructor(config) {
         const isServer = config.mode === 'server';
         const isStatic = config.mode === 'static';
+        const isEmbedded = config.isEmbedded || false;
 
         /**
          * Collaboration features (presence, real-time sync)
@@ -102,6 +103,24 @@ export class Capabilities {
             serverBacked: isServer,
             /** Whether files are stored locally */
             localBacked: isStatic,
+        });
+
+        /**
+         * Embedded mode capabilities (for iframe hosting in LMS, etc.)
+         */
+        this.embedded = Object.freeze({
+            /** Whether running in an iframe */
+            enabled: isEmbedded,
+            /** Whether postMessage communication is available */
+            postMessage: isEmbedded,
+            /** Whether file operations should use parent window */
+            parentFileSystem: isEmbedded && isStatic,
+            /** Whether data can be provided by parent window */
+            parentDataProvider: isEmbedded && isStatic,
+            /** Whether save should notify parent instead of downloading */
+            saveToParent: isEmbedded,
+            /** Whether open should request file from parent */
+            openFromParent: isEmbedded,
         });
 
         Object.freeze(this);

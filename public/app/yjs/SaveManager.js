@@ -51,24 +51,27 @@ class SaveManager {
     this.wsHandler = null;
 
     // Static mode detection (cached)
+    // Uses app.capabilities as single source of truth (derived from RuntimeConfig)
     this._isStaticMode = null;
   }
 
   /**
-   * Check if running in static (offline) mode
+   * Check if running in static (offline) mode.
+   * Uses app.capabilities as single source of truth.
    * @returns {boolean}
    */
   isStaticMode() {
     if (this._isStaticMode === null) {
-      // Prefer capabilities check (new pattern)
+      // Use capabilities as single source of truth (derived from RuntimeConfig)
       const capabilities = window.eXeLearning?.app?.capabilities;
       if (capabilities) {
         // Static mode = no remote storage capability
         this._isStaticMode = !capabilities.storage.remote;
       } else {
-        // Fallback to direct detection for early initialization
-        this._isStaticMode = window.__EXE_STATIC_MODE__ === true ||
-                             window.eXeLearning?.config?.isStaticMode === true;
+        // capabilities should always be available after app initialization
+        // Log warning if accessed too early
+        console.warn('[SaveManager] isStaticMode called before capabilities available');
+        this._isStaticMode = false;
       }
     }
     return this._isStaticMode;

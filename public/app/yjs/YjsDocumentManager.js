@@ -24,7 +24,9 @@ class YjsDocumentManager {
    * @param {string} [config.wsUrl] - y-websocket server URL (defaults to same origin with /yjs path)
    * @param {string} [config.apiUrl='/api'] - REST API URL
    * @param {string} [config.token=null] - JWT token for authentication
-   * @param {boolean} [config.offline=false] - If true, skip WebSocket connection
+   * @param {boolean} [config.offline=false] - If true, skip WebSocket connection.
+   *   Caller should derive this from app.capabilities.collaboration.enabled
+   *   (via RuntimeConfig) rather than checking window.__EXE_STATIC_MODE__ directly.
    */
   constructor(projectId, config = {}) {
     this.projectId = projectId;

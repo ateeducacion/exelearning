@@ -24,6 +24,22 @@
 export { RuntimeConfig } from './RuntimeConfig.js';
 export { Capabilities } from './Capabilities.js';
 
+// Data providers
+export {
+    DataProvider,
+    ServerDataProvider,
+    StaticDataProvider,
+} from './providers/index.js';
+
+// File system adapters
+export {
+    FileSystemAdapter,
+    ElectronFileSystem,
+    WebFileSystem,
+    EmbeddedFileSystem,
+    createFileSystemAdapter,
+} from './adapters/index.js';
+
 // Errors
 export {
     AppError,

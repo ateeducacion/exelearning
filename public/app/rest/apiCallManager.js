@@ -1,4 +1,5 @@
 import ApiCallBaseFunctions from './apiCallBaseFunctions.js';
+import { ServerDataProvider, StaticDataProvider } from '../core/providers/index.js';
 
 export default class ApiCallManager {
     constructor(app) {
@@ -10,15 +11,30 @@ export default class ApiCallManager {
         this.endpoints = {};
         this.adapters = null;
         this.staticData = null; // Internal cache for static mode data
+        this._dataProvider = null; // DataProvider instance (set during init)
     }
 
     /**
-     * Initialize API. In static mode, loads bundle.json.
+     * Initialize API. In static mode, loads bundle.json and creates StaticDataProvider.
+     * In server mode, creates ServerDataProvider after endpoints are loaded.
      * Must be called before using API methods in static mode.
      */
     async init() {
         if (this._isStaticMode() && !this.staticData) {
             await this._loadStaticBundle();
+            // Create StaticDataProvider with loaded data
+            this._dataProvider = new StaticDataProvider(this.staticData);
+        }
+    }
+
+    /**
+     * Initialize the ServerDataProvider after endpoints are loaded.
+     * Called from loadApiParameters() after server endpoints are available.
+     * @private
+     */
+    _initServerDataProvider() {
+        if (!this._isStaticMode() && !this._dataProvider) {
+            this._dataProvider = new ServerDataProvider(this.func, this.endpoints);
         }
     }
 
@@ -88,6 +104,8 @@ export default class ApiCallManager {
             this.endpoints[key].path = this.apiUrlBase + data.path;
             this.endpoints[key].methods = data.methods;
         }
+        // Initialize ServerDataProvider now that endpoints are available
+        this._initServerDataProvider();
     }
 
     /**
@@ -130,7 +148,16 @@ export default class ApiCallManager {
      * @returns {Promise<{maxFileSize: number, maxFileSizeFormatted: string, limitingFactor: string, details?: object}>}
      */
     async getUploadLimits() {
-        // Check static mode - return sensible defaults
+        // Use DataProvider if available
+        if (this._dataProvider) {
+            if (this._isStaticMode()) {
+                return this._dataProvider.getUploadLimits();
+            }
+            const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/config/upload-limits`;
+            return this._dataProvider.getUploadLimits(url);
+        }
+
+        // Fallback for initialization phase (before DataProvider is set up)
         if (this._isStaticMode()) {
             return {
                 maxFileSize: 100 * 1024 * 1024, // 100MB default
@@ -175,13 +202,19 @@ export default class ApiCallManager {
 
     /**
      * Get idevices installed (mode-aware)
+     * Uses DataProvider abstraction for consistent mode handling.
      * In static mode, returns data from bundled static data.
      * In server mode, fetches from API endpoint.
      *
      * @returns {Promise<{idevices: Array}>}
      */
     async getIdevicesInstalled() {
-        // Check static mode - return bundled data
+        // Use DataProvider if available
+        if (this._dataProvider) {
+            return this._dataProvider.getIdevices();
+        }
+
+        // Fallback for initialization phase
         if (this._isStaticMode()) {
             return this._getStaticData('idevices') || { idevices: [] };
         }
@@ -193,13 +226,19 @@ export default class ApiCallManager {
 
     /**
      * Get themes installed (mode-aware)
+     * Uses DataProvider abstraction for consistent mode handling.
      * In static mode, returns data from bundled static data.
      * In server mode, fetches from API endpoint.
      *
      * @returns {Promise<{themes: Array}>}
      */
     async getThemesInstalled() {
-        // Check static mode - return bundled data
+        // Use DataProvider if available
+        if (this._dataProvider) {
+            return this._dataProvider.getThemes();
+        }
+
+        // Fallback for initialization phase
         if (this._isStaticMode()) {
             return this._getStaticData('themes') || { themes: [] };
         }
@@ -1375,6 +1414,7 @@ export default class ApiCallManager {
 
     /**
      * Get translations (mode-aware)
+     * Uses DataProvider abstraction for consistent mode handling.
      * In static mode, returns data from bundled static data.
      * In server mode, fetches from API endpoint.
      *
@@ -1384,7 +1424,12 @@ export default class ApiCallManager {
     async getTranslations(locale) {
         const safeLocale = locale || 'en';
 
-        // Check static mode - return bundled data
+        // Use DataProvider if available
+        if (this._dataProvider) {
+            return this._dataProvider.getTranslations(safeLocale);
+        }
+
+        // Fallback for initialization phase
         if (this._isStaticMode()) {
             return this._getStaticTranslations(safeLocale);
         }
@@ -2473,10 +2518,14 @@ export default class ApiCallManager {
      * STATIC MODE HELPERS
      * These methods enable ApiCallManager to work in both server and static modes.
      * Consumer code uses the same api.X() calls regardless of mode.
+     *
+     * Mode detection uses app.capabilities (derived from RuntimeConfig) as single
+     * source of truth. Do NOT add fallbacks to window.__EXE_STATIC_MODE__ here.
      *******************************************************************************/
 
     /**
-     * Check if running in static (offline) mode
+     * Check if running in static (offline) mode.
+     * Uses app.capabilities as single source of truth (derived from RuntimeConfig).
      * @private
      * @returns {boolean}
      */

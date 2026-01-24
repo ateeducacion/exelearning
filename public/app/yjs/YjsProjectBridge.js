@@ -64,6 +64,11 @@ class YjsProjectBridge {
     this.authToken = authToken;
     this.isNewProject = options.isNewProject || false;
 
+    // Build config for YjsDocumentManager
+    // IMPORTANT: options.enableWebSocket and options.offline should be derived by the caller
+    // from app.capabilities (via RuntimeConfig) as single source of truth:
+    //   enableWebSocket: app.capabilities.collaboration.enabled
+    //   offline: !app.capabilities.collaboration.enabled
     const config = {
       wsUrl: options.wsUrl || this.getWebSocketUrl(),
       apiUrl: options.apiUrl || this.getApiUrl(),

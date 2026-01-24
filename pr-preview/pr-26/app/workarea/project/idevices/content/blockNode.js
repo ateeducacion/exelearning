@@ -351,7 +351,19 @@ export default class IdeviceBlockNode {
      */
     makeIconValueElement(icon) {
         let iconValue = document.createElement('img');
-        iconValue.setAttribute('src', icon.value);
+        let iconSrc = icon.value;
+        // In static mode, convert absolute paths to relative for subdirectory support
+        if (iconSrc.startsWith('/') && window.eXeLearning?.config) {
+            let config = window.eXeLearning.config;
+            if (typeof config === 'string') {
+                try { config = JSON.parse(config); } catch(e) { config = null; }
+            }
+            if (config?.isStaticMode || config?.isOfflineInstallation) {
+                // Remove leading slash to make path relative to current location
+                iconSrc = '.' + iconSrc;
+            }
+        }
+        iconValue.setAttribute('src', iconSrc);
         iconValue.setAttribute('alt', icon.title);
         /* To review (icon.type?)
         switch (icon.type) {

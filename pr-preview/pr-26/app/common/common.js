@@ -285,17 +285,38 @@ var $exe = {
     },
     // Mermaid options
     mermaid: {
-        // Mermaid script path
-        engine: (typeof window.eXeLearning !== 'undefined' && window.eXeLearning.config) 
-            ? window.eXeLearning.config.baseURL + window.eXeLearning.config.basePath + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js' 
-            : ($("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js"),
+        // Mermaid script path - computed dynamically to handle static mode
+        engine: (function() {
+            var config = window.eXeLearning?.config;
+            if (typeof config === 'string') {
+                try { config = JSON.parse(config); } catch(e) { config = null; }
+            }
+            // Static mode: use relative path without version prefix
+            if (config?.isStaticMode || config?.isOfflineInstallation) {
+                return './app/common/mermaid/mermaid.min.js';
+            }
+            // Server mode: use versioned path
+            if (config?.baseURL !== undefined) {
+                return config.baseURL + (config.basePath || '') + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
+            }
+            // Export mode
+            return ($("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js");
+        })(),
         reload_pending: false,
         initialized: false,
         loadMermaid: function () {
             // Dynamic path resolution
             var enginePath = this.engine;
-            if (typeof window.eXeLearning !== 'undefined' && window.eXeLearning.config) {
-                enginePath = window.eXeLearning.config.baseURL + window.eXeLearning.config.basePath + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
+            var config = window.eXeLearning?.config;
+            if (typeof config === 'string') {
+                try { config = JSON.parse(config); } catch(e) { config = null; }
+            }
+            // Static mode: use relative path without version prefix
+            if (config?.isStaticMode || config?.isOfflineInstallation) {
+                enginePath = './app/common/mermaid/mermaid.min.js';
+            } else if (config?.baseURL !== undefined) {
+                // Server mode: use versioned path
+                enginePath = config.baseURL + (config.basePath || '') + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
             }
 
             if (typeof window.mermaid === 'undefined') {

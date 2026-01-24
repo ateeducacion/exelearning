@@ -5,6 +5,27 @@
 <meta name="robots" content="noindex" />
 <meta name="google" content="notranslate"/>
 <title>mindmaps for eXeLearning</title>
+<script>
+// Compute base URL dynamically to ensure relative paths resolve correctly
+(function() {
+    var path = window.location.pathname;
+    // Extract the path up to and including the /editor/ directory
+    var editorIndex = path.lastIndexOf('/editor/');
+    if (editorIndex === -1) {
+        // Fallback: if path ends with /editor (no trailing slash), add it
+        editorIndex = path.lastIndexOf('/editor');
+        if (editorIndex !== -1 && path.length === editorIndex + 7) {
+            path = path + '/';
+        }
+    }
+    if (editorIndex !== -1) {
+        var basePath = path.substring(0, editorIndex + 8); // Include '/editor/'
+        var base = document.createElement('base');
+        base.href = basePath;
+        document.head.appendChild(base);
+    }
+})();
+</script>
 <link rel="stylesheet" href="../../../../../../../app/common/mindmaps/src/css/common.css">
 <link rel="stylesheet" href="../../../../../../../app/common/mindmaps/src/css/app.css">
 <link rel="stylesheet" href="css/custom.css">

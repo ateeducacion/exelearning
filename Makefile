@@ -567,13 +567,13 @@ test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests 
 	@echo "============================================================"
 	@echo ""
 	@echo "Starting static server and running E2E tests..."
-	@bunx serve dist/static -s -p 8086 & \
+	@bunx serve dist/static -s -p 9090 --no-request-logging & \
 	SERVER_PID=$$!; \
 	sleep 3; \
 	echo "Static server started (PID: $$SERVER_PID)"; \
 	echo "Running Playwright tests with STATIC_MODE=true..."; \
 	echo ""; \
-	STATIC_MODE=true E2E_BASE_URL=http://localhost:8086 bunx playwright test --project=static-chromium; \
+	STATIC_MODE=true E2E_BASE_URL=http://localhost:9090 bunx playwright test --project=static-chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Stopping static server..."; \

@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
+import { waitForAppReady } from '../helpers/workarea-helpers';
 
 test.describe('Theme Selection on ELP Import', () => {
     /**
@@ -21,21 +22,7 @@ test.describe('Theme Selection on ELP Import', () => {
         await page.waitForLoadState('networkidle');
 
         // Wait for the app to fully initialize
-        await page.waitForFunction(
-            () => {
-                return (window as any).eXeLearning?.app?.project?._yjsEnabled;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen to be hidden
-        await page.waitForFunction(
-            () => {
-                const loadingScreen = document.querySelector('#load-screen-main');
-                return loadingScreen?.getAttribute('data-visible') === 'false';
-            },
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // 3. Import a fixture .elpx file with a known theme ('base')
         const fixturePath = path.resolve(

@@ -1,7 +1,14 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
-import { waitForAppReady, openElpFile, waitForPreviewContent, getPreviewFrame } from '../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    openElpFile,
+    waitForPreviewContent,
+    getPreviewFrame,
+    addTextIdevice,
+    waitForTinyMCEReady,
+} from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for LaTeX Rendering
@@ -709,60 +716,20 @@ test.describe('LaTeX Rendering', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
             // Enable addMathJax via the Project Properties UI toggle
             await enableMathJaxViaUI(page);
 
-            // Select a page node to add iDevice (must NOT be root)
-            const pageNode = page.locator('.nav-element-text:not([data-node-id="root"])').first();
-            await expect(pageNode).toBeVisible({ timeout: 10000 });
-            await pageNode.click();
-            await page.waitForTimeout(1000);
-
-            // Expand "Information and presentation" category
-            const infoCategory = page
-                .locator('.idevice_category')
-                .filter({
-                    has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }),
-                })
-                .first();
-            if ((await infoCategory.count()) > 0) {
-                const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
-                if (isCollapsed) {
-                    await infoCategory.locator('.label').click();
-                    await page.waitForTimeout(500);
-                }
-            }
-
             // Add a text iDevice
-            const textIdevice = page.locator('.idevice_item[id="text"]').first();
-            await expect(textIdevice).toBeVisible({ timeout: 5000 });
-            await textIdevice.click();
+            await addTextIdevice(page);
 
             // Wait for text iDevice to appear
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 15000 });
 
             // Wait for TinyMCE to initialize
-            await page.waitForFunction(
-                () => {
-                    const editor = (window as any).tinymce?.activeEditor;
-                    return !!editor && editor.initialized;
-                },
-                { timeout: 15000 },
-            );
+            await waitForTinyMCEReady(page);
 
             // Set content with raw LaTeX (display and inline math)
             const contentWithLatex = `
@@ -951,58 +918,17 @@ test.describe('LaTeX Rendering', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
-
-            // Select a page node to add iDevice (must NOT be root - root cannot have iDevices)
-            // Use data-node-id attribute to exclude root
-            const pageNode = page.locator('.nav-element-text:not([data-node-id="root"])').first();
-            await expect(pageNode).toBeVisible({ timeout: 10000 });
-            await pageNode.click();
-            await page.waitForTimeout(1000);
-
-            // Expand "Information and presentation" category to find text iDevice
-            const infoCategory = page
-                .locator('.idevice_category')
-                .filter({
-                    has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }),
-                })
-                .first();
-            if ((await infoCategory.count()) > 0) {
-                const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
-                if (isCollapsed) {
-                    await infoCategory.locator('.label').click();
-                    await page.waitForTimeout(500);
-                }
-            }
+            await waitForAppReady(page);
 
             // Add a text iDevice
-            const textIdevice = page.locator('.idevice_item[id="text"]').first();
-            await expect(textIdevice).toBeVisible({ timeout: 5000 });
-            await textIdevice.click();
+            await addTextIdevice(page);
 
             // Wait for text iDevice to appear
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 15000 });
 
             // Wait for TinyMCE to initialize
-            await page.waitForFunction(
-                () => {
-                    const editor = (window as any).tinymce?.activeEditor;
-                    return !!editor && editor.initialized;
-                },
-                { timeout: 15000 },
-            );
+            await waitForTinyMCEReady(page);
 
             // Set content with DUPLICATE LaTeX expressions (the exact scenario that caused corruption)
             const contentWithDuplicateLatex = `
@@ -1143,18 +1069,7 @@ test.describe('LaTeX Rendering', () => {
             await page.waitForLoadState('networkidle');
 
             // Wait for app to fully initialize
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
             // Enable MathJax for runtime rendering via UI toggle
             await enableMathJaxViaUI(page);
@@ -1462,18 +1377,7 @@ test.describe('LaTeX Rendering', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
             // Enable MathJax for runtime rendering via UI toggle
             await enableMathJaxViaUI(page);
@@ -1510,18 +1414,7 @@ test.describe('LaTeX Rendering', () => {
             await page.waitForLoadState('networkidle');
 
             // Wait for app to reinitialize
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
             // Wait for MathJax to render
             await page.waitForTimeout(2000);

@@ -65,36 +65,58 @@ export async function waitForLoadingScreen(page: Page, timeout = 30000): Promise
  * Open an ELP file via File menu -> Open
  * This opens the file as a new project (replacing the current one)
  *
+ * Supports both online mode (shows modal with file picker) and static mode
+ * (triggers file input directly without modal).
+ *
  * @param page - Playwright page
  * @param fixturePath - Absolute path to the ELP file
  * @param minPages - Minimum number of pages to wait for in navigation (default 1)
  */
 export async function openElpFile(page: Page, fixturePath: string, minPages = 1): Promise<void> {
+    // Detect if we're in static mode (no remote storage capability)
+    const isStaticMode = await page.evaluate(() => {
+        const capabilities = (window as any).eXeLearning?.app?.capabilities;
+        return capabilities && !capabilities.storage?.remote;
+    });
+
     // Open File menu dropdown
     await page.locator('#dropdownFile').click();
     await page.waitForTimeout(300);
 
-    // Click Open option (not Import)
-    const openOption = page.locator('#navbar-button-openuserodefiles');
-    await openOption.waitFor({ state: 'visible', timeout: 5000 });
-    await openOption.click();
+    if (isStaticMode) {
+        // STATIC MODE: File input is triggered directly, no modal
+        // Setup file chooser BEFORE clicking (click triggers file input immediately)
+        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
 
-    // Wait for the Open modal to appear
-    const openModal = page.locator('#modalOpenUserOdeFiles');
-    await openModal.waitFor({ state: 'visible', timeout: 10000 });
+        const openOption = page.locator('#navbar-button-openuserodefiles');
+        await openOption.waitFor({ state: 'visible', timeout: 5000 });
+        await openOption.click();
 
-    // Setup file chooser BEFORE clicking the upload button
-    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
+        const fileChooser = await fileChooserPromise;
+        await fileChooser.setFiles(fixturePath);
+    } else {
+        // ONLINE MODE: Open modal and use upload button
+        const openOption = page.locator('#navbar-button-openuserodefiles');
+        await openOption.waitFor({ state: 'visible', timeout: 5000 });
+        await openOption.click();
 
-    // Click "Select a file from your device" button in the modal
-    const uploadButton = openModal.locator('.ode-files-button-upload');
-    await uploadButton.waitFor({ state: 'visible', timeout: 5000 });
-    await uploadButton.click();
+        // Wait for the Open modal to appear
+        const openModal = page.locator('#modalOpenUserOdeFiles');
+        await openModal.waitFor({ state: 'visible', timeout: 10000 });
 
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(fixturePath);
+        // Setup file chooser BEFORE clicking the upload button
+        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
 
-    // Handle "Open without saving" confirmation dialog
+        // Click "Select a file from your device" button in the modal
+        const uploadButton = openModal.locator('.ode-files-button-upload');
+        await uploadButton.waitFor({ state: 'visible', timeout: 5000 });
+        await uploadButton.click();
+
+        const fileChooser = await fileChooserPromise;
+        await fileChooser.setFiles(fixturePath);
+    }
+
+    // Handle "Open without saving" confirmation dialog (both modes)
     await handleCloseWithoutSavingModal(page);
 
     // Wait for file to be processed - Yjs navigation has pages
@@ -116,6 +138,64 @@ export async function openElpFile(page: Page, fixturePath: string, minPages = 1)
         minPages,
         { timeout: 90000 },
     );
+
+    // Wait for page count to stabilize (no changes for 3 seconds)
+    // This is critical for Firefox which may be slower to process large ELPs
+    await page.waitForFunction(
+        () => {
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return false;
+                const docManager = bridge.getDocumentManager();
+                if (!docManager || !docManager.initialized) return false;
+                const yDoc = docManager.getDoc();
+                if (!yDoc) return false;
+                const navigation = yDoc.getArray('navigation');
+                if (!navigation) return false;
+
+                // Recursive count of all pages
+                const countPages = (pages: any): number => {
+                    let count = 0;
+                    if (!pages) return count;
+                    for (let i = 0; i < pages.length; i++) {
+                        count++;
+                        const pageMap = pages.get(i);
+                        const children = pageMap?.get('children');
+                        if (children) count += countPages(children);
+                    }
+                    return count;
+                };
+                const currentCount = countPages(navigation);
+
+                // Store/check the page count to detect stabilization
+                const win = window as any;
+                if (!win.__importPageCount) {
+                    win.__importPageCount = currentCount;
+                    win.__importStableTime = Date.now();
+                    return false;
+                }
+
+                if (win.__importPageCount !== currentCount) {
+                    win.__importPageCount = currentCount;
+                    win.__importStableTime = Date.now();
+                    return false;
+                }
+
+                // Page count stable for 3 seconds = import complete
+                return Date.now() - win.__importStableTime >= 3000;
+            } catch {
+                return false;
+            }
+        },
+        { timeout: 120000, polling: 500 },
+    );
+
+    // Clean up temporary window variables
+    await page.evaluate(() => {
+        const win = window as any;
+        delete win.__importPageCount;
+        delete win.__importStableTime;
+    });
 
     // Wait for loading screen to hide
     await waitForLoadingScreen(page, 30000);
@@ -851,11 +931,20 @@ export async function enableSearchOption(page: Page): Promise<void> {
 
 /**
  * Clone the currently selected page in the navigation tree
+ * Handles the rename modal that appears after cloning by pressing Escape
  */
 export async function cloneCurrentPage(page: Page): Promise<void> {
     const cloneBtn = page.locator('.button_nav_action.action_clone');
+    await cloneBtn.waitFor({ state: 'visible', timeout: 5000 });
     await cloneBtn.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1500);
+
+    // Close rename modal by pressing Escape
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+
+    // Wait for modal to close
+    await page.waitForFunction(() => !document.querySelector('.modal.show'), { timeout: 5000 }).catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1451,4 +1540,162 @@ export async function getBlockId(page: Page, blockIndex: number = 0): Promise<st
         throw new Error(`Block at index ${blockIndex} does not have an id attribute`);
     }
     return blockId;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TINYMCE HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Wait for TinyMCE editor to be fully initialized and ready
+ *
+ * @param page - Playwright page
+ * @param timeout - Maximum wait time in milliseconds
+ */
+export async function waitForTinyMCEReady(page: Page, timeout = 15000): Promise<void> {
+    await page.waitForFunction(
+        () => {
+            const editor = (window as any).tinymce?.activeEditor;
+            return !!editor && editor.initialized;
+        },
+        { timeout },
+    );
+}
+
+/**
+ * Set content in the active TinyMCE editor
+ *
+ * @param page - Playwright page
+ * @param content - HTML content to set
+ */
+export async function setTinyMCEContent(page: Page, content: string): Promise<void> {
+    await page.evaluate(html => {
+        const editor = (window as any).tinymce?.activeEditor;
+        if (editor) {
+            editor.setContent(html);
+            editor.fire('change');
+            editor.fire('input');
+            editor.setDirty(true);
+        }
+    }, content);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SERVICE WORKER HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Wait for Service Worker to be ready and activated
+ * The preview relies on the Service Worker to serve content
+ *
+ * @param page - Playwright page
+ * @param timeout - Maximum wait time in milliseconds
+ */
+export async function waitForServiceWorker(page: Page, timeout = 15000): Promise<void> {
+    await page
+        .waitForFunction(
+            () => {
+                const app = (window as any).eXeLearning?.app;
+                return (
+                    app?._previewSwRegistration?.active?.state === 'activated' ||
+                    navigator.serviceWorker?.controller !== null
+                );
+            },
+            { timeout },
+        )
+        .catch(() => {
+            // Continue even if SW check times out - some browsers may not support SW
+        });
+}
+
+/**
+ * Open preview panel and wait for content to fully load
+ * Handles Service Worker initialization, panel visibility, and content rendering
+ *
+ * @param page - Playwright page
+ * @param timeout - Maximum wait time for content in milliseconds
+ */
+export async function openPreviewAndWaitForContent(page: Page, timeout = 30000): Promise<void> {
+    // First ensure Service Worker is ready
+    await waitForServiceWorker(page);
+
+    // Open the preview panel
+    const previewButton = page.locator('#head-bottom-preview');
+    await previewButton.click();
+
+    // Wait for preview panel to be visible
+    const previewPanel = page.locator('#previewsidenav');
+    await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
+
+    // Wait for iframe to exist
+    const previewIframe = page.locator('#preview-iframe');
+    await previewIframe.waitFor({ state: 'attached', timeout: 10000 });
+
+    // Give time for preview generation to start
+    await page.waitForTimeout(3000);
+
+    // Click refresh button to force preview regeneration if available
+    const refreshBtn = page.locator(
+        '#previewsidenav button[title*="Refresh"], #previewsidenav button:has-text("refresh")',
+    );
+    if (await refreshBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await refreshBtn.click();
+        await page.waitForTimeout(3000);
+    }
+
+    // Wait for any content to be present in the iframe
+    const iframe = getPreviewFrame(page);
+    await iframe.locator('body').waitFor({ state: 'attached', timeout: 10000 });
+
+    // Wait for meaningful content to appear
+    await page.waitForFunction(
+        () => {
+            const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
+            if (!iframe) return false;
+            try {
+                const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (!doc || !doc.body) return false;
+                const bodyHtml = doc.body.innerHTML || '';
+                return bodyHtml.length > 100 || doc.querySelector('article, .idevice_node, main, nav, .exe-page');
+            } catch {
+                return false;
+            }
+        },
+        { timeout },
+    );
+
+    // Additional wait for content to fully render
+    await page.waitForTimeout(1000);
+}
+
+/**
+ * Add a text iDevice with content and save it
+ * Combines adding the iDevice, setting TinyMCE content, and saving
+ *
+ * @param page - Playwright page
+ * @param content - HTML content to set in the iDevice
+ */
+export async function addTextIdeviceWithContent(page: Page, content: string): Promise<void> {
+    // Add the text iDevice
+    await addTextIdevice(page);
+
+    // Wait for TinyMCE to be ready
+    await waitForTinyMCEReady(page);
+
+    // Set the content
+    await setTinyMCEContent(page, content);
+
+    // Save the iDevice
+    const block = page.locator('#node-content article .idevice_node.text').last();
+    const saveBtn = block.locator('.btn-save-idevice');
+    await saveBtn.click();
+
+    // Wait for save to complete
+    await page.waitForFunction(
+        () => {
+            const idevice = document.querySelector('#node-content article .idevice_node.text');
+            return idevice && idevice.getAttribute('mode') !== 'edition';
+        },
+        { timeout: 20000 },
+    );
 }

@@ -103,42 +103,18 @@ export default class ModalLegalNotes extends Modal {
      *
      */
     async load() {
-        const app = eXeLearning.app;
-        const isStaticMode = app?.capabilities?.storage?.remote === false;
-
         // Third party code
-        let contents;
-        if (isStaticMode) {
-            try {
-                const response = await fetch(app.composeUrl('/libs/README.md'));
-                contents = response.ok ? await response.text() : _('Information not available');
-            } catch (e) {
-                contents = _('Information not available');
-            }
-        } else {
-            contents = await app.api.getThirdPartyCodeText();
-        }
+        let contents = await eXeLearning.app.api.getThirdPartyCodeText();
         let viewer = this.modalElementBody.querySelector(
             '#modalLegalNotes .third-party-content'
         );
-        viewer.innerHTML = app.common.markdownToHTML(contents);
-
+        viewer.innerHTML = eXeLearning.app.common.markdownToHTML(contents);
         // Licenses
-        if (isStaticMode) {
-            try {
-                const response = await fetch(app.composeUrl('/libs/LICENSES.md'));
-                contents = response.ok ? await response.text() : _('Information not available');
-            } catch (e) {
-                contents = _('Information not available');
-            }
-        } else {
-            contents = await app.api.getLicensesList();
-        }
+        contents = await eXeLearning.app.api.getLicensesList();
         viewer = this.modalElementBody.querySelector(
             '#modalLegalNotes .licenses-list'
         );
-        viewer.innerHTML = app.common.markdownToHTML(contents);
-
+        viewer.innerHTML = eXeLearning.app.common.markdownToHTML(contents);
         // Add some CSS classes to the titles
         $('#modalLegalNotes .md-converted-content h2').attr(
             'class',

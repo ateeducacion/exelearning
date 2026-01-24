@@ -8,22 +8,17 @@ export default class NavbarFile {
         this.menuButton = this.menu.navbar.querySelector('#navbar-button-styles');
         this.readers = [];
 
-        // Get theme config from appropriate source (static mode vs server mode)
-        const app = eXeLearning.app;
-        const isStaticMode = app?.capabilities?.storage?.remote === false;
-        const configSource = isStaticMode
-            ? app?.api?.staticData?.parameters
-            : app?.api?.parameters;
-
+        // Get theme config from api.parameters (works in both static and server modes)
+        // Note: api.parameters is populated during api.init() in static mode
         this.paramsInfo = JSON.parse(
-            JSON.stringify(configSource?.themeInfoFieldsConfig || {})
+            JSON.stringify(eXeLearning.app.api.parameters?.themeInfoFieldsConfig || {})
         );
         this.paramsEdit = JSON.parse(
-            JSON.stringify(configSource?.themeEditionFieldsConfig || {})
+            JSON.stringify(eXeLearning.app.api.parameters?.themeEditionFieldsConfig || {})
         );
         this.updateThemes();
 
-        // Translate static sidebar elements
+        // Translate static sidebar elements (needed for static mode where HTML isn't server-rendered)
         this.translateSidebarElements();
 
         const exeStylesTab = document.querySelector('#exestylescontent-tab');

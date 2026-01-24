@@ -11,20 +11,17 @@ import {
 
 describe('theme-parser', () => {
     // Mock file system for testing
-    const createMockFs = (
-        files: Record<string, string> = {},
-        dirs: string[] = [],
-    ): ThemeFileSystemReader => ({
+    const createMockFs = (files: Record<string, string> = {}, dirs: string[] = []): ThemeFileSystemReader => ({
         existsSync: (path: string) => path in files || dirs.includes(path),
         readFileSync: (path: string, _encoding: 'utf-8') => files[path] || '',
         readdirSync: (path: string, options?: { withFileTypes: boolean }) => {
             const prefix = path.endsWith('/') ? path : path + '/';
             const entries = Object.keys(files)
-                .filter((f) => f.startsWith(prefix) && !f.slice(prefix.length).includes('/'))
-                .map((f) => f.slice(prefix.length));
+                .filter(f => f.startsWith(prefix) && !f.slice(prefix.length).includes('/'))
+                .map(f => f.slice(prefix.length));
 
             if (options?.withFileTypes) {
-                return entries.map((name) => ({
+                return entries.map(name => ({
                     name,
                     isFile: () => true,
                     isDirectory: () => false,

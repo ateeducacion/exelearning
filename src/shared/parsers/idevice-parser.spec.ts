@@ -22,8 +22,8 @@ describe('idevice-parser', () => {
             readdirSync: (path: string) => {
                 const prefix = path.endsWith('/') ? path : path + '/';
                 return Object.keys(files)
-                    .filter((f) => f.startsWith(prefix) && !f.slice(prefix.length).includes('/'))
-                    .map((f) => f.slice(prefix.length));
+                    .filter(f => f.startsWith(prefix) && !f.slice(prefix.length).includes('/'))
+                    .map(f => f.slice(prefix.length));
             },
         };
     };
@@ -365,7 +365,11 @@ describe('idevice-parser', () => {
             // When readdirSync throws, it falls back to default filename
             // The filter then checks if file exists, which returns true
             const mockFs: FileSystemReader = {
-                existsSync: (path: string) => path.endsWith('.js') || path.endsWith('.css') || path.includes('edition') || path.includes('export'),
+                existsSync: (path: string) =>
+                    path.endsWith('.js') ||
+                    path.endsWith('.css') ||
+                    path.includes('edition') ||
+                    path.includes('export'),
                 readFileSync: () => '',
                 readdirSync: () => {
                     throw new Error('Permission denied');

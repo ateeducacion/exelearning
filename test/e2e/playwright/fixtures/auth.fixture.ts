@@ -144,3 +144,20 @@ export async function waitForLoadingScreenHidden(page: Page): Promise<void> {
         { timeout: 30000 },
     );
 }
+
+/**
+ * Helper function to navigate to a project's workarea
+ * Handles navigation, app initialization, and loading screen
+ */
+export async function navigateToProject(page: Page, projectUuid: string): Promise<void> {
+    // Navigate to workarea with project UUID
+    await page.goto(`/workarea?project=${projectUuid}`);
+    await page.waitForLoadState('networkidle');
+
+    // Wait for app initialization
+    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, {
+        timeout: 30000,
+    });
+
+    await waitForLoadingScreenHidden(page);
+}

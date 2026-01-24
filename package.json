@@ -1,6 +1,6 @@
 {
   "name": "exelearning",
-  "version": "0.0.1-rc",
+  "version": "0.0.0-alpha",
   "license": "AGPL-3.0-or-later",
   "description": "eXeLearning 3 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
   "main": "main.js",
@@ -135,8 +135,7 @@
     "appId": "es.intef.exelearning",
     "productName": "eXeLearning",
     "directories": {
-      "output": "release",
-      "app": "."
+      "output": "release"
     },
     "compression": "normal",
     "publish": [
@@ -157,10 +156,6 @@
       "preload.js",
       "update-manager.js",
       "node_modules/**/*",
-      ".env.dist",
-      "translations/en.json",
-      "translations/es.json",
-      "dist/**/*",
       "package.json"
     ],
     "fileAssociations": [
@@ -174,36 +169,17 @@
     ],
     "extraResources": [
       {
-        "from": "public/",
-        "to": "public/",
+        "from": "dist/static/",
+        "to": "static/",
         "filter": [
           "**/*",
-          "!**/__tests__/**",
-          "!**/jest.setup.js",
           "!**/*.test.js",
-          "!**/*.spec.js",
-          "!**/*.jest.test.js"
+          "!**/*.spec.js"
         ]
-      },
-      {
-        "from": "translations/",
-        "to": "translations/"
-      },
-      {
-        "from": ".env.dist",
-        "to": ".env.dist"
       },
       {
         "from": "packaging/keys/",
         "to": "keys/"
-      },
-      {
-        "from": "dist/",
-        "to": "dist/"
-      },
-      {
-        "from": "views/",
-        "to": "views/"
       }
     ],
     "win": {

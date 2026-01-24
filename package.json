@@ -156,7 +156,10 @@
       "preload.js",
       "update-manager.js",
       "node_modules/**/*",
-      "package.json"
+      "package.json",
+      "dist/static/**/*",
+      "!dist/static/**/*.test.js",
+      "!dist/static/**/*.spec.js"
     ],
     "fileAssociations": [
       {
@@ -168,15 +171,6 @@
       }
     ],
     "extraResources": [
-      {
-        "from": "dist/static/",
-        "to": "static/",
-        "filter": [
-          "**/*",
-          "!**/*.test.js",
-          "!**/*.spec.js"
-        ]
-      },
       {
         "from": "packaging/keys/",
         "to": "keys/"

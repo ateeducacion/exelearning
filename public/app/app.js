@@ -121,9 +121,11 @@ export default class App {
         }
 
         // Check secure context (required for SW)
+        // app: protocol is treated as secure in Electron with registerSchemesAsPrivileged
         const isSecureContext =
             window.isSecureContext ||
             location.protocol === 'https:' ||
+            location.protocol === 'app:' ||
             location.hostname === 'localhost' ||
             location.hostname === '127.0.0.1';
 

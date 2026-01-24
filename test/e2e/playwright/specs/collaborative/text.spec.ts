@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/collaboration.fixture';
+import { test, expect, skipInStaticMode } from '../../fixtures/collaboration.fixture';
 import { waitForYjsSync, waitForTextInContent } from '../../helpers/sync-helpers';
 import { waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
@@ -8,6 +8,8 @@ import type { Page } from '@playwright/test';
  *
  * These tests verify that text iDevice content (including images) syncs
  * in real-time between multiple users connected to the same project.
+ *
+ * NOTE: These tests are skipped in static mode as they require WebSocket collaboration
  */
 
 /**
@@ -203,6 +205,11 @@ async function saveTextIdevice(page: Page): Promise<void> {
 test.describe('Collaborative Text iDevice', () => {
     // Collaboration tests need more time for WebSocket sync between clients
     test.setTimeout(180000); // 3 minutes per test
+
+    // Skip all collaboration tests in static mode
+    test.beforeEach(async () => {
+        skipInStaticMode(test, 'WebSocket collaboration');
+    });
 
     test.describe('Text and Image Sync', () => {
         test('should sync text iDevice with image content between users', async ({

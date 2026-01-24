@@ -2,7 +2,7 @@
   "name": "exelearning",
   "version": "0.0.0-alpha",
   "license": "AGPL-3.0-or-later",
-  "description": "eXeLearning 3 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
+  "description": "eXeLearning 4 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
   "main": "main.js",
   "homepage": "https://exelearning.net",
   "type": "commonjs",

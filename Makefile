@@ -559,6 +559,37 @@ test-e2e-ui: check-env ## Run Playwright E2E tests with UI
 test-e2e-firefox: check-env bundle ## Run Playwright E2E tests with Firefox
 	bunx playwright test --project=firefox
 
+.PHONY: test-e2e-static
+test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests against static build
+	@echo ""
+	@echo "============================================================"
+	@echo "  E2E Tests against Static Build"
+	@echo "============================================================"
+	@echo ""
+	@echo "Starting static server and running E2E tests..."
+	@bunx serve dist/static -s -p 8086 & \
+	SERVER_PID=$$!; \
+	sleep 3; \
+	echo "Static server started (PID: $$SERVER_PID)"; \
+	echo "Running Playwright tests with STATIC_MODE=true..."; \
+	echo ""; \
+	STATIC_MODE=true E2E_BASE_URL=http://localhost:8086 bunx playwright test --project=static-chromium; \
+	test_exit=$$?; \
+	echo ""; \
+	echo "Stopping static server..."; \
+	kill $$SERVER_PID 2>/dev/null; \
+	echo ""; \
+	if [ $$test_exit -eq 0 ]; then \
+		echo "============================================================"; \
+		echo "  Static E2E Tests PASSED"; \
+		echo "============================================================"; \
+	else \
+		echo "============================================================"; \
+		echo "  Static E2E Tests FAILED"; \
+		echo "============================================================"; \
+	fi; \
+	exit $$test_exit
+
 # =============================================================================
 # DATABASE-SPECIFIC E2E TESTS
 # =============================================================================
@@ -869,6 +900,7 @@ help:
 	@echo "  make test-e2e        Run Playwright E2E tests (Chromium)"
 	@echo "  make test-e2e-chromium  Run E2E tests with Chromium"
 	@echo "  make test-e2e-firefox   Run E2E tests with Firefox"
+	@echo "  make test-e2e-static    Run E2E tests against static build"
 	@echo ""
 	@echo "Legacy (Core2 Duo / No Bun):"
 	@echo "  make up-legacy              Start legacy server with Node.js (Docker)"

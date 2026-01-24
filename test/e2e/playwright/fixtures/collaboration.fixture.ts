@@ -1,7 +1,10 @@
 import { Page, BrowserContext } from '@playwright/test';
-import { AuthFixtures, test as authTest } from './auth.fixture';
+import { AuthFixtures, test as authTest, isStaticMode, skipInStaticMode } from './auth.fixture';
 import { ShareModalPage } from '../pages/share-modal.page';
 import { waitForLoadingScreenHidden } from './auth.fixture';
+
+// Re-export static mode helpers for convenience
+export { isStaticMode, skipInStaticMode };
 
 /**
  * Fixtures for multi-client collaboration testing

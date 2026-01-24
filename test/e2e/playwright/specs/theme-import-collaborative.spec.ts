@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/collaboration.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/collaboration.fixture';
 
 import { waitForYjsSync } from '../helpers/sync-helpers';
 import { waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
@@ -13,6 +13,11 @@ import { waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
 test.describe('Theme Import - Collaborative', () => {
     // Collaboration tests need more time for WebSocket sync between clients
     test.setTimeout(180000); // 3 minutes per test
+
+    // Skip all collaboration tests in static mode
+    test.beforeEach(async () => {
+        skipInStaticMode(test, 'WebSocket collaboration');
+    });
 
     test.describe('Theme Sync Between Clients', () => {
         test('should sync theme selection from Client A to Client B', async ({

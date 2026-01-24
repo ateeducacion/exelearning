@@ -68,6 +68,12 @@ export default defineConfig({
         //     name: 'webkit',
         //     use: { ...devices['Desktop Safari'] },
         // },
+        {
+            name: 'static-chromium',
+            use: { ...devices['Desktop Chrome'] },
+            // Tests run against static build served on port 8086
+            // Use with STATIC_MODE=true E2E_BASE_URL=http://localhost:8086
+        },
     ],
 
     /* Run local dev server before starting the tests (only if E2E_BASE_URL is not set) */

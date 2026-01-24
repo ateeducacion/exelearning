@@ -7,6 +7,8 @@ export default class StructureNode {
         this.id = data.id;
         this.children = [];
         this.moving = false;
+        // Initialize properties (must be done before setParams)
+        this._initProperties();
         // Set api params
         this.setParams(data);
         // Control parameters
@@ -15,16 +17,23 @@ export default class StructureNode {
 
     /**
      * Node properties
-     * In static mode, get from API's static data cache; in server mode, use api.parameters
+     * Initialized in constructor to ensure API data is loaded first
      */
-    properties = (() => {
+    properties = {};
+
+    /**
+     * Initialize properties from API config
+     * In static mode, get from API's static data cache; in server mode, use api.parameters
+     * @private
+     */
+    _initProperties() {
         const app = eXeLearning.app;
         const isStaticMode = app?.capabilities?.storage?.remote === false;
         const config = isStaticMode
             ? app?.api?.staticData?.parameters?.odeNavStructureSyncPropertiesConfig
             : app?.api?.parameters?.odeNavStructureSyncPropertiesConfig;
-        return JSON.parse(JSON.stringify(config || {}));
-    })();
+        this.properties = JSON.parse(JSON.stringify(config || {}));
+    }
 
     /**
      * Api params
@@ -63,8 +72,10 @@ export default class StructureNode {
         if (data.odeNavStructureSyncProperties) {
             this.setProperties(data.odeNavStructureSyncProperties);
         }
-        // Set property titleNode
-        this.properties.titleNode.value = this.pageName;
+        // Set property titleNode (with defensive check for static mode)
+        if (this.properties?.titleNode) {
+            this.properties.titleNode.value = this.pageName;
+        }
     }
 
     /**

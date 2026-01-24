@@ -1425,15 +1425,29 @@ export default class modalOpenUserOdeFiles extends Modal {
                         throw new Error('Yjs bridge not initialized.');
                     }
 
-                    Logger.log('[OpenFile] Static mode - importing file:', odeFileName);
-                    await yjsBridge.importFromElpx(odeFile);
+                    // Show inline progress in workarea (same as online mode)
+                    const importProgress = new ImportProgress();
+                    importProgress.show();
 
-                    // Refresh UI after import (without server calls)
-                    if (eXeLearning.app.project?.refreshAfterDirectImport) {
-                        await eXeLearning.app.project.refreshAfterDirectImport();
+                    try {
+                        Logger.log('[OpenFile] Static mode - importing file:', odeFileName);
+                        await yjsBridge.importFromElpx(odeFile, {
+                            onProgress: (progress) => importProgress.update(progress)
+                        });
+
+                        importProgress.hide();
+
+                        // Refresh UI after import (without server calls)
+                        if (eXeLearning.app.project?.refreshAfterDirectImport) {
+                            await eXeLearning.app.project.refreshAfterDirectImport();
+                        }
+
+                        Logger.log('[OpenFile] Static mode import complete:', odeFileName);
+                    } catch (err) {
+                        // Ensure progress is hidden on error
+                        importProgress.hide();
+                        throw err;
                     }
-
-                    Logger.log('[OpenFile] Static mode import complete:', odeFileName);
                     return;
                 }
 

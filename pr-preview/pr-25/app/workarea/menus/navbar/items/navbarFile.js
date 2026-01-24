@@ -1,6 +1,8 @@
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
+import ImportProgress from '../../../interface/importProgress.js';
+
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
 export default class NavbarFile {
@@ -1560,12 +1562,11 @@ export default class NavbarFile {
             fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files?.[0];
                 if (file) {
-                    try {
-                        // Show loading indicator
-                        if (eXeLearning.app.project?.showLoadingScreen) {
-                            eXeLearning.app.project.showLoadingScreen();
-                        }
+                    // Show inline progress in workarea
+                    const importProgress = new ImportProgress();
+                    importProgress.show();
 
+                    try {
                         // Get the Yjs bridge - required for static mode
                         const yjsBridge = eXeLearning.app.project._yjsBridge;
                         if (!yjsBridge) {
@@ -1576,7 +1577,11 @@ export default class NavbarFile {
 
                         // Use YjsBridge.importFromElpx directly (client-side, no server APIs)
                         Logger.log('[Static] Importing file:', file.name);
-                        await yjsBridge.importFromElpx(file);
+                        await yjsBridge.importFromElpx(file, {
+                            onProgress: (progress) => importProgress.update(progress)
+                        });
+
+                        importProgress.hide();
 
                         // Refresh UI after import (without server calls)
                         if (eXeLearning.app.project?.refreshAfterDirectImport) {
@@ -1585,6 +1590,7 @@ export default class NavbarFile {
 
                         Logger.log('[Static] Import complete:', file.name);
                     } catch (err) {
+                        importProgress.hide();
                         console.error('[Static] Failed to import file:', err);
                         if (eXeLearning.app.modals?.alert) {
                             eXeLearning.app.modals.alert.show({
@@ -1597,11 +1603,6 @@ export default class NavbarFile {
                                 _('Failed to open project: ') +
                                     (err.message || err)
                             );
-                        }
-                    } finally {
-                        // Hide loading indicator
-                        if (eXeLearning.app.project?.hideLoadingScreen) {
-                            eXeLearning.app.project.hideLoadingScreen();
                         }
                     }
                 }

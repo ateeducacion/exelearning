@@ -24,6 +24,8 @@ export default class ApiCallManager {
             await this._loadStaticBundle();
             // Create StaticDataProvider with loaded data
             this._dataProvider = new StaticDataProvider(this.staticData);
+            // Populate this.parameters from static data so UI code can use api.parameters consistently
+            this.parameters = this.staticData?.parameters || { routes: {} };
         }
     }
 
@@ -127,11 +129,24 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get app changelog text
+     * Get app changelog text (mode-aware)
+     * In static mode, fetches CHANGELOG.md from the static build.
+     * In server mode, fetches from the configured changelog URL.
      *
-     * @returns
+     * @returns {Promise<string>}
      */
     async getChangelogText() {
+        // Static mode - fetch CHANGELOG.md using composeUrl for correct base path
+        if (this._isStaticMode()) {
+            try {
+                const response = await fetch(this.app.composeUrl('/CHANGELOG.md'));
+                return response.ok ? await response.text() : _('Changelog not available');
+            } catch (e) {
+                return _('Changelog not available');
+            }
+        }
+
+        // Server mode - fetch from configured URL
         let url = this.app.eXeLearning.config.changelogURL;
         url += '?version=' + eXeLearning.app.common.getVersionTimeStamp();
         return await this.func.getText(url);
@@ -175,12 +190,24 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get the third party code information
+     * Get the third party code information (mode-aware)
+     * In static mode, fetches libs/README.md from the static build.
+     * In server mode, fetches from the versioned URL path.
      *
-     * @returns
+     * @returns {Promise<string>}
      */
     async getThirdPartyCodeText() {
-        // Use basePath + version for proper cache busting
+        // Static mode - fetch libs/README.md using composeUrl for correct base path
+        if (this._isStaticMode()) {
+            try {
+                const response = await fetch(this.app.composeUrl('/libs/README.md'));
+                return response.ok ? await response.text() : _('Information not available');
+            } catch (e) {
+                return _('Information not available');
+            }
+        }
+
+        // Server mode - use basePath + version for proper cache busting
         // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/README.md)
         const version = eXeLearning?.version || 'v1.0.0';
         let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/README.md';
@@ -188,12 +215,24 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get the list of licenses
+     * Get the list of licenses (mode-aware)
+     * In static mode, fetches libs/LICENSES.md from the static build.
+     * In server mode, fetches from the versioned URL path.
      *
-     * @returns
+     * @returns {Promise<string>}
      */
     async getLicensesList() {
-        // Use basePath + version for proper cache busting
+        // Static mode - fetch libs/LICENSES.md using composeUrl for correct base path
+        if (this._isStaticMode()) {
+            try {
+                const response = await fetch(this.app.composeUrl('/libs/LICENSES.md'));
+                return response.ok ? await response.text() : _('Information not available');
+            } catch (e) {
+                return _('Information not available');
+            }
+        }
+
+        // Server mode - use basePath + version for proper cache busting
         // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/LICENSES.md)
         const version = eXeLearning?.version || 'v1.0.0';
         let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/LICENSES.md';

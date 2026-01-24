@@ -2596,6 +2596,37 @@ export default class IdeviceNode {
             }
         }
 
+        // Also create asset for client-side display (same as apiUploadFile)
+        const assetManager = eXeLearning.app?.project?._yjsBridge?.assetManager;
+        if (assetManager && response?.savedPath) {
+            try {
+                // Extract file from FormData
+                const file = formData.get('file');
+                if (file instanceof File) {
+                    const assetUrl = await assetManager.insertImage(file);
+                    if (assetUrl && assetUrl.startsWith('asset://')) {
+                        response.savedPath = '';
+                        response.savedFilename = assetUrl;
+                        response.savedThumbnailName = assetUrl;
+
+                        const blobUrl =
+                            await assetManager.resolveAssetURL(assetUrl);
+                        if (blobUrl) {
+                            response.previewUrl = blobUrl;
+                        }
+                        Logger.log(
+                            `[IdeviceNode] Created asset for large file upload: ${assetUrl}`
+                        );
+                    }
+                }
+            } catch (e) {
+                Logger.warn(
+                    '[IdeviceNode] Failed to create asset from large file upload:',
+                    e
+                );
+            }
+        }
+
         return response;
     }
 

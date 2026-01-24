@@ -372,7 +372,7 @@ const app = new Elysia()
         if (versionedLibsMatch) {
             // Serve the file directly from public/libs with long cache (immutable due to versioned URL)
             const filePath = path.join(process.cwd(), 'public', 'libs', versionedLibsMatch[1]);
-            if (fs.existsSync(filePath)) {
+            if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
                 const content = fs.readFileSync(filePath);
                 const ext = path.extname(filePath).toLowerCase();
                 const contentType = MIME_TYPES[ext] || 'application/octet-stream';
@@ -414,8 +414,24 @@ const app = new Elysia()
         // This handles /app/*, /style/*, and other versioned static assets
         const versionedMatch = pathname.match(/^\/v[\d.]+[^/]*\/(.+)$/);
         if (versionedMatch && !versionedMatch[1].startsWith('libs/') && !versionedMatch[1].startsWith('admin-files/')) {
-            const filePath = path.join(process.cwd(), 'public', versionedMatch[1]);
+            let filePath = path.join(process.cwd(), 'public', versionedMatch[1]);
+
+            // Check if path exists
             if (fs.existsSync(filePath)) {
+                const stats = fs.statSync(filePath);
+
+                // If it's a directory, try to serve index.html from it
+                if (stats.isDirectory()) {
+                    const indexPath = path.join(filePath, 'index.html');
+                    if (fs.existsSync(indexPath) && fs.statSync(indexPath).isFile()) {
+                        filePath = indexPath;
+                    } else {
+                        // Directory exists but no index.html - let it 404
+                        return undefined;
+                    }
+                }
+
+                // Now we have a file path, read and serve it
                 const content = fs.readFileSync(filePath);
                 const ext = path.extname(filePath).toLowerCase();
                 const contentType = MIME_TYPES[ext] || 'application/octet-stream';

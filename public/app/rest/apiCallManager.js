@@ -2270,6 +2270,14 @@ export default class ApiCallManager {
      * @returns
      */
     async postUploadFileResource(params) {
+        // Static mode - no server upload, return mock response for AssetManager handling
+        if (this._isStaticMode()) {
+            return {
+                savedPath: 'static-mode', // Truthy to trigger AssetManager logic
+                savedFilename: '',
+                savedThumbnailName: '',
+            };
+        }
         let url = this.endpoints.api_idevices_upload_file_resources.path;
         return await this.func.post(url, params);
     }
@@ -2281,6 +2289,14 @@ export default class ApiCallManager {
      * @returns
      */
     async postUploadLargeFileResource(params) {
+        // Static mode - no server upload, return mock response for AssetManager handling
+        if (this._isStaticMode()) {
+            return {
+                savedPath: 'static-mode', // Truthy to trigger AssetManager logic
+                savedFilename: '',
+                savedThumbnailName: '',
+            };
+        }
         let url = this.endpoints.api_idevices_upload_large_file_resources.path;
         return await this.func.fileSendPost(url, params);
     }

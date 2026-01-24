@@ -115,7 +115,7 @@ function scanThemeFiles(
             if (entry.endsWith(extension)) {
                 files.push(entry);
             }
-        } else if (entry.isFile && entry.isFile() && entry.name.endsWith(extension)) {
+        } else if (entry.isFile?.() && entry.name.endsWith(extension)) {
             files.push(entry.name);
         }
     }
@@ -141,7 +141,7 @@ function scanThemeIcons(
     const entries = fs.readdirSync(iconsPath, { withFileTypes: true });
     for (const entry of entries) {
         const name = typeof entry === 'string' ? entry : entry.name;
-        const isFile = typeof entry === 'string' || (entry.isFile && entry.isFile());
+        const isFile = typeof entry === 'string' || entry.isFile?.();
 
         if (
             isFile &&

@@ -421,6 +421,11 @@ function buildThemesList(): { themes: Theme[] } {
             // Parse more data from config.xml if available
             let title = themeName.charAt(0).toUpperCase() + themeName.slice(1);
             let downloadable = '0';
+            let version = '1.0';
+            let author = '';
+            let authorUrl = '';
+            let license = '';
+            let licenseUrl = '';
             if (fs.existsSync(configXmlPath)) {
                 const configContent = fs.readFileSync(configXmlPath, 'utf-8');
                 const titleMatch = configContent.match(/<title>(.*?)<\/title>/s);
@@ -430,6 +435,26 @@ function buildThemesList(): { themes: Theme[] } {
                 const downloadableMatch = configContent.match(/<downloadable>(.*?)<\/downloadable>/s);
                 if (downloadableMatch) {
                     downloadable = downloadableMatch[1].trim();
+                }
+                const versionMatch = configContent.match(/<version>(.*?)<\/version>/s);
+                if (versionMatch) {
+                    version = versionMatch[1].trim();
+                }
+                const authorMatch = configContent.match(/<author>(.*?)<\/author>/s);
+                if (authorMatch) {
+                    author = authorMatch[1].trim();
+                }
+                const authorUrlMatch = configContent.match(/<author-url>(.*?)<\/author-url>/s);
+                if (authorUrlMatch) {
+                    authorUrl = authorUrlMatch[1].trim();
+                }
+                const licenseMatch = configContent.match(/<license>(.*?)<\/license>/s);
+                if (licenseMatch) {
+                    license = licenseMatch[1].trim();
+                }
+                const licenseUrlMatch = configContent.match(/<license-url>(.*?)<\/license-url>/s);
+                if (licenseUrlMatch) {
+                    licenseUrl = licenseUrlMatch[1].trim();
                 }
             }
 
@@ -446,6 +471,11 @@ function buildThemesList(): { themes: Theme[] } {
                 description: description || `${title} theme`,
                 valid: hasConfig,
                 downloadable: downloadable,
+                version: version,
+                author: author,
+                authorUrl: authorUrl,
+                license: license,
+                licenseUrl: licenseUrl,
                 cssFiles: ['style.css'], // Default CSS file
                 icons: icons,
             });

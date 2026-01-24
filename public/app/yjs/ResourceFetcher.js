@@ -813,37 +813,31 @@ class ResourceFetcher {
 
   /**
    * Static mode: Fetch base libraries from local static bundle ZIPs
-   * In static mode, libraries are in ${basePath}/bundles/libs.zip and common.zip
+   * In static mode, base libraries are in ${basePath}/bundles/libs.zip
+   * Content-specific libraries (exe_effects, exe_lightbox, etc.) are loaded
+   * on-demand via fetchLibraryDirectory() from common.zip - same as online version
    * @returns {Promise<Map<string, Blob>>}
    */
   async fetchBaseLibrariesStatic() {
     const libFiles = new Map();
 
-    // Fetch both libs.zip and common.zip in parallel
-    const [libsBundle, commonBundle] = await Promise.all([
-      this.fetchBundle(`${this.basePath}/bundles/libs.zip`),
-      this.fetchBundle(`${this.basePath}/bundles/common.zip`),
-    ]);
+    // Fetch ONLY libs.zip (base libraries)
+    // Content-specific libraries (common.zip) are loaded via fetchLibraryDirectory()
+    // based on content detection - same as online version
+    const libsBundle = await this.fetchBundle(`${this.basePath}/bundles/libs.zip`);
 
-    console.log('[ResourceFetcher] 📦 Static mode: Loading base libraries from bundles');
+    console.log('[ResourceFetcher] 📦 Static mode: Loading base libraries from libs.zip');
 
-    // Merge results from both bundles
     if (libsBundle) {
       for (const [path, blob] of libsBundle) {
         libFiles.set(path, blob);
       }
     }
 
-    if (commonBundle) {
-      for (const [path, blob] of commonBundle) {
-        libFiles.set(path, blob);
-      }
-    }
-
     if (libFiles.size > 0) {
-      Logger.log(`[ResourceFetcher] Static base libraries loaded from bundles (${libFiles.size} files)`);
+      Logger.log(`[ResourceFetcher] Static base libraries loaded (${libFiles.size} files)`);
     } else {
-      console.warn('[ResourceFetcher] Static base libraries bundles not found or empty');
+      console.warn('[ResourceFetcher] Static base libraries bundle not found or empty');
     }
 
     return libFiles;

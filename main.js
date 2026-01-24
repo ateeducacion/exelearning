@@ -217,21 +217,15 @@ let env;
 // ──────────────  Save/Export helpers  ──────────────
 const KNOWN_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
-// Returns a known extension (including the leading dot) inferred from a suggested name.
-function inferKnownExt(suggestedName) {
+/**
+ * Extract a known extension from a file path or suggested name.
+ * Returns the lowercase extension (including the leading dot) if known, null otherwise.
+ * @param {string} filePathOrName - File path or suggested filename
+ * @returns {string|null} Known extension (e.g., '.elpx') or null
+ */
+function getKnownExt(filePathOrName) {
     try {
-        const ext = path.extname(suggestedName || '') || '';
-        if (!ext) return null;
-        const lower = ext.toLowerCase();
-        return KNOWN_EXTENSIONS.has(lower) ? lower : null;
-    } catch (_e) {
-        return null;
-    }
-}
-
-function extractKnownExt(filePath) {
-    try {
-        const ext = path.extname(filePath || '') || '';
+        const ext = path.extname(filePathOrName || '') || '';
         if (!ext) return null;
         const lower = ext.toLowerCase();
         return KNOWN_EXTENSIONS.has(lower) ? lower : null;
@@ -243,9 +237,9 @@ function extractKnownExt(filePath) {
 // Ensures the filePath has an extension; if missing or unknown, appends one inferred from suggestedName.
 function ensureExt(filePath, suggestedName) {
     if (!filePath) return filePath;
-    const known = extractKnownExt(filePath);
+    const known = getKnownExt(filePath);
     if (known) return filePath;
-    const inferred = inferKnownExt(suggestedName);
+    const inferred = getKnownExt(suggestedName);
     return inferred ? filePath + inferred : filePath;
 }
 
@@ -514,57 +508,35 @@ function attachOpenHandler(win) {
     const [mainX, mainY] = win.getPosition();
 
     win.webContents.setWindowOpenHandler(({ url }) => {
-        // For blob URLs and about:blank (used by preview), let Electron handle it automatically
-        // Blob URLs are renderer-specific and cannot be loaded manually from main process
-        // about:blank is used by preview to then document.write() the HTML content
-        if (url && (url.startsWith('blob:') || url === 'about:blank')) {
-            return {
-                action: 'allow',
-                overrideBrowserWindowOptions: {
-                    x: mainX + 10,
-                    y: mainY + 10,
-                    width,
-                    height,
-                    tabbingIdentifier: 'mainGroup',
-                },
-            };
-        }
-
         // URLs externas → abrir en navegador del sistema
         if (isExternalUrl(url)) {
             shell.openExternal(url);
             return { action: 'deny' };
         }
 
-        // Create a completely independent child
-        const childWindow = new BrowserWindow({
-            x: mainX + 10, // offset 10px right
-            y: mainY + 10, // offset 10px down
-            width,
-            height,
-            modal: false,
-            show: true,
-            webPreferences: {
-                nodeIntegration: false,
-                contextIsolation: true,
+        // For internal URLs (blob:, about:blank, localhost), let Electron handle automatically
+        // This ensures window.open() returns a proper reference so fallback code doesn't run
+        return {
+            action: 'allow',
+            overrideBrowserWindowOptions: {
+                x: mainX + 10,
+                y: mainY + 10,
+                width,
+                height,
+                modal: false,
+                webPreferences: {
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                    preload: path.join(__dirname, 'preload.js'),
+                },
+                tabbingIdentifier: 'mainGroup',
             },
-            tabbingIdentifier: 'mainGroup',
-            // titleBarStyle: 'customButtonsOnHover', // hidden title bar on macOS
-        });
+        };
+    });
 
-        childWindow.loadURL(url);
-
-        // Destroy when closed
-        childWindow.on('close', () => {
-            // Optional: Add any cleanup actions here if necessary
-            console.log('Child window closed');
-            childWindow.destroy();
-        });
-
-        // Recursively attach the same logic so grandchildren also get it
+    // Attach open handler to child windows when they're created
+    win.webContents.on('did-create-window', (childWindow) => {
         attachOpenHandler(childWindow);
-
-        return { action: 'deny' }; // Prevents automatic creation and lets you manage the window manually
     });
 
     // Interceptar navegación a URLs externas (enlaces sin target="_blank")
@@ -615,16 +587,15 @@ async function createWindow() {
     mainWindow.maximize();
     mainWindow.show();
 
-    // macOS: Show tab bar after window is visible
-    if (process.platform === 'darwin' && typeof mainWindow.toggleTabBar === 'function') {
-        // Small delay to ensure window is fully rendered
-        setTimeout(() => {
-            try {
-                mainWindow.toggleTabBar();
-            } catch (e) {
-                console.warn('Could not toggle tab bar:', e.message);
+    // macOS: Ensure window controls are visible
+    // Note: Tab bar visibility is controlled by AppleWindowTabbingMode preference set before window creation
+    if (process.platform === 'darwin') {
+        mainWindow.once('ready-to-show', () => {
+            // Use setWindowButtonVisibility to ensure window controls are visible
+            if (typeof mainWindow.setWindowButtonVisibility === 'function') {
+                mainWindow.setWindowButtonVisibility(true);
             }
-        }, 100);
+        });
     }
 
     if (process.env.CI === '1' || process.env.CI === 'true') {
@@ -842,6 +813,19 @@ async function createWindow() {
 function streamToFile(downloadUrl, targetPath, wc, redirects = 0) {
     return new Promise(async resolve => {
         try {
+            // Reject blob: URLs early - they only exist in browser context
+            // and cannot be fetched via Node.js http/https modules.
+            // Use saveBuffer/saveBufferAs for client-generated data instead.
+            if (typeof downloadUrl === 'string' && downloadUrl.startsWith('blob:')) {
+                const errorMsg = 'blob: URLs not supported in streamToFile. Use saveBuffer/saveBufferAs for client-side data.';
+                console.error('[streamToFile]', errorMsg);
+                if (wc && !wc.isDestroyed?.()) {
+                    wc.send('download-done', { ok: false, error: errorMsg });
+                }
+                resolve(false);
+                return;
+            }
+
             // Resolve absolute URL (support relative paths from renderer)
             // In static mode, we only support absolute URLs (https://)
             let baseOrigin = 'https://localhost/';
@@ -1420,16 +1404,7 @@ function createNewProjectWindow(filePath) {
     newWindow.setMenuBarVisibility(isDev);
     newWindow.loadURL(`http://127.0.0.1:${STATIC_PORT}`);
 
-    // macOS: Show tab bar after window is visible
-    if (process.platform === 'darwin' && typeof newWindow.toggleTabBar === 'function') {
-        setTimeout(() => {
-            try {
-                newWindow.toggleTabBar();
-            } catch (e) {
-                console.warn('Could not toggle tab bar:', e.message);
-            }
-        }, 100);
-    }
+    // Note: Tab bar visibility is controlled by AppleWindowTabbingMode preference (set at app start)
 
     // Send file path once window is ready
     newWindow.webContents.on('did-finish-load', () => {

@@ -25,6 +25,7 @@ import { adminTemplatesRoutes } from './routes/admin-templates';
 import { yjsRoutes } from './routes/yjs';
 import { platformIntegrationRoutes } from './routes/platform-integration';
 import { apiV1Routes } from './routes/api/v1';
+import { uploadSessionRoutes } from './routes/upload-session';
 import {
     createWebSocketRoutes,
     initialize as initWebSocket,
@@ -547,6 +548,7 @@ app.use(healthRoutes)
     .use(adminTemplatesRoutes)
     .use(yjsRoutes)
     .use(apiV1Routes)
+    .use(uploadSessionRoutes)
     .use(createWebSocketRoutes())
     .get('/api', () => ({
         name: 'eXeLearning API',
@@ -583,6 +585,7 @@ if (routePrefix) {
             .use(adminTemplatesRoutes)
             .use(yjsRoutes)
             .use(apiV1Routes)
+            .use(uploadSessionRoutes)
             .use(createWebSocketRoutes())
             .get('/api', () => ({
                 name: 'eXeLearning API',

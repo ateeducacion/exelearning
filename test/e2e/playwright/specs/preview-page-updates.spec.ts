@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady, waitForServiceWorker } from '../helpers/workarea-helpers';
+import { waitForAppReady, waitForServiceWorker, gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Preview Page Updates
@@ -20,8 +20,7 @@ test.describe('Preview Page Updates', () => {
         const projectUuid = await createProject(page, 'Preview Title Update Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize including Yjs
         await waitForAppReady(page);
@@ -85,8 +84,7 @@ test.describe('Preview Page Updates', () => {
         const projectUuid = await createProject(page, 'Title Fields Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
         await waitForAppReady(page);
@@ -162,8 +160,7 @@ test.describe('Preview Page Updates', () => {
         const projectUuid = await createProject(page, 'Page Order Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
         await waitForAppReady(page);
@@ -225,8 +222,7 @@ test.describe('Preview Page Updates', () => {
         const projectUuid = await createProject(page, 'Page Movement Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
         await waitForAppReady(page);

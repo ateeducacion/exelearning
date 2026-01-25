@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady } from '../helpers/workarea-helpers';
+import { waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
 
 /**
@@ -389,8 +389,7 @@ test.describe('Cloning Functionality', () => {
 
             // Create project
             const projectUuid = await createProject(page, 'Clone iDevice Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app initialization
             await waitForAppReady(page);
@@ -439,8 +438,7 @@ test.describe('Cloning Functionality', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Clone Block Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -485,8 +483,7 @@ test.describe('Cloning Functionality', () => {
                 const page = authenticatedPage;
 
                 const projectUuid = await createProject(page, 'Clone Page Test');
-                await page.goto(`/workarea?project=${projectUuid}`);
-                await page.waitForLoadState('networkidle');
+                await gotoWorkarea(page, projectUuid);
 
                 await waitForAppReady(page);
 

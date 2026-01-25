@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady, waitForLoadingScreen } from '../helpers/workarea-helpers';
+import { waitForAppReady, waitForLoadingScreen, gotoWorkarea } from '../helpers/workarea-helpers';
 import type { Page, Locator } from '@playwright/test';
 
 /**
@@ -239,10 +239,7 @@ test.describe('iDevice Drag and Drop', () => {
 
             // Create project
             const projectUuid = await createProject(page, 'Drag Drop Move Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForYjsInit(page);
+            await gotoWorkarea(page, projectUuid);
             await waitForLoadingScreen(page);
 
             // Add first text iDevice (creates Block 1)
@@ -286,10 +283,7 @@ test.describe('iDevice Drag and Drop', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Drag Drop Return Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForYjsInit(page);
+            await gotoWorkarea(page, projectUuid);
             await waitForLoadingScreen(page);
 
             // Create Block 1 with iDevice 1
@@ -379,10 +373,7 @@ test.describe('iDevice Drag and Drop', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Invalid Drop Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForYjsInit(page);
+            await gotoWorkarea(page, projectUuid);
             await waitForLoadingScreen(page);
 
             // Create Block 1
@@ -421,10 +412,7 @@ test.describe('iDevice Drag and Drop', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Header Drop Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForYjsInit(page);
+            await gotoWorkarea(page, projectUuid);
             await waitForLoadingScreen(page);
 
             // Create Block 1
@@ -472,10 +460,7 @@ test.describe('iDevice Drag and Drop', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Empty Block Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForYjsInit(page);
+            await gotoWorkarea(page, projectUuid);
             await waitForLoadingScreen(page);
 
             // Create Block 1
@@ -524,10 +509,7 @@ test.describe('iDevice Drag and Drop', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'New Block Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForYjsInit(page);
+            await gotoWorkarea(page, projectUuid);
             await waitForLoadingScreen(page);
 
             // Create Block 1
@@ -581,10 +563,7 @@ test.describe('iDevice Drag and Drop', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Cascade Delete Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForYjsInit(page);
+            await gotoWorkarea(page, projectUuid);
             await waitForLoadingScreen(page);
 
             // Create Block 1 with iDevice 1
@@ -656,10 +635,7 @@ test.describe('iDevice Drag and Drop', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Reference Integrity Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForYjsInit(page);
+            await gotoWorkarea(page, projectUuid);
             await waitForLoadingScreen(page);
 
             // Create Block 1

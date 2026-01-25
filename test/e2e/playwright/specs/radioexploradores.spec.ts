@@ -12,7 +12,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
-import { openElpFile, waitForAppReady } from '../helpers/workarea-helpers';
+import { openElpFile, waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
 
 const ELP_FIXTURE = 'radioexploradores.elp';
 const FIXTURE_PATH = path.resolve(__dirname, `../../../fixtures/more/${ELP_FIXTURE}`);
@@ -113,8 +113,7 @@ test.describe('radioexploradores.elp Import Tests', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Relate Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
 
             // Open ELP
@@ -145,8 +144,7 @@ test.describe('radioexploradores.elp Import Tests', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Relate Edit Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
 
             // Open ELP
@@ -243,8 +241,7 @@ test.describe('radioexploradores.elp Import Tests', () => {
             });
 
             const projectUuid = await createProject(page, 'Full Import Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
 
             // Open ELP

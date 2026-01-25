@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { changeTheme, waitForAppReady } from '../helpers/workarea-helpers';
+import { changeTheme, waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Page Properties
@@ -18,8 +18,7 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Page Visibility Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize including Yjs
         await waitForAppReady(page);
@@ -86,8 +85,7 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'First Page Always Visible Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
         await waitForAppReady(page);
@@ -134,8 +132,7 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Page Highlight Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
         await waitForAppReady(page);
@@ -200,8 +197,7 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Hide Title Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
         await waitForAppReady(page);
@@ -286,8 +282,7 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Hide Title Theme Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize including Yjs
         await waitForAppReady(page);
@@ -366,8 +361,7 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Custom Title Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
         await waitForAppReady(page);
@@ -456,8 +450,7 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Parent Visibility Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
         await waitForAppReady(page);
@@ -534,8 +527,7 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Combined Properties Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
         await waitForAppReady(page);
@@ -612,8 +604,7 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'MathJax Property Persistence Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize including Yjs
         await waitForAppReady(page);
@@ -665,8 +656,7 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'MathJax Preview Effect Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
         await waitForAppReady(page);

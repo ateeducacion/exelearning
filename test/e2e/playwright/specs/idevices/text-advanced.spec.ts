@@ -8,6 +8,7 @@ import {
     setTinyMCEContent,
     openPreviewAndWaitForContent,
     selectFirstPage,
+    gotoWorkarea,
 } from '../../helpers/workarea-helpers';
 
 /**
@@ -26,10 +27,7 @@ test.describe('Text iDevice Advanced Features', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Text Duration Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Select a non-root page and add a text iDevice
             await selectFirstPage(page);
@@ -119,10 +117,7 @@ test.describe('Text iDevice Advanced Features', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'exe-dl Single Icon Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Select a non-root page and add a text iDevice
             await selectFirstPage(page);
@@ -207,10 +202,7 @@ test.describe('Text iDevice Advanced Features', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'exe-dl Toggle Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Select a non-root page and add a text iDevice with exe-dl content
             await selectFirstPage(page);
@@ -285,10 +277,7 @@ test.describe('Text iDevice Advanced Features', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Text Click Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Select a non-root page and add a text iDevice
             await selectFirstPage(page);
@@ -340,10 +329,7 @@ test.describe('Text iDevice Advanced Features', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Text JSON Preservation Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Select a non-root page and add a text iDevice
             await selectFirstPage(page);

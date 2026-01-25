@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady } from '../helpers/workarea-helpers';
+import { waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -78,7 +78,7 @@ test.describe('Theme Yjs Cleanup', () => {
         // 1. Create project and navigate
         console.log('[Test] Creating project...');
         const projectUuid = await createProject(page, 'Theme Yjs Cleanup Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
         console.log('[Test] Project ready');
 
@@ -147,7 +147,7 @@ test.describe('Theme Yjs Cleanup', () => {
 
         // 1. Create project and navigate
         const projectUuid = await createProject(page, 'Theme Re-select Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         // 2. Upload and select user theme
@@ -198,7 +198,7 @@ test.describe('Theme Yjs Cleanup', () => {
 
         // 1. Create project and navigate
         const projectUuid = await createProject(page, 'Theme Switch Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         // 2. Upload first theme

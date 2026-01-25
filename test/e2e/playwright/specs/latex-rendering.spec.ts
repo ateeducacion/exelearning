@@ -11,6 +11,7 @@ import {
     saveProject,
     reloadPage,
     selectFirstPage,
+    gotoWorkarea,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -131,8 +132,7 @@ test.describe('LaTeX Rendering', () => {
             const projectUuid = await createProject(page, 'LaTeX Editor Test');
 
             // Navigate to the project workarea
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app to fully initialize
             await waitForAppReady(page);
@@ -247,8 +247,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'MathJax Check');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await page.waitForFunction(() => typeof (window as any).MathJax !== 'undefined', { timeout: 30000 });
 
@@ -274,8 +273,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'LaTeX Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -310,8 +308,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'LaTeX Error Check');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -360,8 +357,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Delimitadores Page Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -587,8 +583,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'MathJax Option Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -649,8 +644,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'MathJax Config Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -716,8 +710,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'MathJax Runtime Render Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -838,8 +831,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'LaTeX Duplicate Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -919,8 +911,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'LaTeX Multiple Identical Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -1076,11 +1067,7 @@ test.describe('LaTeX Rendering', () => {
 
                 // Create a new project
                 const projectUuid = await createProject(page, 'LaTeX Title Test');
-                await page.goto(`/workarea?project=${projectUuid}`);
-                await page.waitForLoadState('networkidle');
-
-                // Wait for app to fully initialize
-                await waitForAppReady(page);
+                await gotoWorkarea(page, projectUuid);
 
                 // Enable MathJax for runtime rendering via UI toggle
                 await enableMathJaxViaUI(page);
@@ -1381,8 +1368,7 @@ test.describe('LaTeX Rendering', () => {
 
             // Create a new project with LaTeX title directly via API/metadata
             const projectUuid = await createProject(page, 'LaTeX Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 

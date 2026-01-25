@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage } from '../../helpers/workarea-helpers';
+import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -204,8 +204,7 @@ test.describe('UDL Content iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'UDL Content Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app initialization
             await waitForAppReady(page);
@@ -251,8 +250,7 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Content Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -298,8 +296,7 @@ test.describe('UDL Content iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'UDL Types Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -325,8 +322,7 @@ test.describe('UDL Content iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'UDL Multiple Blocks Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -377,8 +373,7 @@ test.describe('UDL Content iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'UDL Alt Content Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -407,8 +402,7 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -466,8 +460,7 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Audio Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -557,8 +550,7 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL MEJS Double Init Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 

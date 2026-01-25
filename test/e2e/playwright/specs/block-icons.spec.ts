@@ -1,5 +1,5 @@
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
-import { waitForAppReady, addTextIdevice, selectFirstPage } from '../helpers/workarea-helpers';
+import { waitForAppReady, addTextIdevice, selectFirstPage, gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
  * Block Icon Selection Modal Tests
@@ -25,8 +25,7 @@ test.describe('Block Icon Selection Modal', () => {
         expect(projectUuid).toBeDefined();
 
         // Navigate to workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app initialization
         await waitForAppReady(page);

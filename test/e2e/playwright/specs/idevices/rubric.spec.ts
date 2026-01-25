@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage } from '../../helpers/workarea-helpers';
+import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -183,8 +183,7 @@ test.describe('Rubric iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Rubric Add Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app initialization
             await waitForAppReady(page);
@@ -216,8 +215,7 @@ test.describe('Rubric iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Rubric Edit Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -255,8 +253,7 @@ test.describe('Rubric iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Rubric Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -303,8 +300,7 @@ test.describe('Rubric iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Rubric Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 

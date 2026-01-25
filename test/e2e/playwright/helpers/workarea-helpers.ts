@@ -287,11 +287,11 @@ export async function gotoWorkarea(page: Page, projectUuid: string): Promise<voi
     const isStaticMode = process.env.STATIC_MODE === 'true';
 
     if (isStaticMode) {
-        // Static mode: no /workarea route, project pre-loaded at root
+        // Static mode: workarea is pre-loaded at root, no /workarea route exists
         await page.goto('/');
         await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, { timeout: 30000 });
         await waitForLoadingScreen(page);
-        return;
+        return; // CRITICAL: return here to prevent server mode code from executing
     }
 
     // Server mode: navigate to workarea with project UUID

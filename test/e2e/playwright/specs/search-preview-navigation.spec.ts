@@ -7,6 +7,7 @@ import {
     cloneCurrentPage,
     waitForTinyMCEReady,
     setTinyMCEContent,
+    gotoWorkarea,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -28,8 +29,7 @@ test.describe('Search in preview - subpage navigation', () => {
 
         // Create a new project
         const projectUuid = await createProject(page, 'Search Navigation Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app initialization
         await waitForAppReady(page);

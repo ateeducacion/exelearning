@@ -11,7 +11,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
-import { openElpFile, waitForAppReady, saveProject, reloadPage } from '../helpers/workarea-helpers';
+import { openElpFile, waitForAppReady, saveProject, reloadPage, gotoWorkarea } from '../helpers/workarea-helpers';
 
 const ELP_FIXTURE = 'basic-example.elp';
 const FIXTURES_DIR = path.resolve(__dirname, '../../../fixtures');
@@ -99,8 +99,7 @@ test.describe('Yjs Binary Data Integrity', () => {
         const projectUuid = await createProject(page, 'Binary Integrity Test');
 
         // Navigate to project
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         // Open ELP fixture
@@ -153,8 +152,7 @@ test.describe('Yjs Binary Data Integrity', () => {
         const projectUuid = await createProject(page, 'Multi-Cycle Integrity Test');
 
         // Navigate to project
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         // Open ELP fixture
@@ -192,8 +190,7 @@ test.describe('Yjs Binary Data Integrity', () => {
         const projectUuid = await createProject(page, 'Complex ELP Integrity Test');
 
         // Navigate to project
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         // Open a more complex ELP - old_manual has many pages
@@ -236,8 +233,7 @@ test.describe('Yjs Binary Data Integrity', () => {
         const projectUuid = await createProject(page, 'Binary Size Test');
 
         // Navigate to project
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         // Open ELP fixture

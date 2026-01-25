@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady, waitForLoadingScreen } from '../helpers/workarea-helpers';
+import { waitForAppReady, waitForLoadingScreen, gotoWorkarea } from '../helpers/workarea-helpers';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -60,8 +60,7 @@ test.describe('Theme Import from ELPX', () => {
         expect(projectUuid).toBeDefined();
 
         // Navigate to the project
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app initialization
         await waitForAppReady(page);
@@ -105,8 +104,7 @@ test.describe('Theme Import from ELPX', () => {
 
         // Create and navigate to project
         const projectUuid = await createProject(page, 'Styles Panel Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app initialization
         await waitForAppReady(page);

@@ -16,6 +16,7 @@ import {
     getBlockIconName,
     waitForThemeIconsLoaded,
     importComponent,
+    gotoWorkarea,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -390,9 +391,7 @@ test.describe('Page Export with Images', () => {
 
         // 5. Create a NEW project
         const newProjectUuid = await createProject(page, 'Page Import Test');
-        await page.goto(`/workarea?project=${newProjectUuid}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
+        await gotoWorkarea(page, newProjectUuid);
         await waitForLoadingScreen(page);
 
         // 6. Select the first page
@@ -498,9 +497,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
 
         // 1. Create a new project
         const projectUuid = await createProject(page, 'Page Icon Export Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
+        await gotoWorkarea(page, projectUuid);
         await waitForLoadingScreen(page);
 
         // 2. Select the first page
@@ -595,9 +592,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
 
         // 1. Create first project
         const projectUuid1 = await createProject(page, 'Page Icon Export Source');
-        await page.goto(`/workarea?project=${projectUuid1}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
+        await gotoWorkarea(page, projectUuid1);
         await waitForLoadingScreen(page);
 
         await selectPageByIndex(page, 0);
@@ -643,9 +638,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
 
         // 2. Create a NEW project
         const projectUuid2 = await createProject(page, 'Page Icon Import Target');
-        await page.goto(`/workarea?project=${projectUuid2}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
+        await gotoWorkarea(page, projectUuid2);
         await waitForLoadingScreen(page);
 
         // 3. Select page and import

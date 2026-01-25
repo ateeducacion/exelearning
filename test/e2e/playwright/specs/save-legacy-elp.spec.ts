@@ -10,7 +10,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
 import type { ConsoleMessage } from '@playwright/test';
-import { openElpFile, waitForAppReady, saveProject, reloadPage } from '../helpers/workarea-helpers';
+import { openElpFile, waitForAppReady, saveProject, reloadPage, gotoWorkarea } from '../helpers/workarea-helpers';
 
 const ELP_FIXTURE = 'old_manual_exe29_compressed.elp';
 const FIXTURE_PATH = path.resolve(__dirname, `../../../fixtures/${ELP_FIXTURE}`);
@@ -44,8 +44,7 @@ test.describe('Save Legacy ELP - Database Compatibility', () => {
         const projectUuid = await createProject(page, 'Save Legacy ELP Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         // Open the legacy ELP fixture
@@ -130,8 +129,7 @@ test.describe('Save Legacy ELP - Database Compatibility', () => {
         const projectUuid = await createProject(page, 'Save Persistence Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         // Open the legacy ELP fixture

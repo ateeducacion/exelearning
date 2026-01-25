@@ -5,6 +5,7 @@ import {
     waitForTinyMCEReady,
     setTinyMCEContent,
     selectFirstPage,
+    gotoWorkarea,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -25,8 +26,7 @@ test.describe('Markdown and Code Block Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Code Block Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -110,8 +110,7 @@ test.describe('Markdown and Code Block Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Multi-Language Code Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -201,8 +200,7 @@ print(greeting)</code></pre>
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'CodeMagic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -312,8 +310,7 @@ print(greeting)</code></pre>
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Inline Code Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 

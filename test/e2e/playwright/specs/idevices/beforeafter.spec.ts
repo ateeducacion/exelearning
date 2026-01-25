@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage } from '../../helpers/workarea-helpers';
+import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -252,11 +252,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'BeforeAfter Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -276,10 +272,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Multiple Pairs Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -325,10 +318,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Preview First Image Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -378,10 +368,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Navigation Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -453,10 +440,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Slider Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -503,10 +487,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);

@@ -9,6 +9,7 @@ import {
     blockHasEmptyIcon,
     changeBlockIcon,
     waitForThemeIconsLoaded,
+    gotoWorkarea,
 } from '../helpers/workarea-helpers';
 import { pressUndo, pressRedo, waitForBlockTitle, waitForUndoAvailable } from '../helpers/undo-redo-helpers';
 
@@ -159,8 +160,7 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
 
         // Create project
         const projectUuid = await createProject(page, 'Undo Title Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         await waitForYjsInit(page);
         await waitForLoadingScreen(page);
@@ -198,8 +198,7 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
 
         // Create project
         const projectUuid = await createProject(page, 'Redo Title Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         await waitForYjsInit(page);
         await waitForLoadingScreen(page);
@@ -241,8 +240,7 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
 
         // Create project
         const projectUuid = await createProject(page, 'Multi Undo Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         await waitForYjsInit(page);
         await waitForLoadingScreen(page);
@@ -296,8 +294,7 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
 
         // Create project
         const projectUuid = await createProject(page, 'Multi Block Undo Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         await waitForYjsInit(page);
         await waitForLoadingScreen(page);
@@ -334,8 +331,7 @@ test.describe('Undo/Redo Page Title - Issue #956', () => {
 
         // Create project
         const projectUuid = await createProject(page, 'Page Title Undo Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         await waitForYjsInit(page);
         await waitForLoadingScreen(page);
@@ -368,8 +364,7 @@ test.describe('Undo/Redo Page Title - Issue #956', () => {
 
         // Create project
         const projectUuid = await createProject(page, 'Page Title Redo Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         await waitForYjsInit(page);
         await waitForLoadingScreen(page);
@@ -402,8 +397,7 @@ test.describe('Undo/Redo Page Title - Issue #956', () => {
 
         // Create project
         const projectUuid = await createProject(page, 'Page Title Content Header Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         await waitForYjsInit(page);
         await waitForLoadingScreen(page);
@@ -439,8 +433,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
 
         // Create project
         const projectUuid = await createProject(page, 'Icon Undo Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         await waitForYjsInit(page);
         await waitForLoadingScreen(page);
@@ -501,8 +494,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
 
         // Create project
         const projectUuid = await createProject(page, 'Icon Redo Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         await waitForYjsInit(page);
         await waitForLoadingScreen(page);
@@ -580,8 +572,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
 
         // Create project
         const projectUuid = await createProject(page, 'Multi Icon Undo Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         await waitForYjsInit(page);
         await waitForLoadingScreen(page);

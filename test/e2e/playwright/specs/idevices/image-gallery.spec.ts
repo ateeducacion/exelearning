@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
-import { getPreviewFrame, waitForPreviewContent, waitForAppReady, reloadPage } from '../../helpers/workarea-helpers';
+import { getPreviewFrame, waitForPreviewContent, waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Image Gallery iDevice
@@ -122,11 +122,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Image Gallery Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add an image-gallery iDevice using the panel
             await addImageGalleryFromPanel(page);
@@ -154,10 +150,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Upload Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -222,10 +215,7 @@ test.describe('Image Gallery iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Image Gallery Multiple Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -249,10 +239,7 @@ test.describe('Image Gallery iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Image Gallery Controls Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -291,10 +278,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -357,10 +341,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Lightbox Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -432,10 +413,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Lightbox Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -535,11 +513,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // 1. Create project and navigate
             const projectUuid = await createProject(page, 'Image Gallery Modify Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // 2. Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -674,11 +648,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Create project
             const projectUuid = await createProject(page, 'Image Gallery Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -1057,10 +1027,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // ============ STEP 1: Create project and add two images ============
             const projectUuid = await createProject(page, 'Image Gallery Multi-Modify Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -1219,11 +1186,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Folder Depth Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await waitForAppReady(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);

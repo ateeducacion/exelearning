@@ -34,7 +34,8 @@ export async function waitForRedoAvailable(page: Page, timeout = 10000): Promise
 
 /**
  * Press Ctrl+Z (undo) with platform detection
- * Waits for undo to be available before pressing
+ * Waits for undo to be available before pressing, then waits for redo to become available
+ * (confirming undo was executed)
  */
 export async function pressUndo(page: Page): Promise<void> {
     await waitForUndoAvailable(page);
@@ -45,13 +46,18 @@ export async function pressUndo(page: Page): Promise<void> {
     } else {
         await page.keyboard.press('Control+z');
     }
-    await page.waitForTimeout(500);
+
+    // Wait for redo button to become enabled, confirming undo was executed
+    await waitForRedoAvailable(page);
+    // Small delay to allow DOM sync to complete
+    await page.waitForTimeout(300);
 }
 
 /**
  * Press Ctrl+Shift+Z (redo) with platform detection
  * Note: The app uses Ctrl+Shift+Z (not Ctrl+Y) for redo
- * Waits for redo to be available before pressing
+ * Waits for redo to be available before pressing, then waits for undo to become available
+ * (confirming redo was executed)
  */
 export async function pressRedo(page: Page): Promise<void> {
     await waitForRedoAvailable(page);
@@ -62,7 +68,11 @@ export async function pressRedo(page: Page): Promise<void> {
     } else {
         await page.keyboard.press('Control+Shift+z');
     }
-    await page.waitForTimeout(500);
+
+    // Wait for undo button to become enabled, confirming redo was executed
+    await waitForUndoAvailable(page);
+    // Small delay to allow DOM sync to complete
+    await page.waitForTimeout(300);
 }
 
 /**

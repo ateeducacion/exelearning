@@ -1,6 +1,6 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
-import { waitForAppReady } from '../helpers/workarea-helpers';
+import { waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
 
 test.describe('Theme Selection on ELP Import', () => {
     /**
@@ -18,8 +18,7 @@ test.describe('Theme Selection on ELP Import', () => {
         expect(projectUuid).toBeDefined();
 
         // 2. Navigate to the project
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for the app to fully initialize
         await waitForAppReady(page);
@@ -97,8 +96,7 @@ test.describe('Theme Selection on ELP Import', () => {
 
         // Create a project
         const projectUuid = await createProject(page, 'Theme Check Project');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app initialization
         await page.waitForFunction(

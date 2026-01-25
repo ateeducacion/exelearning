@@ -29,6 +29,13 @@ jobs:
         with:
           bun-version: latest
 
+      # Install Node.js and Yarn (for electron-builder packaging)
+      - name: Set up Node.js (for yarn)
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
       # TODO: Temporary disabled because we must have an account in snapcraft.io,
       #  when we release the app we should edit packages.json to add
       # to add

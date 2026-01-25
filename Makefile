@@ -733,7 +733,8 @@ endif
 	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
 	@echo "Packaging version $(VERSION) (npm version: $(PACKAGE_VERSION))..."
 	@bun -e "let pkg=require('./package.json'); pkg.version='$(PACKAGE_VERSION)'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
-	bun run package:app $(if $(PUBLISH),-- --publish $(PUBLISH),)
+	yarn install
+	yarn run package:app $(if $(PUBLISH),-- --publish $(PUBLISH),)
 	@echo "Restoring version to 0.0.0-alpha..."
 	@bun -e "let pkg=require('./package.json'); pkg.version='0.0.0-alpha'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
 	@echo "Package created successfully with version $(VERSION)"

@@ -1,6 +1,6 @@
 {
-  "version": "v0.0.0-pr26-202601250949",
-  "builtAt": "2026-01-25T09:49:12.244Z",
+  "version": "v0.0.0-pr26-202601251225",
+  "builtAt": "2026-01-25T12:25:48.489Z",
   "parameters": {
     "routes": {
       "api_translations_lists": {
@@ -3669,6 +3669,7 @@
         "Create New Project": "Create New Project",
         "Back to Login": "Back to Login",
         "Access denied": "Access denied",
+        "You don't have permission to access this project.": "You don't have permission to access this project.",
         "Server error": "Server error",
         "Autosave not needed - recent save exists": "Autosave not needed - recent save exists",
         "Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%": "Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%",
@@ -3676,7 +3677,7 @@
         "Required extension %extension% is not installed": "Required extension %extension% is not installed",
         "Project Properties": "Project Properties"
       },
-      "count": 18
+      "count": 19
     },
     "eo": {
       "translations": {
@@ -10176,6 +10177,7 @@
         "Create New Project": "Crear nuevo proyecto",
         "Back to Login": "Volver al inicio de sesión",
         "Access denied": "Acceso denegado",
+        "You don't have permission to access this project.": "No tienes permiso para acceder a este proyecto.",
         "Server error": "Error del servidor",
         "Autosave not needed - recent save exists": "Autoguardado no necesario - existe un guardado reciente",
         "Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%": "Espacio de almacenamiento insuficiente. Usado: %usedSpace%, Máximo: %maxSpace%",
@@ -10183,7 +10185,7 @@
         "Required extension %extension% is not installed": "La extensión requerida %extension% no está instalada",
         "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "Este archivo fue creado con una versión más reciente de eXeLearning. Es posible que no funcione correctamente. Por favor, actualiza la aplicación."
       },
-      "count": 3253
+      "count": 3254
     },
     "eu": {
       "translations": {
@@ -28215,305 +28217,305 @@
           "style.css"
         ],
         "icons": {
-          "guide": {
-            "id": "guide",
-            "title": "guide",
+          "letters": {
+            "id": "letters",
+            "title": "letters",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/guide.png"
-          },
-          "start": {
-            "id": "start",
-            "title": "start",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/start.png"
-          },
-          "think_alt": {
-            "id": "think_alt",
-            "title": "think_alt",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/think_alt.png"
-          },
-          "ask": {
-            "id": "ask",
-            "title": "ask",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/ask.png"
-          },
-          "info": {
-            "id": "info",
-            "title": "info",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/info.png"
-          },
-          "play": {
-            "id": "play",
-            "title": "play",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/play.png"
-          },
-          "collaborative": {
-            "id": "collaborative",
-            "title": "collaborative",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/collaborative.png"
-          },
-          "file": {
-            "id": "file",
-            "title": "file",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/file.png"
-          },
-          "english": {
-            "id": "english",
-            "title": "english",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/english.png"
-          },
-          "interactive": {
-            "id": "interactive",
-            "title": "interactive",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/interactive.png"
-          },
-          "explore": {
-            "id": "explore",
-            "title": "explore",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/explore.png"
-          },
-          "draw": {
-            "id": "draw",
-            "title": "draw",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/draw.png"
-          },
-          "reflection": {
-            "id": "reflection",
-            "title": "reflection",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/reflection.png"
-          },
-          "music": {
-            "id": "music",
-            "title": "music",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/music.png"
-          },
-          "stop": {
-            "id": "stop",
-            "title": "stop",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/stop.png"
-          },
-          "alert": {
-            "id": "alert",
-            "title": "alert",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/alert.png"
-          },
-          "diary_alt": {
-            "id": "diary_alt",
-            "title": "diary_alt",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/diary_alt.png"
-          },
-          "sport": {
-            "id": "sport",
-            "title": "sport",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/sport.png"
-          },
-          "observe": {
-            "id": "observe",
-            "title": "observe",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/observe.png"
-          },
-          "arts": {
-            "id": "arts",
-            "title": "arts",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/arts.png"
-          },
-          "think": {
-            "id": "think",
-            "title": "think",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/think.png"
-          },
-          "competences": {
-            "id": "competences",
-            "title": "competences",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/competences.png"
-          },
-          "technology": {
-            "id": "technology",
-            "title": "technology",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/technology.png"
-          },
-          "calculate": {
-            "id": "calculate",
-            "title": "calculate",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/calculate.png"
-          },
-          "passport": {
-            "id": "passport",
-            "title": "passport",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/passport.png"
-          },
-          "history": {
-            "id": "history",
-            "title": "history",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/history.png"
-          },
-          "geography": {
-            "id": "geography",
-            "title": "geography",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/geography.png"
+            "value": "/files/perm/themes/base/zen/icons/letters.svg"
           },
           "piece": {
             "id": "piece",
             "title": "piece",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/piece.png"
+            "value": "/files/perm/themes/base/zen/icons/piece.svg"
           },
-          "agreement": {
-            "id": "agreement",
-            "title": "agreement",
+          "ask": {
+            "id": "ask",
+            "title": "ask",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/agreement.png"
+            "value": "/files/perm/themes/base/zen/icons/ask.svg"
           },
-          "letters": {
-            "id": "letters",
-            "title": "letters",
+          "technology": {
+            "id": "technology",
+            "title": "technology",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/letters.png"
+            "value": "/files/perm/themes/base/zen/icons/technology.svg"
           },
-          "case": {
-            "id": "case",
-            "title": "case",
+          "alert": {
+            "id": "alert",
+            "title": "alert",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/case.png"
+            "value": "/files/perm/themes/base/zen/icons/alert.svg"
           },
-          "present": {
-            "id": "present",
-            "title": "present",
+          "reflection": {
+            "id": "reflection",
+            "title": "reflection",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/present.png"
-          },
-          "share": {
-            "id": "share",
-            "title": "share",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/share.png"
-          },
-          "gallery": {
-            "id": "gallery",
-            "title": "gallery",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/gallery.png"
-          },
-          "objetives": {
-            "id": "objetives",
-            "title": "objetives",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/objetives.png"
-          },
-          "discuss": {
-            "id": "discuss",
-            "title": "discuss",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/discuss.png"
-          },
-          "perform": {
-            "id": "perform",
-            "title": "perform",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/perform.png"
-          },
-          "pieces": {
-            "id": "pieces",
-            "title": "pieces",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/pieces.png"
-          },
-          "experiment": {
-            "id": "experiment",
-            "title": "experiment",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/experiment.png"
-          },
-          "book": {
-            "id": "book",
-            "title": "book",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/book.png"
-          },
-          "activity": {
-            "id": "activity",
-            "title": "activity",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/activity.png"
-          },
-          "download": {
-            "id": "download",
-            "title": "download",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/download.png"
-          },
-          "video": {
-            "id": "video",
-            "title": "video",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/video.png"
-          },
-          "listen": {
-            "id": "listen",
-            "title": "listen",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/listen.png"
-          },
-          "suitcase": {
-            "id": "suitcase",
-            "title": "suitcase",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/suitcase.png"
-          },
-          "nature": {
-            "id": "nature",
-            "title": "nature",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/nature.png"
-          },
-          "chrono": {
-            "id": "chrono",
-            "title": "chrono",
-            "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/chrono.png"
+            "value": "/files/perm/themes/base/zen/icons/reflection.svg"
           },
           "diary": {
             "id": "diary",
             "title": "diary",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/diary.png"
+            "value": "/files/perm/themes/base/zen/icons/diary.svg"
           },
-          "math": {
-            "id": "math",
-            "title": "math",
+          "draw": {
+            "id": "draw",
+            "title": "draw",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/math.png"
+            "value": "/files/perm/themes/base/zen/icons/draw.svg"
+          },
+          "interactive": {
+            "id": "interactive",
+            "title": "interactive",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/interactive.svg"
+          },
+          "objectives": {
+            "id": "objectives",
+            "title": "objectives",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/objectives.svg"
+          },
+          "experiment": {
+            "id": "experiment",
+            "title": "experiment",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/experiment.svg"
           },
           "roadmap": {
             "id": "roadmap",
             "title": "roadmap",
             "type": "img",
-            "value": "/files/perm/themes/base/zen/icons/roadmap.png"
+            "value": "/files/perm/themes/base/zen/icons/roadmap.svg"
+          },
+          "fle": {
+            "id": "fle",
+            "title": "fle",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/fle.svg"
+          },
+          "info": {
+            "id": "info",
+            "title": "info",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/info.svg"
+          },
+          "geography": {
+            "id": "geography",
+            "title": "geography",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/geography.svg"
+          },
+          "chrono": {
+            "id": "chrono",
+            "title": "chrono",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/chrono.svg"
+          },
+          "stop": {
+            "id": "stop",
+            "title": "stop",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/stop.svg"
+          },
+          "case": {
+            "id": "case",
+            "title": "case",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/case.svg"
+          },
+          "perform": {
+            "id": "perform",
+            "title": "perform",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/perform.svg"
+          },
+          "nature": {
+            "id": "nature",
+            "title": "nature",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/nature.svg"
+          },
+          "discuss": {
+            "id": "discuss",
+            "title": "discuss",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/discuss.svg"
+          },
+          "activity": {
+            "id": "activity",
+            "title": "activity",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/activity.svg"
+          },
+          "pieces": {
+            "id": "pieces",
+            "title": "pieces",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/pieces.svg"
+          },
+          "suitcase": {
+            "id": "suitcase",
+            "title": "suitcase",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/suitcase.svg"
+          },
+          "book": {
+            "id": "book",
+            "title": "book",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/book.svg"
+          },
+          "share": {
+            "id": "share",
+            "title": "share",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/share.svg"
+          },
+          "math": {
+            "id": "math",
+            "title": "math",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/math.svg"
+          },
+          "gallery": {
+            "id": "gallery",
+            "title": "gallery",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/gallery.svg"
+          },
+          "calculate": {
+            "id": "calculate",
+            "title": "calculate",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/calculate.svg"
+          },
+          "competences": {
+            "id": "competences",
+            "title": "competences",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/competences.svg"
+          },
+          "play": {
+            "id": "play",
+            "title": "play",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/play.svg"
+          },
+          "think_alt": {
+            "id": "think_alt",
+            "title": "think_alt",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/think_alt.svg"
+          },
+          "diary_alt": {
+            "id": "diary_alt",
+            "title": "diary_alt",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/diary_alt.svg"
+          },
+          "sport": {
+            "id": "sport",
+            "title": "sport",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/sport.svg"
+          },
+          "think": {
+            "id": "think",
+            "title": "think",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/think.svg"
+          },
+          "agreement": {
+            "id": "agreement",
+            "title": "agreement",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/agreement.svg"
+          },
+          "download": {
+            "id": "download",
+            "title": "download",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/download.svg"
+          },
+          "history": {
+            "id": "history",
+            "title": "history",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/history.svg"
+          },
+          "collaborative": {
+            "id": "collaborative",
+            "title": "collaborative",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/collaborative.svg"
+          },
+          "arts": {
+            "id": "arts",
+            "title": "arts",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/arts.svg"
+          },
+          "explore": {
+            "id": "explore",
+            "title": "explore",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/explore.svg"
+          },
+          "guide": {
+            "id": "guide",
+            "title": "guide",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/guide.svg"
+          },
+          "passport": {
+            "id": "passport",
+            "title": "passport",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/passport.svg"
+          },
+          "video": {
+            "id": "video",
+            "title": "video",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/video.svg"
+          },
+          "english": {
+            "id": "english",
+            "title": "english",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/english.svg"
+          },
+          "listen": {
+            "id": "listen",
+            "title": "listen",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/listen.svg"
+          },
+          "observe": {
+            "id": "observe",
+            "title": "observe",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/observe.svg"
+          },
+          "start": {
+            "id": "start",
+            "title": "start",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/start.svg"
+          },
+          "present": {
+            "id": "present",
+            "title": "present",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/present.svg"
+          },
+          "music": {
+            "id": "music",
+            "title": "music",
+            "type": "img",
+            "value": "/files/perm/themes/base/zen/icons/music.svg"
           }
         }
       },
@@ -28857,305 +28859,305 @@
           "style.css"
         ],
         "icons": {
-          "guide": {
-            "id": "guide",
-            "title": "guide",
+          "letters": {
+            "id": "letters",
+            "title": "letters",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/guide.png"
-          },
-          "start": {
-            "id": "start",
-            "title": "start",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/start.png"
-          },
-          "think_alt": {
-            "id": "think_alt",
-            "title": "think_alt",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/think_alt.png"
-          },
-          "ask": {
-            "id": "ask",
-            "title": "ask",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/ask.png"
-          },
-          "info": {
-            "id": "info",
-            "title": "info",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/info.png"
-          },
-          "play": {
-            "id": "play",
-            "title": "play",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/play.png"
-          },
-          "collaborative": {
-            "id": "collaborative",
-            "title": "collaborative",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/collaborative.png"
-          },
-          "file": {
-            "id": "file",
-            "title": "file",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/file.png"
-          },
-          "english": {
-            "id": "english",
-            "title": "english",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/english.png"
-          },
-          "interactive": {
-            "id": "interactive",
-            "title": "interactive",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/interactive.png"
-          },
-          "explore": {
-            "id": "explore",
-            "title": "explore",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/explore.png"
-          },
-          "draw": {
-            "id": "draw",
-            "title": "draw",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/draw.png"
-          },
-          "reflection": {
-            "id": "reflection",
-            "title": "reflection",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/reflection.png"
-          },
-          "music": {
-            "id": "music",
-            "title": "music",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/music.png"
-          },
-          "stop": {
-            "id": "stop",
-            "title": "stop",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/stop.png"
-          },
-          "alert": {
-            "id": "alert",
-            "title": "alert",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/alert.png"
-          },
-          "diary_alt": {
-            "id": "diary_alt",
-            "title": "diary_alt",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/diary_alt.png"
-          },
-          "sport": {
-            "id": "sport",
-            "title": "sport",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/sport.png"
-          },
-          "observe": {
-            "id": "observe",
-            "title": "observe",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/observe.png"
-          },
-          "arts": {
-            "id": "arts",
-            "title": "arts",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/arts.png"
-          },
-          "think": {
-            "id": "think",
-            "title": "think",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/think.png"
-          },
-          "competences": {
-            "id": "competences",
-            "title": "competences",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/competences.png"
-          },
-          "technology": {
-            "id": "technology",
-            "title": "technology",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/technology.png"
-          },
-          "calculate": {
-            "id": "calculate",
-            "title": "calculate",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/calculate.png"
-          },
-          "passport": {
-            "id": "passport",
-            "title": "passport",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/passport.png"
-          },
-          "history": {
-            "id": "history",
-            "title": "history",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/history.png"
-          },
-          "geography": {
-            "id": "geography",
-            "title": "geography",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/geography.png"
+            "value": "/files/perm/themes/base/flux/icons/letters.svg"
           },
           "piece": {
             "id": "piece",
             "title": "piece",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/piece.png"
+            "value": "/files/perm/themes/base/flux/icons/piece.svg"
           },
-          "agreement": {
-            "id": "agreement",
-            "title": "agreement",
+          "ask": {
+            "id": "ask",
+            "title": "ask",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/agreement.png"
+            "value": "/files/perm/themes/base/flux/icons/ask.svg"
           },
-          "letters": {
-            "id": "letters",
-            "title": "letters",
+          "technology": {
+            "id": "technology",
+            "title": "technology",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/letters.png"
+            "value": "/files/perm/themes/base/flux/icons/technology.svg"
           },
-          "case": {
-            "id": "case",
-            "title": "case",
+          "alert": {
+            "id": "alert",
+            "title": "alert",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/case.png"
+            "value": "/files/perm/themes/base/flux/icons/alert.svg"
           },
-          "present": {
-            "id": "present",
-            "title": "present",
+          "reflection": {
+            "id": "reflection",
+            "title": "reflection",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/present.png"
-          },
-          "share": {
-            "id": "share",
-            "title": "share",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/share.png"
-          },
-          "gallery": {
-            "id": "gallery",
-            "title": "gallery",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/gallery.png"
-          },
-          "objetives": {
-            "id": "objetives",
-            "title": "objetives",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/objetives.png"
-          },
-          "discuss": {
-            "id": "discuss",
-            "title": "discuss",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/discuss.png"
-          },
-          "perform": {
-            "id": "perform",
-            "title": "perform",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/perform.png"
-          },
-          "pieces": {
-            "id": "pieces",
-            "title": "pieces",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/pieces.png"
-          },
-          "experiment": {
-            "id": "experiment",
-            "title": "experiment",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/experiment.png"
-          },
-          "book": {
-            "id": "book",
-            "title": "book",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/book.png"
-          },
-          "activity": {
-            "id": "activity",
-            "title": "activity",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/activity.png"
-          },
-          "download": {
-            "id": "download",
-            "title": "download",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/download.png"
-          },
-          "video": {
-            "id": "video",
-            "title": "video",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/video.png"
-          },
-          "listen": {
-            "id": "listen",
-            "title": "listen",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/listen.png"
-          },
-          "suitcase": {
-            "id": "suitcase",
-            "title": "suitcase",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/suitcase.png"
-          },
-          "nature": {
-            "id": "nature",
-            "title": "nature",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/nature.png"
-          },
-          "chrono": {
-            "id": "chrono",
-            "title": "chrono",
-            "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/chrono.png"
+            "value": "/files/perm/themes/base/flux/icons/reflection.svg"
           },
           "diary": {
             "id": "diary",
             "title": "diary",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/diary.png"
+            "value": "/files/perm/themes/base/flux/icons/diary.svg"
           },
-          "math": {
-            "id": "math",
-            "title": "math",
+          "draw": {
+            "id": "draw",
+            "title": "draw",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/math.png"
+            "value": "/files/perm/themes/base/flux/icons/draw.svg"
+          },
+          "interactive": {
+            "id": "interactive",
+            "title": "interactive",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/interactive.svg"
+          },
+          "objectives": {
+            "id": "objectives",
+            "title": "objectives",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/objectives.svg"
+          },
+          "experiment": {
+            "id": "experiment",
+            "title": "experiment",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/experiment.svg"
           },
           "roadmap": {
             "id": "roadmap",
             "title": "roadmap",
             "type": "img",
-            "value": "/files/perm/themes/base/flux/icons/roadmap.png"
+            "value": "/files/perm/themes/base/flux/icons/roadmap.svg"
+          },
+          "fle": {
+            "id": "fle",
+            "title": "fle",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/fle.svg"
+          },
+          "info": {
+            "id": "info",
+            "title": "info",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/info.svg"
+          },
+          "geography": {
+            "id": "geography",
+            "title": "geography",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/geography.svg"
+          },
+          "chrono": {
+            "id": "chrono",
+            "title": "chrono",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/chrono.svg"
+          },
+          "stop": {
+            "id": "stop",
+            "title": "stop",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/stop.svg"
+          },
+          "case": {
+            "id": "case",
+            "title": "case",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/case.svg"
+          },
+          "perform": {
+            "id": "perform",
+            "title": "perform",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/perform.svg"
+          },
+          "nature": {
+            "id": "nature",
+            "title": "nature",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/nature.svg"
+          },
+          "discuss": {
+            "id": "discuss",
+            "title": "discuss",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/discuss.svg"
+          },
+          "activity": {
+            "id": "activity",
+            "title": "activity",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/activity.svg"
+          },
+          "pieces": {
+            "id": "pieces",
+            "title": "pieces",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/pieces.svg"
+          },
+          "suitcase": {
+            "id": "suitcase",
+            "title": "suitcase",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/suitcase.svg"
+          },
+          "book": {
+            "id": "book",
+            "title": "book",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/book.svg"
+          },
+          "share": {
+            "id": "share",
+            "title": "share",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/share.svg"
+          },
+          "math": {
+            "id": "math",
+            "title": "math",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/math.svg"
+          },
+          "gallery": {
+            "id": "gallery",
+            "title": "gallery",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/gallery.svg"
+          },
+          "calculate": {
+            "id": "calculate",
+            "title": "calculate",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/calculate.svg"
+          },
+          "competences": {
+            "id": "competences",
+            "title": "competences",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/competences.svg"
+          },
+          "play": {
+            "id": "play",
+            "title": "play",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/play.svg"
+          },
+          "think_alt": {
+            "id": "think_alt",
+            "title": "think_alt",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/think_alt.svg"
+          },
+          "diary_alt": {
+            "id": "diary_alt",
+            "title": "diary_alt",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/diary_alt.svg"
+          },
+          "sport": {
+            "id": "sport",
+            "title": "sport",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/sport.svg"
+          },
+          "think": {
+            "id": "think",
+            "title": "think",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/think.svg"
+          },
+          "agreement": {
+            "id": "agreement",
+            "title": "agreement",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/agreement.svg"
+          },
+          "download": {
+            "id": "download",
+            "title": "download",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/download.svg"
+          },
+          "history": {
+            "id": "history",
+            "title": "history",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/history.svg"
+          },
+          "collaborative": {
+            "id": "collaborative",
+            "title": "collaborative",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/collaborative.svg"
+          },
+          "arts": {
+            "id": "arts",
+            "title": "arts",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/arts.svg"
+          },
+          "explore": {
+            "id": "explore",
+            "title": "explore",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/explore.svg"
+          },
+          "guide": {
+            "id": "guide",
+            "title": "guide",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/guide.svg"
+          },
+          "passport": {
+            "id": "passport",
+            "title": "passport",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/passport.svg"
+          },
+          "video": {
+            "id": "video",
+            "title": "video",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/video.svg"
+          },
+          "english": {
+            "id": "english",
+            "title": "english",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/english.svg"
+          },
+          "listen": {
+            "id": "listen",
+            "title": "listen",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/listen.svg"
+          },
+          "observe": {
+            "id": "observe",
+            "title": "observe",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/observe.svg"
+          },
+          "start": {
+            "id": "start",
+            "title": "start",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/start.svg"
+          },
+          "present": {
+            "id": "present",
+            "title": "present",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/present.svg"
+          },
+          "music": {
+            "id": "music",
+            "title": "music",
+            "type": "img",
+            "value": "/files/perm/themes/base/flux/icons/music.svg"
           }
         }
       },
@@ -29178,305 +29180,305 @@
           "style.css"
         ],
         "icons": {
-          "guide": {
-            "id": "guide",
-            "title": "guide",
+          "letters": {
+            "id": "letters",
+            "title": "letters",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/guide.png"
-          },
-          "start": {
-            "id": "start",
-            "title": "start",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/start.png"
-          },
-          "think_alt": {
-            "id": "think_alt",
-            "title": "think_alt",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/think_alt.png"
-          },
-          "ask": {
-            "id": "ask",
-            "title": "ask",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/ask.png"
-          },
-          "info": {
-            "id": "info",
-            "title": "info",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/info.png"
-          },
-          "play": {
-            "id": "play",
-            "title": "play",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/play.png"
-          },
-          "collaborative": {
-            "id": "collaborative",
-            "title": "collaborative",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/collaborative.png"
-          },
-          "file": {
-            "id": "file",
-            "title": "file",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/file.png"
-          },
-          "english": {
-            "id": "english",
-            "title": "english",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/english.png"
-          },
-          "interactive": {
-            "id": "interactive",
-            "title": "interactive",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/interactive.png"
-          },
-          "explore": {
-            "id": "explore",
-            "title": "explore",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/explore.png"
-          },
-          "draw": {
-            "id": "draw",
-            "title": "draw",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/draw.png"
-          },
-          "reflection": {
-            "id": "reflection",
-            "title": "reflection",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/reflection.png"
-          },
-          "music": {
-            "id": "music",
-            "title": "music",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/music.png"
-          },
-          "stop": {
-            "id": "stop",
-            "title": "stop",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/stop.png"
-          },
-          "alert": {
-            "id": "alert",
-            "title": "alert",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/alert.png"
-          },
-          "diary_alt": {
-            "id": "diary_alt",
-            "title": "diary_alt",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/diary_alt.png"
-          },
-          "sport": {
-            "id": "sport",
-            "title": "sport",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/sport.png"
-          },
-          "observe": {
-            "id": "observe",
-            "title": "observe",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/observe.png"
-          },
-          "arts": {
-            "id": "arts",
-            "title": "arts",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/arts.png"
-          },
-          "think": {
-            "id": "think",
-            "title": "think",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/think.png"
-          },
-          "technology": {
-            "id": "technology",
-            "title": "technology",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/technology.png"
-          },
-          "calculate": {
-            "id": "calculate",
-            "title": "calculate",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/calculate.png"
-          },
-          "passport": {
-            "id": "passport",
-            "title": "passport",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/passport.png"
-          },
-          "history": {
-            "id": "history",
-            "title": "history",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/history.png"
-          },
-          "geography": {
-            "id": "geography",
-            "title": "geography",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/geography.png"
+            "value": "/files/perm/themes/base/nova/icons/letters.svg"
           },
           "piece": {
             "id": "piece",
             "title": "piece",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/piece.png"
+            "value": "/files/perm/themes/base/nova/icons/piece.svg"
           },
-          "agreement": {
-            "id": "agreement",
-            "title": "agreement",
+          "ask": {
+            "id": "ask",
+            "title": "ask",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/agreement.png"
+            "value": "/files/perm/themes/base/nova/icons/ask.svg"
           },
-          "competencies": {
-            "id": "competencies",
-            "title": "competencies",
+          "technology": {
+            "id": "technology",
+            "title": "technology",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/competencies.png"
+            "value": "/files/perm/themes/base/nova/icons/technology.svg"
           },
-          "letters": {
-            "id": "letters",
-            "title": "letters",
+          "alert": {
+            "id": "alert",
+            "title": "alert",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/letters.png"
+            "value": "/files/perm/themes/base/nova/icons/alert.svg"
           },
-          "case": {
-            "id": "case",
-            "title": "case",
+          "reflection": {
+            "id": "reflection",
+            "title": "reflection",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/case.png"
-          },
-          "present": {
-            "id": "present",
-            "title": "present",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/present.png"
-          },
-          "share": {
-            "id": "share",
-            "title": "share",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/share.png"
-          },
-          "gallery": {
-            "id": "gallery",
-            "title": "gallery",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/gallery.png"
-          },
-          "discuss": {
-            "id": "discuss",
-            "title": "discuss",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/discuss.png"
-          },
-          "perform": {
-            "id": "perform",
-            "title": "perform",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/perform.png"
-          },
-          "pieces": {
-            "id": "pieces",
-            "title": "pieces",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/pieces.png"
-          },
-          "experiment": {
-            "id": "experiment",
-            "title": "experiment",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/experiment.png"
-          },
-          "book": {
-            "id": "book",
-            "title": "book",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/book.png"
-          },
-          "activity": {
-            "id": "activity",
-            "title": "activity",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/activity.png"
-          },
-          "download": {
-            "id": "download",
-            "title": "download",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/download.png"
-          },
-          "video": {
-            "id": "video",
-            "title": "video",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/video.png"
-          },
-          "listen": {
-            "id": "listen",
-            "title": "listen",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/listen.png"
-          },
-          "suitcase": {
-            "id": "suitcase",
-            "title": "suitcase",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/suitcase.png"
-          },
-          "nature": {
-            "id": "nature",
-            "title": "nature",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/nature.png"
-          },
-          "objectives": {
-            "id": "objectives",
-            "title": "objectives",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/objectives.png"
-          },
-          "chrono": {
-            "id": "chrono",
-            "title": "chrono",
-            "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/chrono.png"
+            "value": "/files/perm/themes/base/nova/icons/reflection.svg"
           },
           "diary": {
             "id": "diary",
             "title": "diary",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/diary.png"
+            "value": "/files/perm/themes/base/nova/icons/diary.svg"
           },
-          "math": {
-            "id": "math",
-            "title": "math",
+          "draw": {
+            "id": "draw",
+            "title": "draw",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/math.png"
+            "value": "/files/perm/themes/base/nova/icons/draw.svg"
+          },
+          "interactive": {
+            "id": "interactive",
+            "title": "interactive",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/interactive.svg"
+          },
+          "objectives": {
+            "id": "objectives",
+            "title": "objectives",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/objectives.svg"
+          },
+          "experiment": {
+            "id": "experiment",
+            "title": "experiment",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/experiment.svg"
           },
           "roadmap": {
             "id": "roadmap",
             "title": "roadmap",
             "type": "img",
-            "value": "/files/perm/themes/base/nova/icons/roadmap.png"
+            "value": "/files/perm/themes/base/nova/icons/roadmap.svg"
+          },
+          "fle": {
+            "id": "fle",
+            "title": "fle",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/fle.svg"
+          },
+          "info": {
+            "id": "info",
+            "title": "info",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/info.svg"
+          },
+          "geography": {
+            "id": "geography",
+            "title": "geography",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/geography.svg"
+          },
+          "chrono": {
+            "id": "chrono",
+            "title": "chrono",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/chrono.svg"
+          },
+          "stop": {
+            "id": "stop",
+            "title": "stop",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/stop.svg"
+          },
+          "case": {
+            "id": "case",
+            "title": "case",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/case.svg"
+          },
+          "perform": {
+            "id": "perform",
+            "title": "perform",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/perform.svg"
+          },
+          "nature": {
+            "id": "nature",
+            "title": "nature",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/nature.svg"
+          },
+          "discuss": {
+            "id": "discuss",
+            "title": "discuss",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/discuss.svg"
+          },
+          "activity": {
+            "id": "activity",
+            "title": "activity",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/activity.svg"
+          },
+          "pieces": {
+            "id": "pieces",
+            "title": "pieces",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/pieces.svg"
+          },
+          "suitcase": {
+            "id": "suitcase",
+            "title": "suitcase",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/suitcase.svg"
+          },
+          "book": {
+            "id": "book",
+            "title": "book",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/book.svg"
+          },
+          "share": {
+            "id": "share",
+            "title": "share",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/share.svg"
+          },
+          "math": {
+            "id": "math",
+            "title": "math",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/math.svg"
+          },
+          "gallery": {
+            "id": "gallery",
+            "title": "gallery",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/gallery.svg"
+          },
+          "calculate": {
+            "id": "calculate",
+            "title": "calculate",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/calculate.svg"
+          },
+          "competences": {
+            "id": "competences",
+            "title": "competences",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/competences.svg"
+          },
+          "play": {
+            "id": "play",
+            "title": "play",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/play.svg"
+          },
+          "think_alt": {
+            "id": "think_alt",
+            "title": "think_alt",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/think_alt.svg"
+          },
+          "diary_alt": {
+            "id": "diary_alt",
+            "title": "diary_alt",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/diary_alt.svg"
+          },
+          "sport": {
+            "id": "sport",
+            "title": "sport",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/sport.svg"
+          },
+          "think": {
+            "id": "think",
+            "title": "think",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/think.svg"
+          },
+          "agreement": {
+            "id": "agreement",
+            "title": "agreement",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/agreement.svg"
+          },
+          "download": {
+            "id": "download",
+            "title": "download",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/download.svg"
+          },
+          "history": {
+            "id": "history",
+            "title": "history",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/history.svg"
+          },
+          "collaborative": {
+            "id": "collaborative",
+            "title": "collaborative",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/collaborative.svg"
+          },
+          "arts": {
+            "id": "arts",
+            "title": "arts",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/arts.svg"
+          },
+          "explore": {
+            "id": "explore",
+            "title": "explore",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/explore.svg"
+          },
+          "guide": {
+            "id": "guide",
+            "title": "guide",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/guide.svg"
+          },
+          "passport": {
+            "id": "passport",
+            "title": "passport",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/passport.svg"
+          },
+          "video": {
+            "id": "video",
+            "title": "video",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/video.svg"
+          },
+          "english": {
+            "id": "english",
+            "title": "english",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/english.svg"
+          },
+          "listen": {
+            "id": "listen",
+            "title": "listen",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/listen.svg"
+          },
+          "observe": {
+            "id": "observe",
+            "title": "observe",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/observe.svg"
+          },
+          "start": {
+            "id": "start",
+            "title": "start",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/start.svg"
+          },
+          "present": {
+            "id": "present",
+            "title": "present",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/present.svg"
+          },
+          "music": {
+            "id": "music",
+            "title": "music",
+            "type": "img",
+            "value": "/files/perm/themes/base/nova/icons/music.svg"
           }
         }
       }
@@ -29484,32 +29486,32 @@
   },
   "bundleManifest": {
     "buildVersion": "v0.0.0-alpha",
-    "builtAt": "2026-01-25T09:49:10.627Z",
+    "builtAt": "2026-01-25T12:25:46.346Z",
     "themes": {
       "base": {
         "files": 56,
         "size": 126283,
-        "hash": "0b0b4e8db7270c80a8814972784a5d1c6312ec6d4b3b3a029f02c904f930492f"
+        "hash": "979df06556b5867cd2ad87cd5163f699661cad1ac1d37c1c74a59609de7932b2"
       },
       "zen": {
         "files": 80,
-        "size": 1187334,
-        "hash": "3aeb653ef386b79cc194c1138dbbf8fb9e9f3e29745e007ade5a4dc8676e9c9f"
+        "size": 1173553,
+        "hash": "88da1f38c5adcb5963ae02520c107ece04701b1458d8206e21c8059d81c77c40"
       },
       "neo": {
         "files": 87,
         "size": 1167190,
-        "hash": "b2b31dfa12aef64b9b696fa145eba8110ce8c782fc955361588d14ec05f413dc"
+        "hash": "4507bf5577ec682675d8a98caacc247a337d6f16b325e03e49e94eaa3f2e4752"
       },
       "flux": {
         "files": 75,
-        "size": 370854,
-        "hash": "4b574ad833b2799d55edda8acd1ca53f31080065f6dbcc9ef3b71bf38fab7003"
+        "size": 356503,
+        "hash": "2b6beca607a68fe8ac14a94b5c30a1676fc45e5adbf1ea5a06564dace54f12d4"
       },
       "nova": {
         "files": 74,
-        "size": 209439,
-        "hash": "35c9afdf128447df3a5538d0158152fbecdc174349d7abc6dc21392a54b7259e"
+        "size": 140985,
+        "hash": "76688405158c4b5dfe9743320a28c3e726cb8bef74856c57039322d6cb4fd50f"
       }
     },
     "idevices": {
@@ -29560,23 +29562,23 @@
     "idevicesBundle": {
       "count": 43,
       "files": 862,
-      "size": 4079122,
-      "hash": "0e916aebd54043e3aecc6ee5ba1c9d129da6b64be7588e46b58a7bebeb322e93"
+      "size": 4079166,
+      "hash": "f8230b99fba5cb5eee682ce65784e6e529ff2edf0a6fcc2bdb6ee048f96cbd37"
     },
     "libs": {
       "files": 9,
       "size": 313961,
-      "hash": "2b4cdbd8f9c1c6cf32033c5ba14258f87dc72dbc473876758ffda9ba5d528d0a"
+      "hash": "22fc750e8906c23706a37ee9a7de533cb0b86d2cad90808f9d6001ca24c6216e"
     },
     "common": {
       "files": 30,
       "size": 169143,
-      "hash": "5bdf08d16d6722655f906f8794ef025ff4bf3b43e6eaac188646f310d759a4dc"
+      "hash": "d1dba0853af57c33c0fa98908e2ee0a7ce5d5da588abd65e86b9edc3376ffbae"
     },
     "contentCss": {
       "files": 4,
-      "size": 43078,
-      "hash": "19db0156c15e3587aac08e009d915712f376e5b38c01934e117a2f6ff7d56552"
+      "size": 43355,
+      "hash": "e47a70aea7aeeedece4c0ea46370f59c24499f8b5d29ad574b08ee5d14473857"
     }
   }
 }

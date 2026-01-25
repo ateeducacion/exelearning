@@ -2691,6 +2691,41 @@
 
   // src/shared/export/renderers/IdeviceRenderer.ts
   var IdeviceRenderer = class {
+    constructor() {
+      /**
+       * Private icon resolution map: baseName → filename with extension
+       * Configured via setThemeIconFiles() before rendering
+       */
+      this.iconResolutionMap = /* @__PURE__ */ new Map();
+    }
+    /**
+     * Configure icon resolution from theme files.
+     * Call this once before rendering blocks.
+     *
+     * @param themeFilesMap - Map of theme file paths (e.g., 'icons/activity.svg')
+     */
+    setThemeIconFiles(themeFilesMap) {
+      this.iconResolutionMap.clear();
+      if (!themeFilesMap) return;
+      for (const [filePath] of themeFilesMap) {
+        if (filePath.startsWith("icons/") && /\.(svg|png|gif|jpe?g|webp)$/i.test(filePath)) {
+          const filename = filePath.replace("icons/", "");
+          const baseName = filename.replace(/\.(svg|png|gif|jpe?g|webp)$/i, "");
+          this.iconResolutionMap.set(baseName, filename);
+        }
+      }
+    }
+    /**
+     * Resolve icon baseName to filename with extension.
+     * Returns baseName + '.png' as fallback if not found (backwards compatibility).
+     */
+    resolveIconName(baseName) {
+      const resolved = this.iconResolutionMap.get(baseName);
+      if (resolved) {
+        return resolved;
+      }
+      return `${baseName}.png`;
+    }
     /**
      * Render a single iDevice component to HTML
      * @param component - Component data
@@ -2782,7 +2817,8 @@ ${contentHtml}
       const headerClass = hasIcon ? "box-head" : "box-head no-icon";
       let iconHtml = "";
       if (hasIcon) {
-        const iconPath = themeIconBasePath ? `${themeIconBasePath}${iconName}.png` : `${basePath}theme/icons/${iconName}.png`;
+        const resolvedIconName = this.resolveIconName(iconName);
+        const iconPath = themeIconBasePath ? `${themeIconBasePath}${resolvedIconName}` : `${basePath}theme/icons/${resolvedIconName}`;
         iconHtml = `<div class="box-icon exe-icon">
 <img src="${this.escapeAttr(iconPath)}" alt="">
 </div>
@@ -5611,6 +5647,7 @@ if (typeof module !== 'undefined' && module.exports) {
         if (themeFilesMap) {
           console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFilesMap.size}`);
         }
+        this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
         const faviconInfo = html5Options?.faviconPath ? { path: html5Options.faviconPath, type: html5Options.faviconType || "image/x-icon" } : detectedFavicon;
         const assetExportPathMap = await this.buildAssetExportPathMap();
         const pageHtmlMap = /* @__PURE__ */ new Map();
@@ -5986,6 +6023,7 @@ if (typeof module !== 'undefined' && module.exports) {
           themeRootFiles,
           faviconInfo: detectedFavicon
         } = await this.prepareThemeData(themeName);
+        this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
         const faviconInfo = options?.faviconPath ? { path: options.faviconPath, type: options.faviconType || "image/x-icon" } : detectedFavicon;
         const assetExportPathMap = await this.buildAssetExportPathMap();
         const pageHtmlMap = /* @__PURE__ */ new Map();

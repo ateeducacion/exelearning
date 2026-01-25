@@ -10135,6 +10135,7 @@
       }
       this.reportProgress("precache", 100, "Import complete");
       stats.theme = metadataValues.theme || null;
+      stats.zipContents = zip;
       this.logger.log("[ElpxImporter] Import complete:", stats);
       return stats;
     }
@@ -10193,6 +10194,7 @@
         await this.assetHandler.preloadAllAssets();
       }
       this.reportProgress("precache", 100, "Import complete");
+      stats.zipContents = zip;
       this.logger.log("[ElpxImporter] Legacy import complete:", stats);
       return stats;
     }
@@ -10871,7 +10873,10 @@
         this.logger.log("[ElpxImporter] No AssetHandler, skipping asset import");
         return 0;
       }
-      this.assetMap = await this.assetHandler.extractAssetsFromZip(zip);
+      this.assetMap = await this.assetHandler.extractAssetsFromZip(zip, (current, total, _filename) => {
+        const percent = 10 + Math.round(current / total * 40);
+        this.reportProgress("assets", percent, "Extracting assets...");
+      });
       this.logger.log(`[ElpxImporter] Imported ${this.assetMap.size} assets`);
       if (this.assetHandler.extractThemeFromZip) {
         try {
@@ -11114,11 +11119,17 @@
      * Extract all assets from a ZIP object
      * Delegates to AssetManager's existing implementation
      * @param zip - Extracted ZIP files object from fflate {path: Uint8Array}
+     * @param onAssetProgress - Optional callback for reporting extraction progress
      * @returns Map of original path to asset ID
      */
-    async extractAssetsFromZip(zip) {
+    async extractAssetsFromZip(zip, onAssetProgress) {
       await this.ensureInitialized();
-      return this.assetManager.extractAssetsFromZip(zip);
+      try {
+        return await this.assetManager.extractAssetsFromZip(zip, onAssetProgress);
+      } catch (error) {
+        this.logger.error("[BrowserAssetHandler] Failed to extract assets from ZIP:", error);
+        throw error;
+      }
     }
     /**
      * Convert {{context_path}} references to asset:// URLs

@@ -2461,9 +2461,10 @@ class AssetManager {
    * - New .elpx (content.xml): Assets in content/resources/ folders
    *
    * @param {Object} zip - fflate extracted ZIP object {path: Uint8Array}
+   * @param {Function} [onAssetProgress] - Optional callback for progress reporting (current, total, filename)
    * @returns {Promise<Map<string, string>>} Map of originalPath -> assetId
    */
-  async extractAssetsFromZip(zip) {
+  async extractAssetsFromZip(zip, onAssetProgress = null) {
     const assetMap = new Map();
     const assetFiles = [];
 
@@ -2541,7 +2542,18 @@ class AssetManager {
 
     Logger.log(`[AssetManager] Found ${assetFiles.length} assets in ZIP`);
 
+    const totalAssets = assetFiles.length;
+    let currentAsset = 0;
+
     for (const { path, fileData } of assetFiles) {
+      currentAsset++;
+
+      // Report progress if callback provided
+      if (onAssetProgress) {
+        const filename = path.split('/').pop();
+        onAssetProgress(currentAsset, totalAssets, filename);
+      }
+
       try {
         // fileData is already a Uint8Array from fflate
         const arrayBuffer = fileData.buffer.slice(fileData.byteOffset, fileData.byteOffset + fileData.byteLength);

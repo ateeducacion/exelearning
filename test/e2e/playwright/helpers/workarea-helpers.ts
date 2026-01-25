@@ -1033,39 +1033,55 @@ export async function cloneCurrentPage(page: Page): Promise<void> {
  * @param pageIndex - Zero-based index of the page to select (default 0)
  */
 export async function selectPageByIndex(page: Page, pageIndex: number = 0): Promise<void> {
-    // Wait for navigation tree to be stable (no ongoing re-renders)
-    await page
-        .waitForFunction(
-            () => {
-                const navTree = document.querySelector('#navigation-tree, .nav-tree-container');
-                return navTree && !navTree.classList.contains('updating');
-            },
-            { timeout: 5000 },
-        )
-        .catch(() => {});
+    const maxRetries = 3;
+    let lastError: Error | null = null;
 
-    // Get all page nodes (excluding root)
-    const pageNodes = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text');
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            // Re-query the DOM on each attempt to get fresh element references
+            const pageNodes = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text');
 
-    // Wait for at least one element and ensure DOM stability
-    await pageNodes.first().waitFor({ state: 'attached', timeout: 10000 });
+            // Wait for at least one element to be attached
+            await pageNodes.first().waitFor({ state: 'attached', timeout: 10000 });
 
-    const count = await pageNodes.count();
-    if (count === 0) {
-        throw new Error('No pages found in navigation tree');
+            const count = await pageNodes.count();
+            if (count === 0) {
+                throw new Error('No pages found in navigation tree');
+            }
+
+            const targetIndex = Math.min(pageIndex, count - 1);
+            const targetNode = pageNodes.nth(targetIndex);
+
+            // Wait for target element to be attached
+            await targetNode.waitFor({ state: 'attached', timeout: 5000 });
+
+            // Small delay to let any DOM mutations settle
+            await page.waitForTimeout(100);
+
+            await targetNode.scrollIntoViewIfNeeded();
+            await targetNode.click({ force: true });
+
+            // Click succeeded, exit the retry loop
+            break;
+        } catch (error) {
+            lastError = error as Error;
+            const errorMessage = (error as Error).message || '';
+
+            // Retry on detachment errors, throw on other errors
+            if (errorMessage.includes('not attached') || errorMessage.includes('Element is not attached')) {
+                // Wait a bit before retrying to let DOM stabilize
+                await page.waitForTimeout(200);
+                continue;
+            }
+            throw error;
+        }
     }
 
-    const targetIndex = Math.min(pageIndex, count - 1);
-    const targetNode = pageNodes.nth(targetIndex);
+    // If we exhausted retries and still have an error, throw it
+    if (lastError?.message.includes('not attached')) {
+        throw lastError;
+    }
 
-    // Wait for target element to be attached and stable
-    await targetNode.waitFor({ state: 'attached', timeout: 5000 });
-
-    // Small delay to ensure DOM stability after any re-renders
-    await page.waitForTimeout(100);
-
-    await targetNode.scrollIntoViewIfNeeded();
-    await targetNode.click({ force: true });
     await page.waitForTimeout(1000);
 
     // Wait for page content area to be ready

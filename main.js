@@ -311,32 +311,7 @@ const nextDownloadNameByWC = new Map();
 const lastDownloadByWC = new Map(); // wcId -> { url: string, time: number }
 
 /**
- * Creates a directory recursively if it does not exist and attempts to set 0o777 permissions.
- *
- * @param {string} dirPath - The path of the directory to ensure.
- */
-function ensureWritableDirectory(dirPath) {
-    if (!fs.existsSync(dirPath)) {
-        console.log(`Directory does not exist: ${dirPath}. Creating it...`);
-        fs.mkdirSync(dirPath, { recursive: true });
-        console.log(`Directory created: ${dirPath}`);
-    } else {
-        console.log(`Directory already exists: ${dirPath}`);
-    }
-
-    try {
-        // Attempt to set wide-open permissions (on Windows, this might be ignored).
-        fs.chmodSync(dirPath, 0o777);
-        console.log(`Permissions set to 0777 for: ${dirPath}`);
-    } catch (error) {
-        console.warn(`Could not set permissions on ${dirPath}: ${error.message}`);
-    }
-}
-
-/**
  * Perform "run-once per version" maintenance.
- * - Cleans cache on version change (optional but helps avoid stale code/data).
- * - Rotates logs (optional).
  * Stores the current version in settings.json to avoid repeating the work.
  */
 function ensurePerVersionSetup() {
@@ -345,46 +320,10 @@ function ensurePerVersionSetup() {
     const previousVersion = s.appVersion || null;
 
     if (previousVersion !== currentVersion) {
-        try {
-            // Clean cache folder when the app version changes
-            if (customEnv?.CACHE_DIR && fs.existsSync(customEnv.CACHE_DIR)) {
-                fs.rmSync(customEnv.CACHE_DIR, { recursive: true, force: true });
-                fs.mkdirSync(customEnv.CACHE_DIR, { recursive: true });
-                console.log(`Cache cleared for version change: ${previousVersion} -> ${currentVersion}`);
-            }
-        } catch (e) {
-            console.warn(`Cache cleanup failed: ${e.message}`);
-        }
-
-        try {
-            // Optional: truncate logs on version change (keep folder)
-            if (customEnv?.LOG_DIR && fs.existsSync(customEnv.LOG_DIR)) {
-                for (const file of fs.readdirSync(customEnv.LOG_DIR)) {
-                    const full = path.join(customEnv.LOG_DIR, file);
-                    try {
-                        if (fs.statSync(full).isFile()) fs.truncateSync(full, 0);
-                    } catch (_e) {}
-                }
-            }
-        } catch (e) {
-            console.warn(`Log rotation failed: ${e.message}`);
-        }
-
         // Persist the current version to avoid repeating the maintenance on the next run
         s.appVersion = currentVersion;
         writeSettings(s);
     }
-}
-
-/**
- * Ensures all required directories exist and are (attempted to be) writable.
- *
- * @param {object} env - The environment object that contains your directory paths.
- */
-function ensureAllDirectoriesWritable(env) {
-    ensureWritableDirectory(env.FILES_DIR);
-    ensureWritableDirectory(env.CACHE_DIR);
-    ensureWritableDirectory(env.LOG_DIR);
 }
 
 function initializePaths() {
@@ -392,7 +331,7 @@ function initializePaths() {
     console.log(`APP data path: ${appDataPath}`);
 }
 // Define environment variables after initializing paths
-// Note: In static mode, we only need directory paths for cache/cleanup
+// Note: In static mode, everything is client-side (Yjs + IndexedDB), no server directories needed
 function initializeEnv() {
     const isDev = determineDevMode();
     const appEnv = isDev ? 'dev' : 'prod';
@@ -401,9 +340,6 @@ function initializeEnv() {
         APP_ENV: process.env.APP_ENV || appEnv,
         APP_DEBUG: process.env.APP_DEBUG ?? (isDev ? 1 : 0),
         EXELEARNING_DEBUG_MODE: (process.env.EXELEARNING_DEBUG_MODE ?? (isDev ? '1' : '0')).toString(),
-        FILES_DIR: path.join(appDataPath, 'data'),
-        CACHE_DIR: path.join(appDataPath, 'cache'),
-        LOG_DIR: path.join(appDataPath, 'log'),
     };
 }
 /**
@@ -571,11 +507,8 @@ async function createWindow() {
     combineEnv(); // Combine the environment
     applyCombinedEnvToProcess();
 
-    // Run-once per version maintenance (cache/logs cleanup, etc.)
+    // Run-once per version maintenance
     ensurePerVersionSetup();
-
-    // Ensure all required directories exist and try to set permissions
-    ensureAllDirectoriesWritable(env);
 
     // Register the app:// protocol handler for serving static files
     // This replaces the HTTP server and enables Service Workers

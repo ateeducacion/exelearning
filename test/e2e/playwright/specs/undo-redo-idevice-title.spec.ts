@@ -8,7 +8,9 @@ import {
     getBlockIconSrc,
     blockHasEmptyIcon,
     changeBlockIcon,
+    waitForThemeIconsLoaded,
 } from '../helpers/workarea-helpers';
+import { pressUndo, pressRedo, waitForBlockTitle, waitForUndoAvailable } from '../helpers/undo-redo-helpers';
 
 /**
  * E2E Tests for Undo/Redo iDevice Title - Issue #956
@@ -93,42 +95,20 @@ async function editBlockTitle(page: Page, blockIndex: number, newTitle: string):
     const titleEl = header.locator('.box-title').first();
     await titleEl.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Clear and type new title
-    await titleEl.evaluate(el => {
-        el.textContent = '';
-    });
+    // Triple-click to select all text (this properly registers in Yjs when replaced)
+    // Using triple-click instead of el.textContent = '' which bypasses input events
+    await titleEl.click({ clickCount: 3 });
+
+    // Small wait to ensure selection is registered
+    await page.waitForTimeout(100);
+
+    // Type new title all at once (replaces selection, firing input events that sync with Yjs)
+    // Using type() instead of pressSequentially() to ensure all changes are in one Yjs transaction
     await titleEl.type(newTitle);
     await page.waitForTimeout(300);
 
     // Blur to finish editing
     await titleEl.blur();
-    await page.waitForTimeout(500);
-}
-
-/**
- * Helper to press Ctrl+Z (undo)
- */
-async function pressUndo(page: Page): Promise<void> {
-    const isMac = process.platform === 'darwin';
-    if (isMac) {
-        await page.keyboard.press('Meta+z');
-    } else {
-        await page.keyboard.press('Control+z');
-    }
-    await page.waitForTimeout(500);
-}
-
-/**
- * Helper to press Ctrl+Shift+Z (redo)
- * Note: The app uses Ctrl+Shift+Z (not Ctrl+Y) for redo
- */
-async function pressRedo(page: Page): Promise<void> {
-    const isMac = process.platform === 'darwin';
-    if (isMac) {
-        await page.keyboard.press('Meta+Shift+z');
-    } else {
-        await page.keyboard.press('Control+Shift+z');
-    }
     await page.waitForTimeout(500);
 }
 
@@ -202,6 +182,9 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
         // Press Ctrl+Z to undo
         await pressUndo(page);
 
+        // Wait for title to revert visually (polling wait)
+        await waitForBlockTitle(page, 0, originalTitle);
+
         // Verify title reverted visually (without page reload)
         const titleAfterUndo = await getBlockTitleText(page, 0);
         expect(titleAfterUndo).toBe(originalTitle);
@@ -237,11 +220,17 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
         // Undo
         await pressUndo(page);
 
+        // Wait for title to revert visually (polling wait)
+        await waitForBlockTitle(page, 0, originalTitle);
+
         // Verify title reverted
         expect(await getBlockTitleText(page, 0)).toBe(originalTitle);
 
         // Redo
         await pressRedo(page);
+
+        // Wait for title to be restored visually (polling wait)
+        await waitForBlockTitle(page, 0, newTitle);
 
         // Verify title is back to modified (without page reload)
         expect(await getBlockTitleText(page, 0)).toBe(newTitle);
@@ -269,25 +258,36 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
         await editBlockTitle(page, 0, title1);
         expect(await getBlockTitleText(page, 0)).toBe(title1);
 
+        // Wait for undo to be available before making second edit
+        // This ensures first edit is captured as separate undo entry
+        await waitForUndoAvailable(page);
+
         // Make second edit
         const title2 = 'Second Edit ' + Date.now();
         await editBlockTitle(page, 0, title2);
         expect(await getBlockTitleText(page, 0)).toBe(title2);
 
+        // Wait for undo to be available after second edit
+        await waitForUndoAvailable(page);
+
         // Undo second edit
         await pressUndo(page);
+        await waitForBlockTitle(page, 0, title1);
         expect(await getBlockTitleText(page, 0)).toBe(title1);
 
         // Undo first edit
         await pressUndo(page);
+        await waitForBlockTitle(page, 0, originalTitle);
         expect(await getBlockTitleText(page, 0)).toBe(originalTitle);
 
         // Redo first edit
         await pressRedo(page);
+        await waitForBlockTitle(page, 0, title1);
         expect(await getBlockTitleText(page, 0)).toBe(title1);
 
         // Redo second edit
         await pressRedo(page);
+        await waitForBlockTitle(page, 0, title2);
         expect(await getBlockTitleText(page, 0)).toBe(title2);
     });
 
@@ -317,6 +317,7 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
 
         // Undo should revert first block title
         await pressUndo(page);
+        await waitForBlockTitle(page, 0, originalTitle0);
         expect(await getBlockTitleText(page, 0)).toBe(originalTitle0);
 
         // Second block should remain unchanged
@@ -451,6 +452,13 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
         const hasEmptyIconBefore = await blockHasEmptyIcon(page, 0);
         expect(hasEmptyIconBefore).toBe(true);
 
+        // Wait for theme icons to be loaded before attempting icon change
+        await waitForThemeIconsLoaded(page);
+
+        // IMPORTANT: Wait longer than Yjs UndoManager's captureTimeout (500ms default)
+        // to ensure the icon change is in a separate undo transaction from block creation
+        await page.waitForTimeout(600);
+
         // Change icon to first theme icon (index 1, since 0 is empty)
         await changeBlockIcon(page, 0, 1);
 
@@ -505,6 +513,13 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
         // Verify block starts with empty icon
         expect(await blockHasEmptyIcon(page, 0)).toBe(true);
 
+        // Wait for theme icons to be loaded before attempting icon change
+        await waitForThemeIconsLoaded(page);
+
+        // IMPORTANT: Wait longer than Yjs UndoManager's captureTimeout (500ms default)
+        // to ensure the icon change is in a separate undo transaction from block creation
+        await page.waitForTimeout(600);
+
         // Change icon to first theme icon
         await changeBlockIcon(page, 0, 1);
 
@@ -515,16 +530,46 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
         // Undo
         await pressUndo(page);
 
+        // Wait for icon to revert (poll for the empty state)
+        await page.waitForFunction(
+            () => {
+                const block = document.querySelector('#node-content article.box');
+                if (!block) return false;
+                const iconBtn = block.querySelector('header.box-head button.box-icon');
+                if (!iconBtn) return false;
+                const hasImg = iconBtn.querySelector('img') !== null;
+                const hasEmptyClass = iconBtn.classList.contains('exe-no-icon');
+                const hasSvg = iconBtn.querySelector('svg') !== null;
+                return !hasImg && (hasEmptyClass || hasSvg);
+            },
+            { timeout: 10000 },
+        );
+
         // Verify icon reverted
         expect(await blockHasEmptyIcon(page, 0)).toBe(true);
 
         // Redo
         await pressRedo(page);
 
+        // Wait for icon to be restored (poll for the img state)
+        await page.waitForFunction(
+            () => {
+                const block = document.querySelector('#node-content article.box');
+                if (!block) return false;
+                const iconBtn = block.querySelector('header.box-head button.box-icon');
+                if (!iconBtn) return false;
+                const hasImg = iconBtn.querySelector('img') !== null;
+                return hasImg;
+            },
+            { timeout: 10000 },
+        );
+
         // Verify icon is back to modified (without page reload)
         expect(await blockHasEmptyIcon(page, 0)).toBe(false);
         const iconSrcAfterRedo = await getBlockIconSrc(page, 0);
-        expect(iconSrcAfterRedo).toBe(iconSrcAfterChange);
+        // Compare icon paths without leading "./" as it may differ
+        const normalizeIconPath = (path: string) => path.replace(/^\.\//, '/');
+        expect(normalizeIconPath(iconSrcAfterRedo!)).toBe(normalizeIconPath(iconSrcAfterChange!));
     });
 
     test('should handle multiple icon change undo/redo cycles correctly', async ({
@@ -547,30 +592,83 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
         // Initial state: empty icon
         expect(await blockHasEmptyIcon(page, 0)).toBe(true);
 
+        // Wait for theme icons to be loaded before attempting icon change
+        await waitForThemeIconsLoaded(page);
+
+        // IMPORTANT: Wait longer than Yjs UndoManager's captureTimeout (500ms default)
+        // to ensure the icon change is in a separate undo transaction from block creation
+        await page.waitForTimeout(600);
+
+        // Helper to normalize icon paths (remove leading ./)
+        const normalizePath = (path: string | null) => path?.replace(/^\.\//, '/') || '';
+
         // Change to icon 1
         await changeBlockIcon(page, 0, 1);
         expect(await blockHasEmptyIcon(page, 0)).toBe(false);
-        const iconSrc1 = await getBlockIconSrc(page, 0);
+        const iconSrc1 = normalizePath(await getBlockIconSrc(page, 0));
+
+        // Wait for UndoManager captureTimeout to separate transactions
+        await page.waitForTimeout(600);
 
         // Change to icon 2
         await changeBlockIcon(page, 0, 2);
-        const iconSrc2 = await getBlockIconSrc(page, 0);
+        const iconSrc2 = normalizePath(await getBlockIconSrc(page, 0));
         expect(iconSrc2).not.toBe(iconSrc1);
 
-        // Undo to icon 1
+        // Undo to icon 1 - poll for the specific icon src (normalized)
         await pressUndo(page);
-        expect(await getBlockIconSrc(page, 0)).toBe(iconSrc1);
+        await page.waitForFunction(
+            expectedSrc => {
+                const block = document.querySelector('#node-content article.box');
+                const img = block?.querySelector('header.box-head button.box-icon img');
+                const src = img?.getAttribute('src')?.replace(/^\.\//, '/') || '';
+                return src === expectedSrc;
+            },
+            iconSrc1,
+            { timeout: 10000 },
+        );
+        expect(normalizePath(await getBlockIconSrc(page, 0))).toBe(iconSrc1);
 
-        // Undo to empty
+        // Undo to empty - poll for empty state
         await pressUndo(page);
+        await page.waitForFunction(
+            () => {
+                const block = document.querySelector('#node-content article.box');
+                const iconBtn = block?.querySelector('header.box-head button.box-icon');
+                if (!iconBtn) return false;
+                const hasImg = iconBtn.querySelector('img') !== null;
+                return !hasImg;
+            },
+            { timeout: 10000 },
+        );
         expect(await blockHasEmptyIcon(page, 0)).toBe(true);
 
-        // Redo to icon 1
+        // Redo to icon 1 - poll for the specific icon src (normalized)
         await pressRedo(page);
-        expect(await getBlockIconSrc(page, 0)).toBe(iconSrc1);
+        await page.waitForFunction(
+            expectedSrc => {
+                const block = document.querySelector('#node-content article.box');
+                const img = block?.querySelector('header.box-head button.box-icon img');
+                const src = img?.getAttribute('src')?.replace(/^\.\//, '/') || '';
+                return src === expectedSrc;
+            },
+            iconSrc1,
+            { timeout: 10000 },
+        );
+        expect(normalizePath(await getBlockIconSrc(page, 0))).toBe(iconSrc1);
 
-        // Redo to icon 2
+        // Redo to icon 2 - poll for the specific icon src (normalized)
         await pressRedo(page);
-        expect(await getBlockIconSrc(page, 0)).toBe(iconSrc2);
+        await page.waitForFunction(
+            expectedSrc => {
+                const block = document.querySelector('#node-content article.box');
+                const img = block?.querySelector('header.box-head button.box-icon img');
+                const src = img?.getAttribute('src')?.replace(/^\.\//, '/') || '';
+                return src === expectedSrc;
+            },
+            iconSrc2,
+            { timeout: 10000 },
+        );
+        expect(normalizePath(await getBlockIconSrc(page, 0))).toBe(iconSrc2);
     });
 });

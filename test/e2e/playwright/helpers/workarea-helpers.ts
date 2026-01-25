@@ -1033,16 +1033,36 @@ export async function cloneCurrentPage(page: Page): Promise<void> {
  * @param pageIndex - Zero-based index of the page to select (default 0)
  */
 export async function selectPageByIndex(page: Page, pageIndex: number = 0): Promise<void> {
+    // Wait for navigation tree to be stable (no ongoing re-renders)
+    await page
+        .waitForFunction(
+            () => {
+                const navTree = document.querySelector('#navigation-tree, .nav-tree-container');
+                return navTree && !navTree.classList.contains('updating');
+            },
+            { timeout: 5000 },
+        )
+        .catch(() => {});
+
     // Get all page nodes (excluding root)
     const pageNodes = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text');
-    const count = await pageNodes.count();
 
+    // Wait for at least one element and ensure DOM stability
+    await pageNodes.first().waitFor({ state: 'attached', timeout: 10000 });
+
+    const count = await pageNodes.count();
     if (count === 0) {
         throw new Error('No pages found in navigation tree');
     }
 
     const targetIndex = Math.min(pageIndex, count - 1);
     const targetNode = pageNodes.nth(targetIndex);
+
+    // Wait for target element to be attached and stable
+    await targetNode.waitFor({ state: 'attached', timeout: 5000 });
+
+    // Small delay to ensure DOM stability after any re-renders
+    await page.waitForTimeout(100);
 
     await targetNode.scrollIntoViewIfNeeded();
     await targetNode.click({ force: true });

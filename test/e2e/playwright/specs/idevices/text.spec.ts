@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady } from '../../helpers/workarea-helpers';
+import { waitForAppReady, reloadPage } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -158,10 +158,7 @@ test.describe('Text iDevice', () => {
             await page.waitForTimeout(1000);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await reloadPage(page);
 
             // Navigate to the page (after reload, project shows metadata by default)
             const pageNode = page
@@ -1689,10 +1686,7 @@ test.describe('Text iDevice', () => {
             await page.waitForTimeout(2000);
 
             // 16. Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-            // 17. Wait for Yjs to reinitialize
-            await waitForAppReady(page);
+            await reloadPage(page);
 
             // 18. Navigate to the page with the iDevice
             const pageNode = page

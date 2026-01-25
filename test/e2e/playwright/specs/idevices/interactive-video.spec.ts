@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady } from '../../helpers/workarea-helpers';
+import { waitForAppReady, reloadPage } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -578,10 +578,7 @@ test.describe('Interactive Video iDevice', () => {
             await page.waitForTimeout(2000);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await reloadPage(page);
 
             // Navigate to the page
             const pageNode = page

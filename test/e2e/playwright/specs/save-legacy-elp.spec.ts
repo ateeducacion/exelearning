@@ -9,37 +9,11 @@
  */
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
-import type { Page, ConsoleMessage } from '@playwright/test';
-import { openElpFile, waitForAppReady } from '../helpers/workarea-helpers';
+import type { ConsoleMessage } from '@playwright/test';
+import { openElpFile, waitForAppReady, saveProject, reloadPage } from '../helpers/workarea-helpers';
 
 const ELP_FIXTURE = 'old_manual_exe29_compressed.elp';
 const FIXTURE_PATH = path.resolve(__dirname, `../../../fixtures/${ELP_FIXTURE}`);
-
-/**
- * Click the save button and wait for save to complete
- */
-async function clickSaveButton(page: Page): Promise<void> {
-    const saveButton = page.locator('#head-top-save-button');
-    await expect(saveButton).toBeVisible({ timeout: 5000 });
-    await saveButton.click();
-
-    // Wait for save to complete - the button will briefly show a loading state
-    // then return to normal. We wait for the Yjs save operations to complete.
-    await page.waitForFunction(
-        () => {
-            // Check if there are any pending operations in the save queue
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return true; // No bridge means nothing to save
-            // The save button might have a "saving" class or similar
-            const saveBtn = document.querySelector('#head-top-save-button');
-            return saveBtn && !saveBtn.classList.contains('saving');
-        },
-        { timeout: 30000 },
-    );
-
-    // Additional wait for any async operations
-    await page.waitForTimeout(2000);
-}
 
 test.describe('Save Legacy ELP - Database Compatibility', () => {
     test('should import and save old_manual_exe29_compressed.elp without console errors', async ({
@@ -101,8 +75,8 @@ test.describe('Save Legacy ELP - Database Compatibility', () => {
         const importErrors = [...consoleErrors];
         consoleErrors.length = 0;
 
-        // Click the save button
-        await clickSaveButton(page);
+        // Save the project
+        await saveProject(page);
 
         // Verify save completed without throwing errors
         // Check for API errors in console that would indicate database issues
@@ -192,12 +166,10 @@ test.describe('Save Legacy ELP - Database Compatibility', () => {
         expect(beforeSaveInfo.pageCount).toBeGreaterThan(0);
 
         // Save the project
-        await clickSaveButton(page);
+        await saveProject(page);
 
         // Reload the page to verify data persisted
-        await page.reload();
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
+        await reloadPage(page);
 
         // Verify data persisted (count pages recursively)
         const afterReloadInfo = await page.evaluate(() => {

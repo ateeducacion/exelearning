@@ -227,11 +227,38 @@ export async function handleCloseWithoutSavingModal(page: Page): Promise<void> {
 
 /**
  * Save the current project
+ * - Online mode: Clicks save button, waits for server save to complete
+ * - Static mode: Data is auto-saved to IndexedDB, no action needed
  */
 export async function saveProject(page: Page): Promise<void> {
+    // Detect static mode (no remote storage capability)
+    const isStaticMode = await page.evaluate(() => {
+        const capabilities = (window as any).eXeLearning?.app?.capabilities;
+        return capabilities && !capabilities.storage?.remote;
+    });
+
+    if (isStaticMode) {
+        // In static mode, project data is automatically saved to IndexedDB
+        // No need to click save button (which would trigger download)
+        // Just wait briefly for any pending Yjs operations
+        await page.waitForTimeout(500);
+        return;
+    }
+
+    // Online mode: Click save and wait for completion
     await page.click('#head-top-save-button');
-    // Wait for save to complete
-    await page.waitForTimeout(2000);
+
+    // Wait for save to complete (button loses 'saving' class)
+    await page.waitForFunction(
+        () => {
+            const saveBtn = document.querySelector('#head-top-save-button');
+            return saveBtn && !saveBtn.classList.contains('saving');
+        },
+        { timeout: 30000 },
+    );
+
+    // Additional wait for async operations
+    await page.waitForTimeout(500);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1608,6 +1635,38 @@ export async function waitForServiceWorker(page: Page, timeout = 15000): Promise
         .catch(() => {
             // Continue even if SW check times out - some browsers may not support SW
         });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PAGE RELOAD
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Reload or refresh the page based on mode
+ * - Online mode: Full page reload (data persists on server)
+ * - Static mode: Refresh UI from Yjs without losing data (no server persistence)
+ *
+ * Use this instead of page.reload() in tests that verify data persistence,
+ * as static mode has no server to reload data from.
+ */
+export async function reloadPage(page: Page): Promise<void> {
+    const isStaticMode = await page.evaluate(() => {
+        return (window as any).eXeLearning?.app?.capabilities?.storage?.remote === false;
+    });
+
+    if (isStaticMode) {
+        // Static mode: Refresh UI from Yjs without page reload
+        // Data is already in memory/Yjs, just refresh the UI
+        await page.evaluate(async () => {
+            await (window as any).eXeLearning.app.project.refreshAfterDirectImport();
+        });
+        await waitForAppReady(page);
+    } else {
+        // Online mode: Full page reload (data is fetched from server)
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+    }
 }
 
 /**

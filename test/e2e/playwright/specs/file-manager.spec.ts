@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady, waitForLoadingScreen } from '../helpers/workarea-helpers';
+import { waitForAppReady, waitForLoadingScreen, reloadPage } from '../helpers/workarea-helpers';
 import { WorkareaPage } from '../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -915,10 +915,7 @@ test.describe('File Manager', () => {
             await page.waitForTimeout(2000);
 
             // Reload page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await reloadPage(page);
 
             // Open File Manager again
             await openFileManager(page);

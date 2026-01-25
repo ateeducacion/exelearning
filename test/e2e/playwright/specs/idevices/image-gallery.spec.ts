@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
-import { getPreviewFrame, waitForPreviewContent, waitForAppReady } from '../../helpers/workarea-helpers';
+import { getPreviewFrame, waitForPreviewContent, waitForAppReady, reloadPage } from '../../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Image Gallery iDevice
@@ -753,11 +753,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.waitForTimeout(2000); // Wait for save to complete
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app to reinitialize
-            await waitForAppReady(page);
+            await reloadPage(page);
 
             // Wait for the tree to be populated (using role="tree" which is more reliable)
             await page.waitForSelector('[role="tree"]', { timeout: 15000 });
@@ -1095,8 +1091,7 @@ test.describe('Image Gallery iDevice', () => {
             console.log('Step 1 complete: Two images added and saved');
 
             // ============ STEP 2: Reload and verify both images display ============
-            await page.reload();
-            await page.waitForLoadState('networkidle');
+            await reloadPage(page);
             await waitForAppAndSelectPage();
 
             await verifyImagesLoadCorrectly(2);
@@ -1108,8 +1103,7 @@ test.describe('Image Gallery iDevice', () => {
             console.log('Step 3 complete: First image modified');
 
             // ============ STEP 4: Reload and verify both images still display ============
-            await page.reload();
-            await page.waitForLoadState('networkidle');
+            await reloadPage(page);
             await waitForAppAndSelectPage();
 
             await verifyImagesLoadCorrectly(2);
@@ -1120,8 +1114,7 @@ test.describe('Image Gallery iDevice', () => {
             console.log('Step 5 complete: Second image modified');
 
             // ============ STEP 6: Final reload and verification ============
-            await page.reload();
-            await page.waitForLoadState('networkidle');
+            await reloadPage(page);
             await waitForAppAndSelectPage();
 
             await verifyImagesLoadCorrectly(2);

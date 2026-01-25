@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady } from '../../helpers/workarea-helpers';
+import { waitForAppReady, reloadPage } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -618,10 +618,7 @@ test.describe('Form iDevice', () => {
             await page.waitForTimeout(1000);
 
             // Reload
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await waitForAppReady(page);
+            await reloadPage(page);
 
             await selectPageNode(page);
 

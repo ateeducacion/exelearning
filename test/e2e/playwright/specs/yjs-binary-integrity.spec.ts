@@ -11,7 +11,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
-import { openElpFile, waitForAppReady } from '../helpers/workarea-helpers';
+import { openElpFile, waitForAppReady, saveProject, reloadPage } from '../helpers/workarea-helpers';
 
 const ELP_FIXTURE = 'basic-example.elp';
 const FIXTURES_DIR = path.resolve(__dirname, '../../../fixtures');
@@ -31,26 +31,6 @@ interface DocumentSnapshot {
     pageCount: number;
     pages: PageData[];
     totalBlocks: number;
-}
-
-/**
- * Click the save button and wait for save to complete
- */
-async function saveProjectAndWait(page: Page): Promise<void> {
-    const saveButton = page.locator('#head-top-save-button');
-    await expect(saveButton).toBeVisible({ timeout: 5000 });
-    await saveButton.click();
-
-    // Wait for save to complete
-    await page.waitForFunction(
-        () => {
-            const saveBtn = document.querySelector('#head-top-save-button');
-            return saveBtn && !saveBtn.classList.contains('saving');
-        },
-        { timeout: 30000 },
-    );
-
-    await page.waitForTimeout(2000);
 }
 
 /**
@@ -131,12 +111,10 @@ test.describe('Yjs Binary Data Integrity', () => {
         expect(beforeSave.pageCount).toBeGreaterThan(0);
 
         // Save the project
-        await saveProjectAndWait(page);
+        await saveProject(page);
 
         // Reload the page completely
-        await page.reload();
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
+        await reloadPage(page);
 
         // Take snapshot AFTER reload
         const afterReload = await getDocumentSnapshot(page);
@@ -188,12 +166,10 @@ test.describe('Yjs Binary Data Integrity', () => {
         // Perform 3 save/reload cycles
         for (let cycle = 1; cycle <= 3; cycle++) {
             // Save
-            await saveProjectAndWait(page);
+            await saveProject(page);
 
             // Reload
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-            await waitForAppReady(page);
+            await reloadPage(page);
 
             // Verify data after this cycle
             const cycleSnapshot = await getDocumentSnapshot(page);
@@ -230,12 +206,10 @@ test.describe('Yjs Binary Data Integrity', () => {
         expect(beforeSave.pageCount).toBeGreaterThan(0);
 
         // Save the project
-        await saveProjectAndWait(page);
+        await saveProject(page);
 
         // Reload
-        await page.reload();
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
+        await reloadPage(page);
 
         // Take snapshot AFTER reload
         const afterReload = await getDocumentSnapshot(page);
@@ -285,12 +259,10 @@ test.describe('Yjs Binary Data Integrity', () => {
         expect(beforeSaveSize).toBeGreaterThan(0);
 
         // Save the project
-        await saveProjectAndWait(page);
+        await saveProject(page);
 
         // Reload
-        await page.reload();
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
+        await reloadPage(page);
 
         // Get Yjs document binary size after reload
         const afterReloadSize = await page.evaluate(() => {

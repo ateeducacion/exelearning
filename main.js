@@ -4,7 +4,6 @@ const { pathToFileURL } = require('url');
 
 const log = require('electron-log');
 const path = require('path');
-const i18n = require('i18n');
 const fs = require('fs');
 const fflate = require('fflate');
 const https = require('https');
@@ -179,23 +178,9 @@ console.error = (...args) => {
 process.on('uncaughtException', e => log.error('uncaughtException:', e));
 process.on('unhandledRejection', e => log.error('unhandledRejection:', e));
 
-// ──────────────  i18n bootstrap  ──────────────
-// Pick correct path depending on whether the app is packaged.
-const translationsDir = app.isPackaged
-    ? path.join(process.resourcesPath, 'translations')
-    : path.join(__dirname, 'translations');
-
+// Locale detection for fallback strings
 const defaultLocale = app.getLocale().startsWith('es') ? 'es' : 'en';
 console.log(`Default locale: ${defaultLocale}.`);
-
-i18n.configure({
-    locales: ['en', 'es'],
-    directory: translationsDir,
-    defaultLocale: defaultLocale,
-    objectNotation: true,
-});
-
-i18n.setLocale(defaultLocale);
 
 let appDataPath;
 
@@ -400,12 +385,6 @@ function ensureAllDirectoriesWritable(env) {
     ensureWritableDirectory(env.FILES_DIR);
     ensureWritableDirectory(env.CACHE_DIR);
     ensureWritableDirectory(env.LOG_DIR);
-
-    // For any subfolders you know must exist:
-    const idevicesAdminDir = path.join(env.FILES_DIR, 'perm', 'idevices', 'users', 'admin');
-    ensureWritableDirectory(idevicesAdminDir);
-
-    // ...Add additional directories as needed.
 }
 
 function initializePaths() {
@@ -458,6 +437,47 @@ function determineDevMode() {
     }
 
     return false;
+}
+
+/**
+ * Determine if auto-update should be disabled.
+ *
+ * Priority:
+ * 1. CLI flag (--no-update-check or --disable-updates)
+ * 2. Environment variable (DISABLE_AUTO_UPDATE=1)
+ * 3. CI environment (CI=1 or CI=true)
+ * 4. Development version (0.0.0, *-alpha, *-beta, *-dev)
+ *
+ * @returns {{ disabled: boolean, reason: string }}
+ */
+function shouldDisableAutoUpdate() {
+    // CLI flags
+    const disableFlag = process.argv.some(arg =>
+        arg === '--no-update-check' || arg === '--disable-updates'
+    );
+    if (disableFlag) {
+        return { disabled: true, reason: 'CLI flag (--no-update-check or --disable-updates)' };
+    }
+
+    // Environment variable
+    const envDisable = process.env.DISABLE_AUTO_UPDATE;
+    if (envDisable === '1' || envDisable === 'true') {
+        return { disabled: true, reason: 'Environment variable (DISABLE_AUTO_UPDATE=1)' };
+    }
+
+    // CI environment
+    if (process.env.CI === '1' || process.env.CI === 'true') {
+        return { disabled: true, reason: 'CI environment detected (CI=1)' };
+    }
+
+    // Development version
+    const version = app.getVersion();
+    if (version === '0.0.0' || version === '0.0.0-alpha' ||
+        version.includes('-alpha') || version.includes('-beta') || version.includes('-dev')) {
+        return { disabled: true, reason: `Development version detected (${version})` };
+    }
+
+    return { disabled: false, reason: '' };
 }
 
 function combineEnv() {
@@ -651,13 +671,18 @@ async function createWindow() {
         }
 
         if (!updaterInited) {
-            try {
-                const updater = initAutoUpdater({ mainWindow, autoUpdater, logger: log, streamToFile });
-                // Init updater once
+            const updateCheck = shouldDisableAutoUpdate();
+            if (updateCheck.disabled) {
+                log.info(`[AutoUpdate] Disabled: ${updateCheck.reason}`);
                 updaterInited = true;
-                void updater.checkForUpdatesAndNotify().catch(err => log.warn('update check failed', err));
-            } catch (e) {
-                log.warn?.('Failed to init updater after load', e);
+            } else {
+                try {
+                    const updater = initAutoUpdater({ mainWindow, autoUpdater, logger: log, streamToFile });
+                    updaterInited = true;
+                    void updater.checkForUpdatesAndNotify().catch(err => log.warn('update check failed', err));
+                } catch (e) {
+                    log.warn?.('Failed to init updater after load', e);
+                }
             }
         }
     });
@@ -1463,13 +1488,7 @@ function bootstrapFileOpenHandlers() {
     });
 }
 
-// Helper: translated or default fallback (handles missing/bad translations)
-function tOrDefault(key, fallback) {
-    try {
-        const val = i18n.__(key);
-        if (!val || val === key) return fallback;
-        return val;
-    } catch (_e) {
-        return fallback;
-    }
+// Helper: returns fallback string (i18n removed to avoid Windows EPERM errors)
+function tOrDefault(_key, fallback) {
+    return fallback;
 }

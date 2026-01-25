@@ -481,8 +481,8 @@ class AssetManager {
     // Get metadata from Yjs
     const metadata = this.getAssetMetadata(id);
 
-    // Get blob from memory
-    const blob = this.blobCache.get(id);
+    // Get blob from memory (with Cache API fallback for static mode)
+    const blob = await this.getBlob(id);
 
     // If we have metadata, return combined object
     if (metadata) {
@@ -539,16 +539,16 @@ class AssetManager {
     // Count how many blobs are cached in memory
     let blobCount = 0;
 
-    // Join metadata with blobs from memory
-    const assets = metadataList.map(meta => {
-      const blob = this.blobCache.get(meta.id) || null;
+    // Join metadata with blobs from memory (with Cache API fallback for static mode)
+    const assets = await Promise.all(metadataList.map(async meta => {
+      const blob = await this.getBlob(meta.id);
       if (blob) blobCount++;
       return {
         ...meta,
         projectId: this.projectId,
-        blob
+        blob: blob || null
       };
-    });
+    }));
 
     Logger.log(`[AssetManager] getProjectAssets: ${assets.length} assets (${blobCount} blobs in memory)`);
     return assets;

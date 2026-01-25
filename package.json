@@ -1,9 +1,8 @@
 {
   "name": "exelearning",
-  "version": "0.0.0-alpha",
+  "version": "0.0.3-rc",
   "license": "AGPL-3.0-or-later",
   "description": "eXeLearning 4 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
-  "main": "main.js",
   "homepage": "https://exelearning.net",
   "type": "commonjs",
   "scripts": {
@@ -42,14 +41,14 @@
     "test:frontend:legacy": "npx vitest run --config vitest.config.mts --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "electron": "electron .",
+    "electron": "electron ./app",
     "electron:dev": "bun scripts/run-electron-dev.js",
     "start:app-backend": "cross-env APP_ONLINE_MODE=0 APP_PORT=3001 PORT=3001 FILES_DIR=data/ DB_PATH=data/exelearning.db bun run start:dev",
     "dev:app": "concurrently --kill-others --names 'BACKEND,ELECTRON' --prefix-colors 'blue,green' 'bun run start:app-backend' 'wait-on http://localhost:3001/healthcheck && bun run electron:dev'",
     "electron:pack": "electron-builder",
     "electron:pack:dir": "electron-builder --dir",
-    "package:prepare": "bun run build:static",
-    "package:app": "bun run package:prepare && yarn install && yarn run electron:pack",
+    "package:prepare": "bun run build:static && rm -rf app/dist/static && mkdir -p app/dist && cp -r dist/static app/dist/static && cd app && npm install --production",
+    "package:app": "bun run package:prepare && npm run electron:pack",
     "lint:src": "biome check src/",
     "lint:src:fix": "biome check --write src/",
     "lint:test": "biome check test/",
@@ -76,12 +75,8 @@
     "bcryptjs": "^3.0.3",
     "concurrently": "^9.2.1",
     "dotenv": "^17.2.3",
-    "electron-context-menu": "^4.1.1",
-    "electron-log": "^5.4.3",
-    "electron-updater": "^6.7.3",
     "elysia": "^1.4.22",
     "fast-xml-parser": "^5.3.3",
-    "fflate": "^0.8.2",
     "fs-extra": "^11.3.3",
     "i18n": "^0.15.3",
     "ioredis": "^5.9.2",
@@ -134,6 +129,7 @@
     "appId": "es.intef.exelearning",
     "productName": "eXeLearning",
     "directories": {
+      "app": "app",
       "output": "release"
     },
     "compression": "normal",
@@ -146,16 +142,16 @@
         "channel": "latest"
       }
     ],
-    "afterPack": "packaging/afterPack.js",
-    "afterSign": "packaging/notarize.js",
+    "afterPack": "../packaging/afterPack.js",
+    "afterSign": "../packaging/notarize.js",
     "asar": true,
     "disableDefaultIgnoredFiles": true,
     "files": [
       "main.js",
       "preload.js",
       "update-manager.js",
-      "node_modules/**/*",
       "package.json",
+      "node_modules/**/*",
       "dist/static/**/*",
       "!dist/static/**/*.test.js",
       "!dist/static/**/*.spec.js"
@@ -171,7 +167,7 @@
     ],
     "extraResources": [
       {
-        "from": "packaging/keys/",
+        "from": "../packaging/keys/",
         "to": "keys/"
       }
     ],
@@ -190,7 +186,7 @@
           ]
         }
       ],
-      "icon": "public/exelearning.ico",
+      "icon": "../public/exelearning.ico",
       "legalTrademarks": "INTEF",
       "signAndEditExecutable": true,
       "verifyUpdateCodeSignature": false,
@@ -245,15 +241,15 @@
         }
       ],
       "category": "Education",
-      "icon": "public/icons"
+      "icon": "../public/icons"
     },
     "deb": {
-      "afterInstall": "packaging/deb/after-install.sh",
-      "afterRemove": "packaging/deb/after-remove.sh"
+      "afterInstall": "../packaging/deb/after-install.sh",
+      "afterRemove": "../packaging/deb/after-remove.sh"
     },
     "rpm": {
-      "afterInstall": "packaging/rpm/after-install.sh",
-      "afterRemove": "packaging/rpm/after-remove.sh"
+      "afterInstall": "../packaging/rpm/after-install.sh",
+      "afterRemove": "../packaging/rpm/after-remove.sh"
     },
     "mac": {
       "category": "public.app-category.education",
@@ -273,9 +269,9 @@
           ]
         }
       ],
-      "icon": "public/exe_elp.icns",
-      "entitlements": "packaging/entitlements.mac.plist",
-      "entitlementsInherit": "packaging/entitlements.mac.inherit.plist",
+      "icon": "../public/exe_elp.icns",
+      "entitlements": "../packaging/entitlements.mac.plist",
+      "entitlementsInherit": "../packaging/entitlements.mac.inherit.plist",
       "x64ArchFiles": "**/exelearning-server-*"
     },
     "dmg": {

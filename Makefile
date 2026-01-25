@@ -161,6 +161,8 @@ endif
 run-app: check-bun deps css bundle
 	@echo "Building static files..."
 	@bun scripts/build-static-bundle.ts
+	@echo "Copying static files to app/..."
+	@rm -rf app/dist/static && mkdir -p app/dist && cp -r dist/static app/dist/static
 	@echo "Launching eXeLearning App (Electron)..."
 	@bun run electron
 
@@ -732,11 +734,20 @@ endif
 	$(eval PACKAGE_VERSION := $(patsubst v%,%,$(VERSION)))
 	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
 	@echo "Packaging version $(VERSION) (npm version: $(PACKAGE_VERSION))..."
+	@echo "Building static files..."
+	@bun run build:static
+	@echo "Copying static files to app/dist/static..."
+	@rm -rf app/dist/static && mkdir -p app/dist && cp -r dist/static app/dist/static
+	@echo "Updating version in package.json files..."
 	@bun -e "let pkg=require('./package.json'); pkg.version='$(PACKAGE_VERSION)'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
-	yarn install
-	yarn run package:app $(if $(PUBLISH),-- --publish $(PUBLISH),)
+	@bun -e "let pkg=require('./app/package.json'); pkg.version='$(PACKAGE_VERSION)'; require('fs').writeFileSync('app/package.json', JSON.stringify(pkg, null, 2));"
+	@echo "Installing app dependencies..."
+	@cd app && npm install --production
+	@echo "Building Electron package..."
+	npm run electron:pack $(if $(PUBLISH),-- --publish $(PUBLISH),)
 	@echo "Restoring version to 0.0.0-alpha..."
 	@bun -e "let pkg=require('./package.json'); pkg.version='0.0.0-alpha'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+	@bun -e "let pkg=require('./app/package.json'); pkg.version='0.0.0-alpha'; require('fs').writeFileSync('app/package.json', JSON.stringify(pkg, null, 2));"
 	@echo "Package created successfully with version $(VERSION)"
 
 

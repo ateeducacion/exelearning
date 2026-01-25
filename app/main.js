@@ -32,12 +32,19 @@ const basePath = app.isPackaged ? process.resourcesPath : app.getAppPath();
 /**
  * Get the path to the static files directory.
  * In packaged mode, static files are inside the ASAR at dist/static/.
- * In dev mode, static files are in dist/static/.
+ * In dev mode, static files are in the project root's dist/static/ (parent of app/).
  */
 function getStaticPath() {
-    return app.isPackaged
-        ? path.join(app.getAppPath(), 'dist', 'static')
-        : path.join(__dirname, 'dist', 'static');
+    if (app.isPackaged) {
+        return path.join(app.getAppPath(), 'dist', 'static');
+    }
+    // Dev mode: look in project root (parent of app/)
+    const devPath = path.join(__dirname, '..', 'dist', 'static');
+    if (fs.existsSync(devPath)) {
+        return devPath;
+    }
+    // Fallback to app/dist/static if copied there
+    return path.join(__dirname, 'dist', 'static');
 }
 
 /**

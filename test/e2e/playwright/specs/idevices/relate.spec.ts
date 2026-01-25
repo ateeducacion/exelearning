@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { waitForAppReady } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -268,15 +269,7 @@ test.describe('Relate iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a relate iDevice
             await addRelateIdeviceFromPanel(page);
@@ -300,15 +293,7 @@ test.describe('Relate iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -350,15 +335,7 @@ test.describe('Relate iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -396,15 +373,7 @@ test.describe('Relate iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -451,15 +420,7 @@ test.describe('Relate iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -504,15 +465,7 @@ test.describe('Relate iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -562,15 +515,7 @@ test.describe('Relate iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await addRelateIdeviceFromPanel(page);
 
@@ -585,15 +530,7 @@ test.describe('Relate iDevice', () => {
             await page.reload();
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             await selectPageNode(page);
 

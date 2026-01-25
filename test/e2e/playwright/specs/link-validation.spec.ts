@@ -6,6 +6,7 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
+import { waitForAppReady } from '../helpers/workarea-helpers';
 
 /**
  * Helper to add a text iDevice to the current page
@@ -61,25 +62,6 @@ async function openLinkValidationModal(page: Page): Promise<void> {
     await linkValidationBtn.click();
 }
 
-/**
- * Helper to wait for workarea to be ready
- */
-async function waitForWorkarea(page: Page): Promise<void> {
-    // Wait for Yjs bridge initialization
-    await page.waitForFunction(() => window.eXeLearning?.app?.project?._yjsBridge !== undefined, {
-        timeout: 30000,
-    });
-
-    // Wait for loading screen to disappear
-    await page.waitForFunction(
-        () => {
-            const loadScreen = document.querySelector('#load-screen-main');
-            return !loadScreen || loadScreen.getAttribute('data-visible') === 'false';
-        },
-        { timeout: 15000 },
-    );
-}
-
 test.describe('Link Validation', () => {
     test.beforeEach(async ({ page }) => {
         // Login
@@ -101,7 +83,7 @@ test.describe('Link Validation', () => {
         // Navigate to workarea
         await page.goto(`/workarea?project=${uuid}`);
         await page.waitForLoadState('networkidle');
-        await waitForWorkarea(page);
+        await waitForAppReady(page);
 
         // Add text iDevice
         await addTextIdevice(page);
@@ -202,7 +184,7 @@ test.describe('Link Validation', () => {
         // Navigate to workarea
         await page.goto(`/workarea?project=${uuid}`);
         await page.waitForLoadState('networkidle');
-        await waitForWorkarea(page);
+        await waitForAppReady(page);
 
         // Add text iDevice
         await addTextIdevice(page);
@@ -267,7 +249,7 @@ test.describe('Link Validation', () => {
         // Navigate to workarea (project starts with no content)
         await page.goto(`/workarea?project=${uuid}`);
         await page.waitForLoadState('networkidle');
-        await waitForWorkarea(page);
+        await waitForAppReady(page);
 
         // Open link validation modal without adding any content
         await openLinkValidationModal(page);
@@ -289,7 +271,7 @@ test.describe('Link Validation', () => {
         // Navigate to workarea
         await page.goto(`/workarea?project=${uuid}`);
         await page.waitForLoadState('networkidle');
-        await waitForWorkarea(page);
+        await waitForAppReady(page);
 
         // Add text iDevice
         await addTextIdevice(page);

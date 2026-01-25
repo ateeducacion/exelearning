@@ -1,6 +1,6 @@
 import { test, expect, skipInStaticMode } from '../../fixtures/collaboration.fixture';
 import { waitForYjsSync, waitForTextInContent } from '../../helpers/sync-helpers';
-import { waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { waitForLoadingScreen, waitForAppReady } from '../../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
 
 /**
@@ -16,13 +16,7 @@ import type { Page } from '@playwright/test';
  * Helper to wait for Yjs bridge initialization
  */
 async function waitForYjsBridge(page: Page): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const app = (window as any).eXeLearning?.app;
-            return app?.project?._yjsBridge !== undefined;
-        },
-        { timeout: 30000 },
-    );
+    await waitForAppReady(page);
 }
 
 /**
@@ -228,7 +222,7 @@ test.describe('Collaborative Text iDevice', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A makes project public and gets share URL BEFORE adding content
             // (so Client B can join and observe real-time sync)
@@ -310,7 +304,7 @@ test.describe('Collaborative Text iDevice', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A adds a text iDevice and types content
             await addTextIdeviceFromPanel(pageA);

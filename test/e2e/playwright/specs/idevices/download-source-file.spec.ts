@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { waitForAppReady } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -272,15 +273,7 @@ test.describe('Download Source File iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a Download Source File iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -310,15 +303,7 @@ test.describe('Download Source File iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -339,15 +324,7 @@ test.describe('Download Source File iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and set custom button text
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -362,15 +339,7 @@ test.describe('Download Source File iDevice', () => {
             await page.reload();
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Navigate to the page
             const pageNode = page
@@ -410,15 +379,7 @@ test.describe('Download Source File iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -442,15 +403,7 @@ test.describe('Download Source File iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -474,15 +427,7 @@ test.describe('Download Source File iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -509,15 +454,7 @@ test.describe('Download Source File iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and set custom values
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -553,15 +490,7 @@ test.describe('Download Source File iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -614,15 +543,7 @@ test.describe('Download Source File iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addDownloadSourceFileIdeviceFromPanel(page);
@@ -661,15 +582,7 @@ test.describe('Download Source File iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice with custom values
             await addDownloadSourceFileIdeviceFromPanel(page);

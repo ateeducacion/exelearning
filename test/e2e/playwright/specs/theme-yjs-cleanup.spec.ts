@@ -1,24 +1,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
+import { waitForAppReady } from '../helpers/workarea-helpers';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
-
-/**
- * Helper function to wait for app initialization
- */
-async function waitForAppReady(page: Page): Promise<void> {
-    await page.waitForLoadState('networkidle');
-
-    // Wait for Yjs bridge initialization
-    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, {
-        timeout: 30000,
-    });
-
-    // Wait for loading screen to disappear
-    await page.waitForFunction(
-        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-        { timeout: 30000 },
-    );
-}
 
 /**
  * Helper function to open styles panel and navigate to Imported tab

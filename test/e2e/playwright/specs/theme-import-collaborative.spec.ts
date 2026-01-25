@@ -1,7 +1,7 @@
 import { test, expect, skipInStaticMode } from '../fixtures/collaboration.fixture';
 
 import { waitForYjsSync } from '../helpers/sync-helpers';
-import { waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { waitForLoadingScreen } from '../helpers/workarea-helpers';
 
 /**
  * Collaborative Theme Import Tests
@@ -38,7 +38,7 @@ test.describe('Theme Import - Collaborative', () => {
             await pageA.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge, {
                 timeout: 30000,
             });
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A shares the project
             const shareUrl = await getShareUrl(pageA);
@@ -49,7 +49,7 @@ test.describe('Theme Import - Collaborative', () => {
             await waitForYjsSync(pageA);
 
             // Wait for loading screen on Client B
-            await waitForLoadingScreenHidden(pageB);
+            await waitForLoadingScreen(pageB);
 
             // Client A opens styles panel and selects a theme
             const stylesButtonA = pageA.locator('#dropdownStyles');
@@ -98,14 +98,14 @@ test.describe('Theme Import - Collaborative', () => {
             await pageA.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge, {
                 timeout: 30000,
             });
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Share and join
             const shareUrl = await getShareUrl(pageA);
             await joinSharedProject(pageB, shareUrl);
             await waitForYjsSync(pageA);
             await waitForYjsSync(pageB);
-            await waitForLoadingScreenHidden(pageB);
+            await waitForLoadingScreen(pageB);
 
             // Client A changes theme
             const stylesButtonA = pageA.locator('#dropdownStyles');

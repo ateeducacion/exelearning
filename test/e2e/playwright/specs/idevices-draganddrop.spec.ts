@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { test, expect } from '../fixtures/auth.fixture';
+import { waitForAppReady, waitForLoadingScreen } from '../helpers/workarea-helpers';
 import type { Page, Locator } from '@playwright/test';
 
 /**
@@ -15,13 +16,7 @@ import type { Page, Locator } from '@playwright/test';
  * Helper to wait for Yjs bridge initialization
  */
 async function waitForYjsInit(page: Page): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const app = (window as any).eXeLearning?.app;
-            return app?.project?._yjsBridge !== undefined;
-        },
-        { timeout: 30000 },
-    );
+    await waitForAppReady(page);
 }
 
 /**
@@ -248,7 +243,7 @@ test.describe('iDevice Drag and Drop', () => {
             await page.waitForLoadState('networkidle');
 
             await waitForYjsInit(page);
-            await waitForLoadingScreenHidden(page);
+            await waitForLoadingScreen(page);
 
             // Add first text iDevice (creates Block 1)
             await addTextIdevice(page);
@@ -295,7 +290,7 @@ test.describe('iDevice Drag and Drop', () => {
             await page.waitForLoadState('networkidle');
 
             await waitForYjsInit(page);
-            await waitForLoadingScreenHidden(page);
+            await waitForLoadingScreen(page);
 
             // Create Block 1 with iDevice 1
             await addTextIdevice(page);
@@ -388,7 +383,7 @@ test.describe('iDevice Drag and Drop', () => {
             await page.waitForLoadState('networkidle');
 
             await waitForYjsInit(page);
-            await waitForLoadingScreenHidden(page);
+            await waitForLoadingScreen(page);
 
             // Create Block 1
             await addTextIdevice(page);
@@ -430,7 +425,7 @@ test.describe('iDevice Drag and Drop', () => {
             await page.waitForLoadState('networkidle');
 
             await waitForYjsInit(page);
-            await waitForLoadingScreenHidden(page);
+            await waitForLoadingScreen(page);
 
             // Create Block 1
             await addTextIdevice(page);
@@ -481,7 +476,7 @@ test.describe('iDevice Drag and Drop', () => {
             await page.waitForLoadState('networkidle');
 
             await waitForYjsInit(page);
-            await waitForLoadingScreenHidden(page);
+            await waitForLoadingScreen(page);
 
             // Create Block 1
             await addTextIdevice(page);
@@ -533,7 +528,7 @@ test.describe('iDevice Drag and Drop', () => {
             await page.waitForLoadState('networkidle');
 
             await waitForYjsInit(page);
-            await waitForLoadingScreenHidden(page);
+            await waitForLoadingScreen(page);
 
             // Create Block 1
             await addTextIdevice(page);
@@ -590,7 +585,7 @@ test.describe('iDevice Drag and Drop', () => {
             await page.waitForLoadState('networkidle');
 
             await waitForYjsInit(page);
-            await waitForLoadingScreenHidden(page);
+            await waitForLoadingScreen(page);
 
             // Create Block 1 with iDevice 1
             await addTextIdevice(page);
@@ -665,7 +660,7 @@ test.describe('iDevice Drag and Drop', () => {
             await page.waitForLoadState('networkidle');
 
             await waitForYjsInit(page);
-            await waitForLoadingScreenHidden(page);
+            await waitForLoadingScreen(page);
 
             // Create Block 1
             await addTextIdevice(page);

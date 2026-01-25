@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
+import { waitForAppReady, waitForLoadingScreen } from '../helpers/workarea-helpers';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -29,10 +30,7 @@ async function importElpxFixture(page: Page, fixtureName: string): Promise<void>
     await fileChooser.setFiles(fixturePath);
 
     // Wait for loading screen to hide (import progress shows and then hides)
-    await page.waitForFunction(
-        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-        { timeout: 120000 },
-    );
+    await waitForLoadingScreen(page);
 
     // Wait for navigation to be populated
     await page.waitForFunction(
@@ -66,12 +64,7 @@ test.describe('Theme Import from ELPX', () => {
         await page.waitForLoadState('networkidle');
 
         // Wait for app initialization
-        await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, { timeout: 30000 });
-
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Import the fixture
         await importElpxFixture(page, 'download-elpx-link.elpx');
@@ -116,12 +109,7 @@ test.describe('Theme Import from ELPX', () => {
         await page.waitForLoadState('networkidle');
 
         // Wait for app initialization
-        await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, { timeout: 30000 });
-
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Open the Styles panel
         const stylesButton = page.locator('#dropdownStyles');

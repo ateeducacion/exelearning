@@ -1,7 +1,8 @@
-import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { test, expect } from '../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
 import {
     waitForAppReady,
+    waitForLoadingScreen,
     selectFirstPage,
     addTextIdevice as addTextIdeviceHelper,
     getBlockIconSrc,
@@ -182,7 +183,7 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
         await page.waitForLoadState('networkidle');
 
         await waitForYjsInit(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // Add a text iDevice
         await addTextIdevice(page);
@@ -218,7 +219,7 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
         await page.waitForLoadState('networkidle');
 
         await waitForYjsInit(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // Add a text iDevice
         await addTextIdevice(page);
@@ -255,7 +256,7 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
         await page.waitForLoadState('networkidle');
 
         await waitForYjsInit(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // Add a text iDevice
         await addTextIdevice(page);
@@ -299,7 +300,7 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
         await page.waitForLoadState('networkidle');
 
         await waitForYjsInit(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // Add two text iDevices (creates two blocks)
         await addTextIdevice(page);
@@ -336,7 +337,7 @@ test.describe('Undo/Redo Page Title - Issue #956', () => {
         await page.waitForLoadState('networkidle');
 
         await waitForYjsInit(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // Get the original page title
         const originalTitle = await getPageNameText(page, 0);
@@ -370,7 +371,7 @@ test.describe('Undo/Redo Page Title - Issue #956', () => {
         await page.waitForLoadState('networkidle');
 
         await waitForYjsInit(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // Get the original page title
         const originalTitle = await getPageNameText(page, 0);
@@ -404,7 +405,7 @@ test.describe('Undo/Redo Page Title - Issue #956', () => {
         await page.waitForLoadState('networkidle');
 
         await waitForYjsInit(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // Select the page node to ensure content area shows the page
         await selectPageNode(page);
@@ -441,7 +442,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
         await page.waitForLoadState('networkidle');
 
         await waitForYjsInit(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // Add a text iDevice
         await addTextIdevice(page);
@@ -496,7 +497,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
         await page.waitForLoadState('networkidle');
 
         await waitForYjsInit(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // Add a text iDevice
         await addTextIdevice(page);
@@ -538,7 +539,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
         await page.waitForLoadState('networkidle');
 
         await waitForYjsInit(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // Add a text iDevice
         await addTextIdevice(page);

@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { test, expect } from '../fixtures/auth.fixture';
+import { waitForAppReady } from '../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
 
 /**
@@ -392,15 +393,7 @@ test.describe('Cloning Functionality', () => {
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add text iDevice with unique content
             const uniqueContent = `Unique content to clone ${Date.now()}`;
@@ -449,15 +442,7 @@ test.describe('Cloning Functionality', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add text iDevice with content
             const uniqueContent = `Block content to clone ${Date.now()}`;
@@ -503,15 +488,7 @@ test.describe('Cloning Functionality', () => {
                 await page.goto(`/workarea?project=${projectUuid}`);
                 await page.waitForLoadState('networkidle');
 
-                await page.waitForFunction(
-                    () => {
-                        const app = (window as any).eXeLearning?.app;
-                        return app?.project?._yjsBridge !== undefined;
-                    },
-                    { timeout: 30000 },
-                );
-
-                await waitForLoadingScreenHidden(page);
+                await waitForAppReady(page);
 
                 // Add text iDevice with content
                 const uniqueContent = `Page content to clone ${Date.now()}`;

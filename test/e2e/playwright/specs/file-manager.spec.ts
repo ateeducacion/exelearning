@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { test, expect } from '../fixtures/auth.fixture';
+import { waitForAppReady, waitForLoadingScreen } from '../helpers/workarea-helpers';
 import { WorkareaPage } from '../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -364,10 +365,7 @@ async function importElpFile(page: Page, fixturePath: string): Promise<void> {
     });
 
     // Wait for loading screen to hide
-    await page.waitForFunction(
-        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-        { timeout: 30000 },
-    );
+    await waitForLoadingScreen(page);
 
     await page.waitForTimeout(2000);
 }
@@ -389,11 +387,7 @@ test.describe('File Manager', () => {
             await page.waitForLoadState('networkidle');
 
             // Wait for app to fully initialize
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Import the .elpx file
             await importElpFile(page, fixturePath);
@@ -443,11 +437,7 @@ test.describe('File Manager', () => {
             await page.waitForLoadState('networkidle');
 
             // Wait for app to fully initialize
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Import the legacy .elp file
             await importElpFile(page, fixturePath);
@@ -500,15 +490,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             const folderName = `TestFolder_${Date.now()}`;
@@ -525,15 +507,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create a folder
@@ -564,15 +538,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create a folder and navigate into it
@@ -604,15 +570,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload a file
@@ -639,15 +597,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload a file
@@ -675,15 +625,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload a file
@@ -732,15 +674,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create an empty folder
@@ -807,15 +741,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload a file
@@ -862,15 +788,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create a folder
@@ -918,15 +836,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create a folder
@@ -980,15 +890,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create a folder
@@ -1016,15 +918,7 @@ test.describe('File Manager', () => {
             await page.reload();
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Open File Manager again
             await openFileManager(page);
@@ -1067,15 +961,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuidA}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload image to Project A
@@ -1107,15 +993,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuidB}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload SAME image to Project B (same content = same hash = same assetId)
@@ -1159,15 +1037,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuidA}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             await uploadFile(page, 'test/fixtures/sample-2.jpg');
@@ -1183,15 +1053,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuidB}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Clear previous logs
@@ -1242,15 +1104,7 @@ test.describe('File Manager', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Step 1: Open File Manager and upload an image
             await openFileManager(page);
@@ -1341,10 +1195,7 @@ test.describe('File Manager', () => {
             const projectUuid = await createProject(page, 'File Manager - Recursive Search Test');
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create nested folder structure
@@ -1375,10 +1226,7 @@ test.describe('File Manager', () => {
             const projectUuid = await createProject(page, 'File Manager - Search Indicator Test');
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload a file so we have something to search
@@ -1408,10 +1256,7 @@ test.describe('File Manager', () => {
             const projectUuid = await createProject(page, 'File Manager - Path Badge Test');
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create folder and upload file inside
@@ -1435,10 +1280,7 @@ test.describe('File Manager', () => {
             const projectUuid = await createProject(page, 'File Manager - Path Navigation Test');
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create folder and upload file inside
@@ -1472,10 +1314,7 @@ test.describe('File Manager', () => {
             const projectUuid = await createProject(page, 'File Manager - Sidebar Location Test');
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create folder and upload file inside
@@ -1513,10 +1352,7 @@ test.describe('File Manager', () => {
             const projectUuid = await createProject(page, 'File Manager - Clear Search Test');
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Upload file and create folder
@@ -1559,10 +1395,7 @@ test.describe('File Manager', () => {
             const projectUuid = await createProject(page, 'File Manager - Home Icon Test');
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
             await openFileManager(page);
 
             // Create nested structure

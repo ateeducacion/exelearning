@@ -1,7 +1,7 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
-import { getPreviewFrame, waitForPreviewContent } from '../../helpers/workarea-helpers';
+import { getPreviewFrame, waitForPreviewContent, waitForAppReady } from '../../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Image Gallery iDevice
@@ -126,15 +126,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add an image-gallery iDevice using the panel
             await addImageGalleryFromPanel(page);
@@ -165,15 +157,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -241,15 +225,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -276,15 +252,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -326,15 +294,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -400,15 +360,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -483,15 +435,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -595,15 +539,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // 2. Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -742,14 +678,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -828,14 +757,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.waitForLoadState('networkidle');
 
             // Wait for app to reinitialize
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Wait for the tree to be populated (using role="tree" which is more reliable)
             await page.waitForSelector('[role="tree"]', { timeout: 15000 });
@@ -944,14 +866,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Helper function to wait for app initialization and select page
             async function waitForAppAndSelectPage(): Promise<void> {
-                await page.waitForFunction(
-                    () => {
-                        const app = (window as any).eXeLearning?.app;
-                        return app?.project?._yjsBridge !== undefined;
-                    },
-                    { timeout: 30000 },
-                );
-                await waitForLoadingScreenHidden(page);
+                await waitForAppReady(page);
 
                 // Wait for the tree to be populated
                 await page.waitForSelector('[role="tree"]', { timeout: 15000 });
@@ -1149,14 +1064,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -1322,14 +1230,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);

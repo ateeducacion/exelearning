@@ -85,10 +85,12 @@ export async function openElpFile(page: Page, fixturePath: string, minPages = 1)
 
     if (isStaticMode) {
         // STATIC MODE: File input is triggered directly, no modal
+        // In static mode, #navbar-button-openuserodefiles has class "exe-online" which is hidden.
+        // Use #navbar-button-open-offline which is visible in static/offline mode.
         // Setup file chooser BEFORE clicking (click triggers file input immediately)
         const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
 
-        const openOption = page.locator('#navbar-button-openuserodefiles');
+        const openOption = page.locator('#navbar-button-open-offline');
         await openOption.waitFor({ state: 'visible', timeout: 5000 });
         await openOption.click();
 

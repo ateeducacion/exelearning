@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/collaboration.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/collaboration.fixture';
 import { waitForYjsSync } from '../helpers/sync-helpers';
 
 /**

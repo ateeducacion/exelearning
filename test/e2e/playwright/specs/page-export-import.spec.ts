@@ -1,10 +1,11 @@
-import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { test, expect } from '../fixtures/auth.fixture';
 import type { Page, Download } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { unzipSync } from '../../../../src/shared/export';
 import {
     waitForAppReady,
+    waitForLoadingScreen,
     openElpFile,
     navigateToPageByTitle,
     selectPageByIndex,
@@ -392,7 +393,7 @@ test.describe('Page Export with Images', () => {
         await page.goto(`/workarea?project=${newProjectUuid}`);
         await page.waitForLoadState('networkidle');
         await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // 6. Select the first page
         await selectPageByIndex(page, 0);
@@ -500,7 +501,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
         await page.goto(`/workarea?project=${projectUuid}`);
         await page.waitForLoadState('networkidle');
         await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // 2. Select the first page
         await selectPageByIndex(page, 0);
@@ -597,7 +598,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
         await page.goto(`/workarea?project=${projectUuid1}`);
         await page.waitForLoadState('networkidle');
         await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         await selectPageByIndex(page, 0);
         await page.waitForTimeout(1000);
@@ -645,7 +646,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
         await page.goto(`/workarea?project=${projectUuid2}`);
         await page.waitForLoadState('networkidle');
         await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await waitForLoadingScreen(page);
 
         // 3. Select page and import
         await selectPageByIndex(page, 0);

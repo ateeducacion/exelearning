@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import { reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 

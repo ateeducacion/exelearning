@@ -1,6 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import {
-    waitForAppReady,
     getPreviewFrame,
     waitForIdeviceEditionEnd,
     addTextIdevice,

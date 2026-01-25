@@ -1,7 +1,13 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
-import { getPreviewFrame, waitForPreviewContent, waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import {
+    getPreviewFrame,
+    waitForPreviewContent,
+    waitForAppReady,
+    reloadPage,
+    gotoWorkarea,
+} from '../../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Image Gallery iDevice

@@ -1,6 +1,6 @@
 {
   "name": "exelearning",
-  "version": "0.0.3-rc",
+  "version": "0.0.0-alpha",
   "license": "AGPL-3.0-or-later",
   "description": "eXeLearning 4 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
   "homepage": "https://exelearning.net",
@@ -142,8 +142,8 @@
         "channel": "latest"
       }
     ],
-    "afterPack": "../packaging/afterPack.js",
-    "afterSign": "../packaging/notarize.js",
+    "afterPack": "packaging/afterPack.js",
+    "afterSign": "packaging/notarize.js",
     "asar": true,
     "disableDefaultIgnoredFiles": true,
     "files": [
@@ -167,7 +167,7 @@
     ],
     "extraResources": [
       {
-        "from": "../packaging/keys/",
+        "from": "packaging/keys/",
         "to": "keys/"
       }
     ],
@@ -186,7 +186,7 @@
           ]
         }
       ],
-      "icon": "../public/exelearning.ico",
+      "icon": "public/exelearning.ico",
       "legalTrademarks": "INTEF",
       "signAndEditExecutable": true,
       "verifyUpdateCodeSignature": false,
@@ -241,15 +241,15 @@
         }
       ],
       "category": "Education",
-      "icon": "../public/icons"
+      "icon": "public/icons"
     },
     "deb": {
-      "afterInstall": "../packaging/deb/after-install.sh",
-      "afterRemove": "../packaging/deb/after-remove.sh"
+      "afterInstall": "packaging/deb/after-install.sh",
+      "afterRemove": "packaging/deb/after-remove.sh"
     },
     "rpm": {
-      "afterInstall": "../packaging/rpm/after-install.sh",
-      "afterRemove": "../packaging/rpm/after-remove.sh"
+      "afterInstall": "packaging/rpm/after-install.sh",
+      "afterRemove": "packaging/rpm/after-remove.sh"
     },
     "mac": {
       "category": "public.app-category.education",
@@ -269,9 +269,9 @@
           ]
         }
       ],
-      "icon": "../public/exe_elp.icns",
-      "entitlements": "../packaging/entitlements.mac.plist",
-      "entitlementsInherit": "../packaging/entitlements.mac.inherit.plist",
+      "icon": "public/exe_elp.icns",
+      "entitlements": "packaging/entitlements.mac.plist",
+      "entitlementsInherit": "packaging/entitlements.mac.inherit.plist",
       "x64ArchFiles": "**/exelearning-server-*"
     },
     "dmg": {

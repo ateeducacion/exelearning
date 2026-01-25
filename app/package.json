@@ -1,6 +1,5 @@
 {
   "name": "exelearning",
-  "version": "0.0.3-rc",
   "description": "eXeLearning Desktop Application",
   "main": "main.js",
   "private": true,

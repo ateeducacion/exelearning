@@ -30,6 +30,11 @@ import { waitForYjsSync } from '../helpers/sync-helpers';
 test.describe('Duplicate Page Prevention', () => {
     test.setTimeout(120000); // 2 minutes per test
 
+    // Skip all tests in static mode (requires WebSocket collaboration)
+    test.beforeEach(async () => {
+        skipInStaticMode(test, 'WebSocket collaboration');
+    });
+
     test('should have exactly 1 page when second client joins unsaved public project', async ({
         authenticatedPage,
         secondAuthenticatedPage,

@@ -5,8 +5,8 @@ test.describe('Open Project Modal - Tabs', () => {
     let openProjectModal: OpenProjectModalPage;
 
     // Skip all tests in static mode (requires server for project management)
-    test.beforeEach(async ({ authenticatedPage }) => {
-        skipInStaticMode(test, 'Project tabs require server features');
+    test.beforeEach(async ({ authenticatedPage }, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Project tabs require server features');
         openProjectModal = new OpenProjectModalPage(authenticatedPage);
     });
 

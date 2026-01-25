@@ -1,23 +1,31 @@
-import { test as base, expect, Page } from '@playwright/test';
+import { test as base, expect, Page, TestInfo } from '@playwright/test';
+import { gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
- * Detect static mode from environment variable
- * Static mode is used for testing the PWA/Electron build without a server
+ * Detect static mode from project name
+ * Works automatically when running: bunx playwright test --project=static-chromium
  */
-export const isStaticMode = process.env.STATIC_MODE === 'true';
+export function isStaticProject(testInfo: TestInfo): boolean {
+    return testInfo.project.name.includes('static');
+}
 
 /**
- * Skip test if running in static mode
+ * Skip test if running in static mode (checks testInfo.project.name)
  * Use for tests that require server features (WebSocket, collaboration, API)
  *
  * @example
- * test('should sync between clients', async ({ authenticatedPage }) => {
- *     skipInStaticMode(test, 'WebSocket collaboration');
+ * test('should sync between clients', async ({ authenticatedPage }, testInfo) => {
+ *     skipInStaticMode(test, testInfo, 'WebSocket collaboration');
  *     // ... test code (only runs in server mode)
  * });
+ *
+ * // In beforeEach:
+ * test.beforeEach(async ({}, testInfo) => {
+ *     skipInStaticMode(test, testInfo, 'WebSocket collaboration');
+ * });
  */
-export function skipInStaticMode(testFn: typeof base, reason = 'Requires server features'): void {
-    if (isStaticMode) {
+export function skipInStaticMode(testFn: typeof base, testInfo: TestInfo, reason = 'Requires server features'): void {
+    if (isStaticProject(testInfo)) {
         testFn.skip(true, `Skipped in static mode: ${reason}`);
     }
 }
@@ -44,8 +52,8 @@ export const test = base.extend<AuthFixtures>({
      * In static mode: no login needed, navigates directly to root
      * In server mode: performs guest login and navigates to workarea
      */
-    authenticatedPage: async ({ page }, use) => {
-        if (isStaticMode) {
+    authenticatedPage: async ({ page }, use, testInfo) => {
+        if (isStaticProject(testInfo)) {
             // Static mode: no login, navigate to root (index.html)
             await page.goto('/');
 
@@ -125,8 +133,8 @@ export const test = base.extend<AuthFixtures>({
      * In static mode: no login needed, just use the page
      * In server mode: performs guest login via API
      */
-    guestSession: async ({ page }, use) => {
-        if (isStaticMode) {
+    guestSession: async ({ page }, use, testInfo) => {
+        if (isStaticProject(testInfo)) {
             // Static mode: no login needed
             await use(page);
             return;
@@ -149,9 +157,9 @@ export const test = base.extend<AuthFixtures>({
      * In server mode: creates project via API and returns real UUID
      */
     // eslint-disable-next-line no-empty-pattern
-    createProject: async ({}, use) => {
+    createProject: async ({}, use, testInfo) => {
         const createProjectFn = async (page: Page, title: string = 'Test Project'): Promise<string> => {
-            if (isStaticMode) {
+            if (isStaticProject(testInfo)) {
                 // Static mode: project already exists, return fixed UUID
                 // The static build has a pre-loaded project, so we don't need to create one
                 return 'static-project';
@@ -217,29 +225,13 @@ export async function waitForLoadingScreenHidden(page: Page): Promise<void> {
     );
 }
 
+// Re-export gotoWorkarea from workarea-helpers (primary helper for workarea navigation)
+export { gotoWorkarea };
+
 /**
- * Helper function to navigate to a project's workarea
- * Handles navigation, app initialization, and loading screen
+ * @deprecated Use `gotoWorkarea` from workarea-helpers.ts instead.
+ * This alias is kept for backwards compatibility.
  *
- * In static mode: no-op if already on root (project already loaded)
- * In server mode: navigates to workarea with project UUID
+ * Navigate to a project's workarea (unified for static/server modes)
  */
-export async function navigateToProject(page: Page, projectUuid: string): Promise<void> {
-    if (isStaticMode) {
-        // Static mode: project already loaded, just wait for app
-        await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, { timeout: 30000 });
-        await waitForLoadingScreenHidden(page);
-        return;
-    }
-
-    // Server mode: navigate to workarea with project UUID
-    await page.goto(`/workarea?project=${projectUuid}`);
-    await page.waitForLoadState('networkidle');
-
-    // Wait for app initialization
-    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, {
-        timeout: 30000,
-    });
-
-    await waitForLoadingScreenHidden(page);
-}
+export const navigateToProject = gotoWorkarea;

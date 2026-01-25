@@ -189,8 +189,8 @@ test.describe('Collaborative File Manager', () => {
     test.setTimeout(180000); // 3 minutes per test
 
     // Skip all collaboration tests in static mode
-    test.beforeEach(async () => {
-        skipInStaticMode(test, 'WebSocket collaboration');
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'WebSocket collaboration');
     });
 
     test.describe('Real-Time Asset Rename Sync', () => {

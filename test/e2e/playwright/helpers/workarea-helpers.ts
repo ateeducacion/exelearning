@@ -266,6 +266,42 @@ export async function saveProject(page: Page): Promise<void> {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
+ * Navigate to a project's workarea (unified for static/server modes)
+ *
+ * USE THIS INSTEAD OF: page.goto(`/workarea?project=${uuid}`)
+ *
+ * WHY: In static mode (PWA/Electron), there's no /workarea route and no project
+ * UUID concept - the project is pre-loaded. This helper handles both cases:
+ *
+ * - Static mode: Navigates to `/` and waits for app initialization
+ * - Server mode: Navigates to `/workarea?project=${uuid}` and waits for Yjs
+ *
+ * @example
+ * // BEFORE (only works in server mode):
+ * await page.goto(`/workarea?project=${projectUuid}`);
+ *
+ * // AFTER (works in both modes):
+ * await gotoWorkarea(page, projectUuid);
+ */
+export async function gotoWorkarea(page: Page, projectUuid: string): Promise<void> {
+    const isStaticMode = process.env.STATIC_MODE === 'true';
+
+    if (isStaticMode) {
+        // Static mode: no /workarea route, project pre-loaded at root
+        await page.goto('/');
+        await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, { timeout: 30000 });
+        await waitForLoadingScreen(page);
+        return;
+    }
+
+    // Server mode: navigate to workarea with project UUID
+    await page.goto(`/workarea?project=${projectUuid}`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, { timeout: 30000 });
+    await waitForLoadingScreen(page);
+}
+
+/**
  * Navigate to a page by title in the navigation tree
  *
  * @param page - Playwright page
@@ -476,8 +512,18 @@ export async function navigateInPreview(page: Page, linkText: string): Promise<v
  * @param ideviceType - iDevice type ID (e.g., 'text', 'rubric', 'flipcards')
  */
 export async function addIdevice(page: Page, ideviceType: string): Promise<void> {
-    // Ensure a non-root page is selected
-    await selectFirstPage(page);
+    // Check if root page is selected - fail with clear error
+    const isRootSelected = await page.evaluate(() => {
+        const selected = document.querySelector('.nav-element.selected');
+        return selected?.getAttribute('nav-id') === 'root';
+    });
+
+    if (isRootSelected) {
+        throw new Error(
+            'addIdevice: Cannot add iDevice to root page. ' +
+                'Call selectFirstPage(page) before addIdevice() to select a non-root page.',
+        );
+    }
 
     // Find the iDevice item - wait for it to be visible first
     const idevice = page.locator(`.idevice_item[id="${ideviceType}"], [data-testid="idevice-${ideviceType}"]`).first();
@@ -1284,6 +1330,19 @@ export async function exportPage(page: Page, nodeId: string): Promise<Download> 
  * @param page - Playwright page
  */
 export async function addTextIdevice(page: Page): Promise<void> {
+    // Check if root page is selected - fail with clear error
+    const isRootSelected = await page.evaluate(() => {
+        const selected = document.querySelector('.nav-element.selected');
+        return selected?.getAttribute('nav-id') === 'root';
+    });
+
+    if (isRootSelected) {
+        throw new Error(
+            'addTextIdevice: Cannot add iDevice to root page. ' +
+                'Call selectFirstPage(page) before addTextIdevice() to select a non-root page.',
+        );
+    }
+
     // Expand "Information and presentation" category
     const infoCategory = page
         .locator('.idevice_category')

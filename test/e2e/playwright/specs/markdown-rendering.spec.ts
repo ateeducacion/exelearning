@@ -1,5 +1,11 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady, addTextIdevice, waitForTinyMCEReady, setTinyMCEContent } from '../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    addTextIdevice,
+    waitForTinyMCEReady,
+    setTinyMCEContent,
+    selectFirstPage,
+} from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Markdown and Code Block Rendering
@@ -24,7 +30,8 @@ test.describe('Markdown and Code Block Rendering', () => {
 
             await waitForAppReady(page);
 
-            // Add a text iDevice
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
@@ -108,6 +115,7 @@ test.describe('Markdown and Code Block Rendering', () => {
 
             await waitForAppReady(page);
 
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
@@ -198,6 +206,7 @@ print(greeting)</code></pre>
 
             await waitForAppReady(page);
 
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
@@ -308,6 +317,7 @@ print(greeting)</code></pre>
 
             await waitForAppReady(page);
 
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();

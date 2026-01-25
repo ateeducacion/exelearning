@@ -587,10 +587,22 @@ export default class App {
             // (e.g., https://exelearning.pages.dev/pr-preview/pr-20/)
             if (!this.eXeLearning.config.basePath) {
                 const pathname = window.location.pathname;
-                // Remove index.html and trailing slashes to get the base directory
-                const detectedBase = pathname
-                    .replace(/\/index\.html$/i, '')
-                    .replace(/\/+$/, '');
+                // Known SPA routes handled by the main index.html - these are NOT real subdirectories
+                // Query string (e.g., ?project=static-project) is in window.location.search, not pathname
+                const knownSpaRoutes = ['/workarea', '/login', '/viewer'];
+                const isKnownSpaRoute = knownSpaRoutes.some(
+                    (route) => pathname === route || pathname.startsWith(route + '/'),
+                );
+
+                let detectedBase;
+                if (isKnownSpaRoute) {
+                    // SPA route - static files are at root
+                    detectedBase = '';
+                } else {
+                    // Real subdirectory deployment (e.g., /pr-preview/pr-20/)
+                    // Remove index.html and trailing slashes to get the base directory
+                    detectedBase = pathname.replace(/\/index\.html$/i, '').replace(/\/+$/, '');
+                }
                 this.eXeLearning.config.basePath = detectedBase;
 
                 // Also update the symfony compatibility shim with detected basePath

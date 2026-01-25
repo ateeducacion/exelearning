@@ -9,8 +9,8 @@ import { ShareModalPage } from '../pages/share-modal.page';
  */
 test.describe('Share Modal', () => {
     // Skip all share modal tests in static mode (requires server API)
-    test.beforeEach(async () => {
-        skipInStaticMode(test, 'Server API for sharing');
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Server API for sharing');
     });
     let shareModal: ShareModalPage;
 

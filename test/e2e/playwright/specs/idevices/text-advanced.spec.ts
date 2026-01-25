@@ -7,6 +7,7 @@ import {
     waitForTinyMCEReady,
     setTinyMCEContent,
     openPreviewAndWaitForContent,
+    selectFirstPage,
 } from '../../helpers/workarea-helpers';
 
 /**
@@ -30,7 +31,8 @@ test.describe('Text iDevice Advanced Features', () => {
 
             await waitForAppReady(page);
 
-            // Add a text iDevice
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
@@ -122,7 +124,8 @@ test.describe('Text iDevice Advanced Features', () => {
 
             await waitForAppReady(page);
 
-            // Add a text iDevice
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
@@ -209,7 +212,8 @@ test.describe('Text iDevice Advanced Features', () => {
 
             await waitForAppReady(page);
 
-            // Add a text iDevice with exe-dl content
+            // Select a non-root page and add a text iDevice with exe-dl content
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
@@ -286,7 +290,8 @@ test.describe('Text iDevice Advanced Features', () => {
 
             await waitForAppReady(page);
 
-            // Add a text iDevice
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
@@ -340,7 +345,8 @@ test.describe('Text iDevice Advanced Features', () => {
 
             await waitForAppReady(page);
 
-            // Add a text iDevice
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();

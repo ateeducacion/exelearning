@@ -16,8 +16,8 @@ test.describe('Real-Time Collaboration', () => {
     test.setTimeout(120000); // 2 minutes per test
 
     // Skip all collaboration tests in static mode
-    test.beforeEach(async () => {
-        skipInStaticMode(test, 'WebSocket collaboration');
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'WebSocket collaboration');
     });
 
     test.describe('Project Sharing Setup', () => {

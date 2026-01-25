@@ -1,5 +1,5 @@
-import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady, addTextIdevice } from '../helpers/workarea-helpers';
+import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
+import { waitForAppReady, addTextIdevice, selectFirstPage } from '../helpers/workarea-helpers';
 
 /**
  * Block Icon Selection Modal Tests
@@ -14,7 +14,10 @@ test.describe('Block Icon Selection Modal', () => {
     test('should display icons correctly in the block icon selection modal', async ({
         authenticatedPage,
         createProject,
-    }) => {
+    }, testInfo) => {
+        // Skip in static mode - requires server to create projects and add iDevices
+        skipInStaticMode(test, testInfo, 'Requires server to create projects and add iDevices');
+
         const page = authenticatedPage;
 
         // Create a new project
@@ -28,7 +31,8 @@ test.describe('Block Icon Selection Modal', () => {
         // Wait for app initialization
         await waitForAppReady(page);
 
-        // Add a text iDevice to create a block
+        // Select a non-root page and add a text iDevice to create a block
+        await selectFirstPage(page);
         await addTextIdevice(page);
 
         // Wait a moment for the UI to stabilize
@@ -79,7 +83,10 @@ test.describe('Block Icon Selection Modal', () => {
         expect(emptyIconId).toBe('0'); // Empty icon should have id "0"
     });
 
-    test('should return icons with proper ThemeIcon structure from API', async ({ authenticatedPage }) => {
+    test('should return icons with proper ThemeIcon structure from API', async ({ authenticatedPage }, testInfo) => {
+        // Skip in static mode - requires server API endpoints
+        skipInStaticMode(test, testInfo, 'Requires server API endpoints');
+
         const page = authenticatedPage;
 
         // Directly call the themes API and verify icon structure

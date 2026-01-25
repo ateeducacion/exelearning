@@ -286,6 +286,85 @@ describe('App utility methods', () => {
       window.location = originalLocation;
       delete window.__EXE_STATIC_MODE__;
     });
+
+    it('detects empty basePath for /workarea SPA route in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      // SPA route: /workarea is handled by index.html, not a real subdirectory
+      window.location = { href: 'https://example.com/workarea?project=test', protocol: 'https:', pathname: '/workarea' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // /workarea is a known SPA route - basePath should be empty, not '/workarea'
+      expect(window.eXeLearning.config.basePath).toBe('');
+      expect(window.eXeLearning.symfony.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects empty basePath for /login SPA route in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/login', protocol: 'https:', pathname: '/login' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // /login is a known SPA route - basePath should be empty
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects empty basePath for /viewer SPA route in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/viewer/index.html', protocol: 'https:', pathname: '/viewer/index.html' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // /viewer is a known SPA route - basePath should be empty
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects real subdirectory basePath even with SPA-like segment in path', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      // Real subdirectory that happens to contain 'workarea' but is not the SPA route
+      window.location = { href: 'https://example.com/pr-preview/pr-20/index.html', protocol: 'https:', pathname: '/pr-preview/pr-20/index.html' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // This is a real subdirectory, not a SPA route
+      expect(window.eXeLearning.config.basePath).toBe('/pr-preview/pr-20');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
   });
 
   describe('showProvisionalDemoWarning', () => {

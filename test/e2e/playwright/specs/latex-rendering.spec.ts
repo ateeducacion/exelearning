@@ -10,6 +10,7 @@ import {
     waitForTinyMCEReady,
     saveProject,
     reloadPage,
+    selectFirstPage,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -723,7 +724,8 @@ test.describe('LaTeX Rendering', () => {
             // Enable addMathJax via the Project Properties UI toggle
             await enableMathJaxViaUI(page);
 
-            // Add a text iDevice
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             // Wait for text iDevice to appear
@@ -922,7 +924,8 @@ test.describe('LaTeX Rendering', () => {
 
             await waitForAppReady(page);
 
-            // Add a text iDevice
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             // Wait for text iDevice to appear
@@ -1061,8 +1064,8 @@ test.describe('LaTeX Rendering', () => {
     test.describe('LaTeX in Project Title', () => {
         test.describe('Open Dialog', () => {
             // Skip in static mode - Open dialog requires server storage
-            test.beforeAll(async () => {
-                skipInStaticMode(test, 'Open dialog requires server storage');
+            test.beforeAll(async ({}, testInfo) => {
+                skipInStaticMode(test, testInfo, 'Open dialog requires server storage');
             });
 
             test('should render LaTeX in project title and show it in Open dialog after save', async ({

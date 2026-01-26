@@ -1,7 +1,7 @@
 /**
  * ServerMermaidPreRenderer
  *
- * Pre-renders Mermaid diagrams to static SVG using the mermaid npm package.
+ * Pre-renders Mermaid diagrams to static SVG using the local mermaid.min.js file.
  * This allows CLI exports to include pre-rendered diagrams without bundling Mermaid (~2.7MB).
  *
  * Output format:
@@ -9,11 +9,13 @@
  *   <svg>...rendered diagram...</svg>
  * </div>
  *
- * Based on the browser-side MermaidPreRenderer.js, adapted for Node.js using
- * the mermaid npm package with jsdom for DOM virtualization.
+ * Uses the local mermaid.min.js from public/app/common/mermaid/ instead of the
+ * npm package to reduce Docker image size by ~66MB.
  */
 
 import { JSDOM } from 'jsdom';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import type { MermaidPreRenderResult, ServerMermaidPreRendererInterface } from './interfaces';
 
 // Detection pattern for mermaid diagrams
@@ -25,14 +27,14 @@ let renderCounter = 0;
 /**
  * Escape HTML special characters for use in attributes
  */
-function escapeHtmlAttribute(text: string): string {
+export function escapeHtmlAttribute(text: string): string {
     return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /**
  * Decode HTML entities in mermaid code
  */
-function decodeHtmlEntities(text: string): string {
+export function decodeHtmlEntities(text: string): string {
     return text
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
@@ -42,11 +44,83 @@ function decodeHtmlEntities(text: string): string {
         .replace(/&nbsp;/g, ' ');
 }
 
-// Import mermaid dynamically to handle the ESM module
-let mermaidModule: MermaidAPI | null = null;
+/**
+ * Mermaid API interface (minimal typing)
+ */
+export interface MermaidAPI {
+    initialize(config: MermaidConfig): void;
+    render(id: string, code: string): Promise<{ svg: string }>;
+}
+
+interface MermaidConfig {
+    startOnLoad?: boolean;
+    suppressErrorRendering?: boolean;
+    logLevel?: string;
+    securityLevel?: string;
+    theme?: string;
+    flowchart?: { useMaxWidth?: boolean; htmlLabels?: boolean };
+    sequence?: { useMaxWidth?: boolean };
+    gantt?: { useMaxWidth?: boolean };
+}
 
 /**
- * Server-side Mermaid Pre-renderer using mermaid npm package
+ * Dependencies for ServerMermaidPreRenderer
+ */
+export interface ServerMermaidPreRendererDeps {
+    loadMermaidScript: () => string;
+}
+
+// Cache the mermaid script content to avoid repeated file reads
+let mermaidScriptContent: string | null = null;
+
+/**
+ * Default implementation to load the mermaid script from the local file
+ */
+function defaultLoadMermaidScript(): string {
+    if (mermaidScriptContent !== null) {
+        return mermaidScriptContent;
+    }
+
+    const mermaidPath = path.join(process.cwd(), 'public/app/common/mermaid/mermaid.min.js');
+
+    if (!fs.existsSync(mermaidPath)) {
+        throw new Error(`Mermaid script not found at: ${mermaidPath}`);
+    }
+
+    mermaidScriptContent = fs.readFileSync(mermaidPath, 'utf-8');
+    return mermaidScriptContent;
+}
+
+const defaultDeps: ServerMermaidPreRendererDeps = {
+    loadMermaidScript: defaultLoadMermaidScript,
+};
+
+// Current dependencies (can be overridden for testing)
+let deps = { ...defaultDeps };
+
+/**
+ * Configure dependencies for testing
+ */
+export function configure(newDeps: Partial<ServerMermaidPreRendererDeps>): void {
+    deps = { ...defaultDeps, ...newDeps };
+}
+
+/**
+ * Reset dependencies to defaults
+ */
+export function resetDependencies(): void {
+    deps = { ...defaultDeps };
+}
+
+/**
+ * Reset the mermaid script cache (for testing)
+ */
+export function resetScriptCache(): void {
+    mermaidScriptContent = null;
+}
+
+/**
+ * Server-side Mermaid Pre-renderer using local mermaid.min.js
  */
 export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterface {
     private mermaid: MermaidAPI | null = null;
@@ -62,7 +136,16 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
     }
 
     /**
-     * Initialize the Mermaid library
+     * Set a mock mermaid instance for testing
+     */
+    setMermaidForTesting(mermaid: MermaidAPI): void {
+        this.mermaid = mermaid;
+        this.initialized = true;
+        this.initializationFailed = false;
+    }
+
+    /**
+     * Initialize the Mermaid library by loading local mermaid.min.js in jsdom
      */
     async initialize(): Promise<void> {
         if (this.initialized) {
@@ -122,16 +205,21 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         global.SVGElement = window.SVGElement;
 
         try {
-            // Import mermaid from npm package (cached for subsequent initializations)
-            if (!mermaidModule) {
-                const imported = await import('mermaid');
-                mermaidModule = imported.default as unknown as MermaidAPI;
-            }
-            this.mermaid = mermaidModule;
+            // Load mermaid script from local file
+            const mermaidScript = deps.loadMermaidScript();
 
-            if (!this.mermaid) {
-                throw new Error('Mermaid library not found after import');
+            // Execute mermaid script in jsdom context
+            // The script sets globalThis.mermaid
+            window.eval(mermaidScript);
+
+            // Get mermaid from the window (globalThis in browser context)
+            const windowMermaid = (window as unknown as { mermaid?: MermaidAPI }).mermaid;
+
+            if (!windowMermaid) {
+                throw new Error('Mermaid library not found after loading local script');
             }
+
+            this.mermaid = windowMermaid;
 
             // Initialize mermaid with settings optimized for server-side rendering
             this.mermaid.initialize({
@@ -366,23 +454,4 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         // @ts-expect-error - Cleaning up globals
         delete global.SVGElement;
     }
-}
-
-/**
- * Mermaid API interface (minimal typing)
- */
-interface MermaidAPI {
-    initialize(config: MermaidConfig): void;
-    render(id: string, code: string): Promise<{ svg: string }>;
-}
-
-interface MermaidConfig {
-    startOnLoad?: boolean;
-    suppressErrorRendering?: boolean;
-    logLevel?: string;
-    securityLevel?: string;
-    theme?: string;
-    flowchart?: { useMaxWidth?: boolean; htmlLabels?: boolean };
-    sequence?: { useMaxWidth?: boolean };
-    gantt?: { useMaxWidth?: boolean };
 }

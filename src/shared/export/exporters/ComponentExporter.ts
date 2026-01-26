@@ -346,19 +346,26 @@ export class ComponentExporter extends BaseExporter {
      * @param filename - Download filename
      */
     private downloadBlob(data: Uint8Array, filename: string): void {
-        if (typeof window === 'undefined' || typeof document === 'undefined') {
+        if (typeof window === 'undefined' || typeof document === 'undefined' || typeof document.body === 'undefined') {
             console.warn('[ComponentExporter] downloadBlob only works in browser environment');
             return;
         }
 
-        const blob = new Blob([data], { type: 'application/zip' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        try {
+            const blob = new Blob([data], { type: 'application/zip' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            // Check if click method exists (may not in test environments)
+            if (typeof link.click === 'function') {
+                link.click();
+            }
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch {
+            console.warn('[ComponentExporter] downloadBlob failed - not in full browser environment');
+        }
     }
 }

@@ -1313,4 +1313,141 @@ describe('Asset Coordinator Service (DI)', () => {
             coordinator.cleanupProject('non-existent-project');
         });
     });
+
+    describe('Edge cases - no peer has asset', () => {
+        it('should handle request for asset that no peer has', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('no-asset-project', 'client-1', socket);
+
+            // Request asset that doesn't exist
+            await coordinator.handleMessage('no-asset-project', 'client-1', {
+                type: 'request-asset',
+                data: { assetId: 'nonexistent-asset' },
+            });
+
+            // Should not crash, just return early
+            coordinator.cleanupProject('no-asset-project');
+        });
+
+        it('should handle priority update for asset with empty peer set', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('empty-peer-project', 'client-1', socket);
+
+            // Announce asset then remove it
+            await coordinator.handleMessage('empty-peer-project', 'client-1', {
+                type: 'awareness-update',
+                data: { availableAssets: ['temp-asset'] },
+            });
+
+            // Clear assets by sending empty array
+            await coordinator.handleMessage('empty-peer-project', 'client-1', {
+                type: 'awareness-update',
+                data: { availableAssets: [] },
+            });
+
+            // Now request the asset that no one has
+            await coordinator.handleMessage('empty-peer-project', 'client-1', {
+                type: 'priority-update',
+                data: { assetId: 'temp-asset', priority: 50, reason: 'render' },
+            });
+
+            coordinator.cleanupProject('empty-peer-project');
+        });
+    });
+
+    describe('Edge cases - broadcastToProjectExcept', () => {
+        it('should broadcast to all clients except sender when multiple clients exist', async () => {
+            const socket1 = createMockSocket();
+            const socket2 = createMockSocket();
+            const socket3 = createMockSocket();
+
+            coordinator.registerClient('multi-client-project', 'client-1', socket1);
+            coordinator.registerClient('multi-client-project', 'client-2', socket2);
+            coordinator.registerClient('multi-client-project', 'client-3', socket3);
+
+            // Client 1 announces an asset - should broadcast to 2 and 3
+            await coordinator.handleMessage('multi-client-project', 'client-1', {
+                type: 'awareness-update',
+                data: { availableAssets: ['shared-asset'] },
+            });
+
+            // Client 1 sends bulk upload progress - should trigger broadcastToProjectExcept
+            await coordinator.handleMessage('multi-client-project', 'client-1', {
+                type: 'bulk-upload-progress',
+                data: {
+                    status: 'completed',
+                    total: 3,
+                    completed: 3,
+                    failed: 0,
+                    uploadedAssetIds: ['a1', 'a2', 'a3'],
+                },
+            });
+
+            // socket2 and socket3 should have received broadcasts, socket1 should not
+            expect(socket2.messages.length).toBeGreaterThan(0);
+            expect(socket3.messages.length).toBeGreaterThan(0);
+
+            coordinator.cleanupProject('multi-client-project');
+        });
+
+        it('should handle broadcast error in broadcastToProjectExcept', async () => {
+            const errorSocket = createMockSocket();
+            const normalSocket = createMockSocket();
+            errorSocket.send = () => {
+                throw new Error('Broadcast send failed');
+            };
+
+            coordinator.registerClient('except-error-project', 'error-client', errorSocket);
+            coordinator.registerClient('except-error-project', 'normal-client', normalSocket);
+
+            // Trigger broadcastToProjectExcept via bulk-upload-progress from normal client
+            await coordinator.handleMessage('except-error-project', 'normal-client', {
+                type: 'bulk-upload-progress',
+                data: {
+                    status: 'completed',
+                    total: 1,
+                    completed: 1,
+                    failed: 0,
+                    uploadedAssetIds: ['test-asset'],
+                },
+            });
+
+            // Should not throw despite error socket
+            coordinator.cleanupProject('except-error-project');
+        });
+    });
+
+    describe('Edge cases - sendToClient error', () => {
+        it('should handle sendToClient error gracefully', async () => {
+            const errorSocket = createMockSocket();
+            errorSocket.send = () => {
+                throw new Error('Send failed');
+            };
+
+            coordinator.registerClient('send-error-project', 'error-client', errorSocket);
+
+            // Announce asset ownership
+            await coordinator.handleMessage('send-error-project', 'error-client', {
+                type: 'awareness-update',
+                data: { availableAssets: ['my-asset'] },
+            });
+
+            // Request asset - should try to send upload-request but fail
+            const socket2 = createMockSocket();
+            coordinator.registerClient('send-error-project', 'client-2', socket2);
+
+            await coordinator.handleMessage('send-error-project', 'client-2', {
+                type: 'awareness-update',
+                data: { availableAssets: [] },
+            });
+
+            await coordinator.handleMessage('send-error-project', 'client-2', {
+                type: 'request-asset',
+                data: { assetId: 'my-asset' },
+            });
+
+            // Should not crash
+            coordinator.cleanupProject('send-error-project');
+        });
+    });
 });

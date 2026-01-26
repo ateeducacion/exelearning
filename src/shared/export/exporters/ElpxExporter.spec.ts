@@ -919,4 +919,156 @@ describe('ElpxExporter', () => {
             expect(zip.files.has('theme/default.js')).toBe(false);
         });
     });
+
+    describe('Pre-render Hooks', () => {
+        it('should call preRenderLatex hook when provided', async () => {
+            let latexHookCalled = false;
+            await exporter.export({
+                preRenderLatex: async (html: string) => {
+                    latexHookCalled = true;
+                    return { html, latexRendered: false, count: 0 };
+                },
+            });
+
+            expect(latexHookCalled).toBe(true);
+        });
+
+        it('should apply LaTeX pre-rendering to HTML pages', async () => {
+            await exporter.export({
+                preRenderLatex: async (html: string) => {
+                    if (html.includes('Welcome to the course')) {
+                        return {
+                            html: html.replace('Welcome', 'Pre-rendered Welcome'),
+                            latexRendered: true,
+                            count: 1,
+                        };
+                    }
+                    return { html, latexRendered: false, count: 0 };
+                },
+            });
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('Pre-rendered Welcome');
+        });
+
+        it('should include LaTeX CSS when LaTeX is pre-rendered', async () => {
+            await exporter.export({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    latexRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = zip.files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+            const cssText =
+                baseCss instanceof Uint8Array
+                    ? new TextDecoder().decode(baseCss)
+                    : baseCss instanceof Buffer
+                      ? baseCss.toString()
+                      : baseCss;
+            expect(cssText).toContain('exe-math-rendered');
+        });
+
+        it('should call preRenderMermaid hook when provided', async () => {
+            let mermaidHookCalled = false;
+            await exporter.export({
+                preRenderMermaid: async (html: string) => {
+                    mermaidHookCalled = true;
+                    return { html, mermaidRendered: false, count: 0 };
+                },
+            });
+
+            expect(mermaidHookCalled).toBe(true);
+        });
+
+        it('should apply Mermaid pre-rendering to HTML pages', async () => {
+            await exporter.export({
+                preRenderMermaid: async (html: string) => {
+                    if (html.includes('Welcome to the course')) {
+                        return {
+                            html: html.replace('Welcome', 'Mermaid-rendered Welcome'),
+                            mermaidRendered: true,
+                            count: 1,
+                        };
+                    }
+                    return { html, mermaidRendered: false, count: 0 };
+                },
+            });
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('Mermaid-rendered Welcome');
+        });
+
+        it('should include Mermaid CSS when Mermaid is pre-rendered', async () => {
+            await exporter.export({
+                preRenderMermaid: async (html: string) => ({
+                    html,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = zip.files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+            const cssText =
+                baseCss instanceof Uint8Array
+                    ? new TextDecoder().decode(baseCss)
+                    : baseCss instanceof Buffer
+                      ? baseCss.toString()
+                      : baseCss;
+            expect(cssText).toContain('exe-mermaid-rendered');
+        });
+
+        it('should handle preRenderLatex errors gracefully', async () => {
+            const result = await exporter.export({
+                preRenderLatex: async () => {
+                    throw new Error('LaTeX pre-render error');
+                },
+            });
+
+            // Should still succeed despite LaTeX error
+            expect(result.success).toBe(true);
+        });
+
+        it('should handle preRenderMermaid errors gracefully', async () => {
+            const result = await exporter.export({
+                preRenderMermaid: async () => {
+                    throw new Error('Mermaid pre-render error');
+                },
+            });
+
+            // Should still succeed despite Mermaid error
+            expect(result.success).toBe(true);
+        });
+
+        it('should apply both LaTeX and Mermaid pre-rendering when both provided', async () => {
+            await exporter.export({
+                preRenderLatex: async (html: string) => ({
+                    html: html.replace('Welcome', 'LaTeX-Welcome'),
+                    latexRendered: true,
+                    count: 1,
+                }),
+                preRenderMermaid: async (html: string) => ({
+                    html: html.replace('LaTeX-Welcome', 'LaTeX-Mermaid-Welcome'),
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('LaTeX-Mermaid-Welcome');
+
+            const baseCss = zip.files.get('content/css/base.css');
+            const cssText =
+                baseCss instanceof Uint8Array
+                    ? new TextDecoder().decode(baseCss)
+                    : baseCss instanceof Buffer
+                      ? baseCss.toString()
+                      : baseCss;
+            expect(cssText).toContain('exe-math-rendered');
+            expect(cssText).toContain('exe-mermaid-rendered');
+        });
+    });
 });

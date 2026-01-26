@@ -27,6 +27,8 @@ import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 import { generateI18nScript } from '../generators/I18nGenerator';
 
+const DEBUG = process.env.APP_DEBUG === '1';
+
 export class Html5Exporter extends BaseExporter {
     /**
      * Get file extension for HTML5 format
@@ -78,7 +80,7 @@ export class Html5Exporter extends BaseExporter {
                 themeRootFiles,
                 faviconInfo: detectedFavicon,
             } = await this.prepareThemeData(themeName);
-            if (themeFilesMap) {
+            if (themeFilesMap && DEBUG) {
                 console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFilesMap.size}`);
             }
 
@@ -161,9 +163,10 @@ export class Html5Exporter extends BaseExporter {
                         if (result.mermaidRendered) {
                             html = result.html;
                             mermaidWasRendered = true;
-                            console.log(
-                                `[Html5Exporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
-                            );
+                            if (DEBUG)
+                                console.log(
+                                    `[Html5Exporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
+                                );
                         }
                     } catch (error) {
                         console.warn('[Html5Exporter] Mermaid pre-render failed for page:', page.title, error);
@@ -222,7 +225,7 @@ export class Html5Exporter extends BaseExporter {
             // 6. Add theme files (already pre-fetched in step 0)
             if (themeFilesMap) {
                 for (const [filePath, content] of themeFilesMap) {
-                    console.log(`[Html5Exporter] Adding theme file: theme/${filePath}`);
+                    if (DEBUG) console.log(`[Html5Exporter] Adding theme file: theme/${filePath}`);
                     addFile(`theme/${filePath}`, content);
                 }
             } else {
@@ -259,7 +262,7 @@ export class Html5Exporter extends BaseExporter {
                 },
             );
 
-            if (latexWasRendered) {
+            if (latexWasRendered && DEBUG) {
                 console.log('[Html5Exporter] LaTeX pre-rendered - skipping MathJax library (~1MB saved)');
             }
 

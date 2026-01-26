@@ -81,10 +81,14 @@ export class ElpxExporter extends Html5Exporter {
             // 1.0 Pre-fetch theme to get the list of CSS/JS files for HTML includes
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
-            // 1.1 Generate HTML pages
+            // Track if LaTeX or Mermaid was pre-rendered (to add CSS later)
+            let latexWasRendered = false;
+            let mermaidWasRendered = false;
+
+            // 1.1 Generate HTML pages with optional pre-rendering
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const html = this.generatePageHtml(
+                let html = this.generatePageHtml(
                     page,
                     pages,
                     meta,
@@ -94,6 +98,33 @@ export class ElpxExporter extends Html5Exporter {
                     faviconInfo,
                     pageFilenameMap,
                 );
+
+                // Pre-render LaTeX to static SVG if hook is provided
+                if (options?.preRenderLatex) {
+                    try {
+                        const result = await options.preRenderLatex(html);
+                        if (result.latexRendered) {
+                            html = result.html;
+                            latexWasRendered = true;
+                        }
+                    } catch (error) {
+                        console.warn('[ElpxExporter] LaTeX pre-render failed for page:', page.title, error);
+                    }
+                }
+
+                // Pre-render Mermaid diagrams to static SVG if hook is provided
+                if (options?.preRenderMermaid) {
+                    try {
+                        const result = await options.preRenderMermaid(html);
+                        if (result.mermaidRendered) {
+                            html = result.html;
+                            mermaidWasRendered = true;
+                        }
+                    } catch (error) {
+                        console.warn('[ElpxExporter] Mermaid pre-render failed for page:', page.title, error);
+                    }
+                }
+
                 // Use unique filename from the map (handles title collisions)
                 const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
                 const pageFilename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
@@ -106,11 +137,24 @@ export class ElpxExporter extends Html5Exporter {
                 this.zip.addFile('search_index.js', searchIndexContent);
             }
 
-            // 1.3 Add base CSS (fetch from content/css)
+            // 1.3 Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
             const contentCssFiles = await this.resources.fetchContentCss();
-            const baseCss = contentCssFiles.get('content/css/base.css');
+            let baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
+            }
+            // Append pre-rendered CSS if LaTeX or Mermaid was rendered
+            if (latexWasRendered || mermaidWasRendered) {
+                const decoder = new TextDecoder();
+                let baseCssText = decoder.decode(baseCss);
+                if (latexWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedLatexCss();
+                }
+                if (mermaidWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedMermaidCss();
+                }
+                const encoder = new TextEncoder();
+                baseCss = encoder.encode(baseCssText);
             }
             this.zip.addFile('content/css/base.css', baseCss);
 

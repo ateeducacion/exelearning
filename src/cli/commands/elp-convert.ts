@@ -31,6 +31,8 @@ import {
     FileSystemAssetProvider,
     FflateZipProvider,
     ElpxExporter,
+    ServerLatexPreRenderer,
+    ServerMermaidPreRenderer,
 } from '../../shared/export';
 
 export interface ElpConvertResult {
@@ -75,6 +77,25 @@ export function configureDependencies(newDeps: Partial<ElpConvertDependencies>):
  */
 export function resetDependencies(): void {
     deps = defaultDependencies;
+}
+
+// Lazy-initialized pre-renderers (singleton pattern)
+let latexRenderer: ServerLatexPreRenderer | null = null;
+let mermaidRenderer: ServerMermaidPreRenderer | null = null;
+
+function getLatexRenderer(): ServerLatexPreRenderer {
+    if (!latexRenderer) {
+        latexRenderer = new ServerLatexPreRenderer();
+    }
+    return latexRenderer;
+}
+
+async function getMermaidRenderer(): Promise<ServerMermaidPreRenderer> {
+    if (!mermaidRenderer) {
+        mermaidRenderer = new ServerMermaidPreRenderer();
+        await mermaidRenderer.initialize();
+    }
+    return mermaidRenderer;
 }
 
 /**
@@ -252,8 +273,33 @@ export async function execute(
             console.log(`[DEBUG] Starting ELPX export...`);
         }
 
+        // Create pre-render hooks for LaTeX and Mermaid
+        // These convert LaTeX/Mermaid to static SVG, avoiding the need to bundle
+        // MathJax (~1MB) and Mermaid (~2.7MB) libraries in the export
+        const preRenderLatex = async (html: string) => {
+            const renderer = getLatexRenderer();
+            return renderer.preRender(html);
+        };
+
+        const preRenderDataGameLatex = async (html: string) => {
+            const renderer = getLatexRenderer();
+            return renderer.preRenderDataGameLatex(html);
+        };
+
+        const preRenderMermaid = async (html: string) => {
+            const renderer = await getMermaidRenderer();
+            return renderer.preRender(html);
+        };
+
+        if (debug) {
+            console.log('[DEBUG] Pre-renderers initialized for LaTeX and Mermaid');
+        }
+
         const result = await exporter.export({
             filename: path.basename(output),
+            preRenderLatex,
+            preRenderDataGameLatex,
+            preRenderMermaid,
         });
 
         if (!result.success) {
@@ -294,6 +340,12 @@ export async function execute(
 
         // Clean up Y.Doc
         wrapper.destroy();
+
+        // Clean up Mermaid renderer (releases jsdom resources)
+        if (mermaidRenderer) {
+            mermaidRenderer.destroy();
+            mermaidRenderer = null;
+        }
 
         if (debug) {
             console.log(`[DEBUG] Conversion completed: ${outputPath}`);

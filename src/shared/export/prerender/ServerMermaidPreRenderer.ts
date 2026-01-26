@@ -1,7 +1,7 @@
 /**
  * ServerMermaidPreRenderer
  *
- * Pre-renders Mermaid diagrams to static SVG using the mermaid npm package.
+ * Pre-renders Mermaid diagrams to static SVG using isomorphic-mermaid.
  * This allows CLI exports to include pre-rendered diagrams without bundling Mermaid (~2.7MB).
  *
  * Output format:
@@ -9,11 +9,10 @@
  *   <svg>...rendered diagram...</svg>
  * </div>
  *
- * Based on the browser-side MermaidPreRenderer.js, adapted for Node.js using
- * the mermaid npm package with jsdom for DOM virtualization.
+ * Uses isomorphic-mermaid which provides a pre-configured, server-friendly DOM
+ * so we can render Mermaid diagrams in Node.js without a browser.
  */
 
-import { JSDOM } from 'jsdom';
 import type { MermaidPreRenderResult, ServerMermaidPreRendererInterface } from './interfaces';
 
 // Detection pattern for mermaid diagrams
@@ -25,14 +24,14 @@ let renderCounter = 0;
 /**
  * Escape HTML special characters for use in attributes
  */
-function escapeHtmlAttribute(text: string): string {
+export function escapeHtmlAttribute(text: string): string {
     return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /**
  * Decode HTML entities in mermaid code
  */
-function decodeHtmlEntities(text: string): string {
+export function decodeHtmlEntities(text: string): string {
     return text
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
@@ -42,15 +41,66 @@ function decodeHtmlEntities(text: string): string {
         .replace(/&nbsp;/g, ' ');
 }
 
-// Import mermaid dynamically to handle the ESM module
-let mermaidModule: MermaidAPI | null = null;
+/**
+ * Mermaid API interface (minimal typing)
+ */
+export interface MermaidAPI {
+    initialize(config: MermaidConfig): void;
+    render(id: string, code: string): Promise<{ svg: string }>;
+}
+
+interface MermaidConfig {
+    startOnLoad?: boolean;
+    suppressErrorRendering?: boolean;
+    logLevel?: string;
+    securityLevel?: string;
+    theme?: string;
+    flowchart?: { useMaxWidth?: boolean; htmlLabels?: boolean };
+    sequence?: { useMaxWidth?: boolean };
+    gantt?: { useMaxWidth?: boolean };
+}
 
 /**
- * Server-side Mermaid Pre-renderer using mermaid npm package
+ * Dependencies for ServerMermaidPreRenderer
+ */
+export interface ServerMermaidPreRendererDeps {
+    loadMermaid: () => Promise<MermaidAPI>;
+}
+
+/**
+ * Default implementation to load isomorphic-mermaid
+ */
+async function defaultLoadMermaid(): Promise<MermaidAPI> {
+    const mermaidModule = await import('isomorphic-mermaid');
+    return mermaidModule.default as unknown as MermaidAPI;
+}
+
+const defaultDeps: ServerMermaidPreRendererDeps = {
+    loadMermaid: defaultLoadMermaid,
+};
+
+// Current dependencies (can be overridden for testing)
+let deps = { ...defaultDeps };
+
+/**
+ * Configure dependencies for testing
+ */
+export function configure(newDeps: Partial<ServerMermaidPreRendererDeps>): void {
+    deps = { ...defaultDeps, ...newDeps };
+}
+
+/**
+ * Reset dependencies to defaults
+ */
+export function resetDependencies(): void {
+    deps = { ...defaultDeps };
+}
+
+/**
+ * Server-side Mermaid Pre-renderer using isomorphic-mermaid
  */
 export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterface {
     private mermaid: MermaidAPI | null = null;
-    private dom: JSDOM | null = null;
     private initialized = false;
     private initializationFailed = false;
 
@@ -62,85 +112,33 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
     }
 
     /**
-     * Initialize the Mermaid library
+     * Set a mock mermaid instance for testing
+     */
+    setMermaidForTesting(mermaid: MermaidAPI): void {
+        this.mermaid = mermaid;
+        this.initialized = true;
+        this.initializationFailed = false;
+    }
+
+    /**
+     * Initialize the Mermaid library using isomorphic-mermaid
      */
     async initialize(): Promise<void> {
         if (this.initialized) {
             return;
         }
 
-        // Create jsdom with required features for mermaid
-        this.dom = new JSDOM(
-            '<!DOCTYPE html><html><head></head><body><div id="mermaid-container"></div></body></html>',
-            {
-                runScripts: 'dangerously',
-                pretendToBeVisual: true,
-                url: 'http://localhost',
-            },
-        );
-
-        const { window } = this.dom;
-
-        // Polyfill SVG methods that mermaid needs but jsdom doesn't implement
-        // getBBox returns bounding box dimensions for text measurement
-        if (!window.SVGElement.prototype.getBBox) {
-            (window.SVGElement.prototype as unknown as Record<string, unknown>).getBBox = function () {
-                // Return reasonable default dimensions for server-side rendering
-                const text = this.textContent || '';
-                return {
-                    x: 0,
-                    y: 0,
-                    width: text.length * 8, // Approximate 8px per character
-                    height: 16, // Approximate line height
-                };
-            };
-        }
-
-        // getComputedTextLength for text elements
-        if (!window.SVGTextElement?.prototype?.getComputedTextLength) {
-            if (window.SVGTextElement) {
-                (window.SVGTextElement.prototype as unknown as Record<string, unknown>).getComputedTextLength =
-                    function () {
-                        const text = this.textContent || '';
-                        return text.length * 8;
-                    };
-            }
-        }
-
-        // Set up minimal browser globals that Mermaid expects
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.window = window;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.document = window.document;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.navigator = window.navigator;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.Element = window.Element;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.HTMLElement = window.HTMLElement;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.SVGElement = window.SVGElement;
-
         try {
-            // Import mermaid from npm package (cached for subsequent initializations)
-            if (!mermaidModule) {
-                const imported = await import('mermaid');
-                mermaidModule = imported.default as unknown as MermaidAPI;
-            }
-            this.mermaid = mermaidModule;
+            // Load isomorphic-mermaid which provides a server-friendly Mermaid
+            this.mermaid = await deps.loadMermaid();
 
-            if (!this.mermaid) {
-                throw new Error('Mermaid library not found after import');
-            }
-
-            // Initialize mermaid with settings optimized for server-side rendering
+            // Configure mermaid for server-side rendering
+            // Note: isomorphic-mermaid pre-configures with safe defaults
             this.mermaid.initialize({
                 startOnLoad: false,
                 suppressErrorRendering: true,
-                logLevel: 'fatal',
-                securityLevel: 'loose',
+                securityLevel: 'strict',
                 theme: 'default',
-                // Use simple settings for server-side rendering
                 flowchart: { useMaxWidth: true, htmlLabels: false },
                 sequence: { useMaxWidth: true },
                 gantt: { useMaxWidth: true },
@@ -148,7 +146,7 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
 
             this.initialized = true;
         } catch (error) {
-            // Mermaid initialization may fail if SVG rendering isn't available
+            // Mermaid initialization may fail in some environments
             // In this case, pre-rendering will be skipped and Mermaid diagrams
             // will be included in export with the Mermaid library
             console.warn(
@@ -345,44 +343,7 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
      * Cleanup resources
      */
     destroy(): void {
-        if (this.dom) {
-            this.dom.window.close();
-            this.dom = null;
-        }
         this.mermaid = null;
         this.initialized = false;
-
-        // Clean up global references
-        // @ts-expect-error - Cleaning up globals
-        delete global.window;
-        // @ts-expect-error - Cleaning up globals
-        delete global.document;
-        // @ts-expect-error - Cleaning up globals
-        delete global.navigator;
-        // @ts-expect-error - Cleaning up globals
-        delete global.Element;
-        // @ts-expect-error - Cleaning up globals
-        delete global.HTMLElement;
-        // @ts-expect-error - Cleaning up globals
-        delete global.SVGElement;
     }
-}
-
-/**
- * Mermaid API interface (minimal typing)
- */
-interface MermaidAPI {
-    initialize(config: MermaidConfig): void;
-    render(id: string, code: string): Promise<{ svg: string }>;
-}
-
-interface MermaidConfig {
-    startOnLoad?: boolean;
-    suppressErrorRendering?: boolean;
-    logLevel?: string;
-    securityLevel?: string;
-    theme?: string;
-    flowchart?: { useMaxWidth?: boolean; htmlLabels?: boolean };
-    sequence?: { useMaxWidth?: boolean };
-    gantt?: { useMaxWidth?: boolean };
 }

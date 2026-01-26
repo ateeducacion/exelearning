@@ -103,6 +103,19 @@ export class ElpxImporter {
     }
 
     /**
+     * Create a loggable version of stats (excludes binary data)
+     */
+    private getLoggableStats(stats: ElpxImportResult): Record<string, unknown> {
+        const { zipContents, ...loggableStats } = stats;
+        if (zipContents) {
+            // Show file count instead of binary data
+            const fileCount = typeof zipContents === 'object' ? Object.keys(zipContents).length : 0;
+            return { ...loggableStats, zipContents: `[${fileCount} files]` };
+        }
+        return loggableStats;
+    }
+
+    /**
      * Get the navigation Y.Array from the document
      */
     private getNavigation(): Y.Array<unknown> {
@@ -193,14 +206,14 @@ export class ElpxImporter {
             const legacyParser = new LegacyXmlParser(this.logger);
             const parsedData = legacyParser.parse(contentXml);
             const stats = await this.importLegacyStructure(parsedData, workingZip, { clearExisting, parentId });
-            this.logger.log('[ElpxImporter] Legacy import complete:', stats);
+            this.logger.log('[ElpxImporter] Legacy import complete:', this.getLoggableStats(stats));
             return stats;
         }
 
         // Extract and import structure (modern format)
         const stats = await this.importStructure(xmlDoc, workingZip, { clearExisting, parentId });
 
-        this.logger.log('[ElpxImporter] Import complete:', stats);
+        this.logger.log('[ElpxImporter] Import complete:', this.getLoggableStats(stats));
         return stats;
     }
 
@@ -426,7 +439,6 @@ export class ElpxImporter {
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
 
-        this.logger.log('[ElpxImporter] Import complete:', stats);
         return stats;
     }
 
@@ -523,7 +535,6 @@ export class ElpxImporter {
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
 
-        this.logger.log('[ElpxImporter] Legacy import complete:', stats);
         return stats;
     }
 

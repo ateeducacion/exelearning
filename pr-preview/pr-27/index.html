@@ -116,7 +116,7 @@
         }
 
         window.eXeLearning = {
-            version: "v0.0.0-pr27-202601260527",
+            version: "v0.0.0-pr27-202601260822",
             expires: "",
             extension: "elpx",
             user: JSON.stringify({
@@ -176,7 +176,7 @@
 
     <!-- Load Screen (visible by default in static mode) -->
     <div id="load-screen-main" class="load-screen loading" data-testid="loading-main" data-visible="true">
-        <span>eXeLearning v0.0.0-pr27-202601260527</span>
+        <span>eXeLearning v0.0.0-pr27-202601260822</span>
     </div>
 
     <!-- Main Workarea Container (visible by default in static mode) -->
@@ -367,8 +367,8 @@
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-idevice-manager" href="#"><span data-i18n="iDevice manager">iDevice manager</span></a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odeusedfiles" href="#"><span class="small-icon report-icon-green"></span> <span data-i18n="Resources report">Resources report</span></a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odebrokenlinks" href="#"><span class="small-icon link-icon"></span>  <span data-i18n="Link validation">Link validation</span></a></li>
-                    <li><a class="dropdown-item exe-advanced" id="navbar-button-filemanager" href="#"><span class="small-icon image-icon-green"></span> <span data-i18n="File manager">File manager</span></a></li>
-                    <li><a class="dropdown-item exe-advanced" id="navbar-button-imageoptimizer" href="#"><span class="small-icon image-icon"></span> <span data-i18n="Image optimizer">Image optimizer</span></a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-filemanager" href="#"><span class="small-icon folder-icon-green"></span> <span data-i18n="File manager">File manager</span></a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-imageoptimizer" href="#"><span class="small-icon image-icon-green"></span> <span data-i18n="Image optimizer">Image optimizer</span></a></li>
                     <li class="dropdown-divider"></li>
                     <li><a class="dropdown-item" id="navbar-button-styles" href="#" data-shortcut="Mod+Alt+T" aria-keyshortcuts="Control+Alt+T Meta+Alt+T"><span class="small-icon styles-icon"></span> <span data-i18n="Styles">Styles</span></a></li>
                     <li class="dropdown-divider"></li>
@@ -401,7 +401,7 @@
                 <span class="auto-icon" aria-hidden="true">download</span>
                 <span class="btn-label"><span data-i18n="Download">Download</span></span>
             </button>
-            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center" title="Save" data-i18n-title="Save" data-testid="save-button">
+            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center me-2" title="Save" data-i18n-title="Save" data-testid="save-button">
                 <div class="small-icon save-icon-white"></div>
                 <span><span data-i18n="Save">Save</span></span>
             </button>
@@ -415,14 +415,15 @@
                 <span class="medium-icon settings-icon"></span>
             </button>
             <button id="head-top-share-button"
-                    class="btn btn-share-pill exe-online d-flex align-items-center"
+                    class="btn button-tertiary button-square d-flex justify-content-center align-items-center"
                     title="Share" data-i18n-title="Share"
                     aria-label="Share" data-i18n-aria-label="Share">
                 <span class="share-visibility-indicator d-flex align-items-center">
-                    <div class="auto-icon share-visibility-icon" aria-hidden="true">lock</div>
+                    <div class="medium-icon share-icon"></div>
                 </span>
-                <span class="share-button-text"><span data-i18n="Share">Share</span></span>
+                <span class="visually-hidden"><span data-i18n="Share">Share</span></span>
             </button>
+            
             <div id="exe-last-edition" class="btn">
                 <span class="content"></span>
             </div>
@@ -714,7 +715,7 @@
                     <button type="button" class="btn btn-primary media-library-upload-btn">
                         <span class="exe-icon">add</span data-i18n="Add files"> Add files
                     </button>
-                    <button type="button" class="btn btn-outline-secondary media-library-newfolder-btn" title="New folder" data-i18n-title="New folder">
+                    <button type="button" class="btn btn-secondary media-library-newfolder-btn" title="New folder" data-i18n-title="New folder">
                         <span class="exe-icon">create_new_folder</span>
                     </button>
                     <input type="file" class="media-library-upload-input" accept="image/*,video/*,audio/*,.pdf,.zip,.elp,.elpx" multiple style="display:none;">
@@ -763,12 +764,12 @@
 
                 <div class="media-library-container">
                     <div class="media-library-main">
-                        <div class="media-library-breadcrumbs">
+                        <div class="media-library-breadcrumbs ps-2">
                             <span class="breadcrumb-item" data-path="" title="Root" data-i18n-title="Root">
                                 <span class="exe-icon">home</span>
                             </span>
                         </div>
-                        <div class="media-library-search-indicator d-none">
+                        <div class="media-library-search-indicator ps-2 d-none">
                             <span class="breadcrumb-home exe-icon" title="Go to root" data-i18n-title="Go to root">home</span>
                             <span class="breadcrumb-separator">/</span>
                             <span><span data-i18n="Search results for">Search results for</span>: <strong class="search-term"></strong></span>
@@ -852,7 +853,7 @@
                                     <label data-i18n="URL:">URL:</label>
                                     <div class="input-group input-group-sm">
                                         <input type="text" class="form-control media-library-url" readonly>
-                                        <button type="button" class="btn btn-outline-secondary media-library-copy-url-btn" title="Copy URL" data-i18n-title="Copy URL">
+                                        <button type="button" class="btn btn-secondary media-library-copy-url-btn" title="Copy URL" data-i18n-title="Copy URL">
                                             <span class="exe-icon">content_copy</span>
                                         </button>
                                     </div>
@@ -867,22 +868,22 @@
                     <button type="button" class="btn btn-danger media-library-delete-btn" disabled>
                         <span class="exe-icon">delete</span data-i18n="Delete"> Delete
                     </button>
-                    <button type="button" class="btn btn-outline-secondary media-library-rename-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-rename-btn" disabled>
                         <span class="exe-icon">edit</span data-i18n="Rename"> Rename
                     </button>
-                    <button type="button" class="btn btn-outline-secondary media-library-duplicate-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-duplicate-btn" disabled>
                         <span class="exe-icon">content_copy</span data-i18n="Duplicate"> Duplicate
                     </button>
-                    <button type="button" class="btn btn-outline-secondary media-library-move-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-move-btn" disabled>
                         <span class="exe-icon">drive_file_move</span data-i18n="Move"> Move
                     </button>
-                    <button type="button" class="btn btn-outline-secondary media-library-download-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-download-btn" disabled>
                         <span class="exe-icon">download</span data-i18n="Download"> Download
                     </button>
 
                     <!-- Dropdown More Options -->
                     <div class="dropdown d-inline-block">
-                        <button type="button" class="btn btn-outline-secondary media-library-more-btn dropdown-toggle" data-bs-toggle="dropdown" disabled>
+                        <button type="button" class="btn btn-secondary media-library-more-btn dropdown-toggle" data-bs-toggle="dropdown" disabled>
                             <span class="exe-icon">more_horiz</span>
                         </button>
                         <ul class="dropdown-menu">
@@ -1195,7 +1196,7 @@
                     <img src="./style/workarea/images/exelearning.svg" class="exe-logo content" alt="Logo eXeLearning">
                 </div>
                 <div class="help-modal-content">
-                    <h1 class="lead mb-4">eXeLearning v0.0.0-pr27-202601260527</h1>
+                    <h1 class="lead mb-4">eXeLearning v0.0.0-pr27-202601260822</h1>
                     
                     <p class="alert alert-warning mb-4">
                         <strong data-i18n="This is a demo version!">This is a demo version!</strong data-i18n="This software is provided as a preview and should not be distributed. It is under development and is subject to substantial change. Consider the included information incomplete and use it with caution.">
@@ -1351,12 +1352,22 @@
                 
                 <div id="share-general-access-section" class="mb-4">
                     <h6 data-i18n="General access">General access</h6>
-                    <select id="share-visibility-select"
-                            class="form-select"
-                            aria-label="General access" data-i18n-aria-label="General access">
-                        <option value="private">🔒 <span data-i18n="Restricted (Private)">Restricted (Private)</span></option>
-                        <option value="public">🌐 <span data-i18n="Anyone with the link (Public)">Anyone with the link (Public)</span></option>
-                    </select>
+                    <div class="share-visibility-wrapper d-flex align-items-center gap-2">
+                        <img id="share-visibility-icon"
+                             src="./style/workarea/images/icons/exe-lock-icon-green.svg"
+                             alt=""
+                             width="16"
+                             height="16"
+                             aria-hidden="true">
+                        <select id="share-visibility-select"
+                                class="form-select flex-grow-1"
+                                aria-label="General access" data-i18n-aria-label="General access"
+                                data-icon-private="./style/workarea/images/icons/exe-lock-icon-green.svg"
+                                data-icon-public="./style/workarea/images/icons/exe-globe-icon-green.svg">
+                            <option value="private" data-i18n="Restricted (Private)">Restricted (Private)</option>
+                            <option value="public" data-i18n="Anyone with the link (Public)">Anyone with the link (Public)</option>
+                        </select>
+                    </div>
                     <small id="share-visibility-help" class="form-text text-muted d-none" data-i18n="Anyone who has the link can view and edit in real time">
                         Anyone who has the link can view and edit in real time
                     </small>
@@ -1428,7 +1439,7 @@
     <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <div class="modal-title" data-i18n="Image Optimizer">Image Optimizer</div>
+                <div class="modal-title" data-i18n="Image optimizer">Image optimizer</div>
                 <button type="button" class="close image-optimizer-close-btn" data-dismiss="modal" aria-label="Close" data-i18n-aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -1453,7 +1464,7 @@
                     <div class="image-optimizer-settings d-flex align-items-center gap-3 mb-3 flex-wrap">
                         <div class="d-flex align-items-center gap-2">
                             <label class="mb-0 fw-semibold"><span data-i18n="Preset">Preset</span>:</label>
-                            <select class="form-select form-select-sm image-optimizer-preset" style="width: auto;">
+                            <select class="form-select form-select-sm image-optimizer-preset" style="width: auto; min-width: 110px;">
                                 <option value="light" data-i18n="Light">Light</option>
                                 <option value="medium" selected data-i18n="Medium">Medium</option>
                                 <option value="strong" data-i18n="Strong">Strong</option>
@@ -1465,10 +1476,10 @@
                             <span class="image-optimizer-quality-value badge bg-secondary">85</span>
                         </div>
                         <div class="ms-auto d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary image-optimizer-select-all" data-i18n="Select All">
+                            <button type="button" class="btn btn-sm btn-secondary image-optimizer-select-all" data-i18n="Select All">
                                 Select All
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary image-optimizer-deselect-all" data-i18n="Deselect All">
+                            <button type="button" class="btn btn-sm btn-secondary image-optimizer-deselect-all" data-i18n="Deselect All">
                                 Deselect All
                             </button>
                         </div>
@@ -1554,7 +1565,7 @@
                     <button type="button" class="btn btn-primary image-optimizer-optimize-btn" disabled data-i18n="Optimize">
                         Optimize
                     </button>
-                    <button type="button" class="close btn btn-outline-secondary" data-dismiss="modal" data-i18n="Close">
+                    <button type="button" class="close btn btn-secondary" data-dismiss="modal" data-i18n="Close">
                         Close
                     </button>
                 </div>
@@ -1563,13 +1574,13 @@
                     <button type="button" class="btn btn-warning image-optimizer-confirm-btn" data-i18n="Optimize">
                         Optimize
                     </button>
-                    <button type="button" class="btn btn-outline-secondary image-optimizer-cancel-btn" data-i18n="Cancel">
+                    <button type="button" class="btn btn-secondary image-optimizer-cancel-btn" data-i18n="Cancel">
                         Cancel
                     </button>
                 </div>
                 <!-- Progress footer (hidden by default) -->
                 <div class="image-optimizer-footer-progress d-none">
-                    <button type="button" class="btn btn-outline-secondary" disabled data-i18n="Processing...">
+                    <button type="button" class="btn btn-secondary" disabled data-i18n="Processing...">
                         Processing...
                     </button>
                 </div>

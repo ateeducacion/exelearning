@@ -1,6 +1,6 @@
 {
-  "version": "v0.0.0-pr27-202601260527",
-  "builtAt": "2026-01-26T05:27:57.902Z",
+  "version": "v0.0.0-pr27-202601260822",
+  "builtAt": "2026-01-26T08:22:14.886Z",
   "parameters": {
     "routes": {
       "api_translations_lists": {
@@ -2158,7 +2158,7 @@
         "False": "Mentida",
         "Click on the card": "Fes clic sobre la targeta",
         "Game time is over. Your score is %s.": "El temps del joc s'ha acabat. La teva puntuació és %s.",
-        "Finish": "Acaba",
+        "Finish": "~Finalitza",
         "Maximum card number: %s.": "Nombre màxim de targetes: %s.",
         "Create card memory games with images, sounds or rich text.": "Creeu jocs de memòria de targetes amb imatges, sons o text enriquit.",
         "Click on the cards to see what they hide.": "Fes clic sobre les targetes per veure el que oculten.",
@@ -3651,9 +3651,46 @@
         "Highlight this page in the website navigation menu": "~Destaca aquesta pàgina al menú de navegació del lloc web",
         "Subtitle": "~Subtítol",
         "Adds additional information to the main title.": "~Afegeix informació addicional al títol principal.",
-        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "~Aquest fitxer ha estat creat amb una versió més recent d'eXeLearning. Algunes funcions podrien no funcionar correctament. Si us plau, actualitza l'aplicació."
+        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "~Aquest fitxer ha estat creat amb una versió més recent d'eXeLearning. Algunes funcions podrien no funcionar correctament. Si us plau, actualitza l'aplicació.",
+        "Send to %s": "~Envia a %s",
+        "eXeLearning content (.elpx)": "~Contingut eXeLearning (.elpx)",
+        "Project Properties": "~Propietats del projecte",
+        "Private": "~Privat",
+        "Public": "~Públic",
+        "Add subpage": "~Afegeix una subpàgina",
+        "Page options": "~Opcions de pàgina",
+        "Admin Panel": "~Panell d'administració",
+        "Dashboard": "~Panell de control",
+        "Users": "~Usuaris",
+        "Extensions": "~Extensions",
+        "Back to Workarea": "~Torna a l'àrea de treball",
+        "Total Users": "~Usuaris totals",
+        "Active Users": "~Usuaris actius",
+        "Total Projects": "~Projectes totals",
+        "Active Projects": "~Projectes actius",
+        "User Management": "~Gestió d'usuaris",
+        "Create User": "~Crear usuari",
+        "Roles": "~Rols",
+        "Status": "~Estat",
+        "Active": "~Actiu",
+        "Inactive": "~Inactiu",
+        "Are you sure you want to delete this user?": "~Estàs segur que vols eliminar aquest usuari?",
+        "Installed": "~Instal·lat",
+        "Available": "~Disponible",
+        "Install": "~Instal·lar",
+        "Uninstall": "~Desinstal·lar",
+        "Deactivate": "~Desactivar",
+        "Download File": "~Descarregar fitxer",
+        "Play/Pause": "~Reproduir/Pausa",
+        "Mute Toggle": "~Activar/Desactivar silenci",
+        "Captions/Subtitles": "~Subtítols",
+        "Turn off Fullscreen": "~Desactivar pantalla completa",
+        "Go Fullscreen": "~Pantalla completa",
+        "Unmute": "~Activar so",
+        "Mute": "~Silenciar",
+        "Download Video": "~Descarregar vídeo"
       },
-      "count": 3077
+      "count": 3114
     },
     "en": {
       "translations": {
@@ -3675,9 +3712,11 @@
         "Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%": "Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%",
         "User already has an open session": "User already has an open session",
         "Required extension %extension% is not installed": "Required extension %extension% is not installed",
-        "Project Properties": "Project Properties"
+        "Project Properties": "Project Properties",
+        "Send to %s": "Send to %s",
+        "Finish": "Finish"
       },
-      "count": 19
+      "count": 21
     },
     "eo": {
       "translations": {
@@ -6924,9 +6963,46 @@
         "Invalid file type": "~Nevalida dosiertipo",
         "Highlight this page in the website navigation menu": "~Ekranigu ĉi tiun paĝon en la reteja naviga menuo",
         "Subtitle": "~Subtitolo",
-        "Adds additional information to the main title.": "~Aldonas pliajn informojn al la ĉefa titolo."
+        "Adds additional information to the main title.": "~Aldonas pliajn informojn al la ĉefa titolo.",
+        "Send to %s": "~Sendi al %s",
+        "eXeLearning content (.elpx)": "~eXeLearning enhavo (.elpx)",
+        "Project Properties": "~Projektaj trajtoj",
+        "Private": "~Privata",
+        "Public": "~Publika",
+        "Add subpage": "~Aldoni subpaĝon",
+        "Page options": "~Paĝaj opcioj",
+        "Admin Panel": "~Administrado-panelo",
+        "Dashboard": "~Kontrola panelo",
+        "Users": "~Uzantoj",
+        "Extensions": "~Etendaĵoj",
+        "Back to Workarea": "~Reen al laborareo",
+        "Total Users": "~Totalaj uzantoj",
+        "Active Users": "~Aktivaj uzantoj",
+        "Total Projects": "~Totalaj projektoj",
+        "Active Projects": "~Aktivaj projektoj",
+        "User Management": "~Uzant-administrado",
+        "Create User": "~Krei uzanton",
+        "Roles": "~Roloj",
+        "Status": "~Stato",
+        "Active": "~Aktiva",
+        "Inactive": "~Neaktiva",
+        "Are you sure you want to delete this user?": "~Ĉu vi certas, ke vi volas forigi ĉi tiun uzanton?",
+        "Installed": "~Instalita",
+        "Available": "~Havebla",
+        "Install": "~Instali",
+        "Uninstall": "~Malinstali",
+        "Deactivate": "~Malaktivigi",
+        "Download File": "~Elŝuti dosieron",
+        "Play/Pause": "~Ludi/Paŭzi",
+        "Mute Toggle": "~Ŝalti/Malŝalti silenton",
+        "Captions/Subtitles": "~Subtekstoj",
+        "Turn off Fullscreen": "~Malŝalti plenekranon",
+        "Go Fullscreen": "~Plenekrano",
+        "Unmute": "~Malŝalti silenton",
+        "Mute": "~Silenti",
+        "Download Video": "~Elŝuti filmon"
       },
-      "count": 3244
+      "count": 3281
     },
     "es": {
       "translations": {
@@ -10183,9 +10259,46 @@
         "Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%": "Espacio de almacenamiento insuficiente. Usado: %usedSpace%, Máximo: %maxSpace%",
         "User already has an open session": "El usuario ya tiene una sesión abierta",
         "Required extension %extension% is not installed": "La extensión requerida %extension% no está instalada",
-        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "Este archivo fue creado con una versión más reciente de eXeLearning. Es posible que no funcione correctamente. Por favor, actualiza la aplicación."
+        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "Este archivo fue creado con una versión más reciente de eXeLearning. Es posible que no funcione correctamente. Por favor, actualiza la aplicación.",
+        "Send to %s": "Enviar a %s",
+        "eXeLearning content (.elpx)": "Fichero de eXeLearning (.elpx)",
+        "Project Properties": "Propiedades del proyecto",
+        "Private": "Privado",
+        "Public": "Público",
+        "Add subpage": "Añadir subpágina",
+        "Page options": "Opciones de la página",
+        "Admin Panel": "Panel de administración",
+        "Dashboard": "Panel de control",
+        "Users": "Usuarios",
+        "Extensions": "Extensiones",
+        "Back to Workarea": "Volver al área de trabajo",
+        "Total Users": "Usuarios totales",
+        "Active Users": "Usuarios activos",
+        "Total Projects": "Proyectos totales",
+        "Active Projects": "Proyectos activos",
+        "User Management": "Gestión de usuarios",
+        "Create User": "Crear usuario",
+        "Roles": "Roles",
+        "Status": "Estado",
+        "Active": "Activo",
+        "Inactive": "Inactivo",
+        "Are you sure you want to delete this user?": "¿Seguro que quieres eliminar este usuario?",
+        "Installed": "Instalado",
+        "Available": "Disponible",
+        "Install": "Instalar",
+        "Uninstall": "Desinstalar",
+        "Deactivate": "Desactivar",
+        "Download File": "Descargar archivo",
+        "Play/Pause": "Reproducir/Pausa",
+        "Mute Toggle": "Activar/Desactivar silencio",
+        "Captions/Subtitles": "Subtítulos",
+        "Turn off Fullscreen": "Salir de pantalla completa",
+        "Go Fullscreen": "Pantalla completa",
+        "Unmute": "Activar sonido",
+        "Mute": "Silenciar",
+        "Download Video": "Descargar vídeo"
       },
-      "count": 3254
+      "count": 3291
     },
     "eu": {
       "translations": {
@@ -11782,7 +11895,7 @@
         "False": "Gezurra",
         "Click on the card": "Egin klik kartan",
         "Game time is over. Your score is %s.": "Jokoaren denbora amaitu da. Zure puntuazioa %s da.",
-        "Finish": "Amaitu",
+        "Finish": "~Amaitu",
         "Maximum card number: %s.": "Karta kopuru maximoa: %s da.",
         "Create card memory games with images, sounds or rich text.": "Irudi, soinu edo testu aberatsarekin  oroimen karta jokoak sortu.",
         "Click on the cards to see what they hide.": "Klik egin kartetan ezkutatzen dutena ikusteko.",
@@ -13424,9 +13537,46 @@
         "Highlight this page in the website navigation menu": "~Nabigazio-menuan orrialde hau nabarmentzea",
         "Subtitle": "~Azpititulua",
         "Adds additional information to the main title.": "~Informazio gehigarria gehitzen du izenburu nagusian.",
-        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "~Fitxategi hau eXeLearning-en bertsio berriagoarekin sortu da. Funtzio batzuk agian ez dira ondo funtzionatuko. Mesedez, eguneratu aplikazioa."
+        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "~Fitxategi hau eXeLearning-en bertsio berriagoarekin sortu da. Funtzio batzuk agian ez dira ondo funtzionatuko. Mesedez, eguneratu aplikazioa.",
+        "Send to %s": "~Bidali hona: %s",
+        "eXeLearning content (.elpx)": "~eXeLearning edukia (.elpx)",
+        "Project Properties": "~Proiektuaren ezaugarriak",
+        "Private": "~Pribatua",
+        "Public": "~Publikoa",
+        "Add subpage": "~Azpiorria gehitu",
+        "Page options": "~Orriaren aukerak",
+        "Admin Panel": "~Administrazio panela",
+        "Dashboard": "~Kontrol panela",
+        "Users": "~Erabiltzaileak",
+        "Extensions": "~Luzapenak",
+        "Back to Workarea": "~Itzuli lan eremura",
+        "Total Users": "~Erabiltzaile guztira",
+        "Active Users": "~Erabiltzaile aktiboak",
+        "Total Projects": "~Proiektu guztira",
+        "Active Projects": "~Proiektu aktiboak",
+        "User Management": "~Erabiltzaileen kudeaketa",
+        "Create User": "~Sortu erabiltzailea",
+        "Roles": "~Rolak",
+        "Status": "~Egoera",
+        "Active": "~Aktiboa",
+        "Inactive": "~Inaktiboa",
+        "Are you sure you want to delete this user?": "~Ziur zaude erabiltzaile hau ezabatu nahi duzula?",
+        "Installed": "~Instalatuta",
+        "Available": "~Eskuragarri",
+        "Install": "~Instalatu",
+        "Uninstall": "~Desinstalatu",
+        "Deactivate": "~Desaktibatu",
+        "Download File": "~Deskargatu fitxategia",
+        "Play/Pause": "~Jokatu/Pausatu",
+        "Mute Toggle": "~Isildu/Desisildu",
+        "Captions/Subtitles": "~Azpitituluak",
+        "Turn off Fullscreen": "~Desgaitu pantaila osoa",
+        "Go Fullscreen": "~Pantaila osoan",
+        "Unmute": "~Desisildu",
+        "Mute": "~Isildu",
+        "Download Video": "~Deskargatu bideoa"
       },
-      "count": 3236
+      "count": 3273
     },
     "gl": {
       "translations": {
@@ -15019,7 +15169,7 @@
         "False": "Falso",
         "Click on the card": "Preme na tarxeta",
         "Game time is over. Your score is %s.": "Rematou o tempo do xogo. A túa puntuación é de %s.",
-        "Finish": "Finalizar",
+        "Finish": "~Finalizar",
         "Maximum card number: %s.": "Número máximo de tarxetas: %s.",
         "Create card memory games with images, sounds or rich text.": "Cree actividades con tarxetas de memoria con imaxes, sons ou texto enriquecido.",
         "Click on the cards to see what they hide.": "Preme sobre as tarxetas para descubrires o que agochan.",
@@ -16512,9 +16662,46 @@
         "Highlight this page in the website navigation menu": "~Resaltar esta páxina no menú de navegación do sitio web",
         "Subtitle": "~Subtítulo",
         "Adds additional information to the main title.": "~Engade información adicional ao título principal.",
-        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "~Este ficheiro foi creado cunha versión máis recente de eXeLearning. Algunhas funcións poderían non funcionar correctamente. Por favor, actualiza a aplicación."
+        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "~Este ficheiro foi creado cunha versión máis recente de eXeLearning. Algunhas funcións poderían non funcionar correctamente. Por favor, actualiza a aplicación.",
+        "Send to %s": "~Enviar a %s",
+        "eXeLearning content (.elpx)": "~Contido eXeLearning (.elpx)",
+        "Project Properties": "~Propiedades do proxecto",
+        "Private": "~Privado",
+        "Public": "~Público",
+        "Add subpage": "~Engadir subpáxina",
+        "Page options": "~Opcións da páxina",
+        "Admin Panel": "~Panel de administración",
+        "Dashboard": "~Panel de control",
+        "Users": "~Usuarios",
+        "Extensions": "~Extensións",
+        "Back to Workarea": "~Volver á área de traballo",
+        "Total Users": "~Usuarios totais",
+        "Active Users": "~Usuarios activos",
+        "Total Projects": "~Proxectos totais",
+        "Active Projects": "~Proxectos activos",
+        "User Management": "~Xestión de usuarios",
+        "Create User": "~Crear usuario",
+        "Roles": "~Roles",
+        "Status": "~Estado",
+        "Active": "~Activo",
+        "Inactive": "~Inactivo",
+        "Are you sure you want to delete this user?": "~¿Seguro que queres eliminar este usuario?",
+        "Installed": "~Instalado",
+        "Available": "~Disponible",
+        "Install": "~Instalar",
+        "Uninstall": "~Desinstalar",
+        "Deactivate": "~Desactivar",
+        "Download File": "~Descargar arquivo",
+        "Play/Pause": "~Reproducir/Pausar",
+        "Mute Toggle": "~Silenciar/Activar son",
+        "Captions/Subtitles": "~Subtítulos",
+        "Turn off Fullscreen": "~Desactivar pantalla completa",
+        "Go Fullscreen": "~Pantalla completa",
+        "Unmute": "~Activar son",
+        "Mute": "~Silenciar",
+        "Download Video": "~Descargar vídeo"
       },
-      "count": 3083
+      "count": 3120
     },
     "pt": {
       "translations": {
@@ -19758,9 +19945,46 @@
         "Invalid file type": "~Tipo de arquivo inválido",
         "Highlight this page in the website navigation menu": "~Destaque esta página no menu de navegação do site",
         "Subtitle": "~Legenda",
-        "Adds additional information to the main title.": "~Adiciona informações adicionais ao título principal."
+        "Adds additional information to the main title.": "~Adiciona informações adicionais ao título principal.",
+        "Send to %s": "~Enviar para %s",
+        "eXeLearning content (.elpx)": "~Conteúdo eXeLearning (.elpx)",
+        "Project Properties": "~Propriedades do projeto",
+        "Private": "~Privado",
+        "Public": "~Público",
+        "Add subpage": "~Adicionar subpágina",
+        "Page options": "~Opções da página",
+        "Admin Panel": "~Painel de administração",
+        "Dashboard": "~Painel de controlo",
+        "Users": "~Utilizadores",
+        "Extensions": "~Extensões",
+        "Back to Workarea": "~Voltar à área de trabalho",
+        "Total Users": "~Total de utilizadores",
+        "Active Users": "~Utilizadores ativos",
+        "Total Projects": "~Total de projetos",
+        "Active Projects": "~Projetos ativos",
+        "User Management": "~Gestão de utilizadores",
+        "Create User": "~Criar utilizador",
+        "Roles": "~Funções",
+        "Status": "~Estado",
+        "Active": "~Ativo",
+        "Inactive": "~Inativo",
+        "Are you sure you want to delete this user?": "~Tem a certeza de que quer eliminar este utilizador?",
+        "Installed": "~Instalado",
+        "Available": "~Disponível",
+        "Install": "~Instalar",
+        "Uninstall": "~Desinstalar",
+        "Deactivate": "~Desativar",
+        "Download File": "~Descarregar ficheiro",
+        "Play/Pause": "~Reproduzir/Pausar",
+        "Mute Toggle": "~Silenciar/Ativar som",
+        "Captions/Subtitles": "~Legendas",
+        "Turn off Fullscreen": "~Desativar ecrã completo",
+        "Go Fullscreen": "~Ecrã completo",
+        "Unmute": "~Ativar som",
+        "Mute": "~Silenciar",
+        "Download Video": "~Descarregar vídeo"
       },
-      "count": 3241
+      "count": 3278
     },
     "ro": {
       "translations": {
@@ -19862,8 +20086,7 @@
         "Generate": "~Generează",
         "Formats": "~Formate",
         "Examples": "~Exemple",
-        "You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.": "~```",
-        "Save": "~Poți exporta întrebările în format txt pentru a le integra în alte activități compatibile.",
+        "Save": "~Salvează",
         "Copy": "~Copiază",
         "Send to AI": "~Trimite la AI",
         "Specialty": "~Specializare",
@@ -21173,7 +21396,6 @@
         "Classify": "~Clasifică",
         "Number of questions": "~Număr de întrebări",
         "Cool!": "~Super!",
-        "You need at least %s&percnt; of correct answers to get the information. Please try again.": "__You need at least %s&percnt; of correct answers to get the information. Please try again.",
         "Time is up. Please try again": "~Timpul a expirat. Te rugăm să încerci din nou",
         "The game has started! Drag each card to its container": "~Jocul a început! Trage fiecare carte în containerul său",
         "Choose another card": "~Alege o altă carte",
@@ -21203,7 +21425,6 @@
         "Category": "~Categorie",
         "Time (minutes)": "~Timp (minute)",
         "Percent": "~Procentaj",
-        "&percnt; right to see the feedback": "__&percnt; right to see the feedback",
         "Image back": "~Imagine înapoi",
         "Hit": "~Atinge",
         "Both": "~Ambele",
@@ -21233,7 +21454,6 @@
         "Wrong words": "~Cuvinte greșite",
         "Number of attempts": "~Numărul de încercări",
         "Allow errors in typed words": "~Permite erori în cuvintele tastate",
-        "Incorrect letters allowed (&percnt;)": "__Incorrect letters allowed (&percnt;)",
         "Field width proportional to the words length": "~Lățimea câmpului proporțional cu lungimea cuvintelor",
         "Crossword": "~Cuvânt încrucișat",
         "Provide a word or phrase": "~Introduceți un cuvânt sau o expresie",
@@ -21355,7 +21575,7 @@
         "False": "~Fals",
         "Click on the card": "~Dă clic pe carte",
         "Game time is over. Your score is %s.": "~Timpul jocului s-a încheiat. Scorul tău este %s.",
-        "Finish": "~Terminare",
+        "Finish": "~Finalizare",
         "Maximum card number: %s.": "~Număr maxim de carduri: %s.",
         "Create card memory games with images, sounds or rich text.": "~Creați jocuri de memorie cu carduri cu imagini, sunete sau text bogat.",
         "Click on the cards to see what they hide.": "~Faceți clic pe carduri pentru a vedea ce ascund.",
@@ -22172,7 +22392,6 @@
         "Please provide a main content for all the blocks.": "~Vă rugăm să furnizați un conținut principal pentru toate blocurile.",
         "Engagement": "~Angajament",
         "Representation": "~Reprezentare",
-        "Action & Expression": "__Action & Expression",
         "Presentation": "~Prezentare",
         "Text button": "~Buton text",
         "Character": "~Caracter",
@@ -23005,9 +23224,46 @@
         "Highlight this page in the website navigation menu": "~Evidențiază această pagină în meniul de navigare al site-ului",
         "Subtitle": "~Subtitlu",
         "Adds additional information to the main title.": "~Adaugă informații suplimentare la titlul principal.",
-        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "~Acest fișier a fost creat cu o versiune mai nouă de eXeLearning. Unele funcții pot să nu funcționeze corect. Vă rugăm să actualizați aplicația."
+        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "~Acest fișier a fost creat cu o versiune mai nouă de eXeLearning. Unele funcții pot să nu funcționeze corect. Vă rugăm să actualizați aplicația.",
+        "Send to %s": "~Trimite la %s",
+        "eXeLearning content (.elpx)": "~Conținut eXeLearning (.elpx)",
+        "Project Properties": "~Proprietăți proiect",
+        "Private": "~Privat",
+        "Public": "~Public",
+        "Add subpage": "~Adaugă subpagină",
+        "Page options": "~Opțiuni pagină",
+        "Admin Panel": "~Panou administrare",
+        "Dashboard": "~Tablou de bord",
+        "Users": "~Utilizatori",
+        "Extensions": "~Extensii",
+        "Back to Workarea": "~Înapoi la zona de lucru",
+        "Total Users": "~Total utilizatori",
+        "Active Users": "~Utilizatori activi",
+        "Total Projects": "~Total proiecte",
+        "Active Projects": "~Proiecte active",
+        "User Management": "~Gestionare utilizatori",
+        "Create User": "~Creează utilizator",
+        "Roles": "~Roluri",
+        "Status": "~Stare",
+        "Active": "~Activ",
+        "Inactive": "~Inactiv",
+        "Are you sure you want to delete this user?": "~Ești sigur că vrei să ștergi acest utilizator?",
+        "Installed": "~Instalat",
+        "Available": "~Disponibil",
+        "Install": "~Instalează",
+        "Uninstall": "~Dezinstalează",
+        "Deactivate": "~Dezactivează",
+        "Download File": "~Descarcă fișier",
+        "Play/Pause": "~Redă/Pauză",
+        "Mute Toggle": "~Comutare sunet",
+        "Captions/Subtitles": "~Subtitrări",
+        "Turn off Fullscreen": "~Dezactivează ecran complet",
+        "Go Fullscreen": "~Ecran complet",
+        "Unmute": "~Activează sunetul",
+        "Mute": "~Dezactivează sunetul",
+        "Download Video": "~Descarcă videoclip"
       },
-      "count": 3242
+      "count": 3274
     },
     "va": {
       "translations": {
@@ -24601,7 +24857,7 @@
         "False": "Fals",
         "Click on the card": "Prem en la targeta",
         "Game time is over. Your score is %s.": "Va acabar el temps de joc. La vostra puntuació és %s.",
-        "Finish": "Finalitzar",
+        "Finish": "~Finalitza",
         "Maximum card number: %s.": "Número màxim de targetes: %s.",
         "Create card memory games with images, sounds or rich text.": "Creeu activitats amb targetes de memòria amb imatges, sons i/o text enriquit.",
         "Click on the cards to see what they hide.": "Feu clic sobre les targetes per a descobrir què amaguen.",
@@ -26097,9 +26353,46 @@
         "Highlight this page in the website navigation menu": "~Resalta aquesta pàgina al menú de navegació del lloc web",
         "Subtitle": "~Subtítol",
         "Adds additional information to the main title.": "~Afig informació addicional al títol principal.",
-        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "~Este fitxer ha sigut creat amb una versió més recent d'eXeLearning. Algunes funcions podrien no funcionar correctament. Per favor, actualitza l'aplicació."
+        "This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.": "~Este fitxer ha sigut creat amb una versió més recent d'eXeLearning. Algunes funcions podrien no funcionar correctament. Per favor, actualitza l'aplicació.",
+        "Send to %s": "~Envia a %s",
+        "eXeLearning content (.elpx)": "~Contingut eXeLearning (.elpx)",
+        "Project Properties": "~Propietats del projecte",
+        "Private": "~Privat",
+        "Public": "~Públic",
+        "Add subpage": "~Afegir subpàgina",
+        "Page options": "~Opcions de la pàgina",
+        "Admin Panel": "~Panell d’administració",
+        "Dashboard": "~Tauler de control",
+        "Users": "~Usuaris",
+        "Extensions": "~Extensions",
+        "Back to Workarea": "~Tornar a l’àrea de treball",
+        "Total Users": "~Total d’usuaris",
+        "Active Users": "~Usuaris actius",
+        "Total Projects": "~Total de projectes",
+        "Active Projects": "~Projectes actius",
+        "User Management": "~Gestió d’usuaris",
+        "Create User": "~Crear usuari",
+        "Roles": "~Rols",
+        "Status": "~Estat",
+        "Active": "~Actiu",
+        "Inactive": "~Inactiu",
+        "Are you sure you want to delete this user?": "~Estàs segur que vols eliminar aquest usuari?",
+        "Installed": "~Instal·lat",
+        "Available": "~Disponible",
+        "Install": "~Instal·lar",
+        "Uninstall": "~Desinstal·lar",
+        "Deactivate": "~Desactivar",
+        "Download File": "~Descarregar fitxer",
+        "Play/Pause": "~Reproduir/Pausa",
+        "Mute Toggle": "~Silenciar/Activar so",
+        "Captions/Subtitles": "~Subtítols",
+        "Turn off Fullscreen": "~Desactivar pantalla completa",
+        "Go Fullscreen": "~Pantalla completa",
+        "Unmute": "~Activar so",
+        "Mute": "~Silenciar",
+        "Download Video": "~Descarregar vídeo"
       },
-      "count": 3087
+      "count": 3124
     }
   },
   "idevices": {
@@ -29486,32 +29779,32 @@
   },
   "bundleManifest": {
     "buildVersion": "v0.0.0-alpha",
-    "builtAt": "2026-01-26T05:27:55.473Z",
+    "builtAt": "2026-01-26T08:22:12.677Z",
     "themes": {
       "base": {
         "files": 56,
         "size": 126283,
-        "hash": "f9aa4d2ea6c30c1578480193445d4701c6ef76dfedbd418cdf357b1b4de6e3fd"
+        "hash": "c927a73aeb1fa695a65aab518e50bbea55cca9554292527e40596ac285a922ef"
       },
       "zen": {
         "files": 80,
         "size": 1173553,
-        "hash": "066325f3750b0f12c99ea06e4f079b552289b38b4cdeb892e919d6d953aaf671"
+        "hash": "3ca9b3fa044702af37ed098f3a8454ee42b5f8f50fef7510b40ec76b7718fb8b"
       },
       "neo": {
         "files": 87,
         "size": 1167190,
-        "hash": "6e55aba3aea7bb88fa4cc2cfcc7c075b804b325be13cb11c39f3126fea0049db"
+        "hash": "f5119a8b9224e9ad0f0473913a2d795567b8e685a1a44335ef75a7478a50f726"
       },
       "flux": {
         "files": 75,
         "size": 356503,
-        "hash": "45d0c796b71ab1d59483a4e9dee99385d84f5c461433a1a1344b031c2a031a0e"
+        "hash": "c0bb3324c2f85c9ad3dbc7e91132272d5a809f4cdad6e75532ea29c59ebd9352"
       },
       "nova": {
         "files": 74,
         "size": 140985,
-        "hash": "ce85946822f2e615e4930245cca81ab9903b9ddc071e024ec8fa19e7b008a11e"
+        "hash": "f0b01abc59f576679e2489c60ff9bc07e38671d2b27ca9500e3661adf48d83b9"
       }
     },
     "idevices": {
@@ -29562,23 +29855,23 @@
     "idevicesBundle": {
       "count": 43,
       "files": 862,
-      "size": 4079166,
-      "hash": "42937dd963cbd17388e0e0808b96d049feb0eb48158dedb76a3f0f3cde88306e"
+      "size": 4079169,
+      "hash": "87169fc75cafc373b36a975e821c1c2c39fb3d09a563797f99f696bcbc2d7c05"
     },
     "libs": {
       "files": 9,
-      "size": 313961,
-      "hash": "ba101014f1a23b24046cd19817fce3c6659c469da6d7515d5b434a8aa45c9b9f"
+      "size": 314135,
+      "hash": "bb2acf83960bb12bca6d91cf42126f15164a25b49b0bf4f32a68c72145484f9a"
     },
     "common": {
       "files": 130,
-      "size": 2701159,
-      "hash": "f3b9e7dd75d849af9ae13219e6132f651071b085d4127a6aea23954dcf9e73cc"
+      "size": 2701158,
+      "hash": "118f3df3bd34ba1e3568edbcf12fe6b39a9df7007490a0db9a5c8614160d419f"
     },
     "contentCss": {
       "files": 4,
-      "size": 43355,
-      "hash": "cf4f1111ceec3dafb0bfed9ea9aac541796437b78b126fd4d0a913a89326d50d"
+      "size": 42260,
+      "hash": "51d7868ef9d9435850b7d0aa33c988a45e69f9493e89e6eeea8e964504d4e599"
     }
   }
 }

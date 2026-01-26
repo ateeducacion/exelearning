@@ -32,18 +32,30 @@
   const Logger = window.Logger;
 
   // Get basePath and version from eXeLearning (set by pages.controller.ts)
-  const getBasePath = () => window.eXeLearning?.config?.basePath || '';
-  const getVersion = () => window.eXeLearning?.version || 'v1.0.0';
+  // Note: config might be a JSON string if accessed before App.parseExelearningConfig()
+  const getConfig = () => {
+    const config = window.eXeLearning?.config;
+    if (!config) return {};
+    if (typeof config === 'string') {
+      try { return JSON.parse(config.replace(/&quot;/g, '"')); }
+      catch { return {}; }
+    }
+    return config;
+  };
+  const getBasePath = () => getConfig()?.basePath || '';
+  const getVersion = () => window.eXeLearning?.version || '';
   // Note: Direct __EXE_STATIC_MODE__ check required here because this runs very early,
   // before App is initialized and capabilities are available
   const isStaticMode = () => window.__EXE_STATIC_MODE__ === true;
   // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/yjs/yjs.min.js)
   // In static mode, use relative paths without version prefix
   const assetPath = (path) => {
+    const cleanPath = path.startsWith('/') ? path : '/' + path;
     if (isStaticMode()) {
-      return `.${path.startsWith('/') ? path : '/' + path}`;
+      return `.${cleanPath}`;
     }
-    return `${getBasePath()}/${getVersion()}${path.startsWith('/') ? path : '/' + path}`;
+    const versionPrefix = getVersion() ? `/${getVersion()}` : '';
+    return `${getBasePath()}${versionPrefix}${cleanPath}`;
   };
 
   // Paths are computed lazily to ensure eXeLearning globals are available

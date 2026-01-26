@@ -226,11 +226,11 @@ var $exeDevicesEdition = {
 
                 getValues: function () {
                     var showClue = $('#eXeGameShowClue').is(':checked'),
-                        clueGame = $.trim($('#eXeGameClue').val()),
+                        clueGame = ($('#eXeGameClue').val() || '').trim(),
                         percentageClue = parseInt($('#eXeGamePercentajeClue').children("option:selected").val()),
                         showCodeAccess = $('#eXeGameShowCodeAccess').is(':checked'),
-                        codeAccess = $.trim($('#eXeGameCodeAccess').val()),
-                        messageCodeAccess = $.trim($('#eXeGameMessageCodeAccess').val());
+                        codeAccess = ($('#eXeGameCodeAccess').val() || '').trim(),
+                        messageCodeAccess = ($('#eXeGameMessageCodeAccess').val() || '').trim();
 
                     if (showClue && clueGame.length == 0) {
                         eXe.app.alert(_("You must write a clue"));

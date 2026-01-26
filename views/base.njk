@@ -10,6 +10,12 @@
         <link rel="stylesheet" href="{{ '/style/server.css' | asset }}">
         {% endblock %}
         <link class="exe" rel="stylesheet" href="{{ '/style/workarea/custom.css' | asset }}">
+        {% if importMap %}
+        {# Import map MUST come before any type="module" scripts #}
+        <script type="importmap">
+{{ importMap | safe }}
+        </script>
+        {% endif %}
         <script class="exe" src="{{ '/libs/jquery/jquery.min.js' | asset }}"></script>
         {% block javascripts %}
         {# Additional JavaScript will be added here #}

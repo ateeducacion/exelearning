@@ -29,6 +29,9 @@ import { XMLParser } from 'fast-xml-parser';
 // Import centralized configuration
 import { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES } from './static-bundle/static-config';
 
+// Import map service for ES modules
+import { generateStaticImportMap, serializeImportMap } from '../src/services/importmap.service';
+
 // Re-export config for external use
 export { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES };
 
@@ -996,6 +999,18 @@ export function buildApiParameters(): ApiParameters {
 }
 
 /**
+ * Generate the static import map HTML.
+ * Returns a <script type="importmap"> element with relative paths for static mode.
+ */
+function generateStaticImportMapHtml(): string {
+    const importMap = generateStaticImportMap();
+    const json = serializeImportMap(importMap, true);
+    return `<script type="importmap">
+${json}
+    </script>`;
+}
+
+/**
  * Generate the static index.html
  * Reads the HTML template and replaces placeholders with dynamic content
  */
@@ -1006,6 +1021,7 @@ function generateStaticHtml(bundleData: object): string {
 
     // Replace placeholders with dynamic content
     html = html.replace(/\{\{BUILD_VERSION\}\}/g, buildVersion);
+    html = html.replace('{{IMPORT_MAP}}', generateStaticImportMapHtml());
     html = html.replace('{{MENU_STRUCTURE_HTML}}', generateMenuStructureHtml());
     html = html.replace('{{MENU_IDEVICES_HTML}}', generateMenuIdevicesHtml());
     html = html.replace('{{MENU_HEAD_TOP_HTML}}', generateMenuHeadTopHtml());

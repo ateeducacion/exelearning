@@ -330,6 +330,9 @@
     <!-- Asset URL Resolver -->
     <script src="./app/common/asset_url_resolver.js"></script>
 
+    <!-- Import Map for ES Modules (must come before any type="module" scripts) -->
+    {{IMPORT_MAP}}
+
     <!-- eXeLearning Common -->
     <script type="module" src="./app/common/app_common.js"></script>
     <script src="./app/common/common_i18n.js"></script>
@@ -498,8 +501,8 @@
         initStaticMode();
     </script>
 
-    <!-- Main Application Bundle -->
-    <script src="./app/app.bundle.js"></script>
+    <!-- Main Application Bundle (ESM format) -->
+    <script type="module" src="./app/app.bundle.js"></script>
 
     <!-- Register Service Worker for PWA (only when installed as standalone app) -->
     <script>

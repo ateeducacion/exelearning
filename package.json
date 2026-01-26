@@ -17,7 +17,7 @@
     "build:static": "bun run build:all && bun scripts/build-static-bundle.ts",
     "css:node": "bunx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map",
     "sass:watch": "bunx sass --watch assets/styles/main.scss:public/style/workarea/main.css --style=expanded --embed-source-map",
-    "bundle:app": "bun build public/app/app.js --outfile public/app/app.bundle.js --minify --target browser --format iife",
+    "bundle:app": "bun build public/app/app.js --outfile public/app/app.bundle.js --minify --target browser --format esm",
     "bundle:importers": "bun scripts/build-importers-bundle.js",
     "bundle:exporters": "bun scripts/build-exporters-bundle.js",
     "bundle:resources": "bun scripts/build-resource-bundles.js",

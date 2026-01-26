@@ -23,6 +23,7 @@
 // Configuration
 export { RuntimeConfig } from './RuntimeConfig.js';
 export { Capabilities } from './Capabilities.js';
+export { PathResolver } from './PathResolver.js';
 
 // Data providers
 export {

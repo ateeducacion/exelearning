@@ -11,7 +11,7 @@ import { randomBytes } from 'crypto';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
 
-import { renderTemplate as renderTemplateDefault, setRenderLocale } from '../services/template';
+import { renderTemplate as renderTemplateDefault, setRenderLocale, getImportMapJson } from '../services/template';
 import {
     findUserById as findUserByIdDefault,
     findUserByEmail as findUserByEmailDefault,
@@ -814,6 +814,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     projectId: projectUuid || null,
                     t,
                     basePath,
+                    importMap: getImportMapJson(),
                 };
 
                 // Set locale for Nunjucks template rendering (fixes | trans filter)

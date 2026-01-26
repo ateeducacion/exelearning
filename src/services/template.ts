@@ -7,6 +7,7 @@ import * as path from 'path';
 import { getBasePath } from '../utils/basepath.util';
 import { getAppVersion } from '../utils/version';
 import { trans as translateFn } from './translation';
+import { generateImportMap, serializeImportMap } from './importmap.service';
 
 // Stores the locale for current rendering (thread-safe in single-threaded Bun)
 let currentRenderLocale = 'en';
@@ -60,6 +61,17 @@ env.addFilter('path', (routeName: string, _params?: Record<string, unknown>) => 
     const route = routes[routeName] || `/${routeName}`;
     return basePath ? `${basePath}${route}` : route;
 });
+
+/**
+ * Get the serialized import map for embedding in templates.
+ * Generated once per request based on current basePath and version.
+ */
+export const getImportMapJson = (): string => {
+    const basePath = getBasePath();
+    const version = getAppVersion();
+    const importMap = generateImportMap({ basePath, version });
+    return serializeImportMap(importMap);
+};
 
 /**
  * Render a template with data

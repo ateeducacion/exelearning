@@ -6,6 +6,32 @@ import ImportProgress from '../../../interface/importProgress.js';
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
 export default class NavbarFile {
+    /**
+     * Check if running in static web mode (no remote storage, no Electron).
+     * In this mode, "Save" becomes "Download" since there's no server or native filesystem.
+     * @private
+     * @returns {boolean}
+     */
+    _isStaticWebMode() {
+        const capabilities = eXeLearning?.app?.capabilities;
+        const isStaticMode = capabilities && !capabilities.storage.remote;
+        return isStaticMode && !window.electronAPI;
+    }
+
+    /**
+     * Update button text while preserving the icon.
+     * @private
+     * @param {HTMLElement} button - The button element
+     * @param {string} text - The new text
+     */
+    _updateButtonText(button, text) {
+        if (!button) return;
+        const icon = button.querySelector('.small-icon');
+        button.innerHTML = '';
+        if (icon) button.appendChild(icon);
+        button.appendChild(document.createTextNode(' ' + text));
+    }
+
     constructor(menu) {
         this.menu = menu;
         this.button = this.menu.navbar.querySelector('#dropdownFile');
@@ -172,25 +198,11 @@ export default class NavbarFile {
      * Static mode (PWA without server): shows "Download" instead of "Save"
      */
     updateMenuTextForMode() {
-        const capabilities = eXeLearning?.app?.capabilities;
-        const isStaticMode = capabilities && !capabilities.storage.remote;
-        const isElectronMode = !!window.electronAPI;
-
-        if (isStaticMode && !isElectronMode) {
+        if (this._isStaticWebMode()) {
             // Update File > Save to "Download" (online button)
-            if (this.saveButton) {
-                const icon = this.saveButton.querySelector('.small-icon');
-                this.saveButton.innerHTML = '';
-                if (icon) this.saveButton.appendChild(icon);
-                this.saveButton.appendChild(document.createTextNode(' ' + _('Download')));
-            }
+            this._updateButtonText(this.saveButton, _('Download'));
             // Update File > Save to "Download" (offline button used in static mode)
-            if (this.saveOfflineButton) {
-                const icon = this.saveOfflineButton.querySelector('.small-icon');
-                this.saveOfflineButton.innerHTML = '';
-                if (icon) this.saveOfflineButton.appendChild(icon);
-                this.saveOfflineButton.appendChild(document.createTextNode(' ' + _('Download')));
-            }
+            this._updateButtonText(this.saveOfflineButton, _('Download'));
         }
     }
 
@@ -225,8 +237,7 @@ export default class NavbarFile {
      * and show the "New from Template" button if so
      */
     async checkAndShowNewFromTemplateButton() {
-        // Templates require server API - skip when no remote storage
-        // Note: Only skip if capabilities are available AND remote is explicitly false
+        // Templates require server API - skip when no remote storage available
         const capabilities = eXeLearning?.app?.capabilities;
         if (capabilities && !capabilities.storage.remote) {
             return;
@@ -291,12 +302,8 @@ export default class NavbarFile {
         this.saveButtonAs.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
 
-            // Static mode (PWA): show toast that this is desktop-only
-            const capabilities = eXeLearning?.app?.capabilities;
-            const isStaticMode = capabilities && !capabilities.storage.remote;
-            const isElectronMode = !!window.electronAPI;
-
-            if (isStaticMode && !isElectronMode) {
+            // Static web mode (PWA): show toast that this is desktop-only
+            if (this._isStaticWebMode()) {
                 eXeLearning.app.toasts.createToast({
                     title: _('Save As'),
                     body: _('This option is only available offline.'),
@@ -328,11 +335,7 @@ export default class NavbarFile {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
 
             // Static web mode (no Electron): show toast that this is desktop-only
-            const capabilities = eXeLearning?.app?.capabilities;
-            const isStaticMode = capabilities && !capabilities.storage.remote;
-            const isElectronMode = !!window.electronAPI;
-
-            if (isStaticMode && !isElectronMode) {
+            if (this._isStaticWebMode()) {
                 eXeLearning.app.toasts.createToast({
                     title: _('Save As'),
                     body: _('This option is only available offline.'),

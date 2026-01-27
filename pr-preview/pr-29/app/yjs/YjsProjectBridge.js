@@ -51,6 +51,17 @@ class YjsProjectBridge {
   }
 
   /**
+   * Mark document as clean (no unsaved changes).
+   * Updates UI to remove unsaved indicator (red dot).
+   * @private
+   */
+  _markDocumentClean() {
+    if (this.documentManager?.markClean) {
+      this.documentManager.markClean();
+    }
+  }
+
+  /**
    * Initialize the Yjs bridge for a project
    * @param {number} projectId - Project ID
    * @param {string} authToken - JWT authentication token
@@ -2049,9 +2060,7 @@ class YjsProjectBridge {
             Logger.log('[YjsProjectBridge] ELPX exported via Electron:', exportFilename);
 
             // Mark document as clean (no unsaved changes) - removes red dot
-            if (this.documentManager?.markClean) {
-              this.documentManager.markClean();
-            }
+            this._markDocumentClean();
           } else {
             // Browser mode (static/PWA): direct download
             const blob = new Blob([result.data], { type: 'application/zip' });
@@ -2066,9 +2075,7 @@ class YjsProjectBridge {
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
 
             // Mark document as clean (no unsaved changes) - removes red dot
-            if (this.documentManager?.markClean) {
-              this.documentManager.markClean();
-            }
+            this._markDocumentClean();
           }
         } else {
           throw new Error(result.error || 'Export failed');
@@ -2117,6 +2124,11 @@ class YjsProjectBridge {
     // The loaded content is the new baseline - no unsaved changes
     if (clearExisting && this.documentManager?.captureBaselineState) {
       this.documentManager.captureBaselineState();
+      // Also capture as server state - imported content is treated as clean baseline
+      // This ensures NO red dot appears immediately after import or after page reload
+      if (this.documentManager?.captureServerState) {
+        this.documentManager.captureServerState();
+      }
       // Update UI to show saved state (remove red dot)
       this.updateSaveStatus('saved');
       // Update browser title with imported document title
@@ -2125,7 +2137,7 @@ class YjsProjectBridge {
       if (title) {
         this.updateDocumentTitle(title);
       }
-      Logger.log('[YjsProjectBridge] Baseline captured after import - document marked clean');
+      Logger.log('[YjsProjectBridge] Baseline and server state captured after import - document marked clean');
     }
 
     return stats;

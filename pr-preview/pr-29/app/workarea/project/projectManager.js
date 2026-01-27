@@ -329,6 +329,34 @@ export default class projectManager {
         // Show workarea
         this.showScreen();
 
+        // Capture baseline state after import - ensures unsaved changes tracking works correctly
+        // This matches what enableYjsMode() does for new/server projects
+        if (this._yjsBridge?.documentManager?.captureBaselineState) {
+            this._yjsBridge.documentManager.captureBaselineState();
+            Logger.log('[ProjectManager] Baseline state captured after direct import');
+        }
+
+        // Also capture as "server state" so imported content is treated as clean baseline
+        // (even though it's not actually on server yet)
+        // This ensures NO red dot appears immediately after import
+        if (this._yjsBridge?.documentManager?.captureServerState) {
+            this._yjsBridge.documentManager.captureServerState();
+            Logger.log('[ProjectManager] Server state captured after direct import');
+        }
+
+        // Enable autoSync AFTER capturing baseline - this connects the save status listener
+        // Without this, markDirty() won't trigger the red dot indicator
+        // This matches what enableYjsMode() does for new/server projects
+        if (this._yjsBridge?.enableAutoSync) {
+            this._yjsBridge.enableAutoSync();
+            Logger.log('[ProjectManager] AutoSync enabled after direct import');
+        }
+
+        // Update save status UI to show saved state (remove red dot)
+        if (this._yjsBridge?.updateSaveStatus) {
+            this._yjsBridge.updateSaveStatus('saved');
+        }
+
         Logger.log('[ProjectManager] UI refreshed after direct import');
     }
 

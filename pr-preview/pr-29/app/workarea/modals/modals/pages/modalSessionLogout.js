@@ -1,6 +1,26 @@
 import Modal from '../modal.js';
 
 export default class ModalSessionLogout extends Modal {
+    /**
+     * Download project and execute callback on success.
+     * Shows error alert on failure.
+     * @private
+     * @param {Function} callback - Function to call after successful download
+     */
+    async _downloadAndThen(callback) {
+        try {
+            await eXeLearning.app.menus.navbar.file.downloadProjectEvent();
+            callback();
+        } catch (error) {
+            console.error('[ModalSessionLogout] Error downloading:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Error saving'),
+                body: _('An error occurred while saving the project'),
+                contentId: 'error',
+            });
+        }
+    }
+
     constructor(manager) {
         let id = 'modalSessionLogout';
         let titleDefault;
@@ -107,48 +127,27 @@ export default class ModalSessionLogout extends Modal {
             // Handle static mode file open: download project first, then open file input
             if (data.staticModeOpen) {
                 this.close();
-                try {
-                    // Download the project first (triggers browser download)
-                    await eXeLearning.app.menus.navbar.file.downloadProjectEvent();
-                    // After download, open file input
+                await this._downloadAndThen(() => {
                     eXeLearning.app.menus.navbar.file._showStaticFileInput();
-                } catch (error) {
-                    console.error('[ModalSessionLogout] Error downloading before open:', error);
-                    eXeLearning.app.modals.alert.show({
-                        title: _('Error saving'),
-                        body: _('An error occurred while saving the project'),
-                        contentId: 'error',
-                    });
-                }
+                });
                 return;
             }
 
             // Handle static mode new file: download project first, then create new
             if (data.staticModeNew) {
                 this.close();
-                try {
-                    // Download the project first (triggers browser download)
-                    await eXeLearning.app.menus.navbar.file.downloadProjectEvent();
-                    // Clear onbeforeunload to prevent browser reload prompt
+                await this._downloadAndThen(() => {
                     window.onbeforeunload = null;
-                    // After download, create new project
                     window.newProject();
-                } catch (error) {
-                    console.error('[ModalSessionLogout] Error downloading before new:', error);
-                    eXeLearning.app.modals.alert.show({
-                        title: _('Error saving'),
-                        body: _('An error occurred while saving the project'),
-                        contentId: 'error',
-                    });
-                }
+                });
                 return;
             }
 
-            let odeParams = [];
-
-            odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
-            odeParams['odeVersion'] = eXeLearning.app.project.odeVersion;
-            odeParams['odeId'] = eXeLearning.app.project.odeId;
+            const odeParams = {
+                odeSessionId: eXeLearning.app.project.odeSession,
+                odeVersion: eXeLearning.app.project.odeVersion,
+                odeId: eXeLearning.app.project.odeId,
+            };
 
             this.saveSession(odeParams, data);
             this.close();
@@ -220,8 +219,7 @@ export default class ModalSessionLogout extends Modal {
                 return;
             }
 
-            let odeParams = [];
-            odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
+            const odeSessionId = eXeLearning.app.project.odeSession;
 
             if (data.openOdeFile) {
                 if (data.localOdeFile) {
@@ -250,7 +248,7 @@ export default class ModalSessionLogout extends Modal {
                 this.close();
             } else {
                 window.onbeforeunload = null;
-                this.closeSession(odeParams['odeSessionId'], data);
+                this.closeSession(odeSessionId, data);
             }
         });
     }

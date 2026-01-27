@@ -80,6 +80,12 @@ class YjsDocumentManager {
     this.baselineStateVector = null;
     this.baselineStateVectorString = null;
 
+    // Server state vector for detecting unsaved-to-server changes
+    // This tracks what the server actually has saved, surviving page reloads
+    // When user reloads with unsaved changes, we compare against this
+    this.serverStateVector = null;
+    this.serverStateVectorString = null;
+
     // Flag to suppress dirty tracking during initialization
     // Set to true until captureBaselineState() is called
     // This prevents initialization changes (server load, WebSocket sync) from marking dirty
@@ -276,6 +282,10 @@ class YjsDocumentManager {
       // NOTE: We no longer wait for sync here - sync will happen after startWebSocketConnection() is called
       // The YjsProjectBridge will call startWebSocketConnection() after AssetWebSocketHandler is ready
     }
+
+    // Load persisted server state from localStorage for page reload detection
+    // This must happen after IndexedDB sync to compare against IndexedDB-restored state
+    this.loadPersistedServerState();
 
     // Check if document is empty (after IndexedDB sync, before WebSocket sync)
     const navigation = this.ydoc.getArray('navigation');
@@ -559,6 +569,13 @@ class YjsDocumentManager {
 
       // Apply server state
       this.Y.applyUpdate(this.ydoc, update);
+
+      // NOTE: We do NOT call captureServerState() here because initialization
+      // is not yet complete. More changes will happen (blank structure creation,
+      // WebSocket sync, etc.) after this point. The server state is tracked via
+      // localStorage, which is populated only after a successful SAVE (in markClean()).
+      // This ensures that after a page reload, we compare against what was actually
+      // saved to the server, not just what was loaded during initialization.
 
       Logger.log(`[YjsDocumentManager] Loaded ${update.length} bytes from server`);
     } catch (error) {
@@ -901,6 +918,99 @@ class YjsDocumentManager {
     }
 
     Logger.log('[YjsDocumentManager] Baseline state captured, dirty tracking enabled');
+  }
+
+  /**
+   * Capture the current document state as the server state.
+   * This represents what the server actually has saved.
+   * Used to detect unsaved-to-server changes across page reloads.
+   *
+   * Also persists to localStorage so it survives page reloads.
+   *
+   * Call this:
+   * 1. After loading from server (in loadFromServer)
+   * 2. After successful save to server (in SaveManager)
+   * 3. After .elpx import (to treat imported content as clean baseline)
+   */
+  captureServerState() {
+    if (!this.ydoc || !this.Y) {
+      console.warn('[YjsDocumentManager] Cannot capture server state: ydoc not initialized');
+      return;
+    }
+
+    this.serverStateVector = this.Y.encodeStateVector(this.ydoc);
+    this.serverStateVectorString = Array.from(this.serverStateVector).join(',');
+
+    // Persist to localStorage for page reload detection
+    try {
+      const storageKey = `exelearning-server-state-${this.projectId}`;
+      localStorage.setItem(storageKey, this.serverStateVectorString);
+    } catch (e) {
+      // localStorage may be unavailable or full
+      console.warn('[YjsDocumentManager] Could not persist server state to localStorage:', e);
+    }
+
+    Logger.log('[YjsDocumentManager] Server state captured and persisted');
+  }
+
+  /**
+   * Load server state from localStorage (for page reload detection).
+   * This is called during initialization to restore the "last known server state"
+   * so we can detect if there are unsaved-to-server changes after a reload.
+   */
+  loadPersistedServerState() {
+    if (!this.projectId) {
+      return;
+    }
+
+    try {
+      const storageKey = `exelearning-server-state-${this.projectId}`;
+      const persisted = localStorage.getItem(storageKey);
+
+      if (persisted) {
+        this.serverStateVectorString = persisted;
+        // Convert back to Uint8Array
+        this.serverStateVector = new Uint8Array(persisted.split(',').map(Number));
+        Logger.log('[YjsDocumentManager] Loaded persisted server state from localStorage');
+      }
+    } catch (e) {
+      console.warn('[YjsDocumentManager] Could not load server state from localStorage:', e);
+    }
+  }
+
+  /**
+   * Clear persisted server state from localStorage.
+   * Called when project is destroyed or when switching projects.
+   */
+  clearPersistedServerState() {
+    if (!this.projectId) {
+      return;
+    }
+
+    try {
+      const storageKey = `exelearning-server-state-${this.projectId}`;
+      localStorage.removeItem(storageKey);
+    } catch (e) {
+      // Ignore errors
+    }
+  }
+
+  /**
+   * Check if the document has changes not saved to server.
+   * Uses server state vector comparison for accurate detection.
+   * This is used to show the red dot indicator after page reload.
+   * @returns {boolean} true if document differs from server state
+   */
+  hasUnsavedToServer() {
+    if (!this.ydoc || !this.Y || !this.serverStateVector) {
+      // No server state captured - can't determine
+      return false;
+    }
+
+    const currentStateVector = this.Y.encodeStateVector(this.ydoc);
+    const currentStateVectorString = Array.from(currentStateVector).join(',');
+
+    return currentStateVectorString !== this.serverStateVectorString;
   }
 
   /**
@@ -1402,13 +1512,15 @@ class YjsDocumentManager {
 
   /**
    * Mark document as clean (no unsaved changes)
-   * Also captures new baseline state for future comparisons
+   * Also captures new baseline and server state for future comparisons
    */
   markClean() {
     this.isDirty = false;
     this.lastSavedAt = new Date();
     // Capture new baseline after save so future comparisons are accurate
     this.captureBaselineState();
+    // Also capture server state - after successful save, server has current state
+    this.captureServerState();
     this.emit('saveStatus', { status: 'saved', isDirty: false, savedAt: this.lastSavedAt });
   }
 
@@ -1417,8 +1529,14 @@ class YjsDocumentManager {
    * Uses isDirty flag as primary indicator, with state vector comparison
    * to handle undo scenarios (undo to baseline clears unsaved status).
    *
+   * Also checks serverStateVector for page reload scenarios:
+   * - If user reloads with unsaved changes, IndexedDB merges with server state
+   * - isDirty is false (suppressed during init), but serverStateVector differs
+   * - This ensures red dot appears after reload with unsaved changes
+   *
    * Logic:
-   * - If isDirty is false: no user changes occurred → return false
+   * - If serverStateVector exists and differs from current → return true
+   * - If isDirty is false: no user changes in this session → return false
    * - If isDirty is true: check state vectors to detect if undo restored baseline
    *
    * This ensures initialization changes (with 'initial' origin) don't trigger
@@ -1426,7 +1544,14 @@ class YjsDocumentManager {
    * @returns {boolean}
    */
   hasUnsavedChanges() {
-    // If not dirty, definitely no unsaved user changes
+    // Check for unsaved-to-server changes (handles page reload scenario)
+    // This is critical: after reload, isDirty is false, but there may be
+    // changes in IndexedDB that were never saved to server
+    if (this.serverStateVector && this.hasUnsavedToServer()) {
+      return true;
+    }
+
+    // If not dirty, definitely no unsaved user changes in this session
     // This handles the case where initialization writes to Yjs with 'initial' origin
     if (!this.isDirty) {
       return false;
@@ -1668,6 +1793,8 @@ class YjsDocumentManager {
     this.saveInProgress = false;
     this.baselineStateVector = null;
     this.baselineStateVectorString = null;
+    this.serverStateVector = null;
+    this.serverStateVectorString = null;
     this._suppressDirtyTracking = true; // Reset to initial state
 
     Logger.log(`[YjsDocumentManager] Destroyed for project ${this.projectId}`);

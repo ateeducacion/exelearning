@@ -1318,21 +1318,46 @@ function __exeInstallBeforeUnloadOnce() {
     __exeBeforeUnloadInstalled = true;
 
     window.onbeforeunload = function (event) {
+        const capabilities = window.eXeLearning?.app?.capabilities;
+        const isStaticMode = capabilities && !capabilities.storage.remote;
+        const isElectronMode = !!window.electronAPI;
+
+        // Electron: handled via window.close() flow with modal dialog
+        if (isElectronMode) return undefined;
+
+        const yjsBridge = window.eXeLearning?.app?.project?._yjsBridge;
+        const hasUnsavedChanges = yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
+
         // Check for unsaved assets (blobs in memory not yet uploaded to server)
-        // With in-memory storage, these would be lost on page reload
-        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-        if (assetManager && typeof assetManager.hasUnsavedAssets === 'function') {
-            if (assetManager.hasUnsavedAssets()) {
-                // Show browser confirmation dialog
-                const message = 'You have unsaved assets that will be lost if you leave. Are you sure?';
+        const assetManager = yjsBridge?.assetManager;
+        const hasUnsavedAssets = assetManager && typeof assetManager.hasUnsavedAssets === 'function'
+            ? assetManager.hasUnsavedAssets()
+            : false;
+
+        // Detect reload vs other navigation (tab close, link navigation)
+        const navEntries = performance.getEntriesByType('navigation');
+        const isReload = navEntries.length > 0 && navEntries[0].type === 'reload';
+
+        // Online mode: skip warning on reload (data persists in IndexedDB/CacheAPI)
+        // Only warn on tab close if there are actual unsaved changes or assets
+        if (!isStaticMode) {
+            if (isReload) {
+                return undefined;
+            }
+            if (hasUnsavedChanges || hasUnsavedAssets) {
+                const message = _('You have unsaved changes. Are you sure you want to leave?');
                 event.preventDefault();
                 event.returnValue = message;
                 return message;
             }
+            return undefined;
         }
 
-        // Auto-save with Yjs handles data persistence - no confirmation dialog needed
-        return undefined;
+        // Static mode (PWA): Always warn - data will be lost on navigation
+        const message = _('Your project will be lost if you leave. Download it first.');
+        event.preventDefault();
+        event.returnValue = message;
+        return message;
     };
 }
 

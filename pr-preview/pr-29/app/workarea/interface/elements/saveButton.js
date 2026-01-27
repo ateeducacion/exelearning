@@ -15,6 +15,28 @@ export default class SaveProjectButton {
      */
     init() {
         this.addEventClick();
+        this.updateTextForMode();
+    }
+
+    /**
+     * Update button text based on current mode
+     * Static mode (PWA without server): shows "Download" instead of "Save"
+     */
+    updateTextForMode() {
+        const capabilities = eXeLearning?.app?.capabilities;
+        const isStaticMode = capabilities && !capabilities.storage.remote;
+        const isElectronMode = !!window.electronAPI;
+
+        if (isStaticMode && !isElectronMode) {
+            // Update header save button text and title
+            const buttonLabel = this.saveMenuHeadButton?.querySelector('span');
+            if (buttonLabel) {
+                buttonLabel.textContent = _('Download');
+            }
+            if (this.saveMenuHeadButton) {
+                this.saveMenuHeadButton.title = _('Download');
+            }
+        }
     }
 
     /**

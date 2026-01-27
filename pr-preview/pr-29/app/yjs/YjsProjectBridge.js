@@ -1579,6 +1579,13 @@ class YjsProjectBridge {
       this.updateSaveStatus('saved');
     }
 
+    // Set initial document title from metadata
+    const metadata = this.documentManager.getMetadata();
+    const title = metadata?.get('title');
+    if (title) {
+      this.updateDocumentTitle(title);
+    }
+
     Logger.log('[YjsProjectBridge] Auto-sync enabled');
   }
 
@@ -2040,8 +2047,13 @@ class YjsProjectBridge {
               await window.electronAPI.saveBuffer(base64Data, key, exportFilename);
             }
             Logger.log('[YjsProjectBridge] ELPX exported via Electron:', exportFilename);
+
+            // Mark document as clean (no unsaved changes) - removes red dot
+            if (this.documentManager?.markClean) {
+              this.documentManager.markClean();
+            }
           } else {
-            // Browser mode: direct download
+            // Browser mode (static/PWA): direct download
             const blob = new Blob([result.data], { type: 'application/zip' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -2052,6 +2064,11 @@ class YjsProjectBridge {
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
+
+            // Mark document as clean (no unsaved changes) - removes red dot
+            if (this.documentManager?.markClean) {
+              this.documentManager.markClean();
+            }
           }
         } else {
           throw new Error(result.error || 'Export failed');
@@ -2094,6 +2111,21 @@ class YjsProjectBridge {
     if (stats && stats.theme && clearExisting) {
       // Pass cached zip contents to avoid re-unzipping the file
       await this._checkAndImportTheme(stats.theme, file, stats.zipContents);
+    }
+
+    // When opening a file (clearExisting=true), mark document as clean
+    // The loaded content is the new baseline - no unsaved changes
+    if (clearExisting && this.documentManager?.captureBaselineState) {
+      this.documentManager.captureBaselineState();
+      // Update UI to show saved state (remove red dot)
+      this.updateSaveStatus('saved');
+      // Update browser title with imported document title
+      const metadata = this.documentManager.getMetadata();
+      const title = metadata?.get('title');
+      if (title) {
+        this.updateDocumentTitle(title);
+      }
+      Logger.log('[YjsProjectBridge] Baseline captured after import - document marked clean');
     }
 
     return stats;

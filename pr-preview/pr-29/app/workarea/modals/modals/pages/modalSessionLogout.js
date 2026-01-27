@@ -104,6 +104,46 @@ export default class ModalSessionLogout extends Modal {
                 return;
             }
 
+            // Handle static mode file open: download project first, then open file input
+            if (data.staticModeOpen) {
+                this.close();
+                try {
+                    // Download the project first (triggers browser download)
+                    await eXeLearning.app.menus.navbar.file.downloadProjectEvent();
+                    // After download, open file input
+                    eXeLearning.app.menus.navbar.file._showStaticFileInput();
+                } catch (error) {
+                    console.error('[ModalSessionLogout] Error downloading before open:', error);
+                    eXeLearning.app.modals.alert.show({
+                        title: _('Error saving'),
+                        body: _('An error occurred while saving the project'),
+                        contentId: 'error',
+                    });
+                }
+                return;
+            }
+
+            // Handle static mode new file: download project first, then create new
+            if (data.staticModeNew) {
+                this.close();
+                try {
+                    // Download the project first (triggers browser download)
+                    await eXeLearning.app.menus.navbar.file.downloadProjectEvent();
+                    // Clear onbeforeunload to prevent browser reload prompt
+                    window.onbeforeunload = null;
+                    // After download, create new project
+                    window.newProject();
+                } catch (error) {
+                    console.error('[ModalSessionLogout] Error downloading before new:', error);
+                    eXeLearning.app.modals.alert.show({
+                        title: _('Error saving'),
+                        body: _('An error occurred while saving the project'),
+                        contentId: 'error',
+                    });
+                }
+                return;
+            }
+
             let odeParams = [];
 
             odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
@@ -154,6 +194,21 @@ export default class ModalSessionLogout extends Modal {
             if (data.offlineExit) {
                 this.close();
                 this.closeOfflineApp();
+                return;
+            }
+
+            // Handle static mode file open: proceed to file input without saving
+            if (data.staticModeOpen) {
+                this.close();
+                eXeLearning.app.menus.navbar.file._showStaticFileInput();
+                return;
+            }
+
+            // Handle static mode new file: create new project without saving
+            if (data.staticModeNew) {
+                this.close();
+                window.onbeforeunload = null;
+                window.newProject();
                 return;
             }
 

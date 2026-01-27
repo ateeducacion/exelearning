@@ -747,6 +747,25 @@ const YjsProjectManagerMixin = {
         await assetManager.preloadAllAssets();
       }
 
+      // When opening a file (clearExisting=true), mark document as clean
+      // The loaded content is the new baseline - no unsaved changes
+      if (clearExisting && this._yjsBridge?.documentManager?.captureBaselineState) {
+        this._yjsBridge.documentManager.captureBaselineState();
+        // Update UI to show saved state (remove red dot)
+        if (this._yjsBridge?.updateSaveStatus) {
+          this._yjsBridge.updateSaveStatus('saved');
+        }
+        // Update browser title with imported document title
+        if (this._yjsBridge?.updateDocumentTitle) {
+          const metadata = this._yjsBridge.documentManager.getMetadata();
+          const title = metadata?.get('title');
+          if (title) {
+            this._yjsBridge.updateDocumentTitle(title);
+          }
+        }
+        Logger.log('[ProjectManager] Baseline captured after legacy import - document marked clean');
+      }
+
       Logger.log(`[ProjectManager] Import complete:`, stats);
       return stats;
     };

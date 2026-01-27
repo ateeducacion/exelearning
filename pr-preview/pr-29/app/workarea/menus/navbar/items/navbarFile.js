@@ -162,6 +162,36 @@ export default class NavbarFile {
 
         // Check for available templates and show button if any exist
         this.checkAndShowNewFromTemplateButton();
+
+        // Update menu text for static mode (e.g., "Save" -> "Download")
+        this.updateMenuTextForMode();
+    }
+
+    /**
+     * Update menu text based on current mode
+     * Static mode (PWA without server): shows "Download" instead of "Save"
+     */
+    updateMenuTextForMode() {
+        const capabilities = eXeLearning?.app?.capabilities;
+        const isStaticMode = capabilities && !capabilities.storage.remote;
+        const isElectronMode = !!window.electronAPI;
+
+        if (isStaticMode && !isElectronMode) {
+            // Update File > Save to "Download" (online button)
+            if (this.saveButton) {
+                const icon = this.saveButton.querySelector('.small-icon');
+                this.saveButton.innerHTML = '';
+                if (icon) this.saveButton.appendChild(icon);
+                this.saveButton.appendChild(document.createTextNode(' ' + _('Download')));
+            }
+            // Update File > Save to "Download" (offline button used in static mode)
+            if (this.saveOfflineButton) {
+                const icon = this.saveOfflineButton.querySelector('.small-icon');
+                this.saveOfflineButton.innerHTML = '';
+                if (icon) this.saveOfflineButton.appendChild(icon);
+                this.saveOfflineButton.appendChild(document.createTextNode(' ' + _('Download')));
+            }
+        }
     }
 
     /**************************************************************************************
@@ -260,6 +290,22 @@ export default class NavbarFile {
     setSaveAsProjectEvent() {
         this.saveButtonAs.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
+
+            // Static mode (PWA): show toast that this is desktop-only
+            const capabilities = eXeLearning?.app?.capabilities;
+            const isStaticMode = capabilities && !capabilities.storage.remote;
+            const isElectronMode = !!window.electronAPI;
+
+            if (isStaticMode && !isElectronMode) {
+                eXeLearning.app.toasts.createToast({
+                    title: _('Save As'),
+                    body: _('This option is only available offline.'),
+                    icon: 'info',
+                    remove: 2500,
+                });
+                return;
+            }
+
             // Offline desktop: prompt file path and remember it
             if (
                 eXeLearning.config.isOfflineInstallation &&
@@ -280,6 +326,22 @@ export default class NavbarFile {
         if (!this.saveButtonAsOffline) return;
         this.saveButtonAsOffline.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
+
+            // Static web mode (no Electron): show toast that this is desktop-only
+            const capabilities = eXeLearning?.app?.capabilities;
+            const isStaticMode = capabilities && !capabilities.storage.remote;
+            const isElectronMode = !!window.electronAPI;
+
+            if (isStaticMode && !isElectronMode) {
+                eXeLearning.app.toasts.createToast({
+                    title: _('Save As'),
+                    body: _('This option is only available offline.'),
+                    icon: 'info',
+                    remove: 2500,
+                });
+                return;
+            }
+
             this.saveAsElpOffline();
         });
     }
@@ -1555,8 +1617,31 @@ export default class NavbarFile {
     /**
      * Opens file input for static mode (PWA/offline)
      * Uses ElpxImporter directly without server APIs
+     * Checks for unsaved changes first and shows modal if needed
      */
     openFileInputStatic() {
+        // Check for unsaved changes first
+        const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
+        const hasUnsavedChanges = yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
+
+        if (hasUnsavedChanges) {
+            // Show save prompt modal instead of browser alert
+            eXeLearning.app.modals.sessionlogout.show({
+                title: _('Open project'),
+                forceOpen: _('Open without saving'),
+                staticModeOpen: true,
+            });
+            return;
+        }
+
+        this._showStaticFileInput();
+    }
+
+    /**
+     * Internal: Shows the file input for static mode
+     * Called directly when no unsaved changes, or after user chooses to proceed
+     */
+    _showStaticFileInput() {
         // Create or reuse a hidden file input
         let fileInput = document.getElementById('static-open-file-input');
         if (!fileInput) {

@@ -8658,24 +8658,33 @@
     }
     /**
      * Find all Node instances in the document
+     *
+     * Legacy XML may define Node instances inline within parentNode fields.
+     * These inline definitions are often the ONLY definition of those nodes,
+     * so we must include all unique nodes (by reference), not filter them out.
+     *
+     * This matches the PHP behavior in OdeXmlUtil.php:1109-1140 which uses
+     * all exe.engine.node.Node instances without filtering.
      */
     findAllNodes() {
       if (!this.xmlDoc) return [];
       const allNodes = this.getElementsByAttribute(this.xmlDoc, "instance", "class", "exe.engine.node.Node");
-      return allNodes.filter((nodeEl) => {
-        const prevSibling = nodeEl.previousSibling;
-        let prev = prevSibling;
-        while (prev && prev.nodeType !== 1) {
-          prev = prev.previousSibling;
+      const seenRefs = /* @__PURE__ */ new Set();
+      const result = [];
+      for (const nodeEl of allNodes) {
+        const ref = nodeEl.getAttribute("reference");
+        if (!ref) continue;
+        if (seenRefs.has(ref)) {
+          this.logger.log(`[LegacyXmlParser] Skipping duplicate node reference=${ref}`);
+          continue;
         }
-        const prevElement = prev;
-        if (prevElement?.tagName === "string" && prevElement.getAttribute("role") === "key" && prevElement.getAttribute("value") === "parentNode") {
-          const ref = nodeEl.getAttribute("reference");
-          this.logger.log(`[LegacyXmlParser] Skipping parentNode reference=${ref} (not a real page)`);
-          return false;
-        }
-        return true;
-      });
+        seenRefs.add(ref);
+        result.push(nodeEl);
+      }
+      this.logger.log(
+        `[LegacyXmlParser] Found ${result.length} unique nodes (from ${allNodes.length} total instances)`
+      );
+      return result;
     }
     /**
      * Extract metadata from root package
@@ -8808,6 +8817,12 @@
           rootPages.push(page);
         }
       });
+      pageMap.forEach((page) => {
+        if (page.children && page.children.length > 0) {
+          page.children.sort((a, b) => a.position - b.position);
+        }
+      });
+      rootPages.sort((a, b) => a.position - b.position);
       const { shouldFlatten, rootPage } = this.shouldFlattenRootChildren(rootPages);
       let flatPages;
       if (shouldFlatten && rootPage) {
@@ -8816,6 +8831,9 @@
         flatPages = [];
         this.flattenPages(rootPages, flatPages, null);
       }
+      flatPages.forEach((page, index) => {
+        page.position = index;
+      });
       const nodesChangeRef = this.detectNodeReorderMap();
       if (nodesChangeRef.size > 0) {
         flatPages = this.applyNodeReordering(flatPages, nodesChangeRef);

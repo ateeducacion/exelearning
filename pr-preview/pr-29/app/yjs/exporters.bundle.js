@@ -6181,6 +6181,17 @@ if (typeof module !== 'undefined' && module.exports) {
           }
           const manifestJs = this.generateElpxManifestFile(fileList);
           addFile("libs/elpx-manifest.js", manifestJs);
+          const elpxLibFiles = ["fflate/fflate.umd.js", "exe_elpx_download/exe_elpx_download.js"];
+          const missingLibs = elpxLibFiles.filter((f) => !files.has(`libs/${f}`));
+          if (missingLibs.length > 0) {
+            try {
+              const libContents = await this.resources.fetchLibraryFiles(missingLibs);
+              for (const [libPath, content] of libContents) {
+                addFile(`libs/${libPath}`, content);
+              }
+            } catch {
+            }
+          }
         }
         for (let i = 0; i < pages.length; i++) {
           const page = pages[i];
@@ -6189,9 +6200,16 @@ if (typeof module !== 'undefined' && module.exports) {
           let html = pageHtmlMap.get(filename) || "";
           if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
             const basePath = i === 0 ? "" : "../";
+            const fflateScript = `<script src="${basePath}libs/fflate/fflate.umd.js"> <\/script>`;
+            const elpxDownloadScript = `<script src="${basePath}libs/exe_elpx_download/exe_elpx_download.js"> <\/script>`;
             const manifestScriptTag = `<script src="${basePath}libs/elpx-manifest.js"> <\/script>`;
-            html = html.replace(/<\/body>/i, `${manifestScriptTag}
-</body>`);
+            html = html.replace(
+              /<\/body>/i,
+              `${fflateScript}
+${elpxDownloadScript}
+${manifestScriptTag}
+</body>`
+            );
           }
           const encoder = new TextEncoder();
           files.set(filename, encoder.encode(html));

@@ -482,11 +482,13 @@ export default class ModalFilemanager extends Modal {
             // Show modal
             this.modal.show();
 
-            // Load assets
-            await this.loadAssets();
-
-            // Subscribe to Yjs asset changes for real-time sync
+            // Subscribe to Yjs asset changes FIRST (before loading)
+            // This ensures any changes that arrive during loadAssets() are observed,
+            // preventing race conditions in collaborative scenarios
             this._subscribeToYjsChanges();
+
+            // Load assets (observer is already attached)
+            await this.loadAssets();
         }, time);
     }
 

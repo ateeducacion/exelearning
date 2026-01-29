@@ -482,12 +482,17 @@ export default class ModalFilemanager extends Modal {
             // Show modal
             this.modal.show();
 
+            // Wait for Yjs sync to complete before loading assets
+            // This ensures we have all remote assets before rendering,
+            // preventing race conditions in collaborative scenarios (especially CI)
+            await this._waitForYjsSync();
+
             // Subscribe to Yjs asset changes FIRST (before loading)
             // This ensures any changes that arrive during loadAssets() are observed,
             // preventing race conditions in collaborative scenarios
             this._subscribeToYjsChanges();
 
-            // Load assets (observer is already attached)
+            // Load assets (observer is already attached, Yjs is synced)
             await this.loadAssets();
         }, time);
     }
@@ -511,6 +516,46 @@ export default class ModalFilemanager extends Modal {
         assetsMap.observe(this._onYjsAssetsChange);
         this._assetsMap = assetsMap;
         Logger.log('[MediaLibrary] Subscribed to Yjs asset changes');
+    }
+
+    /**
+     * Wait for Yjs sync to complete before loading assets
+     * This ensures all remote assets are available before rendering,
+     * which is critical for collaborative scenarios
+     * @returns {Promise<void>}
+     */
+    async _waitForYjsSync() {
+        const documentManager = window.eXeLearning?.app?.project?._yjsBridge?.documentManager;
+        if (!documentManager) {
+            Logger.log('[MediaLibrary] DocumentManager not available, skipping sync wait');
+            return;
+        }
+
+        // Already synced - no need to wait
+        if (documentManager.synced) {
+            Logger.log('[MediaLibrary] Yjs already synced, proceeding immediately');
+            return;
+        }
+
+        Logger.log('[MediaLibrary] Waiting for Yjs sync to complete...');
+
+        // Wait for sync with a reasonable timeout
+        await Promise.race([
+            new Promise(resolve => {
+                const onSync = ({ synced }) => {
+                    if (synced) {
+                        documentManager.off('sync', onSync);
+                        Logger.log('[MediaLibrary] Yjs sync complete');
+                        resolve();
+                    }
+                };
+                documentManager.on('sync', onSync);
+            }),
+            new Promise(resolve => setTimeout(() => {
+                Logger.log('[MediaLibrary] Yjs sync timeout (5s), proceeding anyway');
+                resolve();
+            }, 5000)) // 5s max wait
+        ]);
     }
 
     /**

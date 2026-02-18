@@ -2252,22 +2252,23 @@ export async function downloadProject(page: Page): Promise<Download> {
 
     await dismissBlockingAlertModal(page);
 
-    // Detect static mode (no remote storage capability)
-    const isStaticMode = await page.evaluate(() => {
-        const capabilities = (window as any).eXeLearning?.app?.capabilities;
-        return capabilities && !capabilities.storage?.remote;
+    // Only Electron/offline-installation mode uses the save button for download.
+    // Static web AND online modes both use the File menu path which calls
+    // downloadProjectViaYjs() — a fully client-side ELPX export.
+    const isOfflineInstallation = await page.evaluate(() => {
+        return (window as any).eXeLearning?.config?.isOfflineInstallation === true;
     });
 
     const triggerDownload = async (): Promise<void> => {
-        if (isStaticMode) {
-            // STATIC MODE: The save button triggers download in offline mode
+        if (isOfflineInstallation) {
+            // ELECTRON/OFFLINE MODE: The save button triggers download directly
             const saveBtn = page.locator('#head-top-save-button');
             await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
             await saveBtn.click();
             return;
         }
 
-        // ONLINE MODE: Navigate through File menu dropdown
+        // ONLINE AND STATIC WEB MODE: Navigate through File menu dropdown
         await page.evaluate(() => {
             document.querySelector('body')?.setAttribute('mode', 'advanced');
         });

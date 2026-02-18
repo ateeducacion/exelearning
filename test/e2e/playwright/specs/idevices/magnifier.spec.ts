@@ -1,7 +1,12 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, gotoWorkarea } from '../../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    gotoWorkarea,
+    selectFirstPage,
+    expandIdeviceCategory,
+    addIdevice,
+} from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
-import type { Page } from '@playwright/test';
 
 /**
  * E2E Tests for Magnifier iDevice
@@ -14,95 +19,32 @@ import type { Page } from '@playwright/test';
  */
 
 /**
- * Helper to add a magnifier iDevice by selecting the page and clicking the magnifier iDevice
+ * Helper to save the magnifier iDevice and wait for edition mode to end
  */
-async function addMagnifierIdeviceFromPanel(page: Page): Promise<void> {
-    // First, select a page in the navigation tree
-    const pageNodeSelectors = [
-        '.nav-element-text:has-text("New page")',
-        '.nav-element-text:has-text("Nueva página")',
-        '[data-testid="nav-node-text"]',
-        '.structure-tree li .nav-element-text',
-    ];
+async function saveMagnifierIdevice(page: import('@playwright/test').Page): Promise<void> {
+    const block = page.locator('#node-content article .idevice_node.magnifier').first();
+    const saveBtn = block.locator('.btn-save-idevice');
+    await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await saveBtn.click();
 
-    let pageSelected = false;
-    for (const selector of pageNodeSelectors) {
-        const element = page.locator(selector).first();
-        if ((await element.count()) > 0) {
-            try {
-                await element.click({ force: true, timeout: 5000 });
-                pageSelected = true;
-                break;
-            } catch {
-                // Try next selector
-            }
-        }
-    }
-
-    if (!pageSelected) {
-        const treeItem = page.locator('#menu_structure .structure-tree li').first();
-        if ((await treeItem.count()) > 0) {
-            await treeItem.click({ force: true });
-        }
-    }
-
-    // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(500);
-
-    // Wait for node-content to show page content
-    await page
-        .waitForFunction(
-            () => {
-                const nodeContent = document.querySelector('#node-content');
-                const metadata = document.querySelector('#properties-node-content-form');
-                return nodeContent && (!metadata || !metadata.closest('.show'));
-            },
-            undefined,
-            { timeout: 10000 },
-        )
-        .catch(() => {
-            // Continue anyway
-        });
-
-    // The iDevices menu uses categories with h3 headings
-    // We need to click on the category heading to expand it
-    // Magnifier is in "Information and presentation" category
-
-    // Find and click the "Information and presentation" category heading
-    const categoryHeading = page.locator('#menu_idevices_content h3').filter({
-        hasText: /Information|Información/i,
-    });
-
-    if ((await categoryHeading.count()) > 0) {
-        await categoryHeading.first().click();
-        await page.waitForTimeout(500);
-    }
-
-    // Now find the magnifier iDevice in the expanded category
-    const magnifierIdevice = page.locator('.idevice_item[id="magnifier"], [data-testid="idevice-magnifier"]').first();
-
-    // Wait for it to be visible after expanding category
-    await magnifierIdevice.waitFor({ state: 'visible', timeout: 10000 });
-    await magnifierIdevice.click();
-
-    // Wait for iDevice to appear in content area (in edition mode)
-    await page.locator('#node-content article .idevice_node.magnifier').first().waitFor({ timeout: 15000 });
+    await page.waitForFunction(
+        () => {
+            const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
+            return idevice && idevice.getAttribute('mode') !== 'edition';
+        },
+        undefined,
+        { timeout: 30000 },
+    );
 }
 
 /**
  * Helper to select an image using the file picker in magnifier editor
  */
-async function selectImageForMagnifier(page: Page, fixturePath: string): Promise<void> {
-    // The file picker button is generated dynamically next to #mnfFileInput
-    // Wait for the button to be created
-    await page.waitForTimeout(500);
-
-    // Find the file picker button - it's created after the input by common_edition.js
+async function selectImageForMagnifier(page: import('@playwright/test').Page, fixturePath: string): Promise<void> {
     const pickFileBtn = page.locator(
         'input.exe-pick-any-file[data-filepicker="mnfFileInput"], #mnfFileInput + input[type="button"]',
     );
 
-    // If button not found by specific selector, try generic button in the magnifier form
     if ((await pickFileBtn.count()) === 0) {
         const genericBtn = page.locator(
             '#magnifierIdeviceForm .exe-pick-any-file, #magnifierIdeviceForm input[type="button"][value*="Select"]',
@@ -114,33 +56,31 @@ async function selectImageForMagnifier(page: Page, fixturePath: string): Promise
         await pickFileBtn.first().click();
     }
 
-    // Wait for Media Library modal
     await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', { timeout: 10000 });
 
-    // Upload image from fixture
     const fileInput = page.locator('#modalFileManager .media-library-upload-input');
     await fileInput.setInputFiles(fixturePath);
 
-    // Wait for the uploaded image to appear in the grid
     const imageItem = page.locator('#modalFileManager .media-library-item').first();
     await expect(imageItem).toBeVisible({ timeout: 15000 });
-
-    // Click to select the uploaded image
     await imageItem.click();
 
-    // Wait for sidebar content to show (appears when asset is selected)
     const sidebarContent = page.locator('#modalFileManager .media-library-sidebar-content');
     await expect(sidebarContent).toBeVisible({ timeout: 5000 });
 
-    // Click insert button in Media Library
     const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
     await expect(insertBtn).toBeVisible({ timeout: 5000 });
     await insertBtn.click();
 
-    // Wait for modal to close and input to update
-    await page.waitForTimeout(500);
+    await page.waitForFunction(
+        () => {
+            const modal = document.querySelector('#modalFileManager');
+            return !modal || !modal.classList.contains('show');
+        },
+        undefined,
+        { timeout: 10000 },
+    );
 
-    // Verify the input was updated
     const inputValue = await page.locator('#mnfFileInput').inputValue();
     if (!inputValue) {
         throw new Error('Image was not selected - #mnfFileInput is still empty');
@@ -148,106 +88,64 @@ async function selectImageForMagnifier(page: Page, fixturePath: string): Promise
 }
 
 test.describe('Magnifier iDevice', () => {
-    test.describe('Basic Operations', () => {
-        test('should add magnifier iDevice to blank document', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-
-            // Create a new project
-            const projectUuid = await createProject(page, 'Magnifier Basic Test');
-            await gotoWorkarea(page, projectUuid);
-
-            // Wait for app initialization
-            await waitForAppReady(page);
-
-            // Add a magnifier iDevice using the panel
-            await addMagnifierIdeviceFromPanel(page);
-
-            // Verify iDevice was added and is in edition mode
-            const magnifierIdevice = page.locator('#node-content article .idevice_node.magnifier').first();
-            await expect(magnifierIdevice).toBeVisible({ timeout: 10000 });
-
-            // Verify the magnifier form elements are visible
-            await expect(page.locator('#mnfFileInput')).toBeVisible({ timeout: 5000 });
-            await expect(page.locator('#mnfPreviewImage')).toBeVisible({ timeout: 5000 });
-        });
-    });
-
-    test.describe('Image Configuration', () => {
-        test('should select custom image from file picker and display correctly', async ({
+    test.describe('Basic Operations and Image Configuration', () => {
+        test('should add magnifier, select custom image, save, and verify data attributes', async ({
             authenticatedPage,
             createProject,
         }) => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
-            const projectUuid = await createProject(page, 'Magnifier Custom Image Test');
+            const projectUuid = await createProject(page, 'Magnifier Workflow Test');
             await gotoWorkarea(page, projectUuid);
-
             await waitForAppReady(page);
 
-            // Add magnifier iDevice
-            await addMagnifierIdeviceFromPanel(page);
+            // Add magnifier iDevice using centralized helpers
+            await selectFirstPage(page);
+            await expandIdeviceCategory(page, /Information|Información/i);
+            await addIdevice(page, 'magnifier');
+
+            // Verify iDevice was added and form elements are visible
+            const magnifierIdevice = page.locator('#node-content article .idevice_node.magnifier').first();
+            await expect(magnifierIdevice).toBeVisible({ timeout: 10000 });
+            await expect(page.locator('#mnfFileInput')).toBeVisible({ timeout: 5000 });
+            await expect(page.locator('#mnfPreviewImage')).toBeVisible({ timeout: 5000 });
+
+            // Verify default image (hood.jpg)
+            const previewSrc = await page.locator('#mnfPreviewImage').getAttribute('src');
+            expect(previewSrc).toContain('hood.jpg');
 
             // Select custom image using file picker
             await selectImageForMagnifier(page, 'test/fixtures/sample-3.jpg');
 
-            // Verify preview image was updated
-            const previewImg = page.locator('#mnfPreviewImage');
-            await expect(previewImg).toBeVisible({ timeout: 5000 });
-
-            // Verify the file input has the custom image path with asset:// URL format
-            // New format is asset://uuid.ext (content-addressable, no filename)
+            // Verify file input has asset:// URL
             const fileInputValue = await page.locator('#mnfFileInput').inputValue();
-            console.log('File input value:', fileInputValue);
-            expect(fileInputValue).toBeTruthy();
-            // The file input should contain asset:// URL with uuid.ext format
             expect(fileInputValue.startsWith('asset://')).toBe(true);
-            // Should have .jpg extension (from original file)
             expect(fileInputValue).toMatch(/^asset:\/\/[a-f0-9-]+\.jpg$/);
 
             // Save the iDevice
-            const block = page.locator('#node-content article .idevice_node.magnifier').first();
-            const saveBtn = block.locator('.btn-save-idevice');
+            await saveMagnifierIdevice(page);
 
-            // Wait for save button to be visible and clickable (Firefox may need more time)
-            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
-            await page.waitForTimeout(500);
-
-            await saveBtn.click();
-
-            // Wait for edition mode to end with longer timeout for Firefox
-            await page.waitForFunction(
-                () => {
-                    const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
-                    return idevice && idevice.getAttribute('mode') !== 'edition';
-                },
-                undefined,
-                { timeout: 30000 },
-            );
-
-            // Verify the image container is visible in view mode
+            // Verify view mode container and image load
             const viewModeContainer = page.locator(
                 '#node-content article .idevice_node.magnifier .ImageMagnifierIdevice, #node-content article .idevice_node.magnifier .MNF-MainContainer',
             );
             await expect(viewModeContainer.first()).toBeVisible({ timeout: 10000 });
 
-            // Verify an image exists in the magnifier
             const viewModeImg = viewModeContainer.locator('img').first();
             await expect(viewModeImg).toBeVisible({ timeout: 5000 });
 
-            // Wait for image to load
-            await page.waitForTimeout(500);
-
-            // Debug: log the image src
-            const imgSrc = await viewModeImg.getAttribute('src');
-            console.log('Image src after save:', imgSrc);
-
-            // Verify image loaded correctly (naturalWidth > 0)
+            // Verify image loaded and has data attributes for magnifier effect
             const naturalWidth = await viewModeImg.evaluate((el: HTMLImageElement) => el.naturalWidth);
-            console.log('Image naturalWidth:', naturalWidth);
             expect(naturalWidth).toBeGreaterThan(0);
 
-            // Save project
+            const hasDataAttributes = await viewModeImg.evaluate((el: HTMLImageElement) => {
+                return (
+                    el.hasAttribute('data-magnifysrc') || el.hasAttribute('data-zoom') || el.id.includes('magnifier')
+                );
+            });
+            expect(hasDataAttributes).toBe(true);
+
             await workarea.save();
         });
 
@@ -255,122 +153,29 @@ test.describe('Magnifier iDevice', () => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
-            const projectUuid = await createProject(page, 'Magnifier Image Test');
+            const projectUuid = await createProject(page, 'Magnifier Default Image Test');
             await gotoWorkarea(page, projectUuid);
-
             await waitForAppReady(page);
 
-            // Add magnifier iDevice
-            await addMagnifierIdeviceFromPanel(page);
+            await selectFirstPage(page);
+            await expandIdeviceCategory(page, /Information|Información/i);
+            await addIdevice(page, 'magnifier');
 
-            // The magnifier loads with a default image (hood.jpg)
-            // Verify preview image is visible in editor
-            const previewImg = page.locator('#mnfPreviewImage');
-            await expect(previewImg).toBeVisible({ timeout: 5000 });
+            // Save with default image
+            await saveMagnifierIdevice(page);
 
-            // Verify the default image src contains hood.jpg
-            const previewSrc = await previewImg.getAttribute('src');
-            expect(previewSrc).toContain('hood.jpg');
-
-            // Save the iDevice (with default image)
-            const block = page.locator('#node-content article .idevice_node.magnifier').first();
-            const saveBtn = block.locator('.btn-save-idevice');
-
-            // Wait for save button to be visible and clickable (Firefox may need more time)
-            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
-            await page.waitForTimeout(500);
-
-            await saveBtn.click();
-
-            // Wait for edition mode to end with longer timeout for Firefox
-            await page.waitForFunction(
-                () => {
-                    const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
-                    return idevice && idevice.getAttribute('mode') !== 'edition';
-                },
-                undefined,
-                { timeout: 30000 },
-            );
-
-            // Verify the image container is visible in view mode
             const viewModeContainer = page.locator(
                 '#node-content article .idevice_node.magnifier .ImageMagnifierIdevice, #node-content article .idevice_node.magnifier .MNF-MainContainer',
             );
             await expect(viewModeContainer.first()).toBeVisible({ timeout: 10000 });
 
-            // Verify an image exists in the magnifier
             const viewModeImg = viewModeContainer.locator('img').first();
             await expect(viewModeImg).toBeVisible({ timeout: 5000 });
 
-            // Wait for image to load and verify it loaded correctly
-            await page.waitForTimeout(500);
             const naturalWidth = await viewModeImg.evaluate((el: HTMLImageElement) => el.naturalWidth);
             expect(naturalWidth).toBeGreaterThan(0);
 
-            // Save project
             await workarea.save();
-        });
-    });
-
-    test.describe('Magnifier Effect', () => {
-        test('should have magnifier data attributes after save', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-
-            const projectUuid = await createProject(page, 'Magnifier Hover Test');
-            await gotoWorkarea(page, projectUuid);
-
-            await waitForAppReady(page);
-
-            // Add magnifier iDevice
-            await addMagnifierIdeviceFromPanel(page);
-
-            // Save the iDevice with default image
-            const block = page.locator('#node-content article .idevice_node.magnifier').first();
-            const saveBtn = block.locator('.btn-save-idevice');
-
-            // Wait for save button to be visible and clickable (Firefox may need more time)
-            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
-            await page.waitForTimeout(500); // Brief wait for any animations
-
-            // Click save button
-            await saveBtn.click();
-
-            // Wait for edition mode to end with longer timeout for Firefox
-            await page.waitForFunction(
-                () => {
-                    const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
-                    return idevice && idevice.getAttribute('mode') !== 'edition';
-                },
-                undefined,
-                { timeout: 30000 },
-            );
-
-            // Find the magnifier image container
-            const magnifierContainer = page.locator(
-                '#node-content article .idevice_node.magnifier .ImageMagnifierIdevice, #node-content article .idevice_node.magnifier .MNF-MainContainer',
-            );
-            await expect(magnifierContainer.first()).toBeVisible({ timeout: 10000 });
-
-            // Get the image inside the container
-            const magnifierImg = magnifierContainer.locator('img').first();
-            await expect(magnifierImg).toBeVisible({ timeout: 5000 });
-
-            // Wait for image to load
-            await page.waitForTimeout(500);
-
-            // Verify the magnifier is set up with proper data attributes
-            // The image should have data-magnifysrc and data-zoom attributes for the magnifier effect
-            const hasDataAttributes = await magnifierImg.evaluate((el: HTMLImageElement) => {
-                return (
-                    el.hasAttribute('data-magnifysrc') || el.hasAttribute('data-zoom') || el.id.includes('magnifier')
-                );
-            });
-
-            expect(hasDataAttributes).toBe(true);
-
-            // Verify the image loaded correctly
-            const naturalWidth = await magnifierImg.evaluate((el: HTMLImageElement) => el.naturalWidth);
-            expect(naturalWidth).toBeGreaterThan(0);
         });
     });
 
@@ -381,57 +186,30 @@ test.describe('Magnifier iDevice', () => {
 
             const projectUuid = await createProject(page, 'Magnifier Preview Test');
             await gotoWorkarea(page, projectUuid);
-
             await waitForAppReady(page);
 
-            // Add magnifier iDevice
-            await addMagnifierIdeviceFromPanel(page);
+            await selectFirstPage(page);
+            await expandIdeviceCategory(page, /Information|Información/i);
+            await addIdevice(page, 'magnifier');
 
-            // Save the iDevice with default image
-            const block = page.locator('#node-content article .idevice_node.magnifier').first();
-            const saveBtn = block.locator('.btn-save-idevice');
+            await saveMagnifierIdevice(page);
 
-            // Wait for save button to be visible and clickable (Firefox may need more time)
-            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
-            await page.waitForTimeout(500);
-
-            await saveBtn.click();
-
-            // Wait for edition mode to end with longer timeout for Firefox
-            await page.waitForFunction(
-                () => {
-                    const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
-                    return idevice && idevice.getAttribute('mode') !== 'edition';
-                },
-                undefined,
-                { timeout: 30000 },
-            );
-
-            // Save project
             await workarea.save();
-            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
             const previewPanel = page.locator('#previewsidenav');
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-            // Wait for iframe to load
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
-            // Verify magnifier container exists in preview
             const previewMagnifierContainer = iframe.locator('.MNF-MainContainer, .ImageMagnifierIdevice');
             await expect(previewMagnifierContainer.first()).toBeVisible({ timeout: 10000 });
 
-            // Verify image is visible in preview
             const previewImg = iframe.locator('.ImageMagnifierIdevice img, .MNF-MainContainer img');
             await expect(previewImg.first()).toBeVisible({ timeout: 10000 });
 
-            // Wait for image to load
-            await page.waitForTimeout(500);
-
-            // Verify image loaded correctly (not broken)
             const naturalWidth = await previewImg.first().evaluate((el: HTMLImageElement) => el.naturalWidth);
             expect(naturalWidth).toBeGreaterThan(0);
         });

@@ -1,9 +1,11 @@
 import { test, expect, navigateToProject } from '../fixtures/auth.fixture';
+import * as path from 'path';
+import { waitForAppReady, gotoWorkarea, openElpFile } from '../helpers/workarea-helpers';
 
 /**
  * Basic Theme Tests
  *
- * Tests for theme selection from bundled themes.
+ * Tests for theme selection from bundled themes and ELP import.
  * Works in both server and static mode since it doesn't require server APIs.
  */
 
@@ -12,50 +14,45 @@ test.describe('Theme Selection - Basic', () => {
         test('should display bundled themes in styles panel', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
 
-            // Create a project and navigate
             const projectUuid = await createProject(page, 'Theme Basic Test');
             await navigateToProject(page, projectUuid);
 
             // Open the Styles panel
-            const stylesButton = page.locator('#dropdownStyles');
-            await expect(stylesButton).toBeVisible();
-            await stylesButton.click();
-
-            // Wait for the styles sidenav to be active
+            await page.locator('#dropdownStyles').click();
             await page.waitForSelector('#stylessidenav.active', { timeout: 5000 });
 
-            // Verify the eXe Styles tab is visible
-            const exeStylesTab = page.locator('#exestylescontent-tab');
-            await expect(exeStylesTab).toBeVisible();
-
-            // Verify theme cards are displayed
+            // Verify the eXe Styles tab is visible and theme cards are displayed
+            await expect(page.locator('#exestylescontent-tab')).toBeVisible();
             const themeCards = page.locator('#exestylescontent .theme-card');
-            const count = await themeCards.count();
-            expect(count).toBeGreaterThan(0);
+            expect(await themeCards.count()).toBeGreaterThan(0);
 
             // Verify 'base' theme is available (default bundled theme)
-            const baseTheme = page.locator('#exestylescontent .theme-card[data-theme-id="base"]');
-            await expect(baseTheme).toBeVisible({ timeout: 5000 });
+            await expect(page.locator('#exestylescontent .theme-card[data-theme-id="base"]')).toBeVisible({
+                timeout: 5000,
+            });
         });
 
-        test('should select a bundled theme and apply it', async ({ authenticatedPage, createProject }) => {
+        test('should select a bundled theme, apply it, and verify in ThemesManager', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
             const page = authenticatedPage;
 
-            // Create a project and navigate
             const projectUuid = await createProject(page, 'Theme Selection Test');
             await navigateToProject(page, projectUuid);
 
-            // Open the Styles panel
-            const stylesButton = page.locator('#dropdownStyles');
-            await stylesButton.click();
+            // Wait for ThemesManager to be initialized
+            await page.waitForFunction(() => (window as any).eXeLearning?.app?.themes?.selected, undefined, {
+                timeout: 30000,
+            });
+
+            // Open the Styles panel and click the 'base' theme
+            await page.locator('#dropdownStyles').click();
             await page.waitForSelector('#stylessidenav.active', { timeout: 5000 });
 
-            // Click on the 'base' theme card
             const baseTheme = page.locator('#exestylescontent .theme-card[data-theme-id="base"]');
             await expect(baseTheme).toBeVisible({ timeout: 5000 });
             await baseTheme.click();
-
-            // Wait for theme to be applied
             await page.waitForTimeout(500);
 
             // Verify the theme is selected (has 'selected' class)
@@ -70,59 +67,75 @@ test.describe('Theme Selection - Basic', () => {
             });
             expect(selectedTheme).toBe('base');
         });
-
-        test('should have theme in ThemesManager after project load', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-
-            // Create a project and navigate
-            const projectUuid = await createProject(page, 'Theme Manager Test');
-            await navigateToProject(page, projectUuid);
-
-            // Wait for ThemesManager to be initialized
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.themes?.selected, undefined, {
-                timeout: 30000,
-            });
-
-            // Get the currently selected theme
-            const selectedTheme = await page.evaluate(() => {
-                const themes = (window as any).eXeLearning?.app?.themes;
-                return {
-                    id: themes?.selected?.id,
-                    name: themes?.selected?.name,
-                };
-            });
-
-            // Theme should be defined (at least the default 'base' theme)
-            expect(selectedTheme.id || selectedTheme.name).toBeTruthy();
-        });
     });
 
     test.describe('Theme Styles Application', () => {
         test('should apply theme CSS to preview', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
 
-            // Create a project and navigate
             const projectUuid = await createProject(page, 'Theme CSS Test');
             await navigateToProject(page, projectUuid);
 
             // Open preview
             await page.click('#head-bottom-preview');
-            const previewPanel = page.locator('#previewsidenav');
-            await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
+            await page.locator('#previewsidenav').waitFor({ state: 'visible', timeout: 15000 });
 
             // Wait for preview iframe to load
             const previewIframe = page.frameLocator('#preview-iframe');
             await previewIframe.locator('body').waitFor({ timeout: 15000 });
 
-            // Verify theme CSS is applied (check for theme-specific class or style)
+            // Verify theme CSS is applied (check for theme-specific class or stylesheet)
             const themeClass = await previewIframe.locator('body').evaluate(el => {
-                // Check for theme-related classes or stylesheet
                 const hasThemeClass = el.classList.contains('exe-themeBase') || el.className.includes('theme');
                 const hasStylesheet = Array.from(document.styleSheets).some(sheet => sheet.href?.includes('theme'));
                 return hasThemeClass || hasStylesheet || true; // At minimum, body should exist
             });
-
             expect(themeClass).toBeTruthy();
+        });
+    });
+
+    test.describe('Theme Import from ELPX', () => {
+        test('should show correct theme in styles panel and ThemesManager after opening elpx file', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Theme ELPX Import Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            // Import the fixture ELPX file with a known theme ('base')
+            const fixturePath = path.resolve(
+                __dirname,
+                '../../../fixtures/un-contenido-de-ejemplo-para-probar-estilos-y-catalogacion.elpx',
+            );
+            await openElpFile(page, fixturePath, 1);
+
+            // Wait for theme to be applied
+            await page.waitForFunction(() => (window as any).eXeLearning?.app?.themes?.selected, undefined, {
+                timeout: 30000,
+            });
+
+            // Verify ThemesManager has the theme set
+            const selectedTheme = await page.evaluate(() => {
+                return (
+                    (window as any).eXeLearning?.app?.themes?.selected?.id ||
+                    (window as any).eXeLearning?.app?.themes?.selected?.name
+                );
+            });
+            expect(selectedTheme).toBeDefined();
+
+            // Open the Styles panel and verify the selected theme is shown
+            await page.locator('#dropdownStyles').click();
+            await page.waitForSelector('#stylessidenav.active', { timeout: 5000 });
+
+            const selectedCards = page.locator('#exestylescontent .theme-card.selected');
+            await expect(selectedCards).toHaveCount(1);
+
+            // The selected theme should match what ThemesManager reports
+            const selectedThemeId = await selectedCards.getAttribute('data-theme-id');
+            expect(selectedThemeId).toBe(selectedTheme);
         });
     });
 });

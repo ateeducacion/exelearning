@@ -1,5 +1,12 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { waitForAppReady, waitForLoadingScreen, reloadPage, gotoWorkarea } from '../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    waitForLoadingScreen,
+    reloadPage,
+    gotoWorkarea,
+    selectFirstPage,
+    addTextIdevice,
+} from '../helpers/workarea-helpers';
 import { WorkareaPage } from '../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -15,88 +22,13 @@ import type { Page } from '@playwright/test';
  */
 
 /**
- * Helper to add a text iDevice and enter edit mode
- */
-async function addTextIdeviceFromPanel(page: Page): Promise<void> {
-    // First, select a page in the navigation tree
-    const pageNodeSelectors = [
-        '.nav-element-text:has-text("New page")',
-        '.nav-element-text:has-text("Nueva página")',
-        '[data-testid="nav-node-text"]',
-        '.structure-tree li .nav-element-text',
-    ];
-
-    let pageSelected = false;
-    for (const selector of pageNodeSelectors) {
-        const element = page.locator(selector).first();
-        if ((await element.count()) > 0) {
-            try {
-                await element.click({ force: true, timeout: 5000 });
-                pageSelected = true;
-                break;
-            } catch {
-                // Try next selector
-            }
-        }
-    }
-
-    if (!pageSelected) {
-        const treeItem = page.locator('#menu_structure .structure-tree li').first();
-        if ((await treeItem.count()) > 0) {
-            await treeItem.click({ force: true });
-        }
-    }
-
-    await page.waitForTimeout(500);
-
-    await page
-        .waitForFunction(
-            () => {
-                const nodeContent = document.querySelector('#node-content');
-                const metadata = document.querySelector('#properties-node-content-form');
-                return nodeContent && (!metadata || !metadata.closest('.show'));
-            },
-            undefined,
-            { timeout: 10000 },
-        )
-        .catch(() => {});
-
-    // Try quick access button first
-    const quickTextButton = page
-        .locator('[data-testid="quick-idevice-text"], .quick-idevice-btn[data-idevice="text"]')
-        .first();
-    if ((await quickTextButton.count()) > 0 && (await quickTextButton.isVisible())) {
-        await quickTextButton.click();
-    } else {
-        // Expand "Information and presentation" category
-        const infoCategory = page
-            .locator('#menu_idevices .accordion-item')
-            .filter({ hasText: /Information|Información/i })
-            .locator('.accordion-button');
-
-        if ((await infoCategory.count()) > 0) {
-            const isCollapsed = await infoCategory.first().evaluate(el => el.classList.contains('collapsed'));
-            if (isCollapsed) {
-                await infoCategory.first().click();
-                await page.waitForTimeout(500);
-            }
-        }
-
-        const textIdevice = page.locator('.idevice_item[id="text"], [data-testid="idevice-text"]').first();
-        await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
-        await textIdevice.click();
-    }
-
-    await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 15000 });
-}
-
-/**
  * Helper to open the File Manager modal via TinyMCE image dialog
  */
 async function openFileManager(page: Page): Promise<void> {
     const existingTinyMce = page.locator('.tox-menubar');
     if ((await existingTinyMce.count()) === 0) {
-        await addTextIdeviceFromPanel(page);
+        await selectFirstPage(page);
+        await addTextIdevice(page);
     }
 
     await page.waitForSelector('.tox-menubar', { timeout: 15000 });

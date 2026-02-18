@@ -1,7 +1,12 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    reloadPage,
+    gotoWorkarea,
+    selectFirstPage,
+    addTextIdevice,
+} from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
-import { addTextIdevice } from '../../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Text iDevice
@@ -72,14 +77,7 @@ test.describe('Text iDevice', () => {
             await reloadPage(page);
 
             // Navigate to the page (after reload, project shows metadata by default)
-            const pageNode = page
-                .locator('.nav-element-text')
-                .filter({ hasText: /New page|Nueva página/i })
-                .first();
-            if ((await pageNode.count()) > 0) {
-                await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(500);
-            }
+            await selectFirstPage(page);
 
             // Verify content persisted
             await expect(page.locator('#node-content')).toContainText(uniqueContent, { timeout: 15000 });
@@ -1626,14 +1624,7 @@ test.describe('Text iDevice', () => {
             await reloadPage(page);
 
             // 18. Navigate to the page with the iDevice
-            const pageNode = page
-                .locator('.nav-element-text')
-                .filter({ hasText: /New page|Nueva página/i })
-                .first();
-            if ((await pageNode.count()) > 0) {
-                await pageNode.click({ force: true });
-                await page.waitForTimeout(500);
-            }
+            await selectFirstPage(page);
 
             // 19. Verify image is visible AFTER reload
             const imgAfter = page.locator('#node-content article .idevice_node.text img');

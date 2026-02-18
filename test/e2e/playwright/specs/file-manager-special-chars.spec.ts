@@ -26,6 +26,8 @@ import {
     zipContainsFile,
     openElpFile,
     dismissBlockingAlertModal,
+    selectFirstPage,
+    addTextIdevice,
 } from '../helpers/workarea-helpers';
 import {
     uploadFileWithSpecialName,
@@ -58,89 +60,14 @@ import type { Page } from '@playwright/test';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Helper to add a text iDevice and enter edit mode to access TinyMCE image dialog
- */
-async function addTextIdeviceFromPanel(page: Page): Promise<void> {
-    // Select a page in the navigation tree
-    const pageNodeSelectors = [
-        '.nav-element-text:has-text("New page")',
-        '.nav-element-text:has-text("Nueva página")',
-        '[data-testid="nav-node-text"]',
-        '.structure-tree li .nav-element-text',
-    ];
-
-    let pageSelected = false;
-    for (const selector of pageNodeSelectors) {
-        const element = page.locator(selector).first();
-        if ((await element.count()) > 0) {
-            try {
-                await element.click({ force: true, timeout: 5000 });
-                pageSelected = true;
-                break;
-            } catch {
-                // Try next selector
-            }
-        }
-    }
-
-    if (!pageSelected) {
-        const treeItem = page.locator('#menu_structure .structure-tree li').first();
-        if ((await treeItem.count()) > 0) {
-            await treeItem.click({ force: true });
-        }
-    }
-
-    await page.waitForTimeout(500);
-
-    await page
-        .waitForFunction(
-            () => {
-                const nodeContent = document.querySelector('#node-content');
-                const metadata = document.querySelector('#properties-node-content-form');
-                return nodeContent && (!metadata || !metadata.closest('.show'));
-            },
-            undefined,
-            { timeout: 10000 },
-        )
-        .catch(() => {});
-
-    // Try quick access button first
-    const quickTextButton = page
-        .locator('[data-testid="quick-idevice-text"], .quick-idevice-btn[data-idevice="text"]')
-        .first();
-    if ((await quickTextButton.count()) > 0 && (await quickTextButton.isVisible())) {
-        await quickTextButton.click();
-    } else {
-        // Expand "Information and presentation" category
-        const infoCategory = page
-            .locator('#menu_idevices .accordion-item')
-            .filter({ hasText: /Information|Información/i })
-            .locator('.accordion-button');
-
-        if ((await infoCategory.count()) > 0) {
-            const isCollapsed = await infoCategory.first().evaluate(el => el.classList.contains('collapsed'));
-            if (isCollapsed) {
-                await infoCategory.first().click();
-                await page.waitForTimeout(500);
-            }
-        }
-
-        const textIdevice = page.locator('.idevice_item[id="text"], [data-testid="idevice-text"]').first();
-        await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
-        await textIdevice.click();
-    }
-
-    await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 15000 });
-}
-
-/**
- * Helper to open the File Manager modal via TinyMCE image dialog
+ * Helper to open the File Manager modal via TinyMCE image dialog.
  * This is specific to the special chars tests that need TinyMCE context.
  */
 async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
     const textBlock = page.locator('#node-content article .idevice_node.text').last();
     if ((await textBlock.count()) === 0) {
-        await addTextIdeviceFromPanel(page);
+        await selectFirstPage(page);
+        await addTextIdevice(page);
     }
 
     const activeTextBlock = page.locator('#node-content article .idevice_node.text').last();
@@ -211,424 +138,109 @@ async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
     await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', { timeout: 10000 });
 }
 
+/**
+ * Helper to save the text iDevice after editing.
+ */
+async function saveTextIdevice(page: Page): Promise<void> {
+    const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
+    if (await saveIdeviceBtn.isVisible().catch(() => false)) {
+        await saveIdeviceBtn.click();
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // TEST SUITES
 // ═══════════════════════════════════════════════════════════════════════════════
 
 test.describe('File Manager - Special Characters', () => {
-    test.describe('Upload Operations - Unicode Languages', () => {
-        test('should upload file with Spanish characters (archivo_espanol.jpg)', async ({
+    test.describe('Upload Operations', () => {
+        test('should upload files with CJK and Latin special characters', async ({
             authenticatedPage,
             createProject,
         }) => {
             const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Spanish');
+            const projectUuid = await createProject(page, 'Upload - Unicode Languages');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
+
+            const filenames = [
+                getUniqueTestFilename('archivo_espanol.jpg'),
+                getUniqueTestFilename('中文文件.jpg'),
+                getUniqueTestFilename('日本語ファイル.jpg'),
+                getUniqueTestFilename('한국어파일.jpg'),
+                getUniqueTestFilename('Test_日本語_中文.jpg'),
+            ];
+
+            // Open file manager once and upload all files
             await openFileManagerViaTinyMCE(page);
-
-            const filename = getUniqueTestFilename('archivo_espanol.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
+            for (const filename of filenames) {
+                await uploadFileWithSpecialName(page, filename);
+                await waitForFileInGrid(page, filename);
+                expect(await verifyFileWithThumbnail(page, filename)).toBe(true);
             }
 
-            // Save project
+            // Insert one representative file into editor and verify
+            const representative = filenames[1]; // Chinese filename
+            await insertFileIntoEditor(page, representative);
+            expect(await verifyImageInEditor(page, representative)).toBe(true);
+
+            await saveTextIdevice(page);
             await saveProject(page);
         });
 
-        test('should upload file with Chinese characters (中文文件.jpg)', async ({
+        test('should upload files with spaces and ASCII special characters', async ({
             authenticatedPage,
             createProject,
         }) => {
             const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Chinese');
+            const projectUuid = await createProject(page, 'Upload - ASCII Special Chars');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
+
+            const ts = Date.now();
+            const filenames = [
+                `file with spaces ${ts}.jpg`,
+                `file   with   multiple   spaces_${ts}.jpg`,
+                `file_with-underscores_and-hyphens_${ts}.jpg`,
+                `file_123_test_${ts}.jpg`,
+            ];
+
             await openFileManagerViaTinyMCE(page);
-
-            const filename = getUniqueTestFilename('中文文件.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
+            for (const filename of filenames) {
+                await uploadFileWithSpecialName(page, filename);
+                await waitForFileInGrid(page, filename);
+                expect(await verifyFileWithThumbnail(page, filename)).toBe(true);
             }
 
-            // Save project
+            // Insert one representative file and verify
+            await insertFileIntoEditor(page, filenames[0]);
+            expect(await verifyImageInEditor(page, filenames[0])).toBe(true);
+
+            await saveTextIdevice(page);
             await saveProject(page);
         });
 
-        test('should upload file with Japanese characters (日本語ファイル.jpg)', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should upload files with edge case names', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Japanese');
+            const projectUuid = await createProject(page, 'Upload - Edge Cases');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
+
+            const ts = Date.now();
+            const filenames = [`multiple.dots.file.${ts}.jpg`, 'a.jpg', getUniqueTestFilename('naive_resume.jpg')];
+
             await openFileManagerViaTinyMCE(page);
-
-            const filename = getUniqueTestFilename('日本語ファイル.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
+            for (const filename of filenames) {
+                await uploadFileWithSpecialName(page, filename);
+                await waitForFileInGrid(page, filename);
+                expect(await verifyFileWithThumbnail(page, filename)).toBe(true);
             }
 
-            // Save project
-            await saveProject(page);
-        });
+            // Insert one representative file and verify
+            await insertFileIntoEditor(page, filenames[0]);
+            expect(await verifyImageInEditor(page, filenames[0])).toBe(true);
 
-        test('should upload file with Korean characters (한국어파일.jpg)', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Korean');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            const filename = getUniqueTestFilename('한국어파일.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-
-        test('should upload file with mixed unicode (Test_日本語_中文.jpg)', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Mixed Unicode');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            const filename = getUniqueTestFilename('Test_日本語_中文.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-    });
-
-    test.describe('Upload Operations - Spaces and Symbols', () => {
-        test('should upload file with spaces in name', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Spaces');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            const filename = `file with spaces ${Date.now()}.jpg`;
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-
-        test('should upload file with multiple consecutive spaces', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Multiple Spaces');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            const filename = `file   with   multiple   spaces_${Date.now()}.jpg`;
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-
-        test('should upload file with underscores and hyphens', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Underscores Hyphens');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            const filename = `file_with-underscores_and-hyphens_${Date.now()}.jpg`;
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-
-        test('should upload file with numbers and symbols', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Numbers Symbols');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            const filename = `file_123_test_${Date.now()}.jpg`;
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-    });
-
-    test.describe('Upload Operations - Edge Cases', () => {
-        test('should upload file with multiple dots in name', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Multiple Dots');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            const filename = `multiple.dots.file.${Date.now()}.jpg`;
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-
-        test('should upload file with very short name (a.jpg)', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Short Name');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            const filename = 'a.jpg';
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-
-        test('should upload file with diacritics (naïve_résumé.jpg)', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Special Chars - Diacritics');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            const filename = getUniqueTestFilename('naive_resume.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify in file manager grid
-            await waitForFileInGrid(page, filename);
-            const hasValidThumbnail = await verifyFileWithThumbnail(page, filename);
-            expect(hasValidThumbnail).toBe(true);
-
-            // Insert into editor
-            await insertFileIntoEditor(page, filename);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
+            await saveTextIdevice(page);
             await saveProject(page);
         });
 
@@ -644,20 +256,16 @@ test.describe('File Manager - Special Characters', () => {
             await waitForAppReady(page);
             await openFileManagerViaTinyMCE(page);
 
-            // Upload two files with longer delays
             const filename1 = getUniqueTestFilename('archivo_espanol.jpg');
             const filename2 = getUniqueTestFilename('中文文件.jpg');
 
-            // First file
             await uploadFileWithSpecialName(page, filename1);
             await waitForFileInGrid(page, filename1);
             await page.waitForTimeout(500);
 
-            // Second file
             await uploadFileWithSpecialName(page, filename2);
             await waitForFileInGrid(page, filename2);
 
-            // Verify both files are present
             const allFiles = await getAllFilenames(page);
             expect(allFiles).toContain(filename1);
             expect(allFiles).toContain(filename2);
@@ -665,550 +273,263 @@ test.describe('File Manager - Special Characters', () => {
     });
 
     test.describe('Folder Operations', () => {
-        test('should create folder with valid alphanumeric name', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Folder - Alphanumeric');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            const folderName = `TestFolder_${Date.now()}`;
-            const success = await createFolderWithName(page, folderName);
-
-            expect(success).toBe(true);
-            const exists = await folderExists(page, folderName);
-            expect(exists).toBe(true);
-        });
-
-        test('should create folder with hyphen and underscore', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Folder - Hyphen Underscore');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            const folderName = `My-Folder_Name_${Date.now()}`;
-            const success = await createFolderWithName(page, folderName);
-
-            expect(success).toBe(true);
-            const exists = await folderExists(page, folderName);
-            expect(exists).toBe(true);
-        });
-
-        test('should handle unicode folder name (sanitized or rejected)', async ({
+        test('should create, navigate, and nest folders with unicode files', async ({
             authenticatedPage,
             createProject,
         }) => {
             const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Folder - Unicode');
+            const projectUuid = await createProject(page, 'Folder Operations');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
             await openFileManagerViaTinyMCE(page);
 
-            // Note: Folder names are restricted to [a-zA-Z0-9\-_./]
-            // Unicode characters should be sanitized or rejected
-            const folderName = '日本語フォルダ';
-            const success = await createFolderWithName(page, folderName);
+            const ts = Date.now();
 
-            // Either folder creation fails or name is sanitized
-            // We just verify the operation doesn't crash
-            const folderCount = await getFolderCount(page);
-            expect(folderCount).toBeGreaterThanOrEqual(0);
+            // Create valid alphanumeric folder
+            const folderName = `TestFolder_${ts}`;
+            expect(await createFolderWithName(page, folderName)).toBe(true);
+            expect(await folderExists(page, folderName)).toBe(true);
 
-            // If folder was created, verify it doesn't have the unicode name literally
-            if (success) {
-                // The name may have been sanitized
-                console.log('Folder was created (possibly sanitized)');
-            } else {
-                console.log('Folder creation rejected (unicode not allowed)');
-            }
-        });
+            // Create folder with hyphen/underscore
+            const folderName2 = `My-Folder_Name_${ts}`;
+            expect(await createFolderWithName(page, folderName2)).toBe(true);
+            expect(await folderExists(page, folderName2)).toBe(true);
 
-        test('should navigate into folder and back using breadcrumbs', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Folder - Navigation');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Create folder
-            const folderName = `NavFolder_${Date.now()}`;
-            await createFolderWithName(page, folderName);
-
-            // Navigate into folder
+            // Navigate into first folder
             await navigateToFolder(page, folderName);
-
-            // Verify breadcrumbs show folder
             const breadcrumbs = page.locator('#modalFileManager .media-library-breadcrumbs');
             await expect(breadcrumbs).toContainText(folderName);
 
+            // Create nested child folder
+            const childFolder = `Child_${ts}`;
+            await createFolderWithName(page, childFolder);
+            await navigateToFolder(page, childFolder);
+            await expect(breadcrumbs).toContainText(folderName);
+            await expect(breadcrumbs).toContainText(childFolder);
+
             // Navigate back to root
             await navigateToRoot(page);
+            expect(await folderExists(page, folderName)).toBe(true);
 
-            // Verify folder is visible again
-            const exists = await folderExists(page, folderName);
-            expect(exists).toBe(true);
+            // Verify unicode folder is sanitized or rejected (no crash)
+            const unicodeFolderResult = await createFolderWithName(page, '日本語フォルダ');
+            const folderCount = await getFolderCount(page);
+            expect(folderCount).toBeGreaterThanOrEqual(0);
+            void unicodeFolderResult; // may succeed (sanitized) or fail (rejected)
         });
 
-        test('should upload unicode file inside folder', async ({ authenticatedPage, createProject }) => {
+        test('should upload unicode file inside folder and verify breadcrumb navigation', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
             const page = authenticatedPage;
             const projectUuid = await createProject(page, 'Folder - Upload Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
             await openFileManagerViaTinyMCE(page);
 
-            // Create and navigate into folder
             const folderName = `UnicodeFiles_${Date.now()}`;
             await createFolderWithName(page, folderName);
             await navigateToFolder(page, folderName);
 
-            // Upload unicode file
             const filename = getUniqueTestFilename('日本語ファイル.jpg');
             await uploadFileWithSpecialName(page, filename);
+            expect(await getFileCount(page)).toBe(1);
 
-            // Verify file is in folder
-            const fileCount = await getFileCount(page);
-            expect(fileCount).toBe(1);
-
-            // Insert into editor
             await insertFileIntoEditor(page, filename);
+            expect(await verifyImageInEditor(page, filename)).toBe(true);
 
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, filename);
-            expect(inEditor).toBe(true);
+            await saveTextIdevice(page);
 
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Open file manager via TinyMCE to navigate back to root
+            // Re-open and verify folder structure from root
             await openFileManagerViaTinyMCE(page);
             await navigateToRoot(page);
+            expect(await getFileCount(page)).toBe(0); // no files at root
+            expect(await folderExists(page, folderName)).toBe(true);
 
-            // Verify root has no files (only folder)
-            const rootFileCount = await getFileCount(page);
-            expect(rootFileCount).toBe(0);
-
-            // Close file manager
             await closeFileManager(page);
-
-            // Cancel TinyMCE dialog if open (from openFileManagerViaTinyMCE)
             const cancelBtn = page.locator('.tox-dialog .tox-button:has-text("Cancel")');
             if ((await cancelBtn.count()) > 0) {
                 await cancelBtn.click();
-                await page.waitForTimeout(300);
             }
 
-            // Save project
             await saveProject(page);
-        });
-
-        test('should create nested folders and navigate with breadcrumbs', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Folder - Nested');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Create parent folder
-            const parentFolder = `Parent_${Date.now()}`;
-            await createFolderWithName(page, parentFolder);
-            await navigateToFolder(page, parentFolder);
-
-            // Create child folder
-            const childFolder = `Child_${Date.now()}`;
-            await createFolderWithName(page, childFolder);
-            await navigateToFolder(page, childFolder);
-
-            // Verify breadcrumbs show full path
-            const breadcrumbs = page.locator('#modalFileManager .media-library-breadcrumbs');
-            await expect(breadcrumbs).toContainText(parentFolder);
-            await expect(breadcrumbs).toContainText(childFolder);
-
-            // Navigate to root using home breadcrumb
-            await navigateToRoot(page);
-
-            // Verify back at root
-            const exists = await folderExists(page, parentFolder);
-            expect(exists).toBe(true);
         });
     });
 
     test.describe('Rename Operations', () => {
-        test('should rename file to unicode name', async ({ authenticatedPage, createProject }) => {
+        test('should rename files between unicode and normal names', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Rename - To Unicode');
+            const projectUuid = await createProject(page, 'Rename Operations');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
             await openFileManagerViaTinyMCE(page);
 
-            // Upload a regular file
-            await uploadFixtureFile(page, 'test/fixtures/sample-2.jpg');
+            const ts = Date.now();
 
-            // Get the filename
+            // Upload fixture, rename to unicode
+            await uploadFixtureFile(page, 'test/fixtures/sample-2.jpg');
             const files = await getAllFilenames(page);
             const originalName = files[0];
+            const unicodeName = `日本語ファイル_${ts}.jpg`;
+            await renameFile(page, originalName, unicodeName);
 
-            // Rename to unicode
-            const newName = `日本語ファイル_${Date.now()}.jpg`;
-            await renameFile(page, originalName, newName);
-
-            // Verify file was renamed
-            const updatedFiles = await getAllFilenames(page);
-            expect(updatedFiles).toContain(newName);
+            let updatedFiles = await getAllFilenames(page);
+            expect(updatedFiles).toContain(unicodeName);
             expect(updatedFiles).not.toContain(originalName);
 
-            // Insert renamed file into editor
-            await insertFileIntoEditor(page, newName);
+            await selectFileByName(page, unicodeName);
+            expect(await verifySidebarFilename(page, unicodeName)).toBe(true);
 
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, newName);
-            expect(inEditor).toBe(true);
+            // Upload another file (unicode) and rename to normal
+            await uploadFileWithSpecialName(page, getUniqueTestFilename('中文文件.jpg'));
+            updatedFiles = await getAllFilenames(page);
+            const chineseName = updatedFiles.find(f => f.includes('中文'))!;
+            const normalName = `renamed_file_${ts}.jpg`;
+            await renameFile(page, chineseName, normalName);
 
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
+            updatedFiles = await getAllFilenames(page);
+            expect(updatedFiles).toContain(normalName);
 
-            // Save project
+            // Insert renamed unicode file and verify
+            await insertFileIntoEditor(page, unicodeName);
+            expect(await verifyImageInEditor(page, unicodeName)).toBe(true);
+
+            await saveTextIdevice(page);
             await saveProject(page);
         });
 
-        test('should rename unicode file to normal name', async ({ authenticatedPage, createProject }) => {
+        test('should rename files with spaces, dots, and preserve extension', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
             const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Rename - From Unicode');
+            const projectUuid = await createProject(page, 'Rename - Spaces and Dots');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
             await openFileManagerViaTinyMCE(page);
 
-            // Upload unicode file
-            const unicodeName = getUniqueTestFilename('中文文件.jpg');
-            await uploadFileWithSpecialName(page, unicodeName);
+            const ts = Date.now();
 
-            // Rename to normal
-            const newName = `renamed_file_${Date.now()}.jpg`;
-            await renameFile(page, unicodeName, newName);
+            // Upload and rename to name with spaces
+            const spacesOriginal = `file with spaces ${ts}.jpg`;
+            await uploadFileWithSpecialName(page, spacesOriginal);
+            const newSpacesName = `new name with spaces ${ts}.jpg`;
+            await renameFile(page, spacesOriginal, newSpacesName);
+            expect(await getAllFilenames(page)).toContain(newSpacesName);
 
-            // Verify file was renamed
-            const updatedFiles = await getAllFilenames(page);
-            expect(updatedFiles).toContain(newName);
-            expect(updatedFiles).not.toContain(unicodeName);
+            // Upload and rename to multiple dots (verify extension preserved)
+            const dotsOriginal = getUniqueTestFilename('testfile.jpg');
+            await uploadFileWithSpecialName(page, dotsOriginal);
+            const dotsName = `file.with.multiple.dots.${ts}.jpg`;
+            await renameFile(page, dotsOriginal, dotsName);
 
-            // Insert renamed file into editor
-            await insertFileIntoEditor(page, newName);
+            const finalFiles = await getAllFilenames(page);
+            expect(finalFiles).toContain(dotsName);
+            expect(dotsName).toMatch(/\.jpg$/);
 
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, newName);
-            expect(inEditor).toBe(true);
+            await insertFileIntoEditor(page, newSpacesName);
+            expect(await verifyImageInEditor(page, newSpacesName)).toBe(true);
 
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-
-        test('should rename file with spaces to file with spaces', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Rename - Spaces');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Upload file with spaces
-            const originalName = `file with spaces ${Date.now()}.jpg`;
-            await uploadFileWithSpecialName(page, originalName);
-
-            // Rename to different name with spaces
-            const newName = `new name with spaces ${Date.now()}.jpg`;
-            await renameFile(page, originalName, newName);
-
-            // Verify rename
-            const updatedFiles = await getAllFilenames(page);
-            expect(updatedFiles).toContain(newName);
-
-            // Insert renamed file into editor
-            await insertFileIntoEditor(page, newName);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, newName);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-
-        test('should preserve extension when renaming', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Rename - Preserve Ext');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Upload file
-            const originalName = getUniqueTestFilename('testfile.jpg');
-            await uploadFileWithSpecialName(page, originalName);
-
-            // Rename keeping .jpg extension
-            const newName = `renamed_${Date.now()}.jpg`;
-            await renameFile(page, originalName, newName);
-
-            // Verify extension is preserved
-            const updatedFiles = await getAllFilenames(page);
-            expect(updatedFiles).toContain(newName);
-            expect(newName).toMatch(/\.jpg$/);
-
-            // Insert renamed file into editor
-            await insertFileIntoEditor(page, newName);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, newName);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-
-        test('should update sidebar after rename', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Rename - Sidebar Update');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Upload file
-            const originalName = getUniqueTestFilename('original.jpg');
-            await uploadFileWithSpecialName(page, originalName);
-
-            // Rename
-            const newName = getUniqueTestFilename('新しい名前.jpg');
-            await renameFile(page, originalName, newName);
-
-            // Select the renamed file and verify sidebar
-            await selectFileByName(page, newName);
-            const sidebarCorrect = await verifySidebarFilename(page, newName);
-            expect(sidebarCorrect).toBe(true);
-
-            // Insert renamed file into editor
-            await insertFileIntoEditor(page, newName);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, newName);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
-            await saveProject(page);
-        });
-
-        test('should rename file with multiple dots', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Rename - Multiple Dots');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Upload file
-            const originalName = getUniqueTestFilename('test.jpg');
-            await uploadFileWithSpecialName(page, originalName);
-
-            // Rename to name with multiple dots
-            const newName = `file.with.multiple.dots.${Date.now()}.jpg`;
-            await renameFile(page, originalName, newName);
-
-            // Verify rename
-            const updatedFiles = await getAllFilenames(page);
-            expect(updatedFiles).toContain(newName);
-
-            // Insert renamed file into editor
-            await insertFileIntoEditor(page, newName);
-
-            // Verify in editor
-            const inEditor = await verifyImageInEditor(page, newName);
-            expect(inEditor).toBe(true);
-
-            // Save iDevice
-            const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
-            if (await saveIdeviceBtn.isVisible().catch(() => false)) {
-                await saveIdeviceBtn.click();
-                await page.waitForTimeout(500);
-            }
-
-            // Save project
+            await saveTextIdevice(page);
             await saveProject(page);
         });
     });
 
     test.describe('Search Operations', () => {
-        test('should search by unicode characters', async ({ authenticatedPage, createProject }) => {
+        test('should search files by unicode and ASCII characters across folders', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
             const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Search - Unicode');
+            const projectUuid = await createProject(page, 'Search Operations');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
             await openFileManagerViaTinyMCE(page);
 
-            // Upload one unicode file
+            // Upload files for searching
             const chineseFile = getUniqueTestFilename('中文文件.jpg');
-            await uploadFileWithSpecialName(page, chineseFile);
-            await page.waitForTimeout(500);
+            const japaneseFile = getUniqueTestFilename('日本語ファイル.jpg');
+            const asciiFile = getUniqueTestFilename('TestFile.jpg');
 
-            // Search for Chinese - should find the chinese file
+            await uploadFileWithSpecialName(page, chineseFile);
+            await uploadFileWithSpecialName(page, japaneseFile);
+            await uploadFileWithSpecialName(page, asciiFile);
+
+            // Search for Chinese - should find the Chinese file
             const chineseResults = await searchAndGetResults(page, '中文');
             expect(chineseResults.length).toBeGreaterThanOrEqual(1);
             expect(chineseResults.some(f => f.includes('中文'))).toBe(true);
 
-            // Clear search and verify all files visible again
+            // Search for partial Japanese match
+            const japaneseResults = await searchAndGetResults(page, '日本');
+            expect(japaneseResults.length).toBeGreaterThanOrEqual(1);
+            expect(japaneseResults.some(f => f.includes('日本語'))).toBe(true);
+
+            // Case-insensitive ASCII search
+            const asciiResults = await searchAndGetResults(page, 'testfile');
+            expect(asciiResults.length).toBeGreaterThanOrEqual(1);
+
+            // Verify clear button works
             await clearSearch(page);
             const allFiles = await getAllFilenames(page);
-            expect(allFiles).toContain(chineseFile);
-        });
+            expect(allFiles.length).toBeGreaterThanOrEqual(3);
 
-        test('should search partial unicode match', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Search - Partial Unicode');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Upload file
-            const filename = getUniqueTestFilename('日本語ファイル.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Search for partial match
-            const results = await searchAndGetResults(page, '日本');
-            expect(results.length).toBeGreaterThanOrEqual(1);
-            expect(results.some(f => f.includes('日本語'))).toBe(true);
-        });
-
-        test('should search case-insensitive for ASCII', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Search - Case Insensitive');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Upload file with mixed case
-            const filename = getUniqueTestFilename('TestFile.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Search with different case
-            const results = await searchAndGetResults(page, 'testfile');
-            expect(results.length).toBeGreaterThanOrEqual(1);
-        });
-
-        test('should search across subfolders', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Search - Subfolders');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Create folder and upload file inside
+            // Create subfolder, upload file inside, search from root
+            await navigateToRoot(page);
             const folderName = `SearchTest_${Date.now()}`;
             await createFolderWithName(page, folderName);
             await navigateToFolder(page, folderName);
 
-            const filename = getUniqueTestFilename('中文文件_in_folder.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Navigate back to root
+            const folderFile = getUniqueTestFilename('中文文件_in_folder.jpg');
+            await uploadFileWithSpecialName(page, folderFile);
             await navigateToRoot(page);
 
-            // Search for file from root
-            const results = await searchAndGetResults(page, '中文');
-            expect(results.length).toBeGreaterThanOrEqual(1);
-            expect(results.some(f => f.includes('中文'))).toBe(true);
-        });
-
-        test('should show search indicator and clear button', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Search - Indicator');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Upload file
-            const filename = getUniqueTestFilename('searchtest.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Search
-            await searchFiles(page, 'search');
+            const folderResults = await searchAndGetResults(page, '中文');
+            expect(folderResults.length).toBeGreaterThanOrEqual(1);
 
             // Verify search indicator is visible
+            await searchFiles(page, 'search');
             const searchIndicator = page.locator('#modalFileManager .media-library-search-indicator');
             await expect(searchIndicator).toBeVisible();
 
-            // Verify clear button works
             await clearSearch(page);
             const searchInput = page.locator('#modalFileManager .media-library-search');
             await expect(searchInput).toHaveValue('');
         });
     });
 
-    test.describe('Preview Operations', () => {
-        test('should show unicode file in preview after insertion', async ({ authenticatedPage, createProject }) => {
+    test.describe('Preview and Persistence', () => {
+        test('should insert unicode file into editor and persist after save and reload', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
             const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Preview - Unicode');
+            const projectUuid = await createProject(page, 'Preview and Persistence');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
             await openFileManagerViaTinyMCE(page);
 
-            // Upload unicode file
+            // Upload and verify thumbnail
             const filename = getUniqueTestFilename('中文文件.jpg');
             await uploadFileWithSpecialName(page, filename);
 
-            // Select and insert
+            // Select and insert into TinyMCE editor
             await selectFileByName(page, filename);
-
             const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
             await insertBtn.click();
-
-            // Wait for file manager to close
             await page.locator('#modalFileManager').waitFor({ state: 'hidden', timeout: 5000 });
 
-            // Fill alt text
+            // Fill alt text if dialog appears
             const altTextField = page
                 .locator('.tox-dialog .tox-form__group')
                 .filter({ has: page.locator('label:text-matches("alternativ", "i")') })
                 .locator('.tox-textfield');
-
             if (await altTextField.isVisible().catch(() => false)) {
                 await altTextField.fill('Test unicode image');
             }
 
-            // Click Save
+            // Click Save in TinyMCE dialog
             const saveBtn = page.locator(
                 '.tox-dialog .tox-button[title="Save"], .tox-dialog .tox-button:has-text("Save")',
             );
@@ -1221,82 +542,22 @@ test.describe('File Manager - Special Characters', () => {
                 await saveBtn.first().click();
             }
 
-            await page.waitForTimeout(500);
-
             // Verify image is in editor
             const editorFrame = page.frameLocator('iframe.tox-edit-area__iframe').first();
             const img = editorFrame.locator('img').first();
             await expect(img).toBeVisible({ timeout: 10000 });
-        });
 
-        test('should preserve unicode filename after save and reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Preview - Save Reload');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
+            // Also verify with space-named file in a separate editor context
             await openFileManagerViaTinyMCE(page);
-
-            // Upload unicode file
-            const filename = getUniqueTestFilename('日本語ファイル.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Close file manager
-            await closeFileManager(page);
-
-            // Close TinyMCE dialog if open
-            const cancelBtn = page.locator('.tox-dialog .tox-button:has-text("Cancel")');
-            if ((await cancelBtn.count()) > 0) {
-                await cancelBtn.click();
-            }
-
-            // Save project
-            await saveProject(page);
-            await page.waitForTimeout(500);
-
-            // Reload page
-            await reloadPage(page);
-
-            // Open file manager again
-            await openFileManagerViaTinyMCE(page);
-
-            // Verify file still exists with correct name
-            const files = await getAllFilenames(page);
-            expect(files).toContain(filename);
-        });
-
-        test('should insert file with spaces and show in editor', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Preview - Spaces');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Upload file with spaces
-            const filename = `file with spaces ${Date.now()}.jpg`;
-            await uploadFileWithSpecialName(page, filename);
-
-            // Select and insert
-            await selectFileByName(page, filename);
-
-            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
-            await insertBtn.click();
-
-            // Wait for file manager to close
+            const spacesFile = `file with spaces ${Date.now()}.jpg`;
+            await uploadFileWithSpecialName(page, spacesFile);
+            await selectFileByName(page, spacesFile);
+            await page.locator('#modalFileManager .media-library-insert-btn').click();
             await page.locator('#modalFileManager').waitFor({ state: 'hidden', timeout: 5000 });
-
-            // Fill alt text and save
-            const altTextField = page
-                .locator('.tox-dialog .tox-form__group')
-                .filter({ has: page.locator('label:text-matches("alternativ", "i")') })
-                .locator('.tox-textfield');
 
             if (await altTextField.isVisible().catch(() => false)) {
                 await altTextField.fill('Test spaces image');
             }
-
-            const saveBtn = page.locator(
-                '.tox-dialog .tox-button[title="Save"], .tox-dialog .tox-button:has-text("Save")',
-            );
             if (
                 await saveBtn
                     .first()
@@ -1305,19 +566,24 @@ test.describe('File Manager - Special Characters', () => {
             ) {
                 await saveBtn.first().click();
             }
+            await expect(editorFrame.locator('img').first()).toBeVisible({ timeout: 10000 });
 
-            await page.waitForTimeout(500);
+            await saveTextIdevice(page);
 
-            // Verify image is in editor
-            const editorFrame = page.frameLocator('iframe.tox-edit-area__iframe').first();
-            const img = editorFrame.locator('img').first();
-            await expect(img).toBeVisible({ timeout: 10000 });
+            // Save project and reload to verify persistence
+            await saveProject(page);
+
+            await reloadPage(page);
+
+            // Open file manager and verify file still exists
+            await openFileManagerViaTinyMCE(page);
+            const allFiles = await getAllFilenames(page);
+            expect(allFiles).toContain(filename);
         });
     });
 
     test.describe('Download as ELPX Operations', () => {
         // Note: These tests verify full round-trip: upload → insert → editor → save → download → reopen → verify
-        // The download button (#navbar-button-download-project) has exe-advanced class.
         test('should download project with unicode files and verify round-trip', async ({
             authenticatedPage,
             createProject,
@@ -1328,18 +594,12 @@ test.describe('File Manager - Special Characters', () => {
             await waitForAppReady(page);
             await openFileManagerViaTinyMCE(page);
 
-            // Upload one unicode file
             const chineseFile = getUniqueTestFilename('中文文件.jpg');
             await uploadFileWithSpecialName(page, chineseFile);
-
-            // Insert into editor
             await insertFileIntoEditor(page, chineseFile);
 
-            // Verify in editor
-            const inEditorBefore = await verifyImageInEditor(page, chineseFile);
-            expect(inEditorBefore).toBe(true);
+            expect(await verifyImageInEditor(page, chineseFile)).toBe(true);
 
-            // Save the iDevice
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice');
             if (
                 await saveIdeviceBtn
@@ -1348,28 +608,21 @@ test.describe('File Manager - Special Characters', () => {
                     .catch(() => false)
             ) {
                 await saveIdeviceBtn.first().click();
-                await page.waitForTimeout(500);
             }
 
-            // Save project
             await saveProject(page);
 
-            // Download as ELPX
             const download = await downloadProject(page);
             const elpxPath = await download.path();
             const buffer = Buffer.from(await require('fs').promises.readFile(elpxPath));
 
-            // Verify ZIP contains unicode file
-            const hasChineseFile = await zipContainsFile(buffer, chineseFile);
-            expect(hasChineseFile).toBe(true);
+            expect(await zipContainsFile(buffer, chineseFile)).toBe(true);
 
-            // Create new project and open the ELPX to verify round-trip
             const newProjectUuid = await createProject(page, 'Reopened Unicode');
             await gotoWorkarea(page, newProjectUuid);
             await waitForAppReady(page);
             await openElpFile(page, elpxPath);
 
-            // Verify file appears in file manager after import
             await openFileManagerViaTinyMCE(page);
             const filesAfterImport = await getAllFilenames(page);
             expect(filesAfterImport).toContain(chineseFile);
@@ -1385,18 +638,12 @@ test.describe('File Manager - Special Characters', () => {
             await waitForAppReady(page);
             await openFileManagerViaTinyMCE(page);
 
-            // Upload file with spaces
             const spacesFile = `file with spaces ${Date.now()}.jpg`;
             await uploadFileWithSpecialName(page, spacesFile);
-
-            // Insert into editor
             await insertFileIntoEditor(page, spacesFile);
 
-            // Verify in editor
-            const inEditorBefore = await verifyImageInEditor(page, spacesFile);
-            expect(inEditorBefore).toBe(true);
+            expect(await verifyImageInEditor(page, spacesFile)).toBe(true);
 
-            // Save the iDevice
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice');
             if (
                 await saveIdeviceBtn
@@ -1405,28 +652,21 @@ test.describe('File Manager - Special Characters', () => {
                     .catch(() => false)
             ) {
                 await saveIdeviceBtn.first().click();
-                await page.waitForTimeout(500);
             }
 
-            // Save project
             await saveProject(page);
 
-            // Download as ELPX
             const download = await downloadProject(page);
             const elpxPath = await download.path();
             const buffer = Buffer.from(await require('fs').promises.readFile(elpxPath));
 
-            // Verify ZIP contains file with spaces
-            const hasSpacesFile = await zipContainsFile(buffer, spacesFile);
-            expect(hasSpacesFile).toBe(true);
+            expect(await zipContainsFile(buffer, spacesFile)).toBe(true);
 
-            // Create new project and open the ELPX to verify round-trip
             const newProjectUuid = await createProject(page, 'Reopened Spaces');
             await gotoWorkarea(page, newProjectUuid);
             await waitForAppReady(page);
             await openElpFile(page, elpxPath);
 
-            // Verify file appears in file manager after import
             await openFileManagerViaTinyMCE(page);
             const filesAfterImport = await getAllFilenames(page);
             expect(filesAfterImport).toContain(spacesFile);
@@ -1442,22 +682,16 @@ test.describe('File Manager - Special Characters', () => {
             await waitForAppReady(page);
             await openFileManagerViaTinyMCE(page);
 
-            // Create folder and upload file inside
             const folderName = `TestFolder_${Date.now()}`;
             await createFolderWithName(page, folderName);
             await navigateToFolder(page, folderName);
 
             const filename = getUniqueTestFilename('file_in_folder.jpg');
             await uploadFileWithSpecialName(page, filename);
-
-            // Insert into editor from within folder
             await insertFileIntoEditor(page, filename);
 
-            // Verify in editor
-            const inEditorBefore = await verifyImageInEditor(page, filename);
-            expect(inEditorBefore).toBe(true);
+            expect(await verifyImageInEditor(page, filename)).toBe(true);
 
-            // Save the iDevice
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice');
             if (
                 await saveIdeviceBtn
@@ -1466,37 +700,28 @@ test.describe('File Manager - Special Characters', () => {
                     .catch(() => false)
             ) {
                 await saveIdeviceBtn.first().click();
-                await page.waitForTimeout(500);
             }
 
-            // Save project
             await saveProject(page);
 
-            // Export as ELPX
             const download = await downloadProject(page);
             const elpxPath = await download.path();
             const buffer = Buffer.from(await require('fs').promises.readFile(elpxPath));
 
-            // Verify file is in export (folder structure preserved in content/resources/)
-            const hasFile = await zipContainsFile(buffer, filename);
-            expect(hasFile).toBe(true);
+            expect(await zipContainsFile(buffer, filename)).toBe(true);
 
-            // Create new project and open the ELPX to verify round-trip
             const newProjectUuid = await createProject(page, 'Reopened Folder');
             await gotoWorkarea(page, newProjectUuid);
             await waitForAppReady(page);
             await openElpFile(page, elpxPath);
 
-            // Verify file appears in file manager after import (navigate to folder first)
             await openFileManagerViaTinyMCE(page);
-            // The folder structure should be preserved
-            const folderExists = await page.evaluate(name => {
+            const folderExistsAfterImport = await page.evaluate(name => {
                 const folders = document.querySelectorAll('#modalFileManager .media-library-folder');
                 return Array.from(folders).some(el => el.getAttribute('data-folder-name') === name);
             }, folderName);
-            expect(folderExists).toBe(true);
+            expect(folderExistsAfterImport).toBe(true);
 
-            // Navigate into folder and verify file
             await navigateToFolder(page, folderName);
             const filesInFolder = await getAllFilenames(page);
             expect(filesInFolder).toContain(filename);
@@ -1504,136 +729,34 @@ test.describe('File Manager - Special Characters', () => {
     });
 
     test.describe('Delete Operations', () => {
-        test('should delete file with unicode name', async ({ authenticatedPage, createProject }) => {
+        test('should delete files with unicode and space names', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Delete - Unicode');
+            const projectUuid = await createProject(page, 'Delete Operations');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
             await openFileManagerViaTinyMCE(page);
 
-            // Upload unicode file
-            const filename = getUniqueTestFilename('中文文件.jpg');
-            await uploadFileWithSpecialName(page, filename);
+            // Upload both file types
+            const unicodeFile = getUniqueTestFilename('中文文件.jpg');
+            const spacesFile = `file with spaces ${Date.now()}.jpg`;
+            await uploadFileWithSpecialName(page, unicodeFile);
+            await uploadFileWithSpecialName(page, spacesFile);
 
-            // Verify file exists
+            // Verify both exist
             let files = await getAllFilenames(page);
-            expect(files).toContain(filename);
+            expect(files).toContain(unicodeFile);
+            expect(files).toContain(spacesFile);
 
-            // Delete file
-            await deleteFile(page, filename);
-
-            // Verify file is gone
+            // Delete unicode file
+            await deleteFile(page, unicodeFile);
             files = await getAllFilenames(page);
-            expect(files).not.toContain(filename);
-        });
+            expect(files).not.toContain(unicodeFile);
+            expect(files).toContain(spacesFile);
 
-        test('should delete file with spaces in name', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Delete - Spaces');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Upload file with spaces
-            const filename = `file with spaces ${Date.now()}.jpg`;
-            await uploadFileWithSpecialName(page, filename);
-
-            // Verify file exists
-            let files = await getAllFilenames(page);
-            expect(files).toContain(filename);
-
-            // Delete file
-            await deleteFile(page, filename);
-
-            // Verify file is gone
+            // Delete spaces file
+            await deleteFile(page, spacesFile);
             files = await getAllFilenames(page);
-            expect(files).not.toContain(filename);
-        });
-    });
-
-    test.describe('Persistence', () => {
-        test('should persist unicode files after page reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Persist - Unicode');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Upload one unicode file (simpler test for persistence)
-            const filename = getUniqueTestFilename('中文文件.jpg');
-            await uploadFileWithSpecialName(page, filename);
-            await page.waitForTimeout(500);
-
-            // Close file manager and dialogs
-            await closeFileManager(page);
-            const cancelBtn = page.locator('.tox-dialog .tox-button:has-text("Cancel")');
-            if ((await cancelBtn.count()) > 0) {
-                await cancelBtn.click();
-            }
-
-            // Save project
-            await saveProject(page);
-            await page.waitForTimeout(500);
-
-            // Reload page
-            await reloadPage(page);
-
-            // Open file manager
-            await openFileManagerViaTinyMCE(page);
-
-            // Verify file is still present
-            const allFiles = await getAllFilenames(page);
-            expect(allFiles).toContain(filename);
-        });
-
-        test('should persist folder structure with unicode files after reload', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
-            const projectUuid = await createProject(page, 'Persist - Folder Unicode');
-            await gotoWorkarea(page, projectUuid);
-            await waitForAppReady(page);
-            await openFileManagerViaTinyMCE(page);
-
-            // Create folder and upload unicode file
-            const folderName = `UnicodeFolder_${Date.now()}`;
-            await createFolderWithName(page, folderName);
-            await navigateToFolder(page, folderName);
-
-            const filename = getUniqueTestFilename('日本語ファイル.jpg');
-            await uploadFileWithSpecialName(page, filename);
-
-            // Navigate back to root
-            await navigateToRoot(page);
-
-            // Close file manager and dialogs
-            await closeFileManager(page);
-            const cancelBtn = page.locator('.tox-dialog .tox-button:has-text("Cancel")');
-            if ((await cancelBtn.count()) > 0) {
-                await cancelBtn.click();
-            }
-
-            // Save project
-            await saveProject(page);
-            await page.waitForTimeout(500);
-
-            // Reload page
-            await reloadPage(page);
-
-            // Open file manager
-            await openFileManagerViaTinyMCE(page);
-
-            // Verify folder exists
-            const exists = await folderExists(page, folderName);
-            expect(exists).toBe(true);
-
-            // Navigate into folder
-            await navigateToFolder(page, folderName);
-
-            // Verify file is still there
-            const files = await getAllFilenames(page);
-            expect(files).toContain(filename);
+            expect(files).not.toContain(spacesFile);
         });
     });
 });

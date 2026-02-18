@@ -30,8 +30,9 @@
  * ```
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import type { Page, Locator } from '@playwright/test';
-import { createTestFileWithName } from './special-chars-helpers';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // FILE MANAGER MODAL
@@ -85,10 +86,36 @@ export async function isFileManagerOpen(page: Page): Promise<boolean> {
 // UPLOAD OPERATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// Cache for fixture image buffer (loaded once per test run)
+let fixtureImageBuffer: Buffer | null = null;
+
+function getFixtureBuffer(): Buffer {
+    if (!fixtureImageBuffer) {
+        fixtureImageBuffer = fs.readFileSync(path.join(process.cwd(), 'test/fixtures/sample-2.jpg'));
+    }
+    return fixtureImageBuffer;
+}
+
+/**
+ * Build a unique buffer for the given filename.
+ *
+ * AssetManager deduplicates uploads by content hash — uploading the same bytes
+ * under different filenames silently skips the second upload and the grid never
+ * updates.  Appending a filename-derived marker after the JPEG EOI marker gives
+ * every upload a distinct hash while keeping the image valid (JPEG readers stop
+ * at EOI and ignore trailing data).
+ */
+function makeUniqueBuffer(filename: string): Buffer {
+    const base = getFixtureBuffer();
+    const marker = Buffer.from(`\x00${filename}`);
+    return Buffer.concat([base, marker]);
+}
+
 /**
  * Upload a file with a specific filename (handles unicode/special characters).
- * Uses DataTransfer API to set files with arbitrary names since Playwright's
- * setInputFiles only accepts actual file paths.
+ * Uses Playwright's setInputFiles with a per-filename unique buffer so that
+ * AssetManager content-hash deduplication does not silently drop subsequent
+ * uploads of the same fixture image.
  *
  * @param page - Playwright page
  * @param filename - The filename to use for the upload
@@ -97,18 +124,13 @@ export async function uploadFileWithSpecialName(page: Page, filename: string): P
     // Get initial file count to verify upload
     const initialCount = await page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').count();
 
-    // Create the test file with the special name
-    await createTestFileWithName(page, filename);
+    const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
+    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
 
-    // Use DataTransfer to set the file on the input within the modal
-    await page.evaluate(() => {
-        const input = document.querySelector('#modalFileManager .media-library-upload-input') as HTMLInputElement;
-        if (!input) throw new Error('Upload input not found');
-
-        const dt = new DataTransfer();
-        dt.items.add((window as any).__testFile);
-        input.files = dt.files;
-        input.dispatchEvent(new Event('change', { bubbles: true }));
+    await page.locator('#modalFileManager .media-library-upload-input').setInputFiles({
+        name: filename,
+        mimeType,
+        buffer: makeUniqueBuffer(filename),
     });
 
     // Wait for file count to increase (more reliable than checking specific filename)

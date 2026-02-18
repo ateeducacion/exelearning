@@ -523,6 +523,13 @@ export async function navigateToFolder(page: Page, folderName: string): Promise<
         folderName,
         { timeout: 10000 },
     );
+
+    // Wait for grid to finish loading (ensures loadFolderContents is complete before uploading)
+    await page
+        .waitForFunction(() => !document.querySelector('#modalFileManager .media-library-loading'), undefined, {
+            timeout: 10000,
+        })
+        .catch(() => {});
 }
 
 /**
@@ -544,6 +551,13 @@ export async function navigateToRoot(page: Page): Promise<void> {
         undefined,
         { timeout: 10000 },
     );
+
+    // Wait for grid to finish loading after navigating to root
+    await page
+        .waitForFunction(() => !document.querySelector('#modalFileManager .media-library-loading'), undefined, {
+            timeout: 10000,
+        })
+        .catch(() => {});
 }
 
 /**
@@ -706,6 +720,13 @@ export async function clearSearch(page: Page): Promise<void> {
         undefined,
         { timeout: 5000 },
     );
+
+    // Wait for grid to reload after clearing search (leaves search mode)
+    await page
+        .waitForFunction(() => !document.querySelector('#modalFileManager .media-library-loading'), undefined, {
+            timeout: 10000,
+        })
+        .catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -800,15 +821,22 @@ export async function insertFileIntoEditor(page: Page, filename: string): Promis
         await altTextField.fill('Test image');
     }
 
-    // Click Save in TinyMCE dialog
-    const saveBtn = page.locator('.tox-dialog .tox-button[title="Save"], .tox-dialog .tox-button:has-text("Save")');
-    if (
-        await saveBtn
-            .first()
-            .isVisible()
-            .catch(() => false)
-    ) {
-        await saveBtn.first().click();
+    // Click the primary (Save/Ok/Guardar) button in TinyMCE dialog.
+    // Use a language-agnostic selector: the primary button is the one WITHOUT the
+    // tox-button--secondary or tox-button--naked modifiers.
+    const tinyMceDialog = page.locator('.tox-dialog');
+    if (await tinyMceDialog.isVisible().catch(() => false)) {
+        const primaryBtn = tinyMceDialog
+            .locator('.tox-button:not(.tox-button--secondary):not(.tox-button--naked)')
+            .first();
+        if (await primaryBtn.isVisible().catch(() => false)) {
+            await primaryBtn.click();
+        } else {
+            // Fallback: press Enter to submit the dialog
+            await page.keyboard.press('Enter');
+        }
+        // Wait for TinyMCE dialog to close
+        await tinyMceDialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
     }
 
     await page.waitForFunction(

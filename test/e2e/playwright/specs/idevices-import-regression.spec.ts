@@ -61,13 +61,32 @@ test.describe('iDevices Import Regression', () => {
         let pagesWithIdevices = 0;
 
         for (const navId of navIds) {
-            // Navigate using stable attribute selector — unaffected by DOM reordering
-            const navText = page.locator(`.nav-element[nav-id="${navId}"] .nav-element-text`).first();
+            // Navigate using stable attribute selector — unaffected by DOM reordering.
+            // Click .node-text-span (the text span) rather than .nav-element-text (the
+            // container that also includes dropdown buttons) for a clean navigation click.
+            const navText = page.locator(`.nav-element[nav-id="${navId}"] .nav-element-text .node-text-span`).first();
             if ((await navText.count()) === 0) continue;
             await navText.click({ force: true });
 
-            // Wait briefly for page content to load
-            await page.waitForTimeout(200);
+            // Wait for page content to load deterministically:
+            // 1. Wait for idevicesEngine to start loading (#node-content data-ready → "false")
+            // 2. Wait for idevicesEngine to finish loading (#node-content data-ready → "true")
+            // hideNodeContainerLoadScreen is called with 500ms delay, so data-ready="true" is
+            // set after all iDevices are rendered.
+            await page
+                .waitForFunction(
+                    () => document.querySelector('#node-content')?.getAttribute('data-ready') !== 'true',
+                    undefined,
+                    { timeout: 1000 },
+                )
+                .catch(() => {}); // Ignore if loading doesn't start (page already current)
+            await page
+                .waitForFunction(
+                    () => document.querySelector('#node-content')?.getAttribute('data-ready') === 'true',
+                    undefined,
+                    { timeout: 10000 },
+                )
+                .catch(() => {}); // Ignore if data-ready was never set (no load screen shown)
 
             // Collect iDevice types on this page
             const ideviceNodes = page.locator('#node-content .idevice_node');

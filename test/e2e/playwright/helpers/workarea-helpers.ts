@@ -2231,14 +2231,19 @@ export async function addTextIdeviceWithContent(page: Page, content: string): Pr
  * @returns The Download object for the exported file
  */
 export async function downloadProject(page: Page): Promise<Download> {
-    // Close any open dialogs or modals first
+    // Close any open TinyMCE dialogs — use language-agnostic selector (Cancel =
+    // secondary button) rather than text-based, since locale may differ.
     const tinyMceDialog = page.locator('.tox-dialog');
     if (await tinyMceDialog.isVisible().catch(() => false)) {
-        const cancelBtn = page.locator('.tox-dialog .tox-button:has-text("Cancel")');
+        const cancelBtn = tinyMceDialog
+            .locator('.tox-button--secondary, .tox-button:has-text("Cancel"), .tox-button:has-text("Cancelar")')
+            .first();
         if (await cancelBtn.isVisible().catch(() => false)) {
             await cancelBtn.click();
-            await page.waitForTimeout(300);
+        } else {
+            await page.keyboard.press('Escape');
         }
+        await tinyMceDialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
     }
 
     const fileManagerModal = page.locator('#modalFileManager');

@@ -379,9 +379,8 @@ export default class ModalImageOptimizer extends Modal {
         const selectedIds = Array.from(this.selectedAssets);
         console.log('[ModalImageOptimizer] Starting auto-estimate for', selectedIds.length, 'images');
 
-        let p = null;
         try {
-            p = this.optimizerManager.estimateSelected(selectedIds);
+            const p = this.optimizerManager.estimateSelected(selectedIds);
             this._estimatePromise = p;
             await p;
             // Enable optimize button after estimation completes
@@ -389,9 +388,7 @@ export default class ModalImageOptimizer extends Modal {
         } catch (error) {
             console.error('[ModalImageOptimizer] Auto-estimate error:', error);
         } finally {
-            if (this._estimatePromise === p) {
-                this._estimatePromise = null;
-            }
+            this._estimatePromise = null;
         }
     }
 

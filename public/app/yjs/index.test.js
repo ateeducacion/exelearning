@@ -31,6 +31,7 @@ describe('YjsModules (index.js)', () => {
       YjsDocumentManager: window.YjsDocumentManager,
       YjsLockManager: window.YjsLockManager,
       YjsStructureBinding: window.YjsStructureBinding,
+      AssetCacheManager: window.AssetCacheManager,
       ElpxImporter: window.ElpxImporter,
       ElpxExporter: window.ElpxExporter,
       YjsProjectBridge: window.YjsProjectBridge,
@@ -48,6 +49,7 @@ describe('YjsModules (index.js)', () => {
     window.YjsDocumentManager = vi.fn();
     window.YjsLockManager = vi.fn();
     window.YjsStructureBinding = vi.fn();
+    window.AssetCacheManager = vi.fn();
     window.ElpxImporter = vi.fn();
     window.ElpxExporter = vi.fn();
     window.YjsProjectBridge = vi.fn().mockImplementation(function() {
@@ -108,6 +110,10 @@ describe('YjsModules (index.js)', () => {
 
     it('exports YjsStructureBinding reference', () => {
       expect(window.YjsModules.YjsStructureBinding).toBeDefined();
+    });
+
+    it('exports AssetCacheManager reference', () => {
+      expect(window.YjsModules.AssetCacheManager).toBeDefined();
     });
 
     it('exports ElpxImporter reference', () => {

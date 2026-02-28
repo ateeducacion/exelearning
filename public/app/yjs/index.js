@@ -17,22 +17,25 @@
  *   const binding = new YjsStructureBinding(manager);
  *   const pages = binding.getPages();
  *
+ *   const assetCache = new AssetCacheManager(projectId);
+ *   await assetCache.fetchAndCache(assetId, apiUrl, token);
+ *
  *   // Import .elpx
- *   const importer = new ElpxImporter(manager, assetManager);
+ *   const importer = new ElpxImporter(manager, assetCache);
  *   await importer.importFromFile(file);
  *
  *   // Export .elpx
- *   const exporter = new ElpxExporter(manager, assetManager);
+ *   const exporter = new ElpxExporter(manager, assetCache);
  *   await exporter.exportToFile('project.elpx');
  */
 
 // Module exports for browser
 window.YjsModules = {
   // Core modules
-  ProjectTabTracker: window.ProjectTabTracker,
   YjsDocumentManager: window.YjsDocumentManager,
   YjsLockManager: window.YjsLockManager,
   YjsStructureBinding: window.YjsStructureBinding,
+  AssetCacheManager: window.AssetCacheManager,
 
   // Import/Export
   ElpxImporter: window.ElpxImporter,

@@ -107,12 +107,21 @@ const EXPORT_FORMATS: Record<
 
 async function checkProjectAccess(
     uuid: string,
-    auth: AuthenticatedUser,
+    auth: AuthenticatedUser | null,
+    allowPublic: boolean = false
 ): Promise<{ project: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
     const project = await findProjectByUuid(db, uuid);
 
     if (!project) {
         return { project: null, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
+    }
+
+    if (allowPublic && project.visibility === 'public') {
+        return { project };
+    }
+
+    if (!auth) {
+        return { project: null, error: errorResponse('UNAUTHORIZED', 'Authentication required') };
     }
 
     if (project.owner_id !== auth.userId && !isAdmin(auth)) {
@@ -150,6 +159,85 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
     // Register under /projects prefix for project-specific exports
     .group('/projects', app =>
         app.get(
+            '/:uuid/export-preview',
+            async ({ headers, params, set }) => {
+                // Try to authenticate, but don't fail if no auth
+                const authResult = await authenticateRequest(headers);
+                const auth = authResult.success ? authResult.user : null;
+
+                // Check access: must be authenticated owner/collab OR visibility='public'
+                const { project, error } = await checkProjectAccess(params.uuid, auth, true);
+                if (error) {
+                    set.status = error.error.code === 'NOT_FOUND' ? 404 : (auth ? 403 : 401);
+                    return error;
+                }
+
+                try {
+                    // Load the Yjs document
+                    const ydoc = await reconstructDocument(project!.id);
+
+                    // Create document adapter
+                    const wrapper = new ServerYjsDocumentWrapper(ydoc, params.uuid);
+                    const documentAdapter = new YjsDocumentAdapter(wrapper);
+
+                    // Create asset providers
+                    const filesDir = getFilesDir();
+                    const assetsPath = path.join(filesDir, 'assets', params.uuid);
+
+                    const fsAssetProvider = new FileSystemAssetProvider(assetsPath);
+                    const dbAssetProvider = new DatabaseAssetProvider(db, project!.id);
+                    const assetProvider = new CombinedAssetProvider([fsAssetProvider, dbAssetProvider]);
+
+                    // Create resource provider
+                    const resourceProvider = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+
+                    // Create ZIP provider
+                    const zipProvider = new FflateZipProvider();
+
+                    // Create the HTML5 exporter for preview
+                    const exporter = new Html5Exporter(
+                        documentAdapter,
+                        resourceProvider,
+                        assetProvider,
+                        zipProvider,
+                        {
+                            singlePage: false,
+                        },
+                    );
+
+                    // Run the export with server-side LaTeX pre-render hooks.
+                    const latexRenderer = new ServerLatexPreRenderer();
+                    const result = await exporter.export({
+                        preRenderLatex: async (html: string) => latexRenderer.preRender(html),
+                        preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+                    });
+
+                    if (!result.success || !result.data) {
+                        set.status = 500;
+                        return errorResponse('EXPORT_FAILED', result.error || 'Export failed');
+                    }
+
+                    // Return the ZIP data
+                    return new Response(result.data, {
+                        headers: {
+                            'Content-Type': 'application/zip',
+                            'Content-Length': result.data.length.toString(),
+                        },
+                    });
+                } catch (err) {
+                    console.error('[Export API Preview] Error:', err);
+                    set.status = 500;
+                    return errorResponse('EXPORT_ERROR', err instanceof Error ? err.message : 'Export failed');
+                }
+            },
+            {
+                detail: {
+                    summary: 'Export Project Preview',
+                    description: 'Get an HTML5 zip export of the project for the preview viewer',
+                    tags: ['Export'],
+                },
+            },
+        ).get(
             '/:uuid/export/:format',
             async ({ headers, params, set }) => {
                 const authResult = await authenticateRequest(headers);

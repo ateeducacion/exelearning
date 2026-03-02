@@ -2575,9 +2575,10 @@ export default class projectManager {
 
     /**
      *
+     * @param {boolean} autoSave - If true, instead of showing an alert, automatically click the save button of the open iDevice.
      * @return {boolean} - True if at least one iDevice is in edition mode, false otherwise.
      */
-    checkOpenIdevice() {
+    checkOpenIdevice(autoSave = false) {
         const container = document.getElementById('node-content');
         if (!container) {
             return false;
@@ -2586,14 +2587,22 @@ export default class projectManager {
             'div.idevice_node[mode="edition"]'
         );
         if (element !== null) {
-            eXeLearning.app.modals.alert.show({
-                title: _('Info'),
-                body: _(
-                    'Unsaved changes detected. Save your iDevice before continuing.'
-                ),
-            });
+            if (autoSave) {
+                const saveBtn = element.querySelector('.btn-save-idevice');
+                if (saveBtn) {
+                    saveBtn.click();
+                }
+            } else {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Info'),
+                    body: _(
+                        'Unsaved changes detected. Save your iDevice before continuing.'
+                    ),
+                });
+            }
             return true;
         }
+        return false;
     }
 
     // TODO It cannot be implemented to cover all the causes, it requires real persistence.

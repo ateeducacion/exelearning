@@ -1,0 +1,49 @@
+$ cross-env FILES_DIR=data/ DB_PATH=data/exelearning.db PORT=8080 APP_ONLINE_MODE=1 bun run start:dev
+$ bun --watch src/index.ts
+[Translation] Loaded 11 locales
+[DB] Running migrations...
+[Migration] Migration table exists: true
+[Migration] Executed migrations: [ "000_legacy_symfony", "001_initial", "002_asset_folder_path",
+  "003_user_id_length", "004_fix_user_foreign_keys", "005_user_id_nullable", "006_impersonation_audit_log"
+]
+[Migration] Required migrations: [ "000_legacy_symfony", "001_initial", "002_asset_folder_path",
+  "003_user_id_length", "004_fix_user_foreign_keys", "005_user_id_nullable", "006_impersonation_audit_log"
+]
+[Migration] All migrations done: true
+No pending migrations
+[Themes] Syncing 6 base themes...
+[Themes] Base themes synced
+[YjsWebSocket] WebSocket routes ready on port 8080
+[YjsWebSocket] Connect to: ws://localhost:8080/yjs/project-<uuid>?token=<jwt>
+[YjsWebSocket] Mode: stateless-relay with heartbeat
+[CleanupScheduler] Scheduler is disabled
+Elysia server running at http://localhost:8080
+Pages: /login, /workarea
+Auth endpoints: /api/auth/login, /api/auth/logout, /api/session/check
+Project endpoints: /api/project/*, /api/export/*
+Filemanager endpoints: /filemanager/*
+WebSocket (Yjs): ws://localhost:8080/yjs/project-<uuid>?token=<jwt>
+Static files: /public/*
+[Pages] Created new project 70ac76bb-8426-4326-8ef5-f15bf487eadf for user 18
+[Pages] Auto-saved locale preference 'en' for user 18
+[Yjs GET] No snapshot for project 50 (uuid: 756bd8fa-de8d-4481-b556-d8f70fb1cb9d)
+[YjsWebSocket] Client client-1772319597534-jihl6u7pu (user 19) connected to project-756bd8fa-de8d-4481-b556-d8f70fb1cb9d (1 total)
+[YjsWebSocket] Client client-1772319627071-kd5ix1p7h (user 20) connected to project-6ac15026-d0ca-4ca6-8e8e-e669bd4be540 (1 total)
+[Pages] Created new project cbf85bad-fd35-4e60-b378-c1018b3a52d5 for user 21
+[Pages] Auto-saved locale preference 'en' for user 21
+[YjsWebSocket] Client client-1772319679095-a0bjqz9g4 (user 21) connected to project-cbf85bad-fd35-4e60-b378-c1018b3a52d5 (1 total)
+[Pages] Created new project 59be5749-6f8c-4618-9077-0a70c2cdbcd7 for user 22
+[Pages] Auto-saved locale preference 'en' for user 22
+[Pages] Created new project c36ea00c-0971-497d-87d0-80b0fafe191f for user 23
+[Pages] Auto-saved locale preference 'en' for user 23
+[Pages] Created new project eeb5410d-3c37-47c3-815d-a952edf42da6 for user 24
+[Pages] Auto-saved locale preference 'en' for user 24
+[Yjs GET] No snapshot for project 55 (uuid: eeb5410d-3c37-47c3-815d-a952edf42da6)
+[YjsWebSocket] Client client-1772319836558-3ys275gvr (user 24) connected to project-eeb5410d-3c37-47c3-815d-a952edf42da6 (1 total)
+[Pages] Created new project 63a92a7a-d981-43a8-9e77-7273c1408d44 for user 25
+[Pages] Auto-saved locale preference 'en' for user 25
+[YjsWebSocket] Client client-1772319893023-gpod60667 (user 25) connected to project-63a92a7a-d981-43a8-9e77-7273c1408d44 (1 total)
+[Yjs GET] No snapshot for project 57 (uuid: 2e99fa14-0d39-4e89-9f0d-d3fe1164345c)
+[Yjs GET] No snapshot for project 58 (uuid: 6fff01fb-5c33-47d9-aa2b-15471c104d6b)
+[Yjs GET] No snapshot for project 59 (uuid: be7f1425-33ca-4faf-a5ba-da6fa0d6c4d0)
+[YjsWebSocket] Client client-1772320036460-ohdxf0h2w (user 28) connected to project-be7f1425-33ca-4faf-a5ba-da6fa0d6c4d0 (1 total)

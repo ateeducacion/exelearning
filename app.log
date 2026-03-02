@@ -1,0 +1,117 @@
+[0.18ms] ".env"
+bun install v1.2.14 (6a363a38)
+
+Checked 1023 installs across 961 packages (no changes) [55.00ms]
+$ bun x sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map
+Building all assets...
+$ bun run build && bun run css:node && bun run bundle:resources && bun run bundle:app && bun run bundle:importers && bun run bundle:exporters
+$ bun build src/index.ts --outdir dist --target bun --external kysely --external 'kysely/*' && bun build src/cli/index.ts --outfile dist/cli.js --target bun --external kysely --external 'kysely/*'
+Bundled 3841 modules in 707ms
+
+  index.js  14.94 MB  (entry point)
+
+Bundled 3388 modules in 637ms
+
+  cli.js  18.1 MB  (entry point)
+
+$ bun x sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map
+$ bun scripts/build-resource-bundles.js
+Building resource bundles (build version: v0.0.0-alpha)...
+
+Building theme bundles...
+  nova: 74 files, 137.7 KB
+  zen: 80 files, 1146.0 KB
+  base: 56 files, 123.3 KB
+  flux: 75 files, 348.2 KB
+  universal: 100 files, 340.2 KB
+  neo: 87 files, 1139.9 KB
+
+Building iDevices bundle...
+  43 iDevices, 906 files, 4098.4 KB
+
+Building libraries bundle...
+  9 files, 309.7 KB
+
+Building common libraries bundle...
+  130 files, 2638.2 KB
+
+Building content CSS bundle...
+  4 files, 42.6 KB
+
+Manifest written to /app/public/bundles/manifest.json
+
+Resource bundles built successfully!
+$ bun build public/app/app.js --outfile public/app/app.bundle.js --minify --target browser --format iife
+Bundled 101 modules in 45ms
+
+  app.bundle.js  0.80 MB  (entry point)
+
+$ bun scripts/build-importers-bundle.js
+
+  public/app/yjs/importers.bundle.js  401.9kb
+
+⚡ Done in 53ms
+importers.bundle.js built successfully
+$ bun scripts/build-exporters-bundle.js
+
+  public/app/yjs/exporters.bundle.js  436.2kb
+
+⚡ Done in 55ms
+exporters.bundle.js built successfully
+Starting local (dev mode)...
+bun run dev:local
+$ concurrently --names 'ELYSIA,SCSS' --prefix-colors 'blue,magenta' 'bun run start:local' 'bun run sass:watch'
+[ELYSIA] $ cross-env FILES_DIR=data/ DB_PATH=data/exelearning.db PORT=8080 APP_ONLINE_MODE=1 bun run start:dev
+[SCSS] $ bun x sass --watch assets/styles/main.scss:public/style/workarea/main.css --style=expanded --embed-source-map
+[ELYSIA] $ bun --watch src/index.ts
+[SCSS] Sass is watching for changes. Press Ctrl-C to stop.
+[SCSS]
+[ELYSIA] [Translation] Loaded 11 locales
+[ELYSIA] [DB] Running migrations...
+[ELYSIA] [Migration] Migration table exists: true
+[ELYSIA] [Migration] Executed migrations: [ "000_legacy_symfony", "001_initial", "002_asset_folder_path",
+[ELYSIA]   "003_user_id_length", "004_fix_user_foreign_keys", "005_user_id_nullable", "006_impersonation_audit_log"
+[ELYSIA] ]
+[ELYSIA] [Migration] Required migrations: [ "000_legacy_symfony", "001_initial", "002_asset_folder_path",
+[ELYSIA]   "003_user_id_length", "004_fix_user_foreign_keys", "005_user_id_nullable", "006_impersonation_audit_log"
+[ELYSIA] ]
+[ELYSIA] [Migration] All migrations done: true
+[ELYSIA] No pending migrations
+[ELYSIA] [Themes] Syncing 6 base themes...
+[ELYSIA] [Themes] Base themes synced
+[ELYSIA] [YjsWebSocket] WebSocket routes ready on port 8080
+[ELYSIA] [YjsWebSocket] Connect to: ws://localhost:8080/yjs/project-<uuid>?token=<jwt>
+[ELYSIA] [YjsWebSocket] Mode: stateless-relay with heartbeat
+[ELYSIA] [CleanupScheduler] Scheduler is disabled
+[ELYSIA] Elysia server running at http://localhost:8080
+[ELYSIA] Pages: /login, /workarea
+[ELYSIA] Auth endpoints: /api/auth/login, /api/auth/logout, /api/session/check
+[ELYSIA] Project endpoints: /api/project/*, /api/export/*
+[ELYSIA] Filemanager endpoints: /filemanager/*
+[ELYSIA] WebSocket (Yjs): ws://localhost:8080/yjs/project-<uuid>?token=<jwt>
+[ELYSIA] Static files: /public/*
+[ELYSIA] [Yjs GET] No snapshot for project 49 (uuid: 70ac76bb-8426-4326-8ef5-f15bf487eadf)
+[ELYSIA] [YjsWebSocket] Client client-1772319534709-pxl7snez6 (user 18) connected to project-70ac76bb-8426-4326-8ef5-f15bf487eadf (1 total)
+[ELYSIA] [Pages] Created new project 756bd8fa-de8d-4481-b556-d8f70fb1cb9d for user 19
+[ELYSIA] [Pages] Auto-saved locale preference 'en' for user 19
+[ELYSIA] [Pages] Created new project 6ac15026-d0ca-4ca6-8e8e-e669bd4be540 for user 20
+[ELYSIA] [Pages] Auto-saved locale preference 'en' for user 20
+[ELYSIA] [Yjs GET] No snapshot for project 51 (uuid: 6ac15026-d0ca-4ca6-8e8e-e669bd4be540)
+[ELYSIA] [Yjs GET] No snapshot for project 52 (uuid: cbf85bad-fd35-4e60-b378-c1018b3a52d5)
+[ELYSIA] [Yjs GET] No snapshot for project 53 (uuid: 59be5749-6f8c-4618-9077-0a70c2cdbcd7)
+[ELYSIA] [YjsWebSocket] Client client-1772319746936-zlfu2jgz6 (user 22) connected to project-59be5749-6f8c-4618-9077-0a70c2cdbcd7 (1 total)
+[ELYSIA] [Yjs GET] No snapshot for project 54 (uuid: c36ea00c-0971-497d-87d0-80b0fafe191f)
+[ELYSIA] [YjsWebSocket] Client client-1772319792615-ztsafq8ws (user 23) connected to project-c36ea00c-0971-497d-87d0-80b0fafe191f (1 total)
+[ELYSIA] [Yjs GET] No snapshot for project 56 (uuid: 63a92a7a-d981-43a8-9e77-7273c1408d44)
+[ELYSIA] [Pages] Created new project 2e99fa14-0d39-4e89-9f0d-d3fe1164345c for user 26
+[ELYSIA] [Pages] Auto-saved locale preference 'en' for user 26
+[ELYSIA] [YjsWebSocket] Client client-1772319950959-9u2vmpd94 (user 26) connected to project-2e99fa14-0d39-4e89-9f0d-d3fe1164345c (1 total)
+[ELYSIA] [Pages] Created new project 6fff01fb-5c33-47d9-aa2b-15471c104d6b for user 27
+[ELYSIA] [Pages] Auto-saved locale preference 'en' for user 27
+[ELYSIA] [YjsWebSocket] Client client-1772319995397-nca9go7yu (user 27) connected to project-6fff01fb-5c33-47d9-aa2b-15471c104d6b (1 total)
+[ELYSIA] [Pages] Created new project be7f1425-33ca-4faf-a5ba-da6fa0d6c4d0 for user 28
+[ELYSIA] [Pages] Auto-saved locale preference 'en' for user 28
+[ELYSIA] [Pages] Created new project 134532e3-dbfb-4e08-bf5f-94ca38457340 for user 29
+[ELYSIA] [Pages] Auto-saved locale preference 'en' for user 29
+[ELYSIA] [Yjs GET] No snapshot for project 60 (uuid: 134532e3-dbfb-4e08-bf5f-94ca38457340)
+[ELYSIA] [YjsWebSocket] Client client-1772320072574-d7rxl18bs (user 29) connected to project-134532e3-dbfb-4e08-bf5f-94ca38457340 (1 total)

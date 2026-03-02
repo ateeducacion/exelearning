@@ -23,7 +23,7 @@ export default class SaveProjectButton {
      */
     addEventClick() {
         this.saveMenuHeadButton.addEventListener('click', async (event) => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            if (eXeLearning.app.project.checkOpenIdevice(true)) return;
 
             // Prevent double clicks while saving
             if (this.isSaving) {

@@ -143,7 +143,7 @@ describe('ModalShare', () => {
     it('should copy link to clipboard and show success feedback', async () => {
       vi.useFakeTimers();
       modal.linkInput.value = 'http://link.to/project';
-      await modal.handleCopyLink();
+      await modal.handleCopyLink(modal.linkInput, modal.copyButton);
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://link.to/project');
       expect(modal.copyButton.classList.contains('copied')).toBe(true);
       vi.useRealTimers();
@@ -158,7 +158,7 @@ describe('ModalShare', () => {
       const execSpy = vi.spyOn(document, 'execCommand').mockReturnValue(true);
 
       modal.linkInput.value = 'http://link.to/project';
-      await modal.handleCopyLink();
+      await modal.handleCopyLink(modal.linkInput, modal.copyButton);
 
       expect(execSpy).toHaveBeenCalledWith('copy');
       navigator.clipboard = clipboardBackup;

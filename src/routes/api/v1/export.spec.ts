@@ -105,6 +105,8 @@ describe('Export API v1', () => {
 
         await resetClientCacheForTesting();
         await up(db);
+        await db.deleteFrom('projects').execute();
+        await db.deleteFrom('users').execute();
 
         app = createTestApp();
 

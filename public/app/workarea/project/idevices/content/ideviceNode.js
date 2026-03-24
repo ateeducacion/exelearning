@@ -2895,6 +2895,48 @@ export default class IdeviceNode {
                 break;
         }
 
+        return this.normalizeSavedDataForEdition(data, componentType);
+    }
+
+    /**
+     * Normalize persisted iDevice data before passing it to legacy editors.
+     * This keeps asset:// as the user-visible reference format even if old
+     * content still contains temporary blob: URLs.
+     *
+     * @param {*} data
+     * @param {string|null} componentType
+     * @returns {*}
+     */
+    normalizeSavedDataForEdition(data, componentType = null) {
+        const assetManager =
+            eXeLearning?.app?.project?._yjsBridge?.assetManager || null;
+
+        if (!assetManager) return data;
+
+        if (componentType === 'json') {
+            if (!data) return data;
+
+            const originalWasString = typeof data === 'string';
+            const serialized = originalWasString ? data : JSON.stringify(data);
+            const normalized = assetManager.prepareJsonForSync
+                ? assetManager.prepareJsonForSync(serialized)
+                : serialized;
+
+            if (originalWasString) {
+                return normalized;
+            }
+
+            try {
+                return JSON.parse(normalized);
+            } catch {
+                return data;
+            }
+        }
+
+        if (typeof data === 'string' && assetManager.prepareHtmlForSync) {
+            return assetManager.prepareHtmlForSync(data);
+        }
+
         return data;
     }
 

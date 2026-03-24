@@ -262,6 +262,7 @@ describe('TinyMCE 5 Settings', () => {
       // SetContent handler is now registered in setup callback (before content loads)
       config.setup(mockEditor);
       expect(mockEditor.on).toHaveBeenCalledWith('SetContent', expect.any(Function));
+      expect(mockEditor.on).toHaveBeenCalledWith('GetContent', expect.any(Function));
 
       // init_instance_callback runs after content loads
       mockEditor.on.mockClear();
@@ -476,14 +477,14 @@ describe('TinyMCE 5 Settings', () => {
       window.eXeLearning.app.modals = {
         filemanager: {
           show: ({ onSelect }) => {
-            onSelect({ blobUrl: 'blob://file' });
+            onSelect({ assetUrl: 'asset://file.pdf', blobUrl: 'blob://file' });
           },
         },
       };
 
       config.file_browser_callback('field-1');
 
-      expect(input.value).toBe('blob://file');
+      expect(input.value).toBe('asset://file.pdf');
       expect(dispatchSpy).toHaveBeenCalled();
     });
 
@@ -524,19 +525,10 @@ describe('TinyMCE 5 Settings', () => {
       });
     });
 
-    it('file_picker_callback uses blob url directly for images', async () => {
+    it('file_picker_callback uses asset url directly for images', async () => {
       globalThis.$exeTinyMCE.init('single', '#editor');
       const config = globalThis.tinymce.init.mock.calls[0][0];
       const cb = vi.fn();
-
-      // Setup mock AssetManager with caches
-      const mockAssetManager = {
-        reverseBlobCache: new Map(),
-        blobURLCache: new Map(),
-      };
-      window.eXeLearning.app.project = {
-        _yjsBridge: { assetManager: mockAssetManager },
-      };
 
       window.eXeLearning.app.modals = {
         filemanager: {
@@ -553,20 +545,12 @@ describe('TinyMCE 5 Settings', () => {
       await config.file_picker_callback(cb);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      // Should use blob URL directly (not convert to data:URL)
-      // CRITICAL: Must include data-asset-id for reliable blob→asset conversion
-      // alt is empty by default - user should provide their own description
-      // (exeimage plugin shows warning if alt is empty when saving)
-      expect(cb).toHaveBeenCalledWith('blob://file', {
+      expect(cb).toHaveBeenCalledWith('asset://abc123/file.png', {
         title: 'file.png',
         text: 'file.png',
         alt: '',
-        'data-asset-id': 'abc123', // CRITICAL: Used by convertBlobURLsToAssetRefs
+        'data-asset-id': 'abc123',
       });
-
-      // Should ensure blob URL is in cache for later conversion
-      expect(mockAssetManager.reverseBlobCache.has('blob://file')).toBe(true);
-      expect(mockAssetManager.reverseBlobCache.get('blob://file')).toBe('abc123');
     });
 
     it('file_picker_callback works without AssetManager', async () => {
@@ -592,10 +576,7 @@ describe('TinyMCE 5 Settings', () => {
       await config.file_picker_callback(cb);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      // Should still work with blob URL even without AssetManager
-      // data-asset-id is always included for reliable conversion
-      // alt is empty by default - exeimage plugin warns if empty when saving
-      expect(cb).toHaveBeenCalledWith('blob://file', {
+      expect(cb).toHaveBeenCalledWith('asset://file.png', {
         title: 'file.png',
         text: 'file.png',
         alt: '',
@@ -603,20 +584,10 @@ describe('TinyMCE 5 Settings', () => {
       });
     });
 
-    it('file_picker_callback registers UUID (not asset URL) in reverseBlobCache', async () => {
-      // This is the CRITICAL test for the bug fix
-      // The bug was that asset:// URLs were stored in reverseBlobCache instead of UUIDs
+    it('file_picker_callback keeps asset urls user-visible for source editing', async () => {
       globalThis.$exeTinyMCE.init('single', '#editor');
       const config = globalThis.tinymce.init.mock.calls[0][0];
       const cb = vi.fn();
-
-      const mockAssetManager = {
-        reverseBlobCache: new Map(),
-        blobURLCache: new Map(),
-      };
-      window.eXeLearning.app.project = {
-        _yjsBridge: { assetManager: mockAssetManager },
-      };
 
       const assetUUID = '0b034dc2-1fcb-2be8-5fbd-e49a05d9bac0';
       window.eXeLearning.app.modals = {
@@ -634,13 +605,12 @@ describe('TinyMCE 5 Settings', () => {
       await config.file_picker_callback(cb);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      // CRITICAL: reverseBlobCache should contain the UUID, NOT the asset:// URL
-      const cachedValue = mockAssetManager.reverseBlobCache.get('blob:http://localhost:8081/test-blob-url');
-      expect(cachedValue).toBe(assetUUID);
-      // Should NOT be an asset:// URL
-      expect(cachedValue).not.toContain('asset://');
-      // Should be a valid UUID
-      expect(cachedValue).toMatch(/^[a-f0-9-]+$/i);
+      expect(cb).toHaveBeenCalledWith(`asset://${assetUUID}/image.jpg`, {
+        title: 'image.jpg',
+        text: 'image.jpg',
+        alt: '',
+        'data-asset-id': assetUUID,
+      });
     });
 
     it('file_picker_callback handles video files with correct cache registration', async () => {
@@ -672,19 +642,15 @@ describe('TinyMCE 5 Settings', () => {
       await config.file_picker_callback(cb);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      // Videos should also use blob URL directly with data-asset-id
-      // alt is empty by default (videos don't require alt text, only images do)
-      expect(cb).toHaveBeenCalledWith('blob:http://localhost:8081/video-blob', {
+      expect(cb).toHaveBeenCalledWith(`asset://${assetUUID}/video.mp4`, {
         title: 'video.mp4',
         text: 'video.mp4',
         alt: '',
-        'data-asset-id': assetUUID, // CRITICAL: Used by convertBlobURLsToAssetRefs
+        'data-asset-id': assetUUID,
       });
-      // And should register UUID (not asset:// URL) in cache
-      expect(mockAssetManager.reverseBlobCache.get('blob:http://localhost:8081/video-blob')).toBe(assetUUID);
     });
 
-    it('images_upload_handler reuses existing blob urls', async () => {
+    it('images_upload_handler rewrites existing blob urls to asset urls', async () => {
       globalThis.$exeTinyMCE.init('single', '#editor');
       const config = globalThis.tinymce.init.mock.calls[0][0];
       const success = vi.fn();
@@ -696,13 +662,14 @@ describe('TinyMCE 5 Settings', () => {
         _yjsBridge: {
           assetManager: {
             reverseBlobCache: new Map([['blob:1', 'asset-1']]),
+            getAssetUrl: vi.fn().mockReturnValue('asset://asset-1.png'),
           },
         },
       };
 
       await config.images_upload_handler(blobInfo, success, failure);
 
-      expect(success).toHaveBeenCalledWith('blob:1');
+      expect(success).toHaveBeenCalledWith('asset://asset-1.png', { 'data-asset-id': 'asset-1' });
       expect(failure).not.toHaveBeenCalled();
     });
 
@@ -716,13 +683,11 @@ describe('TinyMCE 5 Settings', () => {
         blob: () => new Blob(['data'], { type: 'image/png' }),
         filename: () => 'image.png',
       };
-      const blobURLCache = new Map();
-      const reverseBlobCache = new Map();
       window.eXeLearning.app.project = {
         _yjsBridge: {
           assetManager: {
-            reverseBlobCache,
-            blobURLCache,
+            reverseBlobCache: new Map(),
+            blobURLCache: new Map(),
             // insertImage returns full asset:// URL
             insertImage: vi.fn().mockResolvedValue('asset://asset-2/image.png'),
             // extractAssetId extracts the UUID from the URL
@@ -730,13 +695,10 @@ describe('TinyMCE 5 Settings', () => {
           },
         },
       };
-      globalThis.URL.createObjectURL = vi.fn(() => 'blob:created');
 
       await config.images_upload_handler(blobInfo, success, failure);
 
-      // CRITICAL: Must include data-asset-id for reliable blob→asset conversion
-      expect(success).toHaveBeenCalledWith('blob:created', { 'data-asset-id': 'asset-2' });
-      expect(blobURLCache.get('asset-2')).toBe('blob:created');
+      expect(success).toHaveBeenCalledWith('asset://asset-2/image.png', { 'data-asset-id': 'asset-2' });
     });
 
     it('images_upload_handler reports insert errors', async () => {
@@ -782,6 +744,32 @@ describe('TinyMCE 5 Settings', () => {
       await config.images_upload_handler(blobInfo, success, failure);
 
       expect(failure).toHaveBeenCalledWith('Media library not available');
+    });
+
+    it('GetContent normalizes editor html back to asset urls', () => {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      const mockPrepareHtmlForSync = vi.fn().mockReturnValue('<img src="asset://img-1.png">');
+      const mockEditor = {
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+      };
+      window.eXeLearning.app.project = {
+        _yjsBridge: {
+          assetManager: {
+            prepareHtmlForSync: mockPrepareHtmlForSync,
+          },
+        },
+      };
+
+      config.setup(mockEditor);
+      const getContentCall = mockEditor.on.mock.calls.find((call) => call[0] === 'GetContent');
+      const event = { content: '<img src="blob:http://localhost/img-1">' };
+
+      getContentCall[1](event);
+
+      expect(mockPrepareHtmlForSync).toHaveBeenCalledWith('<img src="blob:http://localhost/img-1">');
+      expect(event.content).toBe('<img src="asset://img-1.png">');
     });
 
     describe('resolveAssetUrlsInEditor', () => {

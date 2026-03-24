@@ -333,7 +333,7 @@ var $exeTinyMCE = {
                             // result = { assetUrl, blobUrl, asset }
                             const field = document.getElementById(field_name);
                             if (field) {
-                                field.value = result.blobUrl;
+                                field.value = result.assetUrl || result.blobUrl || '';
                                 // Trigger change event for TinyMCE to pick up
                                 field.dispatchEvent(new Event('change'));
                             }
@@ -383,26 +383,12 @@ var $exeTinyMCE = {
                                 return;
                             }
 
-                            // Use blob URL directly - it's already in AssetManager cache
-                            // When images_upload_handler is triggered by TinyMCE (automatic_uploads: true),
-                            // it will find this blob URL in reverseBlobCache and return immediately
-                            // without re-processing. Later, convertBlobUrlsToAssetUrls() will convert
-                            // blob:// to asset:// for persistence.
-                            const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-
-                            // Ensure blob URL is in cache (it should be, but verify)
-                            if (assetManager && result.blobUrl && result.asset?.id) {
-                                if (!assetManager.reverseBlobCache.has(result.blobUrl)) {
-                                    assetManager.reverseBlobCache.set(result.blobUrl, result.asset.id);
-                                    assetManager.blobURLCache.set(result.asset.id, result.blobUrl);
-                                }
-                            }
-
-                            cb(result.blobUrl, {
+                            // Keep asset:// in the editor model; rendering resolves it later.
+                            cb(result.assetUrl || result.blobUrl || '', {
                                 title: result.asset.filename || '',
                                 text: result.asset.filename || '',
                                 alt: '',
-                                'data-asset-id': result.asset.id  // CRITICAL: Used by convertBlobURLsToAssetRefs
+                                'data-asset-id': result.asset.id
                             });
                         }
                     });
@@ -423,8 +409,11 @@ var $exeTinyMCE = {
                 if (assetManager && blobUri && blobUri.startsWith('blob:')) {
                     // Check if this blob URL is in our cache (meaning it's from AssetManager)
                     if (assetManager.reverseBlobCache.has(blobUri)) {
-                        // Already an asset, no upload needed - just return the blob URL
-                        success(blobUri);
+                        const assetId = assetManager.reverseBlobCache.get(blobUri);
+                        const asset = assetManager.getAssetById?.(assetId) || assetManager.getAssetMetadata?.(assetId);
+                        const assetUrl = assetManager.getAssetUrl?.(assetId, asset?.filename || asset?.name) || `asset://${assetId}`;
+                        // Return the canonical asset:// URL so users never see the temporary blob URL.
+                        success(assetUrl, { 'data-asset-id': assetId });
                         return;
                     }
                 }
@@ -439,21 +428,8 @@ var $exeTinyMCE = {
 
                         // Extract UUID from asset:// URL (insertImage returns "asset://uuid/filename")
                         const assetId = assetManager.extractAssetId(assetUrl);
-
-                        // Get or create blob URL for the asset (using synced method to ensure reverseBlobCache consistency)
-                        let newBlobUrl = assetManager.getBlobURLSynced?.(assetId) ?? assetManager.blobURLCache.get(assetId);
-                        if (!newBlobUrl) {
-                            // Use the original blob directly (works for both new and deduplicated assets)
-                            // since we already have it in memory
-                            newBlobUrl = URL.createObjectURL(blob);
-                            assetManager.blobURLCache.set(assetId, newBlobUrl);
-                            assetManager.reverseBlobCache.set(newBlobUrl, assetId);
-                        } else if (!assetManager.reverseBlobCache.has(newBlobUrl)) {
-                            // CRITICAL: Ensure reverseBlobCache is synced - this is required for convertBlobUrlsToAssetUrls
-                            assetManager.reverseBlobCache.set(newBlobUrl, assetId);
-                        }
-                        // CRITICAL: Pass data-asset-id so convertBlobURLsToAssetRefs can convert even if blob URL changes
-                        success(newBlobUrl, { 'data-asset-id': assetId });
+                        // Persist the canonical asset:// URL and let the editor resolve it for display.
+                        success(assetUrl, { 'data-asset-id': assetId });
                     } catch (err) {
                         console.error('[TinyMCE] Failed to store in AssetManager:', err);
                         failure(_('Error storing image'));
@@ -595,6 +571,13 @@ var $exeTinyMCE = {
                     }
 
                     $exeTinyMCE.resolveAssetUrlsInEditor(ed);
+                });
+
+                ed.on('GetContent', function(e) {
+                    const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    if (assetManager?.prepareHtmlForSync && typeof e.content === 'string') {
+                        e.content = assetManager.prepareHtmlForSync(e.content);
+                    }
                 });
             },
             init_instance_callback: function (ed) {

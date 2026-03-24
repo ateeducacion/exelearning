@@ -2928,7 +2928,11 @@ export default class IdeviceNode {
 
             try {
                 return JSON.parse(normalized);
-            } catch {
+            } catch (error) {
+                console.warn(
+                    '[IdeviceNode] Failed to parse normalized jsonProperties for editor load:',
+                    error,
+                );
                 return data;
             }
         }

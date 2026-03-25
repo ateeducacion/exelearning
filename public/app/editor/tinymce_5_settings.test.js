@@ -827,6 +827,33 @@ describe('TinyMCE 5 Settings', () => {
         expect(audio.getAttribute('data-asset-src')).toBe('asset://test-uuid-1234/audio.webm');
       });
 
+      it('resolves image element asset:// URLs to blob:// URLs', async () => {
+        const body = document.createElement('div');
+        const image = document.createElement('img');
+        image.setAttribute('src', 'asset://image-uuid/file.png');
+        body.appendChild(image);
+
+        const mockBlobUrl = 'blob:http://localhost/image-blob';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue(mockBlobUrl),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://image-uuid/file.png');
+        expect(image.getAttribute('src')).toBe(mockBlobUrl);
+        expect(image.getAttribute('data-asset-src')).toBe('asset://image-uuid/file.png');
+      });
+
       it('resolves video element asset:// URLs to blob:// URLs', async () => {
         const body = document.createElement('div');
         const video = document.createElement('video');
@@ -940,6 +967,41 @@ describe('TinyMCE 5 Settings', () => {
         expect(audio.getAttribute('data-asset-src')).toBe('asset://error-uuid/audio.webm');
 
         warnSpy.mockRestore();
+      });
+
+      it('observes dynamically inserted asset:// images in the editor body', async () => {
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+        const body = document.createElement('div');
+        const mockBlobUrl = 'blob:http://localhost/dynamic-image';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue(mockBlobUrl),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const listeners = new Map();
+        const mockEditor = {
+          id: 'editor',
+          on: vi.fn((event, handler) => {
+            listeners.set(event, handler);
+          }),
+          getBody: () => body,
+        };
+
+        config.setup(mockEditor);
+        config.init_instance_callback(mockEditor);
+
+        const image = document.createElement('img');
+        image.setAttribute('src', 'asset://dynamic-image/file.png');
+        body.appendChild(image);
+
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://dynamic-image/file.png');
+        expect(image.getAttribute('src')).toBe(mockBlobUrl);
+        expect(listeners.get('remove')).toEqual(expect.any(Function));
       });
 
       it('resolves iframe element asset:// URLs to blob:// URLs but does NOT add data-asset-src', async () => {

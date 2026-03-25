@@ -594,7 +594,7 @@ var $exeTinyMCE = {
                 // Note: SetContent handler is now registered in setup() callback
                 // to catch the initial content load before init_instance_callback runs
 
-                // Also observe DOM changes for dynamically inserted media (e.g., audio recorder, PDF embed)
+                // Also observe DOM changes for dynamically inserted media (e.g., images, audio recorder, PDF embed)
                 const editorBody = ed.getBody();
                 if (editorBody) {
                     const observer = new MutationObserver(function(mutations) {
@@ -603,8 +603,8 @@ var $exeTinyMCE = {
                             if (mutation.type === 'childList') {
                                 for (const node of mutation.addedNodes) {
                                     if (node.nodeType === 1) {
-                                        const hasAssetUrl = node.querySelector?.('audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]') ||
-                                            (node.matches?.('audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]'));
+                                        const hasAssetUrl = node.querySelector?.('img[src^="asset://"], audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]') ||
+                                            (node.matches?.('img[src^="asset://"], audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]'));
                                         if (hasAssetUrl) {
                                             hasNewMedia = true;
                                             break;
@@ -688,8 +688,9 @@ var $exeTinyMCE = {
     },
 
     /**
-     * Resolve asset:// URLs to blob:// URLs for audio/video elements in TinyMCE editor
-     * This allows media to play within the editor while keeping asset:// URLs for persistence
+     * Resolve asset:// URLs to blob:// URLs for editor-rendered media in TinyMCE.
+     * This allows images and media to render within the editor while keeping asset://
+     * URLs as the persisted format.
      *
      * NOTE: We intentionally DO NOT resolve iframes (PDFs) because:
      * 1. TinyMCE strips custom attributes like data-asset-src when processing media elements
@@ -705,21 +706,22 @@ var $exeTinyMCE = {
         const body = ed.getBody();
         if (!body) return;
 
-        // Find audio, video, and iframe elements with asset:// URLs
-        const mediaElements = body.querySelectorAll('audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]');
+        // Find image, audio, video, and iframe elements with asset:// URLs
+        const mediaElements = body.querySelectorAll('img[src^="asset://"], audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]');
 
         for (const media of mediaElements) {
             const assetUrl = media.getAttribute('src');
             if (!assetUrl || !assetUrl.startsWith('asset://')) continue;
 
             const isIframe = media.tagName.toLowerCase() === 'iframe';
+            const isImage = media.tagName.toLowerCase() === 'img';
 
-            // For audio/video: Skip if already resolved (has data-asset-src)
+            // For images/audio/video: Skip if already resolved (has data-asset-src)
             // For iframes: Skip if src is already a blob URL (already resolved)
             if (!isIframe && media.getAttribute('data-asset-src')) continue;
             if (isIframe && media.getAttribute('src').startsWith('blob:')) continue;
 
-            // For audio/video: Store the original asset URL in data-asset-src
+            // For images/audio/video: Store the original asset URL in data-asset-src
             // For iframes: DON'T add data-asset-src - TinyMCE preserves the URL via data-mce-p-src
             // on the parent span.mce-preview-object
             if (!isIframe) {
@@ -751,7 +753,14 @@ var $exeTinyMCE = {
                     });
                 }
             } else {
-                // Resolve to blob URL asynchronously (for audio, video, PDF iframes)
+                if (isImage) {
+                    media.setAttribute(
+                        'src',
+                        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+                    );
+                }
+
+                // Resolve to blob URL asynchronously (for images, audio, video, PDF iframes)
                 assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
                     if (blobUrl) {
                         media.setAttribute('src', blobUrl);

@@ -1158,25 +1158,13 @@ describe('IdeviceNode', () => {
             expect(result).toEqual({ key: 'value' });
         });
 
-        it('normalizes blob urls in jsonProperties before opening json iDevice editors', () => {
-            const prepareJsonForSync = vi.fn((json) =>
-                json.replace(
-                    'blob:http://localhost/audio-1',
-                    'asset://audio-asset-1.webm',
-                ),
-            );
-            eXeLearning.app.project._yjsBridge = {
-                assetManager: { prepareJsonForSync },
-            };
+        it('does not normalize jsonProperties before opening json iDevice editors', () => {
             idevice.idevice = { componentType: 'json' };
             idevice.jsonProperties = { audio: 'blob:http://localhost/audio-1' };
 
             const result = idevice.getSavedData();
 
-            expect(prepareJsonForSync).toHaveBeenCalledWith(
-                '{"audio":"blob:http://localhost/audio-1"}',
-            );
-            expect(result).toEqual({ audio: 'asset://audio-asset-1.webm' });
+            expect(result).toEqual({ audio: 'blob:http://localhost/audio-1' });
         });
 
         it('returns htmlView for html type idevice', () => {
@@ -1187,27 +1175,14 @@ describe('IdeviceNode', () => {
             expect(result).toBe('<p>Test</p>');
         });
 
-        it('normalizes blob urls in htmlView before opening html iDevice editors', () => {
-            const prepareHtmlForSync = vi.fn((html) =>
-                html.replace(
-                    'blob:http://localhost/image-1',
-                    'asset://image-asset-1.png',
-                ),
-            );
-            eXeLearning.app.project._yjsBridge = {
-                assetManager: { prepareHtmlForSync },
-            };
+        it('does not normalize htmlView before opening html iDevice editors', () => {
             idevice.idevice = { componentType: 'html' };
             idevice.htmlView =
                 '<div class="rosco-IDevice"><a href="blob:http://localhost/image-1" class="rosco-LinkImages">0</a></div>';
 
             const result = idevice.getSavedData();
 
-            expect(prepareHtmlForSync).toHaveBeenCalledWith(
-                '<div class="rosco-IDevice"><a href="blob:http://localhost/image-1" class="rosco-LinkImages">0</a></div>',
-            );
-            expect(result).toContain('asset://image-asset-1.png');
-            expect(result).not.toContain('blob:');
+            expect(result).toContain('blob:http://localhost/image-1');
         });
 
         it('returns htmlView when componentType is undefined', () => {

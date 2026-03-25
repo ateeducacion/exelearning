@@ -1,4 +1,6 @@
 var $exeTinyMCE = {
+    assetUrlMediaSelector:
+        'img[src^="asset://"], audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]',
     // imagetools is disabled because it generates base64 images
     // colorpicker contextmenu textcolor . Añadidos al core, no hace falta añadir en plugins?
     plugins:
@@ -603,8 +605,8 @@ var $exeTinyMCE = {
                             if (mutation.type === 'childList') {
                                 for (const node of mutation.addedNodes) {
                                     if (node.nodeType === 1) {
-                                        const hasAssetUrl = node.querySelector?.('img[src^="asset://"], audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]') ||
-                                            (node.matches?.('img[src^="asset://"], audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]'));
+                                        const hasAssetUrl = node.querySelector?.($exeTinyMCE.assetUrlMediaSelector) ||
+                                            (node.matches?.($exeTinyMCE.assetUrlMediaSelector));
                                         if (hasAssetUrl) {
                                             hasNewMedia = true;
                                             break;
@@ -707,7 +709,7 @@ var $exeTinyMCE = {
         if (!body) return;
 
         // Find image, audio, video, and iframe elements with asset:// URLs
-        const mediaElements = body.querySelectorAll('img[src^="asset://"], audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]');
+        const mediaElements = body.querySelectorAll(this.assetUrlMediaSelector);
 
         for (const media of mediaElements) {
             const assetUrl = media.getAttribute('src');

@@ -1,6 +1,9 @@
+const ASSET_URL_MEDIA_SELECTOR =
+    'img[src^="asset://"], audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]';
+const PLACEHOLDER_IMAGE_DATA_URL =
+    'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
 var $exeTinyMCE = {
-    assetUrlMediaSelector:
-        'img[src^="asset://"], audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]',
     // imagetools is disabled because it generates base64 images
     // colorpicker contextmenu textcolor . Añadidos al core, no hace falta añadir en plugins?
     plugins:
@@ -611,8 +614,8 @@ var $exeTinyMCE = {
                             if (mutation.type === 'childList') {
                                 for (const node of mutation.addedNodes) {
                                     if (node.nodeType === 1) {
-                                        const hasAssetUrl = node.querySelector?.($exeTinyMCE.assetUrlMediaSelector) ||
-                                            (node.matches?.($exeTinyMCE.assetUrlMediaSelector));
+                                        const hasAssetUrl = node.querySelector?.(ASSET_URL_MEDIA_SELECTOR) ||
+                                            (node.matches?.(ASSET_URL_MEDIA_SELECTOR));
                                         if (hasAssetUrl) {
                                             hasNewMedia = true;
                                             break;
@@ -731,7 +734,7 @@ var $exeTinyMCE = {
         if (!body) return;
 
         // Find image, audio, video, and iframe elements with asset:// URLs
-        const mediaElements = body.querySelectorAll(this.assetUrlMediaSelector);
+        const mediaElements = body.querySelectorAll(ASSET_URL_MEDIA_SELECTOR);
 
         for (const media of mediaElements) {
             const assetUrl = media.getAttribute('src');
@@ -778,14 +781,8 @@ var $exeTinyMCE = {
                 }
             } else {
                 if (isImage) {
-                    media.setAttribute(
-                        'src',
-                        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-                    );
-                    media.setAttribute(
-                        'data-mce-src',
-                        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-                    );
+                    media.setAttribute('src', PLACEHOLDER_IMAGE_DATA_URL);
+                    media.setAttribute('data-mce-src', PLACEHOLDER_IMAGE_DATA_URL);
                 }
 
                 // Resolve to blob URL asynchronously (for images, audio, video, PDF iframes)

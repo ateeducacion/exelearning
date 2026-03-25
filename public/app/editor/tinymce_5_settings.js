@@ -548,6 +548,12 @@ var $exeTinyMCE = {
                 this.buttons3,
             ],
             setup: function (ed) {
+                ed.on('BeforeSetContent', function(e) {
+                    if (typeof e.content !== 'string') return;
+
+                    e.content = $exeTinyMCE.prepareContentForEditorLoad(e.content);
+                });
+
                 // Register SetContent handler BEFORE content is loaded
                 // This is critical for resolving asset:// URLs in the initial content
                 ed.on('SetContent', function(e) {
@@ -629,6 +635,22 @@ var $exeTinyMCE = {
                 }
             },
         }); //End tinymce
+    },
+
+    prepareContentForEditorLoad: function (content) {
+        if (typeof content !== 'string' || !content.includes('asset://')) {
+            return content;
+        }
+
+        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+        if (!assetManager?.resolveHTMLAssetsSync) {
+            return content;
+        }
+
+        return assetManager.resolveHTMLAssetsSync(content, {
+            usePlaceholder: true,
+            addTracking: true,
+        });
     },
 
     getSchema: function () {

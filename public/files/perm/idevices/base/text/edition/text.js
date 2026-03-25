@@ -413,6 +413,11 @@ var $exeDevice = {
     stripLegacyExeTextWrapper: function (html) {
         if (!html || typeof html !== 'string') return html;
 
+        const trimmedHtml = html.trim();
+        if (!/^<div\b/i.test(trimmedHtml) || !/\bclass\s*=\s*["'][^"']*\bexe-text\b[^"']*["']/i.test(trimmedHtml)) {
+            return html;
+        }
+
         const container = document.createElement('div');
         container.innerHTML = html;
 

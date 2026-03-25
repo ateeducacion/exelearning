@@ -261,6 +261,7 @@ describe('TinyMCE 5 Settings', () => {
 
       // SetContent handler is now registered in setup callback (before content loads)
       config.setup(mockEditor);
+      expect(mockEditor.on).toHaveBeenCalledWith('BeforeSetContent', expect.any(Function));
       expect(mockEditor.on).toHaveBeenCalledWith('SetContent', expect.any(Function));
       expect(mockEditor.on).toHaveBeenCalledWith('GetContent', expect.any(Function));
 
@@ -1288,6 +1289,38 @@ describe('TinyMCE 5 Settings', () => {
     });
 
     describe('SetContent handler - Bun script stripping', () => {
+      it('rewrites asset urls to runtime urls before TinyMCE parses content', () => {
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+        const resolveHTMLAssetsSync = vi.fn(() => '<p><img src="blob:http://localhost/editor-image"></p>');
+
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: { resolveHTMLAssetsSync } },
+        };
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => document.createElement('div'),
+        };
+
+        config.setup(mockEditor);
+
+        const beforeSetContentCall = mockEditor.on.mock.calls.find((c) => c[0] === 'BeforeSetContent');
+        const beforeSetContentHandler = beforeSetContentCall[1];
+        const event = { content: '<p><img src="asset://image-uuid.png"></p>' };
+
+        beforeSetContentHandler(event);
+
+        expect(resolveHTMLAssetsSync).toHaveBeenCalledWith(
+          '<p><img src="asset://image-uuid.png"></p>',
+          {
+            usePlaceholder: true,
+            addTracking: true,
+          },
+        );
+        expect(event.content).toBe('<p><img src="blob:http://localhost/editor-image"></p>');
+      });
+
       it('removes Bun dev server scripts (/_bun/ path) from editor body', () => {
         globalThis.$exeTinyMCE.init('single', '#editor');
         const config = globalThis.tinymce.init.mock.calls[0][0];

@@ -782,12 +782,19 @@ var $exeTinyMCE = {
                         'src',
                         'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
                     );
+                    media.setAttribute(
+                        'data-mce-src',
+                        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+                    );
                 }
 
                 // Resolve to blob URL asynchronously (for images, audio, video, PDF iframes)
                 assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
                     if (blobUrl) {
                         media.setAttribute('src', blobUrl);
+                        if (isImage) {
+                            media.setAttribute('data-mce-src', blobUrl);
+                        }
                     }
                 }).catch(function(err) {
                     console.warn('[TinyMCE] Failed to resolve asset URL:', assetUrl, err);

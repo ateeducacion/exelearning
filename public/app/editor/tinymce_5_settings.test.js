@@ -832,6 +832,7 @@ describe('TinyMCE 5 Settings', () => {
         const body = document.createElement('div');
         const image = document.createElement('img');
         image.setAttribute('src', 'asset://image-uuid/file.png');
+        image.setAttribute('data-mce-src', 'asset://image-uuid/file.png');
         body.appendChild(image);
 
         const mockBlobUrl = 'blob:http://localhost/image-blob';
@@ -852,6 +853,7 @@ describe('TinyMCE 5 Settings', () => {
 
         expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://image-uuid/file.png');
         expect(image.getAttribute('src')).toBe(mockBlobUrl);
+        expect(image.getAttribute('data-mce-src')).toBe(mockBlobUrl);
         expect(image.getAttribute('data-asset-src')).toBe('asset://image-uuid/file.png');
       });
 

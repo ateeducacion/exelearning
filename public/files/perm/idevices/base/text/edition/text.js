@@ -414,7 +414,11 @@ var $exeDevice = {
         if (!html || typeof html !== 'string') return html;
 
         const trimmedHtml = html.trim();
-        if (!/^<div\b/i.test(trimmedHtml) || !/\bclass\s*=\s*["'][^"']*\bexe-text\b[^"']*["']/i.test(trimmedHtml)) {
+        if (!/^<div\b/i.test(trimmedHtml)) {
+            return html;
+        }
+
+        if (!/\bclass\s*=\s*["'][^"']*\bexe-text\b[^"']*["']/i.test(trimmedHtml)) {
             return html;
         }
 

@@ -15,6 +15,11 @@ function loadRuntime() {
     return window.$learningml;
 }
 
+function loadScript(filename) {
+    const code = readFileSync(join(__dirname, filename), 'utf-8');
+    (0, eval)(code);
+}
+
 describe('learningml export runtime', () => {
     let runtimeApi;
 
@@ -139,5 +144,26 @@ describe('learningml export runtime', () => {
         const adapter = runtimeApi.createScormAdapter('abc', runtimeApi.normalizeConfig({ title: 'Task' }));
         expect(adapter.report({ score: 80, passed: true })).toBe(true);
         expect(sendScoreNew).toHaveBeenCalledWith(true, expect.objectContaining({ ideviceId: 'abc', scorerp: 80 }));
+    });
+
+    it('loads Blockly browser assets even when an AMD loader is present', () => {
+        const amdDefine = vi.fn();
+        amdDefine.amd = {};
+        globalThis.define = amdDefine;
+        window.Blockly = undefined;
+
+        try {
+            loadScript('blockly_compressed.js');
+            loadScript('blocks_compressed.js');
+            loadScript('en.js');
+
+            expect(amdDefine).not.toHaveBeenCalled();
+            expect(window.Blockly).toBeDefined();
+            expect(window.Blockly.Msg.ADD_COMMENT).toBe('Add Comment');
+            expect(window.Blockly.libraryBlocks).toBeDefined();
+        } finally {
+            delete globalThis.define;
+            window.Blockly = undefined;
+        }
     });
 });

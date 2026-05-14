@@ -1,6 +1,6 @@
 /* eslint-disable */
 ;(function(root, factory) {
-  if (typeof define === 'function' && define.amd) { // AMD
+  if (false && typeof define === 'function' && define.amd) { // AMD
     define([], factory);
   } else if (typeof exports === 'object') { // Node.js
     module.exports = factory();

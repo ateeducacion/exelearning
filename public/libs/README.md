@@ -77,6 +77,9 @@
 *   Package: bcryptjs
     *   Copyright: Daniel Wirtz
     *   License: BSD-3-Clause
+*   Package: blockly
+    *   Copyright: Google LLC and Blockly contributors
+    *   License: Apache-2.0
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
     *   License: MIT

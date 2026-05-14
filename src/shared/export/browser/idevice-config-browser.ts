@@ -68,6 +68,7 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         'true-or-false',
         'scrambled-list',
         'magnifier',
+        'learningml',
     ];
     const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
 
@@ -97,6 +98,7 @@ export function isJsonIdevice(type: string): boolean {
         'fillblanks',
         'matching',
         'ordering',
+        'learningml',
     ];
     const normalized = type
         .toLowerCase()
@@ -128,6 +130,7 @@ const IDEVICE_JS_DEPENDENCIES: Record<string, string[]> = {
     'progress-report': ['html2canvas.js'],
     'select-media-files': ['mansory-jq.js'],
     'image-gallery': ['simple-lightbox.min.js'],
+    learningml: ['blockly_compressed.js', 'blocks_compressed.js', 'en.js'],
 };
 
 /**

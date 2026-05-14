@@ -1,0 +1,54 @@
+.learningml-edition {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.learningml-edition fieldset {
+    border: 1px solid #d7dee8;
+    border-radius: 6px;
+    padding: 0.85rem;
+}
+
+.learningml-edition legend {
+    padding: 0 0.35rem;
+    font-weight: 600;
+}
+
+.learningml-edition label {
+    display: block;
+    margin: 0.45rem 0 0.2rem;
+    font-weight: 600;
+}
+
+.learningml-edition input[type="text"],
+.learningml-edition input[type="number"],
+.learningml-edition select,
+.learningml-edition textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.learningml-edition textarea {
+    min-height: 5rem;
+}
+
+.learningml-edition .learningml-author-workspace {
+    min-height: 320px;
+    border: 1px solid #cfd8e3;
+    border-radius: 6px;
+}
+
+.learningml-edition .learningml-inline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.75rem;
+}
+
+.learningml-edition .learningml-checkboxes label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-right: 1rem;
+}

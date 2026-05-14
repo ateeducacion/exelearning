@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<idevice>
+    <name>learningml</name>
+    <title>LearningML</title>
+    <css-class>learningml</css-class>
+    <category>Interactive activities</category>
+    <icon>
+        <name>learningml-icon</name>
+        <url>learningml-icon.svg</url>
+        <type>img</type>
+    </icon>
+    <version>1.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
+    <location>location</location>
+    <location-type>location type</location-type>
+    <edition-js>
+        <filename>blockly_compressed.js</filename>
+        <filename>blocks_compressed.js</filename>
+        <filename>en.js</filename>
+        <filename>learningml-runtime.js</filename>
+        <filename>learningml.js</filename>
+    </edition-js>
+    <edition-css>
+        <filename>learningml.css</filename>
+    </edition-css>
+    <export-js>
+        <filename>learningml.js</filename>
+        <filename>blockly_compressed.js</filename>
+        <filename>blocks_compressed.js</filename>
+        <filename>en.js</filename>
+    </export-js>
+    <export-css>
+        <filename>learningml.css</filename>
+    </export-css>
+    <export-template-filename>learningml.html</export-template-filename>
+    <export-object>$learningml</export-object>
+    <author>eXeLearning</author>
+    <author-url>https://exelearning.net</author-url>
+    <license>AGPL-3.0-or-later</license>
+    <license-url>https://www.gnu.org/licenses/agpl-3.0.html</license-url>
+    <description>Editable Blockly activity for turtle and introductory machine learning concepts.</description>
+    <downloadable>0</downloadable>
+</idevice>

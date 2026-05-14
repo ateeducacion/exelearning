@@ -1,0 +1,105 @@
+.learningml .learningml-app {
+    border: 1px solid #d7dee8;
+    border-radius: 8px;
+    background: #fff;
+    color: #1f2937;
+    padding: 1rem;
+}
+
+.learningml .learningml-header {
+    margin-bottom: 0.75rem;
+}
+
+.learningml .learningml-title {
+    font-size: 1.35rem;
+    margin: 0 0 0.35rem;
+}
+
+.learningml .learningml-instructions {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.learningml .learningml-workspace-row {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(260px, 360px);
+    gap: 1rem;
+    align-items: stretch;
+}
+
+.learningml .learningml-blockly {
+    min-height: 420px;
+    border: 1px solid #cfd8e3;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.learningml .learningml-side {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.learningml .learningml-canvas {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 1px solid #cfd8e3;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+.learningml .learningml-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.learningml .learningml-controls button {
+    border: 1px solid #2f5f8f;
+    border-radius: 4px;
+    background: #2f5f8f;
+    color: #fff;
+    padding: 0.45rem 0.65rem;
+    font: inherit;
+    cursor: pointer;
+}
+
+.learningml .learningml-controls button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.learningml .learningml-results {
+    min-height: 7rem;
+    border: 1px solid #d7dee8;
+    border-radius: 6px;
+    background: #f9fafb;
+    padding: 0.65rem;
+    font-size: 0.95rem;
+}
+
+.learningml .learningml-results ul {
+    margin: 0.4rem 0 0;
+    padding-left: 1.2rem;
+}
+
+.learningml .learningml-summary {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.learningml .learningml-fallback {
+    border: 1px solid #d7dee8;
+    border-radius: 6px;
+    padding: 0.75rem;
+}
+
+@media (max-width: 820px) {
+    .learningml .learningml-workspace-row {
+        grid-template-columns: 1fr;
+    }
+
+    .learningml .learningml-blockly {
+        min-height: 360px;
+    }
+}

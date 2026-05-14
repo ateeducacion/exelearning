@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>LearningML</title>
+  <rect x="6" y="8" width="52" height="48" rx="8" fill="#f6f8fb" stroke="#2f5f8f" stroke-width="3"/>
+  <path d="M18 22h12v8H18zM34 22h12v8H34zM18 36h12v8H18zM34 36h12v8H34z" fill="#3b82f6"/>
+  <path d="M30 26h4M24 30v6M40 30v6M30 40h4" stroke="#1f2937" stroke-width="3" stroke-linecap="round"/>
+</svg>

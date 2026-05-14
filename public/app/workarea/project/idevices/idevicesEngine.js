@@ -2694,6 +2694,7 @@ export default class IdevicesEngine {
         let script = document.createElement('script');
         script.id = this.generateId();
         script.setAttribute('type', 'text/javascript');
+        script.async = false;
         if (newVersion) {
             script.src = `${path}?t=${Date.now()}`;
         } else {

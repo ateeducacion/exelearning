@@ -25,6 +25,7 @@ import { adminTemplatesRoutes } from './routes/admin-templates';
 import { yjsRoutes } from './routes/yjs';
 import { platformIntegrationRoutes } from './routes/platform-integration';
 import { apiV1Routes } from './routes/api/v1';
+import { developerRoutes } from './routes/developer';
 import { uploadSessionRoutes } from './routes/upload-session';
 import {
     createWebSocketRoutes,
@@ -610,6 +611,7 @@ if (registerRootRoutes) {
         .use(adminTemplatesRoutes)
         .use(yjsRoutes)
         .use(apiV1Routes)
+        .use(developerRoutes)
         .use(uploadSessionRoutes)
         .use(createWebSocketRoutes())
         .get('/api', () => ({
@@ -648,6 +650,7 @@ if (routePrefix) {
             .use(adminTemplatesRoutes)
             .use(yjsRoutes)
             .use(apiV1Routes)
+            .use(developerRoutes)
             .use(uploadSessionRoutes)
             .use(createWebSocketRoutes())
             .get('/api', () => ({

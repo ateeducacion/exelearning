@@ -61,6 +61,7 @@ import { detectLocaleFromHeader, trans, DEFAULT_LOCALE } from '../services/trans
 import { decodePlatformJWT } from '../utils/platform-jwt';
 import type { JwtPayload } from './types/request-payloads';
 import { getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
+import { isDeveloperToolsEnabled } from '../utils/developer-tools.util';
 
 const CUSTOMIZATION_MIME_TYPES: Record<string, string> = {
     '.ico': 'image/x-icon',
@@ -930,6 +931,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     userIdevices: 0,
                     debugJs: process.env.APP_ENV === 'dev',
                     appEnv: process.env.APP_ENV || 'prod',
+                    isDev: isDeveloperToolsEnabled(process.env),
                     appDebug: process.env.APP_DEBUG || '0',
                     onlineMode: String(process.env.APP_ONLINE_MODE || '1') === '1',
                     // URL and path settings (formerly in 'symfony' object)
@@ -982,6 +984,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     assistant: trans('Assistant', {}, locale),
                     user_manual: trans('User manual', {}, locale),
                     api_reference: trans('API Reference (Swagger)', {}, locale),
+                    developer: trans('Developer', {}, locale),
+                    style_lab: trans('Style Lab', {}, locale),
+                    idevice_lab: trans('iDevice Lab', {}, locale),
+                    rest_api: trans('REST API', {}, locale),
                     about_exelearning: trans('About eXeLearning', {}, locale),
                     release_notes: trans('Release notes', {}, locale),
                     legal_notes: trans('Legal notes', {}, locale),

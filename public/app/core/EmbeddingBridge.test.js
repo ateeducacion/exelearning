@@ -1036,24 +1036,32 @@ describe('EmbeddingBridge', () => {
             );
         });
 
-        it('should fallback to * on non-DataCloneError', () => {
+        it('should never broadcast to * when posting to parentOrigin throws', () => {
             bridge.parentOrigin = 'https://parent.com';
-            window.parent.postMessage = vi.fn()
-                .mockImplementationOnce(() => {
-                    throw new Error('Some other error');
-                })
-                .mockImplementationOnce(() => {});
+            const otherError = new Error('Some other error');
+            window.parent.postMessage = vi.fn(() => {
+                throw otherError;
+            });
 
             bridge.postToParent({ type: 'TEST' });
 
-            expect(window.parent.postMessage).toHaveBeenCalledTimes(2);
-            expect(window.parent.postMessage).toHaveBeenLastCalledWith(
+            // Only the single targeted attempt is made; no '*' fallback.
+            expect(window.parent.postMessage).toHaveBeenCalledTimes(1);
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
                 { type: 'TEST' },
+                'https://parent.com'
+            );
+            expect(window.parent.postMessage).not.toHaveBeenCalledWith(
+                expect.anything(),
                 '*'
+            );
+            expect(window.AppLogger.error).toHaveBeenCalledWith(
+                '[EmbeddingBridge] Failed to post message to parent:',
+                otherError
             );
         });
 
-        it('should log error on DataCloneError', () => {
+        it('should log error on DataCloneError without broadcasting to *', () => {
             bridge.parentOrigin = 'https://parent.com';
             const dataCloneError = new Error('Cannot clone');
             dataCloneError.name = 'DataCloneError';
@@ -1063,8 +1071,13 @@ describe('EmbeddingBridge', () => {
 
             bridge.postToParent({ type: 'TEST' });
 
+            expect(window.parent.postMessage).toHaveBeenCalledTimes(1);
+            expect(window.parent.postMessage).not.toHaveBeenCalledWith(
+                expect.anything(),
+                '*'
+            );
             expect(window.AppLogger.error).toHaveBeenCalledWith(
-                '[EmbeddingBridge] Cannot serialize message:',
+                '[EmbeddingBridge] Failed to post message to parent:',
                 dataCloneError
             );
         });

@@ -92,6 +92,29 @@ export async function resolveDefaultThemeForNewProject(
     }
     return themeDirName;
 }
+
+/**
+ * Returns true when a link URL uses a scheme that can execute script when
+ * navigated/rendered (e.g. `javascript:`, `vbscript:`, `data:`) and must
+ * therefore be discarded by the broken-link checker.
+ *
+ * The check is deliberately defensive: schemes are matched case-insensitively
+ * and after stripping leading whitespace and C0 control characters, which
+ * browsers ignore when resolving a URL. This prevents bypasses such as
+ * `VBScript:...`, a leading-space `" javascript:..."`, or control-character
+ * padding from slipping a dangerous scheme past the filter.
+ *
+ * Exported so the security property can be unit-tested directly.
+ */
+export function isUnsafeLinkScheme(url: string): boolean {
+    if (!url) return false;
+    // Strip leading whitespace and C0 control chars that URL parsers ignore,
+    // so padded schemes (e.g. a leading-space javascript:) cannot bypass the check.
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally matching the C0 control chars browsers ignore in URLs
+    const normalized = url.replace(/^[\s\u0000-\u001f]+/, '').toLowerCase();
+    return normalized.startsWith('javascript:') || normalized.startsWith('vbscript:') || normalized.startsWith('data:');
+}
+
 import { getAppVersion } from '../utils/version';
 import { buildSiteThemeUrl } from '../utils/site-theme-url';
 import {
@@ -1833,8 +1856,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return links.filter(link => {
                         if (!link.url || link.url.trim() === '') return false;
                         if (link.url.startsWith('#')) return false;
-                        if (link.url.startsWith('javascript:')) return false;
-                        if (link.url.startsWith('data:')) return false;
+                        // Drop URLs whose scheme can execute script (javascript:,
+                        // vbscript:, data:), tolerating case and leading whitespace/controls.
+                        if (isUnsafeLinkScheme(link.url)) return false;
                         return true;
                     });
                 };

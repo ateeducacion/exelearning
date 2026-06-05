@@ -1975,9 +1975,12 @@ class AssetManager {
    * @private
    */
   _generateLinkHandlerScript(assetId, baseFolder) {
-    // Escape special characters for safe embedding in script
-    const escapedAssetId = assetId.replace(/'/g, "\\'");
-    const escapedBaseFolder = baseFolder.replace(/'/g, "\\'");
+    // Escape special characters for safe embedding in a single-quoted JS string.
+    // Backslashes MUST be escaped first so a trailing/embedded backslash cannot
+    // consume the quote-escaping backslash and break out of the string literal.
+    const escapeForSingleQuotedString = value => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const escapedAssetId = escapeForSingleQuotedString(assetId);
+    const escapedBaseFolder = escapeForSingleQuotedString(baseFolder);
 
     return `
 <script>

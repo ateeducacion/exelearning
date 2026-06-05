@@ -7407,6 +7407,26 @@ describe('_generateLinkHandlerScript', () => {
     expect(script).toContain("folder\\'s/path");
   });
 
+  it('escapes backslashes before quotes so a trailing backslash cannot break out of the string literal', () => {
+    // A naive `replace(/'/g, "\\'")` that does not escape backslashes first lets an
+    // input ending in a backslash consume the escaping backslash: `\` + `\'` -> `\\'`
+    // which closes the JS string literal and enables injection. Escaping backslashes
+    // first turns the lone backslash into a literal `\\`, keeping the value inert.
+    const script = assetManager._generateLinkHandlerScript("asset\\'; alert(1);//", 'safe/folder');
+
+    // The backslash must be doubled (escaped) and the quote still escaped.
+    expect(script).toContain("assetId: 'asset\\\\\\'; alert(1);//'");
+    // The raw breakout sequence (closing quote followed by live JS) must NOT appear.
+    expect(script).not.toContain("asset\\'; alert(1);//',");
+  });
+
+  it('escapes a lone trailing backslash in baseFolder', () => {
+    const script = assetManager._generateLinkHandlerScript('asset-123', 'folder\\');
+
+    // Single backslash becomes a doubled (escaped) backslash inside the literal.
+    expect(script).toContain("baseFolder: 'folder\\\\'");
+  });
+
   it('handles empty baseFolder', () => {
     const script = assetManager._generateLinkHandlerScript('asset-123', '');
 

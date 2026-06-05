@@ -951,4 +951,32 @@ describe('Translations Command', () => {
             expect(content).not.toMatch(/resname="key"/);
         });
     });
+
+    describe('unescapeXml', () => {
+        it('should not double-decode escaped entities (security: &amp; decoded last)', async () => {
+            const { unescapeXml } = await import('./translations');
+            // The literal text "&lt;" is encoded as "&amp;lt;". Decoding must yield
+            // the literal "&lt;", NOT collapse into "<".
+            expect(unescapeXml('&amp;lt;')).toBe('&lt;');
+            // The literal text "&amp;" is encoded as "&amp;amp;". Decoding must yield
+            // the literal "&amp;", NOT collapse into "&".
+            expect(unescapeXml('&amp;amp;')).toBe('&amp;');
+        });
+
+        it('should decode all standard XML entities for legitimate input', async () => {
+            const { unescapeXml } = await import('./translations');
+            expect(unescapeXml('&lt;')).toBe('<');
+            expect(unescapeXml('&gt;')).toBe('>');
+            expect(unescapeXml('&quot;')).toBe('"');
+            expect(unescapeXml('&apos;')).toBe("'");
+            expect(unescapeXml('&amp;')).toBe('&');
+            expect(unescapeXml('Tom &amp; Jerry &lt;tag&gt;')).toBe('Tom & Jerry <tag>');
+        });
+
+        it('should round-trip escapeXml then unescapeXml', async () => {
+            const { escapeXml, unescapeXml } = await import('./translations');
+            const original = `a < b & c > d "e" 'f'`;
+            expect(unescapeXml(escapeXml(original))).toBe(original);
+        });
+    });
 });

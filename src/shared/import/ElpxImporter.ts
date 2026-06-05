@@ -1339,14 +1339,16 @@ export class ElpxImporter {
         if (!text) return '';
 
         // Keep &quot; intact here to avoid breaking JSON strings that embed HTML attributes.
+        // Decode &amp; LAST so that pre-escaped entities like "&amp;lt;" (literal text
+        // "&lt;") are preserved instead of collapsing to "<".
         return text
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
-            .replace(/&amp;/g, '&')
             .replace(/&#39;/g, "'")
             .replace(/&apos;/g, "'")
             .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-            .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+            .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+            .replace(/&amp;/g, '&');
     }
 
     private hasCdataChild(element: Element): boolean {
@@ -1924,16 +1926,17 @@ export class ElpxImporter {
     private decodeHtmlContent(text: string): string {
         if (!text) return '';
 
-        // Decode common HTML entities
+        // Decode common HTML entities. Decode &amp; LAST so that pre-escaped entities
+        // like "&amp;lt;" (literal text "&lt;") are preserved instead of collapsing to "<".
         return text
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
-            .replace(/&amp;/g, '&')
             .replace(/&quot;/g, '"')
             .replace(/&#39;/g, "'")
             .replace(/&apos;/g, "'")
             .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-            .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+            .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+            .replace(/&amp;/g, '&');
     }
 
     /**

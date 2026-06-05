@@ -84,20 +84,26 @@ function encrypt(str: string): string {
 /**
  * Clean LaTeX string by removing HTML tags and decoding entities
  */
-function cleanLatexFromHtml(latexWithHtml: string): string {
+export function cleanLatexFromHtml(latexWithHtml: string): string {
     // Remove <br> tags - replace with newlines
     let clean = latexWithHtml.replace(/<br\s*\/?>/gi, '\n');
-    // Remove any other HTML tags
-    clean = clean.replace(/<[^>]+>/g, '');
-    // Decode common HTML entities
+    // Remove any other HTML tags, repeating until stable so nested/obfuscated
+    // tags (e.g. <scr<script>ipt>) cannot reassemble into a new tag.
+    let prev: string;
+    do {
+        prev = clean;
+        clean = clean.replace(/<[^>]+>/g, '');
+    } while (clean !== prev);
+    // Decode common HTML entities. Decode named/numeric entities first and the
+    // ampersand last so literal text like "&amp;lt;" does not become "<".
     clean = clean
         .replace(/&nbsp;/gi, ' ')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
         .replace(/&quot;/g, '"')
         .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number.parseInt(code, 10)))
-        .replace(/&#x([a-fA-F0-9]+);/g, (_, code) => String.fromCharCode(Number.parseInt(code, 16)));
+        .replace(/&#x([a-fA-F0-9]+);/g, (_, code) => String.fromCharCode(Number.parseInt(code, 16)))
+        .replace(/&amp;/g, '&');
     return clean;
 }
 

@@ -102,6 +102,24 @@ describe('Update Licenses Command', () => {
             const content = 'MIT License\n\nPermission is hereby granted...';
             expect(extractCopyrightFromLicense(content)).toBeNull();
         });
+
+        it('should strip a <script> payload to a fixed point leaving no tag behind', () => {
+            // Security property for incomplete-multi-character-sanitization:
+            // the angle-bracket strip is applied repeatedly to a fixed point, so
+            // no complete "<...>" tag (e.g. "<script") survives in the result.
+            const content = 'Copyright (c) 2023 Acme <script>x</script> Inc';
+            const result = extractCopyrightFromLicense(content);
+            expect(result).not.toContain('<');
+            expect(result?.toLowerCase()).not.toContain('<script');
+            expect(result).toBe('Acme x Inc');
+        });
+
+        it('should strip multiple bracketed and parenthetical segments to a fixed point', () => {
+            const content = 'Copyright (c) 2023 Acme <a><b> Inc';
+            expect(extractCopyrightFromLicense(content)).toBe('Acme Inc');
+            const parens = 'Copyright (c) 2023 Acme (legacy) (note) Inc';
+            expect(extractCopyrightFromLicense(parens)).toBe('Acme Inc');
+        });
     });
 
     describe('getPackageInfo', () => {

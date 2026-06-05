@@ -432,6 +432,73 @@ describe('LinkValidationAdapter', () => {
                 expect(result.length).toBe(1);
                 expect(result[0].url).toBe('https://valid.com');
             });
+
+            it('should reject vbscript:, mixed-case, whitespace-prefixed and entity-encoded script schemes', () => {
+                const dangerous = [
+                    { url: 'vbscript:msgbox(1)', count: 1 },
+                    { url: 'VBScript:MsgBox(1)', count: 1 },
+                    { url: 'JavaScript:alert(1)', count: 1 },
+                    { url: '  javascript:alert(1)', count: 1 },
+                    { url: '\t\njavascript:alert(1)', count: 1 },
+                    { url: 'java\x00script:alert(1)', count: 1 },
+                    { url: 'DATA:text/html,<script>alert(1)</script>', count: 1 },
+                    { url: '&#106;avascript:alert(1)', count: 1 },
+                    { url: 'java&#115;cript:alert(1)', count: 1 },
+                ];
+                const result = adapter._removeInvalidLinks(dangerous);
+
+                expect(result).toEqual([]);
+            });
+
+            it('should preserve legitimate safe links', () => {
+                const safe = [
+                    { url: 'http://example.com', count: 1 },
+                    { url: 'https://example.com/page', count: 1 },
+                    { url: '//cdn.example.com/file.js', count: 1 },
+                    { url: 'images/photo.jpg', count: 1 },
+                    { url: 'mailto:user@example.com', count: 1 },
+                    { url: 'tel:+1234567890', count: 1 },
+                ];
+                const result = adapter._removeInvalidLinks(safe);
+
+                expect(result.map((l) => l.url)).toEqual([
+                    'http://example.com',
+                    'https://example.com/page',
+                    '//cdn.example.com/file.js',
+                    'images/photo.jpg',
+                    'mailto:user@example.com',
+                    'tel:+1234567890',
+                ]);
+            });
+        });
+
+        describe('_hasDangerousScheme', () => {
+            it('should detect dangerous schemes through obfuscation', () => {
+                expect(adapter._hasDangerousScheme('javascript:alert(1)')).toBe(true);
+                expect(adapter._hasDangerousScheme('vbscript:msgbox(1)')).toBe(true);
+                expect(adapter._hasDangerousScheme('data:text/html,abc')).toBe(true);
+                expect(adapter._hasDangerousScheme('  JAVASCRIPT:alert(1)')).toBe(true);
+                expect(adapter._hasDangerousScheme('&#106;avascript:alert(1)')).toBe(true);
+                expect(adapter._hasDangerousScheme('&#x6a;avascript:alert(1)')).toBe(true);
+            });
+
+            it('should not flag safe links and non-string input', () => {
+                expect(adapter._hasDangerousScheme('https://example.com')).toBe(false);
+                expect(adapter._hasDangerousScheme('images/photo.jpg')).toBe(false);
+                expect(adapter._hasDangerousScheme('mailto:user@example.com')).toBe(false);
+                expect(adapter._hasDangerousScheme(null)).toBe(false);
+            });
+
+            it('should not throw on out-of-range numeric entities', () => {
+                // String.fromCodePoint throws RangeError for code points > 0x10FFFF
+                // or negative; the guard must drop them instead of crashing.
+                expect(() => adapter._hasDangerousScheme('&#x110000;')).not.toThrow();
+                expect(() => adapter._hasDangerousScheme('&#9999999999;')).not.toThrow();
+                expect(adapter._hasDangerousScheme('&#x110000;')).toBe(false);
+                expect(adapter._hasDangerousScheme('&#9999999999;')).toBe(false);
+                // A real scheme padded with an out-of-range entity is still caught.
+                expect(adapter._hasDangerousScheme('&#x110000;javascript:alert(1)')).toBe(true);
+            });
         });
 
         describe('_deduplicateLinks', () => {

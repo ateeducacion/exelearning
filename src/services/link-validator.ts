@@ -84,15 +84,40 @@ export function cleanAndCountLinks(links: RawExtractedLink[]): RawExtractedLink[
 }
 
 /**
+ * Schemes that can execute script or smuggle markup. These must never be
+ * treated as validatable links, regardless of casing, leading whitespace,
+ * control characters, or HTML-entity obfuscation.
+ */
+const DANGEROUS_URL_SCHEMES = ['javascript:', 'vbscript:', 'data:'];
+
+/**
+ * Normalize a URL for scheme inspection: decode the HTML entities and strip
+ * the leading whitespace / control characters that browsers ignore when
+ * resolving a URL scheme, then lowercase the result. This prevents bypasses
+ * such as " javascript:", "JaVaScRiPt:", or "java&#9;script:".
+ */
+function normalizeUrlForSchemeCheck(url: string): string {
+    return (
+        url
+            // Decode HTML entities for whitespace/control chars (tab, LF, CR).
+            .replace(/&(?:#x0*9|#0*9|#x0*a|#0*10|#x0*d|#0*13|tab|newline);/gi, '')
+            // Strip leading/embedded whitespace and C0 control characters (U+0000-U+0020).
+            // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally matching the C0 control chars browsers ignore when resolving a URL scheme, to block obfuscated-scheme bypasses.
+            .replace(/[\u0000-\u0020]+/g, '')
+            .toLowerCase()
+    );
+}
+
+/**
  * Remove invalid/non-validatable links
- * Filters out: empty, anchors (#), javascript:, data: URLs
+ * Filters out: empty, anchors (#), and dangerous schemes (javascript:, vbscript:, data:)
  */
 export function removeInvalidLinks(links: RawExtractedLink[]): RawExtractedLink[] {
     return links.filter(link => {
         if (!link.url || link.url.trim() === '') return false;
         if (link.url.startsWith('#')) return false;
-        if (link.url.startsWith('javascript:')) return false;
-        if (link.url.startsWith('data:')) return false;
+        const normalized = normalizeUrlForSchemeCheck(link.url);
+        if (DANGEROUS_URL_SCHEMES.some(scheme => normalized.startsWith(scheme))) return false;
         return true;
     });
 }

@@ -1902,6 +1902,62 @@ describe('common.js $exeDevices', () => {
       expect(result).toContain('streaming.php');
     });
 
+    // Security: incomplete-url-substring-sanitization regression tests.
+    // Look-alike hosts and URLs that merely embed the trusted string must be rejected.
+    it('extractURLGD rejects look-alike Google Drive hostnames', () => {
+      const media = getMedia();
+      const evil = 'https://drive.google.com.evil.com/file/d/1234567890/view?usp=sharing';
+      expect(media.extractURLGD(evil)).toBe(evil);
+      const embedded = 'https://evil.com/?x=https://drive.google.com/file/d/1234567890/view?usp=sharing';
+      expect(media.extractURLGD(embedded)).toBe(embedded);
+    });
+
+    it('extractURLGD still transforms legitimate Google Drive sharing URLs', () => {
+      const media = getMedia();
+      const url = 'https://drive.google.com/file/d/1234567890/view?usp=sharing';
+      expect(media.extractURLGD(url)).toContain('docs.google.com');
+    });
+
+    it('extractURLGD returns original for invalid URL strings', () => {
+      const media = getMedia();
+      expect(media.extractURLGD('not a url sharing')).toBe('not a url sharing');
+    });
+
+    it('getURLVideoMediaTeca rejects look-alike mediateca hostnames', () => {
+      const media = getMedia();
+      expect(media.getURLVideoMediaTeca('https://mediateca.educa.madrid.org.evil.com/video/abc123')).toBe(false);
+      expect(media.getURLVideoMediaTeca('https://evil.com/?x=https://mediateca.educa.madrid.org/video/abc123')).toBe(
+        false,
+      );
+      expect(media.getURLVideoMediaTeca('not a url')).toBe(false);
+    });
+
+    it('getURLVideoMediaTeca accepts legitimate video URLs and preserves the id', () => {
+      const media = getMedia();
+      const result = media.getURLVideoMediaTeca('https://mediateca.educa.madrid.org/video/abc123?t=10');
+      expect(result).toBe('http://mediateca.educa.madrid.org/streaming.php?id=abc123');
+    });
+
+    it('getURLAudioMediaTeca rejects look-alike mediateca hostnames', () => {
+      const media = getMedia();
+      expect(media.getURLAudioMediaTeca('https://mediateca.educa.madrid.org.evil.com/audio/abc123')).toBe(false);
+      expect(media.getURLAudioMediaTeca('https://evil.com/?x=https://mediateca.educa.madrid.org/audio/abc123')).toBe(
+        false,
+      );
+      expect(media.getURLAudioMediaTeca('not a url')).toBe(false);
+    });
+
+    it('getURLAudioMediaTeca accepts legitimate audio and video URLs and preserves the id', () => {
+      const media = getMedia();
+      expect(media.getURLAudioMediaTeca('https://mediateca.educa.madrid.org/audio/abc123?x=1')).toBe(
+        'https://mediateca.educa.madrid.org/streaming.php?id=abc123',
+      );
+      expect(media.getURLAudioMediaTeca('https://mediateca.educa.madrid.org/video/xyz789?x=1')).toBe(
+        'https://mediateca.educa.madrid.org/streaming.php?id=xyz789',
+      );
+      expect(media.getURLAudioMediaTeca('https://mediateca.educa.madrid.org/other/abc123')).toBe(false);
+    });
+
     it('loadYoutubeApi is a function', () => {
       const media = getMedia();
       expect(typeof media.loadYoutubeApi).toBe('function');

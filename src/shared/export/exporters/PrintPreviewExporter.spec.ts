@@ -704,33 +704,7 @@ describe('PrintPreviewExporter', () => {
             const exp = new PrintPreviewExporter(doc, mockResourceProvider);
             const result = await exp.generatePreview();
 
-            // Helper to check for display: none !important
-            const checkHidden = (snippet: string) => {
-                // Determine the tag type to construct the expectation
-                const isImg = snippet.startsWith('<img');
-                const isA = snippet.startsWith('<a');
-
-                // We expect the style to be injected. The regex might produce slightly different attribute orders
-                // but our tool usually appends/modifies style.
-                // Let's check that the result string contains the content AND display: none
-                // Since result.html is large, we can't easily isolate just this element without parsing.
-                // But we know the content strings are unique enough.
-
-                // Simplified check: Does the HTML contain the unique text/src AND style="...display: none..."?
-                // For images, check src. For text, check text content.
-
-                // Actually, let's just regex match the specific element in the result
-                // We'll escape the snippet for regex and allow for inserted style
-                // This is getting complicated to verify strictly with simple expectation.
-                // Let's rely on finding `style="display: none !important"` near the identifying class/content.
-                expect(result.html).toMatch(
-                    new RegExp(snippet.replace('>', '.*style=.*display:\\s*none.*!important.*>')),
-                );
-            };
-
-            // Can't easily use regex match on exact input string because attributes might move if we parsed them?
-            // If we use string replace, attributes stay mostly put.
-            // Let's check that the specific class combinations now have style="display: none !important" attached.
+            // Check that the specific class combinations now have style="display: none !important" attached.
 
             // 1. Version divs
             expect(result.html).toContain('class="sopa-version js-hidden" style="display: none !important"');

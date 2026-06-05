@@ -11,6 +11,7 @@ import {
     createProjectRoutes,
     createSymfonyCompatProjectRoutes,
     buildDefaultThemePayload,
+    isUnsafeLinkScheme,
     type ProjectDependencies,
     type SessionManagerDeps,
     type FileHelperDeps,
@@ -1856,7 +1857,7 @@ describe('Project Routes', () => {
             expect(body.brokenLinks[0].brokenLinks).toBe('No broken links found');
         });
 
-        it('should skip javascript and data URLs', async () => {
+        it('should skip javascript, vbscript and data URLs (case-insensitive, padded)', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
@@ -1864,7 +1865,14 @@ describe('Project Routes', () => {
                     body: JSON.stringify({
                         idevices: [
                             {
-                                html: '<a href="javascript:void(0)">JS Link</a><img src="data:image/png;base64,abc">',
+                                html:
+                                    '<a href="javascript:void(0)">JS Link</a>' +
+                                    '<a href="JavaScript:void(0)">Mixed JS</a>' +
+                                    '<a href=" javascript:void(0)">Padded JS</a>' +
+                                    '<a href="vbscript:msgbox(1)">VBScript</a>' +
+                                    '<a href="VBScript:msgbox(1)">Mixed VBScript</a>' +
+                                    '<img src="data:image/png;base64,abc">' +
+                                    '<img src="DATA:text/html,<script>alert(1)</script>">',
                             },
                         ],
                     }),
@@ -1873,7 +1881,51 @@ describe('Project Routes', () => {
 
             expect(res.status).toBe(200);
             const body = await res.json();
+            // Every dangerous-scheme link is filtered out, so nothing is reported.
             expect(body.brokenLinks[0].brokenLinks).toBe('No broken links found');
+        });
+    });
+
+    describe('isUnsafeLinkScheme', () => {
+        it('treats script-capable schemes as unsafe', () => {
+            expect(isUnsafeLinkScheme('javascript:void(0)')).toBe(true);
+            expect(isUnsafeLinkScheme('vbscript:msgbox(1)')).toBe(true);
+            expect(isUnsafeLinkScheme('data:text/html,<script>alert(1)</script>')).toBe(true);
+        });
+
+        it('is case-insensitive', () => {
+            expect(isUnsafeLinkScheme('JavaScript:void(0)')).toBe(true);
+            expect(isUnsafeLinkScheme('VBScript:msgbox(1)')).toBe(true);
+            expect(isUnsafeLinkScheme('DATA:text/html,x')).toBe(true);
+        });
+
+        it('tolerates leading whitespace and control characters', () => {
+            expect(isUnsafeLinkScheme(' javascript:alert(1)')).toBe(true);
+            expect(isUnsafeLinkScheme('\t\njavascript:alert(1)')).toBe(true);
+            expect(isUnsafeLinkScheme(' vbscript:msgbox(1)')).toBe(true);
+            expect(isUnsafeLinkScheme(' \tdata:text/html,x')).toBe(true);
+            // Leading NUL (U+0000) and US (U+001F) control-char padding that
+            // URL parsers strip before resolving the scheme.
+            const nul = String.fromCharCode(0);
+            const us = String.fromCharCode(0x1f);
+            expect(isUnsafeLinkScheme(`${nul}javascript:alert(1)`)).toBe(true);
+            expect(isUnsafeLinkScheme(`${us}vbscript:msgbox(1)`)).toBe(true);
+            expect(isUnsafeLinkScheme(`${nul}${us} data:text/html,x`)).toBe(true);
+        });
+
+        it('keeps legitimate links safe', () => {
+            expect(isUnsafeLinkScheme('http://example.com')).toBe(false);
+            expect(isUnsafeLinkScheme('https://example.com/page')).toBe(false);
+            expect(isUnsafeLinkScheme('//cdn.example.com/a.js')).toBe(false);
+            expect(isUnsafeLinkScheme('mailto:user@example.com')).toBe(false);
+            expect(isUnsafeLinkScheme('tel:+34123456789')).toBe(false);
+            expect(isUnsafeLinkScheme('files/img/photo.png')).toBe(false);
+            expect(isUnsafeLinkScheme('exe-node:abc')).toBe(false);
+            expect(isUnsafeLinkScheme('#anchor')).toBe(false);
+            expect(isUnsafeLinkScheme('relative/path.html')).toBe(false);
+            expect(isUnsafeLinkScheme('')).toBe(false);
+            // Substrings of dangerous schemes must not trip the prefix check.
+            expect(isUnsafeLinkScheme('https://x/javascript:notscheme')).toBe(false);
         });
     });
 

@@ -1783,11 +1783,17 @@ var $exeDevice = {
         const questionsJson = [];
         $entries.find('ENTRY').each(function () {
             const $this = $(this),
-                concept = $this.find('CONCEPT').text(),
-                definition = $this
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, '');
+                concept = $this.find('CONCEPT').text();
+            // Strip HTML tags. Apply the replacement repeatedly until the
+            // string stops changing, because removing one match can splice the
+            // remaining characters into a new tag (e.g. "<<a>script>" ->
+            // "<script>"). A single pass is incomplete sanitization.
+            let definition = $this.find('DEFINITION').text(),
+                previousDefinition;
+            do {
+                previousDefinition = definition;
+                definition = definition.replace(/<[^>]*>/g, '');
+            } while (definition !== previousDefinition);
             if (concept && definition) {
                 questionsJson.push({
                     solution: concept,

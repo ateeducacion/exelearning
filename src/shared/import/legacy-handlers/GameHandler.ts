@@ -310,8 +310,10 @@ export class GameHandler extends BaseLegacyHandler {
                     // Create the new JSON string
                     const newJson = JSON.stringify(parsedData);
 
-                    // Use regex to replace the DataGame div content
-                    const escapedClass = divClass.replace(/-/g, '\\-');
+                    // Use regex to replace the DataGame div content.
+                    // Escape backslashes first, then hyphens, so a backslash in the
+                    // class name cannot leak an unescaped escape character into the regex.
+                    const escapedClass = divClass.replace(/\\/g, '\\\\').replace(/-/g, '\\-');
                     const regex = new RegExp(
                         `(<div[^>]*class="[^"]*${escapedClass}[^"]*"[^>]*>)[\\s\\S]*?(<\\/div>)`,
                         'i',
@@ -377,8 +379,10 @@ export class GameHandler extends BaseLegacyHandler {
     private extractGameDataFromHtml(html: string, divClass: string): string | null {
         if (!html) return null;
 
-        // Use regex patterns for extraction
-        const escapedClass = divClass.replace(/-/g, '\\-');
+        // Use regex patterns for extraction.
+        // Escape backslashes first, then hyphens, so a backslash in the class name
+        // cannot leak an unescaped escape character into the regex.
+        const escapedClass = divClass.replace(/\\/g, '\\\\').replace(/-/g, '\\-');
         const patterns = [
             // Match div with class, capturing everything until closing </div>
             new RegExp(`<div[^>]*class="[^"]*${escapedClass}[^"]*"[^>]*>([\\s\\S]*?)<\\/div>`, 'i'),

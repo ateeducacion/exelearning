@@ -158,10 +158,15 @@ var $exeDevice = {
 
     normalizeQuestionsPerRound: value => Math.max(parseInt(value, 10) || 1, 1),
 
-    removeTags: str =>
-        String(str ?? '')
-            .replace(/<[^>]*>/g, '')
-            .trim(),
+    removeTags: str => {
+        let result = String(str ?? '');
+        let prev;
+        do {
+            prev = result;
+            result = result.replace(/<[^>]*>/g, '');
+        } while (result !== prev);
+        return result.trim();
+    },
 
     /**
      * Reusable audio input with voice recorder, matching quick-questions'

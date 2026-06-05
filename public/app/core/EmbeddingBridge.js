@@ -457,12 +457,9 @@ export default class EmbeddingBridge {
             try {
                 window.parent.postMessage(message, this.parentOrigin);
             } catch (e) {
-                // If origin validation fails, try with '*' for same-origin iframes
-                if (e.name === 'DataCloneError') {
-                    getLogger().error('[EmbeddingBridge] Cannot serialize message:', e);
-                } else {
-                    window.parent.postMessage(message, '*');
-                }
+                // Never broadcast to '*' on failure: it would leak the message to
+                // any origin. Log the error and drop the message instead.
+                getLogger().error('[EmbeddingBridge] Failed to post message to parent:', e);
             }
         }
     }

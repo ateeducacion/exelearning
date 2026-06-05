@@ -11,6 +11,31 @@
  *   // Now all save operations go through Yjs
  *   bridge.enableAutoSync();
  */
+
+/**
+ * Strip every <script>...</script> tag from an HTML string.
+ *
+ * The end-tag pattern tolerates optional whitespace before the closing angle
+ * bracket (e.g. `</script >`) and is case-insensitive, so real-world end tags
+ * are not missed (bad-tag-filter). The replacement is applied repeatedly until
+ * the string stops changing, so a nested/obfuscated payload such as
+ * `<scr<script>ipt>` cannot splice two halves into a fresh `<script>` that
+ * survives a single pass (incomplete-multi-character-sanitization).
+ *
+ * @param {string} htmlString - HTML markup to sanitize
+ * @returns {string} HTML with all <script> tags removed
+ */
+function stripScriptTags(htmlString) {
+  const scriptTagRe = /<script\b[^<]*(?:(?!<\/script\s*>)<[^<]*)*<\/script\s*>/gi;
+  let result = htmlString;
+  let previous;
+  do {
+    previous = result;
+    result = result.replace(scriptTagRe, '');
+  } while (result !== previous);
+  return result;
+}
+
 class YjsProjectBridge {
   /**
    * @param {Object} app - The eXeLearning app instance
@@ -3072,7 +3097,7 @@ class YjsProjectBridge {
 
       // Remove all <script> tags — JS is not needed for a static screenshot
       // and would cause 404 errors since paths are relative to the main page
-      htmlString = htmlString.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      htmlString = stripScriptTags(htmlString);
 
       // Capture screenshot using html2canvas in a hidden iframe
       const dataUrl = await this._captureHtmlAsScreenshot(htmlString);
@@ -4298,6 +4323,7 @@ class YjsProjectBridge {
 // Export for use
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = YjsProjectBridge;
+  module.exports.stripScriptTags = stripScriptTags;
 } else {
   window.YjsProjectBridge = YjsProjectBridge;
 }

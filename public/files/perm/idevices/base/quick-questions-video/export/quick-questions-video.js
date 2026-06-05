@@ -566,14 +566,23 @@ var $quickquestionsvideo = {
 
     getIDMediaTeca: function (url) {
         if (url) {
-            const matc =
-                url.indexOf('https://mediateca.educa.madrid.org/video/') != -1;
-            if (matc) {
-                let id = url
-                    .split('https://mediateca.educa.madrid.org/video/')[1]
-                    .split('?')[0];
-                id = 'http://mediateca.educa.madrid.org/streaming.php?id=' + id;
-                return id;
+            let parsed;
+            try {
+                parsed = new URL(url);
+            } catch (e) {
+                return '';
+            }
+            const prefix = '/video/';
+            if (
+                parsed.protocol === 'https:' &&
+                parsed.hostname === 'mediateca.educa.madrid.org' &&
+                parsed.pathname.indexOf(prefix) === 0 &&
+                parsed.pathname.length > prefix.length
+            ) {
+                const id = parsed.pathname.slice(prefix.length);
+                return (
+                    'http://mediateca.educa.madrid.org/streaming.php?id=' + id
+                );
             } else {
                 return '';
             }

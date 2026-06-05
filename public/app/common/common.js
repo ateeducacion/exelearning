@@ -1728,15 +1728,27 @@ var $exeDevices = {
 
 
             media: {
+                isMediatecaHost: function (hostname) {
+                    return hostname === 'mediateca.educa.madrid.org';
+                },
+
                 extractURLGD: function (urlmedia) {
                     let sUrl = urlmedia;
 
-                    if (
-                        typeof urlmedia !== 'undefined' &&
-                        urlmedia.length > 0 &&
-                        urlmedia.toLowerCase().startsWith('https://drive.google.com') &&
-                        urlmedia.toLowerCase().includes('sharing')
-                    ) {
+                    let isGoogleDriveShare = false;
+                    if (typeof urlmedia !== 'undefined' && urlmedia.length > 0) {
+                        try {
+                            const parsed = new URL(urlmedia);
+                            isGoogleDriveShare =
+                                parsed.protocol === 'https:' &&
+                                parsed.hostname.toLowerCase() === 'drive.google.com' &&
+                                urlmedia.toLowerCase().includes('sharing');
+                        } catch (e) {
+                            isGoogleDriveShare = false;
+                        }
+                    }
+
+                    if (isGoogleDriveShare) {
                         sUrl = sUrl.replace(
                             /https:\/\/drive\.google\.com\/file\/d\/(.*?)\/.*?\?usp=sharing/g,
                             'https://docs.google.com/uc?export=open&id=$1'
@@ -1755,8 +1767,19 @@ var $exeDevices = {
                 getURLVideoMediaTeca: function (url) {
                     if (!url) return false;
 
-                    if (url.includes("https://mediateca.educa.madrid.org/video/")) {
-                        const id = url.split("https://mediateca.educa.madrid.org/video/")[1].split("?")[0];
+                    let parsed;
+                    try {
+                        parsed = new URL(url);
+                    } catch (e) {
+                        return false;
+                    }
+
+                    if (
+                        parsed.protocol === 'https:' &&
+                        this.isMediatecaHost(parsed.hostname) &&
+                        parsed.pathname.startsWith('/video/')
+                    ) {
+                        const id = parsed.pathname.slice('/video/'.length);
                         return `http://mediateca.educa.madrid.org/streaming.php?id=${id}`;
                     }
 
@@ -1766,11 +1789,22 @@ var $exeDevices = {
                 getURLAudioMediaTeca: function (url) {
                     if (!url) return false;
 
+                    let parsed;
+                    try {
+                        parsed = new URL(url);
+                    } catch (e) {
+                        return false;
+                    }
+
+                    if (parsed.protocol !== 'https:' || !this.isMediatecaHost(parsed.hostname)) {
+                        return false;
+                    }
+
                     let id = '';
-                    if (url.includes("https://mediateca.educa.madrid.org/audio/")) {
-                        id = url.split("https://mediateca.educa.madrid.org/audio/")[1].split("?")[0];
-                    } else if (url.includes("https://mediateca.educa.madrid.org/video/")) {
-                        id = url.split("https://mediateca.educa.madrid.org/video/")[1].split("?")[0];
+                    if (parsed.pathname.startsWith('/audio/')) {
+                        id = parsed.pathname.slice('/audio/'.length);
+                    } else if (parsed.pathname.startsWith('/video/')) {
+                        id = parsed.pathname.slice('/video/'.length);
                     } else {
                         return false;
                     }

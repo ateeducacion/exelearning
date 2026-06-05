@@ -7456,3 +7456,41 @@ describe('YjsProjectBridge', () => {
     });
   });
 });
+
+describe('stripScriptTags', () => {
+  const stripScriptTags = YjsProjectBridge.stripScriptTags;
+
+  it('removes a simple <script> tag', () => {
+    const out = stripScriptTags('<p>hi</p><script>alert(1)</script><p>bye</p>');
+    expect(out).toBe('<p>hi</p><p>bye</p>');
+    expect(out.toLowerCase()).not.toContain('<script');
+  });
+
+  it('removes end tags with whitespace before the angle bracket (bad-tag-filter)', () => {
+    const out = stripScriptTags('<script>evil()</script >after');
+    expect(out).toBe('after');
+    expect(out.toLowerCase()).not.toContain('<script');
+  });
+
+  it('removes scripts across newlines and mixed casing (bad-tag-filter)', () => {
+    const out = stripScriptTags('before<SCRIPT type="text/javascript">\n  evil();\n</Script\n>after');
+    expect(out).toBe('beforeafter');
+    expect(out.toLowerCase()).not.toContain('<script');
+  });
+
+  it('strips a nested/obfuscated payload to a fixed point (multi-character-sanitization)', () => {
+    const out = stripScriptTags('<scr<script>ipt>alert(1)</script>done');
+    expect(out.toLowerCase()).not.toContain('<script');
+    expect(out).toContain('done');
+  });
+
+  it('preserves legitimate markup that is not a script tag', () => {
+    const html = '<div class="x"><p>keep <b>me</b></p><img src="a.png" /></div>';
+    expect(stripScriptTags(html)).toBe(html);
+  });
+
+  it('does not strip text that merely mentions script without a real tag', () => {
+    const html = '<p>The word script is fine here</p>';
+    expect(stripScriptTags(html)).toBe(html);
+  });
+});

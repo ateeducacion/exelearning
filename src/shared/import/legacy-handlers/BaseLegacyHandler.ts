@@ -411,12 +411,12 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
 
         // Handle Python-style unicode escapes and HTML entities
         const decoded = content
-            // Decode common HTML entities
+            // Decode common HTML entities (ampersand last to avoid double-decoding)
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
-            .replace(/&amp;/g, '&')
             .replace(/&quot;/g, '"')
             .replace(/&#39;/g, "'")
+            .replace(/&amp;/g, '&')
             // Handle Python unicode escapes for common characters
             .replace(/\\n/g, '\n')
             .replace(/\\t/g, '\t')
@@ -448,20 +448,31 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
     stripHtmlTags(html: string): string {
         if (!html) return '';
 
-        // Use regex to strip HTML tags (works in both environments)
-        const text = html
-            // Remove script and style content
-            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-            // Remove HTML tags
-            .replace(/<[^>]*>/g, '')
-            // Decode common HTML entities
+        // Use regex to strip HTML tags (works in both environments).
+        // Apply the tag-removal passes repeatedly until the string stops
+        // changing, so that removing one match cannot splice two halves into a
+        // new match (e.g. <scr<script>ipt> -> <script>). End-tag patterns
+        // tolerate optional whitespace/newlines before the closing '>'.
+        let stripped = html;
+        let previous: string;
+        do {
+            previous = stripped;
+            stripped = stripped
+                // Remove script and style content
+                .replace(/<script[^>]*>[\s\S]*?<\/script\s*>/gi, '')
+                .replace(/<style[^>]*>[\s\S]*?<\/style\s*>/gi, '')
+                // Remove HTML tags
+                .replace(/<[^>]*>/g, '');
+        } while (stripped !== previous);
+
+        const text = stripped
+            // Decode common HTML entities (ampersand last to avoid double-decoding)
             .replace(/&nbsp;/g, ' ')
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
-            .replace(/&amp;/g, '&')
             .replace(/&quot;/g, '"')
             .replace(/&#39;/g, "'")
+            .replace(/&amp;/g, '&')
             // Collapse whitespace
             .replace(/\s+/g, ' ');
 

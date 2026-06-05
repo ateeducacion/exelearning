@@ -136,7 +136,8 @@ export default class LinkValidationAdapter {
 
     /**
      * Remove invalid/non-validatable links
-     * Filters out: empty, anchors (#), javascript:, data: URLs
+     * Filters out: empty, anchors (#), and dangerous script schemes
+     * (javascript:, vbscript:, data:).
      * @param {Array<{url: string, count: number}>} links
      * @returns {Array<{url: string, count: number}>}
      * @private
@@ -145,10 +146,51 @@ export default class LinkValidationAdapter {
         return links.filter((link) => {
             if (!link.url || link.url.trim() === '') return false;
             if (link.url.startsWith('#')) return false;
-            if (link.url.startsWith('javascript:')) return false;
-            if (link.url.startsWith('data:')) return false;
+            if (this._hasDangerousScheme(link.url)) return false;
             return true;
         });
+    }
+
+    /**
+     * Detect whether a URL uses a dangerous script-bearing scheme
+     * (javascript:, vbscript:, data:).
+     *
+     * Normalizes the URL before matching so the check cannot be bypassed
+     * with mixed case, leading/embedded whitespace and control characters,
+     * or HTML character entities (e.g. "&#106;avascript:").
+     *
+     * @param {string} url
+     * @returns {boolean} true when the URL resolves to a dangerous scheme
+     * @private
+     */
+    _hasDangerousScheme(url) {
+        if (typeof url !== 'string') return false;
+
+        // Safely convert a numeric code point, returning '' for invalid or
+        // out-of-range values so String.fromCodePoint cannot throw a
+        // RangeError (e.g. on "&#x110000;" or "&#9999999999;"). Dropping such
+        // junk only makes scheme detection stricter, never weaker.
+        const safeFromCodePoint = (cp) =>
+            Number.isInteger(cp) && cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : '';
+
+        // Decode common HTML entities (named and numeric) so encoded
+        // schemes such as "java&#115;cript:" are caught.
+        let normalized = url.replace(/&#x([0-9a-f]+);?/gi, (_m, hex) =>
+            safeFromCodePoint(Number.parseInt(hex, 16)),
+        );
+        normalized = normalized.replace(/&#(\d+);?/g, (_m, dec) =>
+            safeFromCodePoint(Number.parseInt(dec, 10)),
+        );
+        const namedEntities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", colon: ':', tab: '\t', newline: '\n' };
+        normalized = normalized.replace(/&(amp|lt|gt|quot|apos|colon|tab|newline);/gi, (_m, name) => namedEntities[name.toLowerCase()] ?? _m);
+
+        // Strip whitespace and control characters (incl. NUL and DEL) that
+        // browsers ignore when resolving the scheme, then lowercase for
+        // comparison. \x00-\x20 covers C0 controls + space; \x7f is DEL.
+        // eslint-disable-next-line no-control-regex
+        const stripped = normalized.replace(/[\x00-\x20\x7f]+/g, '').toLowerCase();
+
+        return stripped.startsWith('javascript:') || stripped.startsWith('vbscript:') || stripped.startsWith('data:');
     }
 
     /**

@@ -1593,6 +1593,28 @@ describe('PreviewPanelManager', () => {
       expect(result).not.toContain('src="app.js"');
     });
 
+    it('should inline JS script tags with whitespace before the closing angle bracket', () => {
+      const html = '<html><body><script src="app.js"></script ></body></html>';
+      const files = { 'app.js': 'console.log("hello")' };
+
+      const result = manager._inlineResources(html, files);
+
+      expect(result).toContain('<script>');
+      expect(result).toContain('console.log("hello")');
+      expect(result).not.toContain('src="app.js"');
+    });
+
+    it('should inline JS script tags with newline and mixed-case closing tag', () => {
+      const html = '<html><body><script src="app.js"></SCRIPT\n></body></html>';
+      const files = { 'app.js': 'console.log("hi")' };
+
+      const result = manager._inlineResources(html, files);
+
+      expect(result).toContain('<script>');
+      expect(result).toContain('console.log("hi")');
+      expect(result).not.toContain('src="app.js"');
+    });
+
     it('should leave tags unchanged when file not found', () => {
       const html = '<html><head><link rel="stylesheet" href="missing.css"></head></html>';
       const files = {};

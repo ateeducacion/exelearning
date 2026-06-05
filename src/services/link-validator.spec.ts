@@ -115,6 +115,74 @@ describe('Link Validator Service', () => {
             const result = removeInvalidLinks(links);
             expect(result).toHaveLength(0);
         });
+
+        it('should remove vbscript: links', () => {
+            const links: RawExtractedLink[] = [
+                { url: 'vbscript:msgbox("hi")', count: 1 },
+                { url: 'VBScript:Execute("x")', count: 1 },
+            ];
+            const result = removeInvalidLinks(links);
+            expect(result).toHaveLength(0);
+        });
+
+        it('should remove dangerous schemes regardless of case', () => {
+            const links: RawExtractedLink[] = [
+                { url: 'JaVaScRiPt:alert(1)', count: 1 },
+                { url: 'JAVASCRIPT:void(0)', count: 1 },
+                { url: 'DATA:text/html,<h1>Hi</h1>', count: 1 },
+            ];
+            const result = removeInvalidLinks(links);
+            expect(result).toHaveLength(0);
+        });
+
+        it('should remove dangerous schemes with leading whitespace/control chars', () => {
+            const links: RawExtractedLink[] = [
+                { url: ' javascript:alert(1)', count: 1 },
+                { url: '\tjavascript:alert(2)', count: 1 },
+                { url: '\n\rvbscript:msgbox(1)', count: 1 },
+                { url: ' data:text/html,<h1>Hi</h1>', count: 1 },
+            ];
+            const result = removeInvalidLinks(links);
+            expect(result).toHaveLength(0);
+        });
+
+        it('should remove dangerous schemes hidden by embedded control chars', () => {
+            const links: RawExtractedLink[] = [
+                { url: 'java\tscript:alert(1)', count: 1 },
+                { url: 'java\nscript:alert(2)', count: 1 },
+            ];
+            const result = removeInvalidLinks(links);
+            expect(result).toHaveLength(0);
+        });
+
+        it('should remove dangerous schemes obfuscated with HTML entities', () => {
+            const links: RawExtractedLink[] = [
+                { url: 'java&#9;script:alert(1)', count: 1 },
+                { url: 'java&#x0a;script:alert(2)', count: 1 },
+                { url: 'java&Tab;script:alert(3)', count: 1 },
+            ];
+            const result = removeInvalidLinks(links);
+            expect(result).toHaveLength(0);
+        });
+
+        it('should keep legitimate http/https/relative links', () => {
+            const links: RawExtractedLink[] = [
+                { url: 'http://example.com', count: 1 },
+                { url: 'https://example.com/page', count: 1 },
+                { url: 'files/image.png', count: 1 },
+                { url: 'mailto:user@example.com', count: 1 },
+                { url: '//cdn.example.com/lib.js', count: 1 },
+            ];
+            const result = removeInvalidLinks(links);
+            expect(result).toHaveLength(5);
+            expect(result.map(l => l.url)).toEqual([
+                'http://example.com',
+                'https://example.com/page',
+                'files/image.png',
+                'mailto:user@example.com',
+                '//cdn.example.com/lib.js',
+            ]);
+        });
     });
 
     describe('deduplicateLinks', () => {

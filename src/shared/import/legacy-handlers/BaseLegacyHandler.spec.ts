@@ -409,6 +409,16 @@ describe('BaseLegacyHandler', () => {
             // \\r followed by 'i' in 'right' should NOT be converted
             expect(handler.decodeHtmlContent(latex)).toBe('\\left( x \\right)');
         });
+
+        it('should not double-decode &amp;lt; into a real angle bracket', () => {
+            // &amp;lt; is the literal text "&lt;" and must stay that way,
+            // not collapse to "<" via two decode passes.
+            expect(handler.decodeHtmlContent('&amp;lt;')).toBe('&lt;');
+        });
+
+        it('should not double-decode &amp;amp;', () => {
+            expect(handler.decodeHtmlContent('&amp;amp;')).toBe('&amp;');
+        });
     });
 
     describe('stripHtmlTags', () => {
@@ -442,6 +452,30 @@ describe('BaseLegacyHandler', () => {
 
         it('should trim result', () => {
             expect(handler.stripHtmlTags('  <p>  Hello  </p>  ')).toBe('Hello');
+        });
+
+        it('should remove nested/obfuscated script payloads (no <script left)', () => {
+            const result = handler.stripHtmlTags('<scr<script>ipt>alert(1)</script>After');
+            // The single-pass strip would have spliced the two halves back into
+            // a live <script>; looping to a fixed point prevents that.
+            expect(result.toLowerCase()).not.toContain('<script');
+            expect(result).not.toContain('alert(1)');
+        });
+
+        it('should remove script end tags with whitespace before the angle bracket', () => {
+            expect(handler.stripHtmlTags('Before<script>alert(1)</script >After')).toBe('BeforeAfter');
+        });
+
+        it('should remove script end tags spanning newlines and mixed case', () => {
+            expect(handler.stripHtmlTags('Before<SCRIPT>\nalert(1)\n</ScRiPt\n>After')).toBe('BeforeAfter');
+        });
+
+        it('should remove style end tags with whitespace before the angle bracket', () => {
+            expect(handler.stripHtmlTags('Before<style>.red{color:red}</style >After')).toBe('BeforeAfter');
+        });
+
+        it('should not double-decode &amp;lt; into a real angle bracket', () => {
+            expect(handler.stripHtmlTags('&amp;lt;')).toBe('&lt;');
         });
     });
 

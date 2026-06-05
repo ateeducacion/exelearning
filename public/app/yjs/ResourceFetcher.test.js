@@ -1386,7 +1386,7 @@ describe('ResourceFetcher', () => {
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
       });
 
-      const result = await fetcher.fetchBundle('http://example.com/bundle.zip');
+      const result = await fetcher.fetchBundle('https://example.com/bundle.zip');
 
       expect(result).toBeInstanceOf(Map);
       expect(result.size).toBe(1);
@@ -1398,7 +1398,7 @@ describe('ResourceFetcher', () => {
       const fetcher = new ResourceFetcher();
       mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
 
-      const result = await fetcher.fetchBundle('http://example.com/missing.zip');
+      const result = await fetcher.fetchBundle('https://example.com/missing.zip');
 
       expect(result).toBeNull();
     });
@@ -1407,9 +1407,77 @@ describe('ResourceFetcher', () => {
       const fetcher = new ResourceFetcher();
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      const result = await fetcher.fetchBundle('http://example.com/error.zip');
+      const result = await fetcher.fetchBundle('https://example.com/error.zip');
 
       expect(result).toBeNull();
+    });
+
+    it('refuses to fetch a bundle over insecure http:// and does not call fetch', async () => {
+      const fetcher = new ResourceFetcher();
+
+      const result = await fetcher.fetchBundle('http://example.com/bundle.zip');
+
+      expect(result).toBeNull();
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('refuses non-https schemes (data:, javascript:, file:) without fetching', async () => {
+      const fetcher = new ResourceFetcher();
+
+      for (const url of [
+        'data:application/zip;base64,UEsDBA==',
+        'javascript:alert(1)',
+        'file:///etc/passwd',
+        'ftp://example.com/bundle.zip',
+      ]) {
+        // eslint-disable-next-line no-await-in-loop
+        const result = await fetcher.fetchBundle(url);
+        expect(result).toBeNull();
+      }
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('allows relative/same-origin bundle URLs', async () => {
+      const fetcher = new ResourceFetcher();
+      window.fflate = {
+        unzipSync: vi.fn().mockReturnValue({
+          'file.txt': new Uint8Array([116, 101, 115, 116]),
+        }),
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => '100' },
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+      });
+
+      const result = await fetcher.fetchBundle('/web/exelearning/bundles/libs.zip');
+
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/bundles/libs.zip');
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(1);
+
+      delete window.fflate;
+    });
+  });
+
+  describe('isSafeBundleUrl', () => {
+    it('accepts relative, protocol-relative and https URLs', () => {
+      expect(ResourceFetcher.isSafeBundleUrl('/bundles/libs.zip')).toBe(true);
+      expect(ResourceFetcher.isSafeBundleUrl('bundles/libs.zip')).toBe(true);
+      expect(ResourceFetcher.isSafeBundleUrl('//cdn.example.com/x.zip')).toBe(true);
+      expect(ResourceFetcher.isSafeBundleUrl('https://example.com/x.zip')).toBe(true);
+      expect(ResourceFetcher.isSafeBundleUrl('HTTPS://EXAMPLE.com/x.zip')).toBe(true);
+    });
+
+    it('rejects insecure or non-http schemes and invalid input', () => {
+      expect(ResourceFetcher.isSafeBundleUrl('http://example.com/x.zip')).toBe(false);
+      expect(ResourceFetcher.isSafeBundleUrl('ftp://example.com/x.zip')).toBe(false);
+      expect(ResourceFetcher.isSafeBundleUrl('data:text/plain,x')).toBe(false);
+      expect(ResourceFetcher.isSafeBundleUrl('javascript:alert(1)')).toBe(false);
+      expect(ResourceFetcher.isSafeBundleUrl('')).toBe(false);
+      expect(ResourceFetcher.isSafeBundleUrl(null)).toBe(false);
+      expect(ResourceFetcher.isSafeBundleUrl(undefined)).toBe(false);
     });
   });
 

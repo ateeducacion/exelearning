@@ -161,6 +161,24 @@ const clientMetaMap = new Map<string, ClientMeta>();
 let initialized = false;
 
 /**
+ * Maximum size (in bytes) of a single WebSocket message accepted on the Yjs
+ * route. Set explicitly rather than relying on Bun's 16MB default so the per
+ * message memory an attacker can force is a known, conservative value.
+ *
+ * Two message classes flow over this socket:
+ *   1. Yjs document updates — a full Y.Doc sync of a large eXeLearning project
+ *      (many pages with embedded HTML/iDevice content) can legitimately reach a
+ *      few MB. Binary asset payloads are NOT sent here; they go through the
+ *      chunked HTTP upload endpoints, so this socket only carries document
+ *      structure/text, which stays well under the cap.
+ *   2. Asset-coordination JSON — tiny control messages (kilobytes at most).
+ *
+ * 8 MB comfortably covers the largest realistic Yjs sync while halving the
+ * 16MB default, bounding the heap a single oversized frame can allocate.
+ */
+export const YJS_WS_MAX_PAYLOAD_LENGTH = 8 * 1024 * 1024;
+
+/**
  * Generate unique client ID
  * Exported for testing
  */
@@ -448,34 +466,51 @@ export function handleWebSocketClose(ws: ServerWebSocket<WsData>, data: WsData |
  * Create Elysia WebSocket routes for Yjs
  */
 export function createWebSocketRoutes() {
-    return new Elysia({ name: 'yjs-websocket' }).ws('/yjs/:docName', {
-        // Connection opened - validate token here since beforeHandle doesn't pass data to open
-        async open(ws) {
-            const rawData = ws.data as ElysiaWsRawData;
-            const docName = rawData.params?.docName;
-            const token = rawData.query?.token as string;
+    return (
+        new Elysia({ name: 'yjs-websocket' })
+            // Public liveness probe under the same prefix where the WebSocket is
+            // mounted. Used by external healthchecks and quick smoke tests that
+            // want to confirm the Yjs service is up without negotiating a WS
+            // upgrade. Intentionally minimal: no counts, ports, modes or hostnames.
+            .get('/yjs/info', () => ({ ok: true, service: 'yjs-websocket' }))
+            .ws('/yjs/:docName', {
+                // Cap the per-message size explicitly (Bun defaults to 16MB).
+                // Bounds the heap a single oversized frame can allocate while
+                // still allowing large-but-legitimate Yjs document syncs.
+                maxPayloadLength: YJS_WS_MAX_PAYLOAD_LENGTH,
 
-            const result = await handleWebSocketOpen(ws as ServerWebSocket<WsData>, docName, token);
-            if (!result.success && result.error) {
-                ws.close(result.error.code, result.error.reason);
-            }
-        },
+                // Connection opened - validate token here since beforeHandle doesn't pass data to open
+                async open(ws) {
+                    const rawData = ws.data as ElysiaWsRawData;
+                    const docName = rawData.params?.docName;
+                    const token = rawData.query?.token as string;
 
-        // Handle pong response (Bun WebSocket native support)
-        pong(ws) {
-            handleWebSocketPong(ws.data as WsData);
-        },
+                    const result = await handleWebSocketOpen(ws as ServerWebSocket<WsData>, docName, token);
+                    if (!result.success && result.error) {
+                        ws.close(result.error.code, result.error.reason);
+                    }
+                },
 
-        // Message received
-        message(ws, message) {
-            handleWebSocketMessage(ws as ServerWebSocket<WsData>, ws.data as WsData, message as Buffer | string);
-        },
+                // Handle pong response (Bun WebSocket native support)
+                pong(ws) {
+                    handleWebSocketPong(ws.data as WsData);
+                },
 
-        // Connection closed
-        close(ws) {
-            handleWebSocketClose(ws as ServerWebSocket<WsData>, ws.data as WsData | undefined);
-        },
-    });
+                // Message received
+                message(ws, message) {
+                    handleWebSocketMessage(
+                        ws as ServerWebSocket<WsData>,
+                        ws.data as WsData,
+                        message as Buffer | string,
+                    );
+                },
+
+                // Connection closed
+                close(ws) {
+                    handleWebSocketClose(ws as ServerWebSocket<WsData>, ws.data as WsData | undefined);
+                },
+            })
+    );
 }
 
 /**

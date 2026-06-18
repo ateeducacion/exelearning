@@ -2,7 +2,8 @@
  * ImsExporter tests (IMS Content Package)
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { ImsExporter } from './ImsExporter';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
@@ -195,12 +196,76 @@ describe('ImsExporter', () => {
     let zip: MockZipProvider;
     let exporter: ImsExporter;
 
+    // Every JSON iDevice that carries LaTeX now pre-renders it to SVG, so the only
+    // remaining trigger for bundling MathJax is the author explicitly requesting it
+    // (addMathJax: true). A form with raw LaTeX keeps its delimiters in that case.
+    const mathJaxRequestedPages = (): ExportPage[] => [
+        {
+            id: 'page-explicit-mathjax',
+            title: 'Explicit MathJax',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-explicit-mathjax',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'comp-explicit-mathjax',
+                            type: 'form',
+                            order: 0,
+                            content: '',
+                            properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },
+                        },
+                    ],
+                },
+            ],
+        },
+    ];
+
     beforeEach(() => {
         document = new MockDocument({}, samplePages);
         resources = new MockResourceProvider();
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new ImsExporter(document, resources, assets, zip);
+    });
+
+    describe('MathJax when explicitly requested (addMathJax)', () => {
+        beforeAll(() => {
+            resetIdeviceConfigCache(); // discard any base path leaked by another spec
+            loadIdeviceConfigs(); // load the real iDevice configs from the default cwd path
+        });
+        afterAll(() => resetIdeviceConfigCache());
+
+        it('bundles and references MathJax without pre-rendering the page', async () => {
+            document = new MockDocument({ addMathJax: true }, mathJaxRequestedPages());
+            exporter = new ImsExporter(document, resources, assets, zip);
+            let requestedFiles: string[] = [];
+            resources.fetchLibraryFiles = async files => {
+                requestedFiles = files;
+                return new Map(
+                    files.map(file => [
+                        file === 'exe_math' ? 'exe_math/tex-mml-svg.js' : file,
+                        Buffer.from('// mock lib'),
+                    ]),
+                );
+            };
+            let preRenderCalled = false;
+
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            expect(preRenderCalled).toBe(false);
+            expect(requestedFiles.some(file => file.includes('exe_math'))).toBe(true);
+            expect(zip.files.has('libs/exe_math/tex-mml-svg.js')).toBe(true);
+            expect(zip.files.get('index.html') as string).toContain('libs/exe_math/tex-mml-svg.js');
+        });
     });
 
     describe('Basic Properties', () => {
@@ -392,12 +457,89 @@ describe('ImsExporter', () => {
     });
 
     describe('Project ID Generation', () => {
-        it('should generate unique project IDs', () => {
+        it('should generate unique low-level project IDs (legacy random helper)', () => {
             const id1 = exporter.generateProjectId();
             const id2 = exporter.generateProjectId();
 
             expect(id1).not.toBe(id2);
             expect(id1.length).toBeGreaterThan(0);
+        });
+
+        it('should produce a STABLE manifest@identifier across exports when odeIdentifier is set (#1785)', async () => {
+            document = new MockDocument({ odeIdentifier: '20251201123456ABCDEF' }, samplePages);
+            const zip1 = new MockZipProvider();
+            const exporter1 = new ImsExporter(document, resources, assets, zip1);
+            await exporter1.export();
+            const manifest1 = zip1.files.get('imsmanifest.xml') as string;
+            const idMatch1 = manifest1.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch1).not.toBeNull();
+            const id1 = idMatch1![1];
+
+            const zip2 = new MockZipProvider();
+            const exporter2 = new ImsExporter(document, resources, assets, zip2);
+            await exporter2.export();
+            const manifest2 = zip2.files.get('imsmanifest.xml') as string;
+            const idMatch2 = manifest2.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch2).not.toBeNull();
+            const id2 = idMatch2![1];
+
+            // BUG fix: re-exporting the same project must produce the SAME manifest identifier.
+            expect(id1).toBe(id2);
+            expect(id1).toContain('20251201123456ABCDEF');
+        });
+
+        it('should honour meta.scormIdentifier as a user override (#1785)', async () => {
+            document = new MockDocument(
+                {
+                    odeIdentifier: '20251201123456ABCDEF',
+                    scormIdentifier: 'CUSTOM-OVERRIDE-XYZ',
+                },
+                samplePages,
+            );
+            const localZip = new MockZipProvider();
+            exporter = new ImsExporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const idMatch = manifest.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch).not.toBeNull();
+            expect(idMatch![1]).toBe('CUSTOM-OVERRIDE-XYZ');
+        });
+
+        it('should fall back to a generated eXe-MANIFEST-* identifier when neither override nor odeIdentifier is set (#1785)', async () => {
+            document = new MockDocument({}, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new ImsExporter(document, resources, assets, localZip);
+            const result = await exporter.export();
+            expect(result.success).toBe(true);
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const idMatch = manifest.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch).not.toBeNull();
+            expect(idMatch![1]).toMatch(/^eXe-MANIFEST-\d{14}[A-Z0-9]{6}$/);
+        });
+
+        it('should derive manifest@identifier and content.xml odeId from the same odeIdentifier (#1785)', async () => {
+            document = new MockDocument({ odeIdentifier: '20251201123456ABCDEF' }, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new ImsExporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const contentXml = localZip.files.get('content.xml') as string;
+            // Both artifacts reference the same project-identity root.
+            expect(manifest).toContain('20251201123456ABCDEF');
+            expect(contentXml).toContain('20251201123456ABCDEF');
+        });
+
+        it('shares a single root id across manifest and organization on the FALLBACK path (#1785)', async () => {
+            document = new MockDocument({}, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new ImsExporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const manifestMatch = manifest.match(/<manifest\s+identifier="eXe-MANIFEST-([A-Z0-9]+)"/);
+            const orgMatch = manifest.match(/<organization\s+identifier="eXe-([A-Z0-9]+)"/);
+            expect(manifestMatch).not.toBeNull();
+            expect(orgMatch).not.toBeNull();
+            expect(orgMatch![1]).toBe(manifestMatch![1]);
         });
     });
 
@@ -499,5 +641,135 @@ describe('ImsExporter', () => {
             expect(manifest).toContain('<file href="content.xml"/>');
             expect(manifest).toContain('<file href="content.dtd"/>');
         });
+
+        it('should keep hidden pages in the re-editable content.xml', async () => {
+            // A hidden page (visibility: false) must NOT be rendered into the
+            // package HTML or the manifest, but MUST survive in content.xml so a
+            // re-import recovers it.
+            const pagesWithHidden: ExportPage[] = [
+                samplePages[0],
+                samplePages[1],
+                {
+                    id: 'page-hidden',
+                    title: 'Secret Draft',
+                    parentId: null,
+                    order: 2,
+                    properties: { visibility: false },
+                    blocks: [
+                        {
+                            id: 'block-hidden',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-hidden',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Teacher-only notes</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+            document = new MockDocument({}, pagesWithHidden);
+            exporter = new ImsExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // content.xml retains the hidden page (re-import recovers it).
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('Secret Draft');
+
+            // The hidden page is excluded from the rendered organization/manifest.
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).not.toContain('Secret Draft');
+        });
+    });
+});
+
+// Regression coverage for #1927: the re-editable content.xml must keep exe-node:
+// internal links so they survive an export -> re-import round trip. The exported
+// HTML pages still resolve to static paths at render time.
+const internalLinkPages: ExportPage[] = [
+    {
+        id: 'page-1',
+        title: 'Home',
+        parentId: null,
+        order: 0,
+        blocks: [
+            {
+                id: 'block-1',
+                name: 'Content Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'comp-1',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content:
+                            '<p>Go to <a href="exe-node:page-2">About</a> and <a href="exe-node:page-2#sec">a section</a>.</p>',
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'page-2',
+        title: 'About',
+        parentId: null,
+        order: 1,
+        blocks: [
+            {
+                id: 'block-2',
+                name: 'Content Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'comp-2',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: '<p>Back to <a href="exe-node:page-1">Home</a>.</p>',
+                    },
+                ],
+            },
+        ],
+    },
+];
+
+async function exportImsZip(pages: ExportPage[]): Promise<MockZipProvider> {
+    const zip = new MockZipProvider();
+    const exporter = new ImsExporter(
+        new MockDocument({}, pages),
+        new MockResourceProvider(),
+        new MockAssetProvider(),
+        zip,
+    );
+    await exporter.export();
+    return zip;
+}
+
+describe('ImsExporter — internal link round-trip (#1927)', () => {
+    it('keeps exe-node: internal links in content.xml', async () => {
+        const zip = await exportImsZip(internalLinkPages);
+        const contentXml = zip.files.get('content.xml') as string;
+
+        expect(contentXml).toContain('exe-node:page-2');
+        expect(contentXml).toContain('exe-node:page-1');
+        expect(contentXml).toContain('exe-node:page-2#sec');
+        expect(contentXml).not.toContain('html/about.html');
+        expect(contentXml).not.toContain('../index.html');
+    });
+
+    it('still renders the static path in the exported HTML pages', async () => {
+        const zip = await exportImsZip(internalLinkPages);
+        const indexHtml = zip.files.get('index.html') as string;
+        const aboutHtml = zip.files.get('html/about.html') as string;
+
+        expect(indexHtml).toContain('href="html/about.html"');
+        expect(indexHtml).toContain('href="html/about.html#sec"');
+        expect(indexHtml).not.toContain('exe-node:');
+        expect(aboutHtml).toContain('href="../index.html"');
+        expect(aboutHtml).not.toContain('exe-node:');
     });
 });

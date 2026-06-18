@@ -2821,8 +2821,24 @@ class YjsStructureBinding {
     };
   }
 
+  /**
+   * Generate a unique ID.
+   *
+   * Mirrors src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+   *
+   * @param {string} prefix - ID prefix
+   * @returns {string}
+   */
   generateId(prefix) {
-    return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    if (!prefix) {
+      throw new Error('generateId: prefix is required');
+    }
+    const timestamp = Date.now().toString(36);
+    // Pad to a fixed 9-char suffix: `toString(36)` yields a variable-length
+    // tail, so without this the suffix is occasionally 8 chars. Mirrors
+    // src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+    const random = Math.random().toString(36).substring(2, 11).padEnd(9, '0');
+    return `${prefix}-${timestamp}-${random}`;
   }
 
   // ===== Import from API Structure =====

@@ -1042,13 +1042,12 @@ describe('YjsDocumentManager', () => {
 
     it('waits for full sync when other users are present', async () => {
       manager.config.skipSyncWait = false;
+      const listeners = {};
       const mockProvider = {
         synced: false,
-        once: mock((event, callback) => {
-          if (event === 'sync') {
-            setTimeout(() => callback(true), 10);
-          }
-        }),
+        on(ev, cb) { (listeners[ev] ||= []).push(cb); },
+        off(ev, cb) { if (listeners[ev]) listeners[ev] = listeners[ev].filter((f) => f !== cb); },
+        emit(ev, ...args) { (listeners[ev] || []).slice().forEach((cb) => cb(...args)); },
         disconnect: () => {},
         destroy: () => {},
       };
@@ -1060,7 +1059,9 @@ describe('YjsDocumentManager', () => {
       manager.awareness._states.set(99999, { user: { id: 'other-user' } });
       manager.config.awarenessCheckTimeout = 100;
 
-      await manager.waitForWebSocketSync();
+      const promise = manager.waitForWebSocketSync();
+      setTimeout(() => mockProvider.emit('sync', true), 150);
+      await promise;
     });
   });
 
@@ -1103,46 +1104,62 @@ describe('YjsDocumentManager', () => {
       await manager.initialize();
     });
 
+    // Minimal provider supporting on/off + manual emit (mirrors y-websocket's
+    // EventEmitter so we can test the persistent-listener behaviour).
+    const makeProvider = (synced = false) => {
+      const listeners = {};
+      return {
+        synced,
+        on(ev, cb) { (listeners[ev] ||= []).push(cb); },
+        off(ev, cb) { if (listeners[ev]) listeners[ev] = listeners[ev].filter((f) => f !== cb); },
+        emit(ev, ...args) { (listeners[ev] || []).slice().forEach((cb) => cb(...args)); },
+        _listeners: listeners,
+        disconnect: () => {},
+        destroy: () => {},
+      };
+    };
+
     it('resolves immediately if already synced', async () => {
-      manager.wsProvider = { synced: true, disconnect: () => {}, destroy: () => {} };
-
-      await manager._waitForFullSync();
-    });
-
-    it('resolves on sync event', async () => {
-      const mockProvider = {
-        synced: false,
-        once: mock((event, callback) => {
-          if (event === 'sync') {
-            setTimeout(() => callback(true), 10);
-          }
-        }),
-        disconnect: () => {},
-        destroy: () => {},
-      };
-      manager.wsProvider = mockProvider;
-      manager.config.fullSyncTimeout = 1000;
-
-      await manager._waitForFullSync();
-    });
-
-    it('resolves on timeout when no sync event', async () => {
-      manager.wsProvider = {
-        synced: false,
-        once: mock(() => {}),
-        disconnect: () => {},
-        destroy: () => {},
-      };
-      manager.config.fullSyncTimeout = 10;
-
+      manager.wsProvider = makeProvider(true);
       await manager._waitForFullSync();
     });
 
     it('resolves immediately when no wsProvider', async () => {
       manager.wsProvider = null;
       manager.config.fullSyncTimeout = 10;
-
       await manager._waitForFullSync();
+    });
+
+    it('resolves on a sync(true) event and detaches its listener', async () => {
+      const provider = makeProvider(false);
+      manager.wsProvider = provider;
+      manager.config.fullSyncTimeout = 2000;
+      const promise = manager._waitForFullSync();
+      setTimeout(() => provider.emit('sync', true), 10);
+      await promise;
+      expect(provider._listeners.sync.length).toBe(0);
+    });
+
+    it('ignores a sync(false) blip and resolves on the following sync(true)', async () => {
+      // Regression: a persistent listener (not `once`) must survive sync(false),
+      // which y-websocket emits on a reconnect/handshake blip; `once` would have
+      // consumed it and then waited out the entire timeout.
+      const provider = makeProvider(false);
+      manager.wsProvider = provider;
+      manager.config.fullSyncTimeout = 2000;
+      const promise = manager._waitForFullSync();
+      setTimeout(() => provider.emit('sync', false), 5);
+      setTimeout(() => provider.emit('sync', true), 20);
+      await promise;
+      expect(provider._listeners.sync.length).toBe(0);
+    });
+
+    it('resolves on timeout when sync never fires, cleaning up the listener', async () => {
+      const provider = makeProvider(false);
+      manager.wsProvider = provider;
+      manager.config.fullSyncTimeout = 10;
+      await manager._waitForFullSync();
+      expect(provider._listeners.sync.length).toBe(0);
     });
   });
 
@@ -2641,6 +2658,61 @@ describe('YjsDocumentManager', () => {
 
       expect(result).toBe(true);
       expect(setLocalStateSpy).toHaveBeenCalled();
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // createBlankProjectStructure — default-theme precedence
+  // -----------------------------------------------------------------------
+  // The blank Yjs document is the source of truth for new (especially static
+  // mode) projects, so the user's "Default style" preference has to be honored
+  // here too. Otherwise initialiceProject() finds Yjs already declaring a
+  // theme and skips the preference logic.
+  describe('createBlankProjectStructure default theme', () => {
+    function setupExeLearning({ siteDefault, userDefault, legacy } = {}) {
+      global.window.eXeLearning = {
+        config: { basePath: '', defaultTheme: siteDefault },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                ...(userDefault !== undefined ? { defaultTheme: { value: userDefault } } : {}),
+                ...(legacy !== undefined ? { theme: { value: legacy } } : {}),
+              },
+            },
+          },
+        },
+      };
+    }
+
+    it('uses the user defaultTheme preference when set', async () => {
+      setupExeLearning({ siteDefault: 'site-default', userDefault: 'neo' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('neo');
+    });
+
+    it('falls back to the site default when defaultTheme preference is empty', async () => {
+      setupExeLearning({ siteDefault: 'site-default', userDefault: '' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('site-default');
+    });
+
+    it('honors the legacy theme preference when defaultTheme is missing', async () => {
+      setupExeLearning({ siteDefault: 'site-default', legacy: 'legacy-theme' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('legacy-theme');
+    });
+
+    it('prefers defaultTheme over the legacy theme preference', async () => {
+      setupExeLearning({ siteDefault: 'site-default', userDefault: 'neo', legacy: 'legacy-theme' });
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('neo');
+    });
+
+    it('falls back to "base" when nothing is configured', async () => {
+      global.window.eXeLearning = { config: { basePath: '' } };
+      await manager.initialize({ isNewProject: true });
+      expect(manager.getMetadata().get('theme')).toBe('base');
     });
   });
 });

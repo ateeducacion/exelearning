@@ -6,6 +6,7 @@
  * message-parser, config). Only external dependencies are mocked via DI.
  */
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
 
@@ -32,6 +33,7 @@ import {
     handleWebSocketMessage,
     handleWebSocketClose,
     WsData,
+    YJS_WS_MAX_PAYLOAD_LENGTH,
     type YjsWebSocketQueries,
     type YjsWebSocketSessionManager,
     type YjsWebSocketAuth,
@@ -190,6 +192,47 @@ describe('Yjs WebSocket Service', () => {
             wsHook?.pong?.(ws as any, undefined as any);
             wsHook?.message?.(ws as any, Buffer.from([0x01]));
             wsHook?.close?.(ws as any, 1000, 'closed');
+        });
+
+        it('exposes a public GET /yjs/info liveness probe without leaking ops detail', async () => {
+            const routes = createWebSocketRoutes();
+            const app = new Elysia().use(routes);
+
+            const res = await app.handle(new Request('http://localhost/yjs/info'));
+            expect(res.status).toBe(200);
+
+            const data = (await res.json()) as Record<string, unknown>;
+            expect(data).toEqual({ ok: true, service: 'yjs-websocket' });
+            // Must not leak the same operational detail that /api/websocket/info hides.
+            for (const forbidden of ['port', 'mode', 'roomsCount', 'totalConnections', 'host', 'version']) {
+                expect(data).not.toHaveProperty(forbidden);
+            }
+        });
+
+        it('does not shadow the WS upgrade route for other docName values', () => {
+            const routes = createWebSocketRoutes();
+            const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
+            expect(wsRoute).toBeDefined();
+        });
+
+        it('configures an explicit conservative maxPayloadLength (DoS hardening, BUG H8)', () => {
+            const routes = createWebSocketRoutes();
+            const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
+            expect(wsRoute).toBeDefined();
+
+            const wsHook = (wsRoute?.hooks as any)?.websocket;
+            expect(wsHook).toBeDefined();
+
+            // Must be set explicitly rather than relying on Bun's 16MB default.
+            expect(wsHook.maxPayloadLength).toBe(YJS_WS_MAX_PAYLOAD_LENGTH);
+        });
+
+        it('caps maxPayloadLength below Bun default but above a few-MB Yjs sync', () => {
+            // 8MB: comfortably above a multi-MB Yjs document sync, and at most
+            // half of Bun's 16MB default so a single frame cannot allocate 16MB.
+            expect(YJS_WS_MAX_PAYLOAD_LENGTH).toBe(8 * 1024 * 1024);
+            expect(YJS_WS_MAX_PAYLOAD_LENGTH).toBeLessThanOrEqual(16 * 1024 * 1024);
+            expect(YJS_WS_MAX_PAYLOAD_LENGTH).toBeGreaterThanOrEqual(4 * 1024 * 1024);
         });
     });
 

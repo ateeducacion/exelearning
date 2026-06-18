@@ -2,7 +2,8 @@
  * Scorm12Exporter tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { Scorm12Exporter } from './Scorm12Exporter';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
@@ -198,12 +199,76 @@ describe('Scorm12Exporter', () => {
     let zip: MockZipProvider;
     let exporter: Scorm12Exporter;
 
+    // Every JSON iDevice that carries LaTeX now pre-renders it to SVG, so the only
+    // remaining trigger for bundling MathJax is the author explicitly requesting it
+    // (addMathJax: true). A form with raw LaTeX keeps its delimiters in that case.
+    const mathJaxRequestedPages = (): ExportPage[] => [
+        {
+            id: 'page-explicit-mathjax',
+            title: 'Explicit MathJax',
+            parentId: null,
+            order: 0,
+            blocks: [
+                {
+                    id: 'block-explicit-mathjax',
+                    name: 'Content',
+                    order: 0,
+                    components: [
+                        {
+                            id: 'comp-explicit-mathjax',
+                            type: 'form',
+                            order: 0,
+                            content: '',
+                            properties: { questionsGame: [{ question: 'Solve \\(x^2 = 1\\)' }] },
+                        },
+                    ],
+                },
+            ],
+        },
+    ];
+
     beforeEach(() => {
         document = new MockDocument({}, samplePages);
         resources = new MockResourceProvider();
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new Scorm12Exporter(document, resources, assets, zip);
+    });
+
+    describe('MathJax when explicitly requested (addMathJax)', () => {
+        beforeAll(() => {
+            resetIdeviceConfigCache(); // discard any base path leaked by another spec
+            loadIdeviceConfigs(); // load the real iDevice configs from the default cwd path
+        });
+        afterAll(() => resetIdeviceConfigCache());
+
+        it('bundles and references MathJax without pre-rendering the page', async () => {
+            document = new MockDocument({ addMathJax: true }, mathJaxRequestedPages());
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            let requestedFiles: string[] = [];
+            resources.fetchLibraryFiles = async files => {
+                requestedFiles = files;
+                return new Map(
+                    files.map(file => [
+                        file === 'exe_math' ? 'exe_math/tex-mml-svg.js' : file,
+                        Buffer.from('// mock lib'),
+                    ]),
+                );
+            };
+            let preRenderCalled = false;
+
+            await exporter.export({
+                preRenderLatex: async html => {
+                    preRenderCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            expect(preRenderCalled).toBe(false);
+            expect(requestedFiles.some(file => file.includes('exe_math'))).toBe(true);
+            expect(zip.files.has('libs/exe_math/tex-mml-svg.js')).toBe(true);
+            expect(zip.files.get('index.html') as string).toContain('libs/exe_math/tex-mml-svg.js');
+        });
     });
 
     describe('Basic Properties', () => {
@@ -430,12 +495,143 @@ describe('Scorm12Exporter', () => {
     });
 
     describe('Project ID Generation', () => {
-        it('should generate unique project IDs', () => {
+        it('should generate unique low-level project IDs (legacy random helper)', () => {
             const id1 = exporter.generateProjectId();
             const id2 = exporter.generateProjectId();
 
             expect(id1).not.toBe(id2);
             expect(id1.length).toBeGreaterThan(0);
+        });
+
+        it('should produce a STABLE manifest@identifier across exports when odeIdentifier is set (#1785)', async () => {
+            document = new MockDocument({ odeIdentifier: '20251201123456ABCDEF' }, samplePages);
+            const zip1 = new MockZipProvider();
+            const exporter1 = new Scorm12Exporter(document, resources, assets, zip1);
+            await exporter1.export();
+            const manifest1 = zip1.files.get('imsmanifest.xml') as string;
+            const idMatch1 = manifest1.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch1).not.toBeNull();
+            const id1 = idMatch1![1];
+
+            const zip2 = new MockZipProvider();
+            const exporter2 = new Scorm12Exporter(document, resources, assets, zip2);
+            await exporter2.export();
+            const manifest2 = zip2.files.get('imsmanifest.xml') as string;
+            const idMatch2 = manifest2.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch2).not.toBeNull();
+            const id2 = idMatch2![1];
+
+            // BUG fix: re-exporting the same project must produce the SAME manifest identifier
+            // so the LMS treats updated re-uploads as the same course.
+            expect(id1).toBe(id2);
+            expect(id1).toContain('20251201123456ABCDEF');
+        });
+
+        it('should honour meta.scormIdentifier as a user override (#1785)', async () => {
+            document = new MockDocument(
+                {
+                    odeIdentifier: '20251201123456ABCDEF',
+                    scormIdentifier: 'CUSTOM-OVERRIDE-XYZ',
+                },
+                samplePages,
+            );
+            const localZip = new MockZipProvider();
+            exporter = new Scorm12Exporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const idMatch = manifest.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch).not.toBeNull();
+            // User override wins -- the manifest identifier is exactly the override string.
+            expect(idMatch![1]).toBe('CUSTOM-OVERRIDE-XYZ');
+        });
+
+        it('should fall back to a generated eXe-MANIFEST-* identifier when neither override nor odeIdentifier is set (#1785)', async () => {
+            // No odeIdentifier, no scormIdentifier
+            document = new MockDocument({}, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new Scorm12Exporter(document, resources, assets, localZip);
+            const result = await exporter.export();
+            expect(result.success).toBe(true);
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const idMatch = manifest.match(/<manifest\s+identifier="([^"]+)"/);
+            expect(idMatch).not.toBeNull();
+            expect(idMatch![1]).toMatch(/^eXe-MANIFEST-\d{14}[A-Z0-9]{6}$/);
+        });
+
+        it('should derive manifest@identifier and LOM catalog/entry from the same odeIdentifier (#1785)', async () => {
+            document = new MockDocument({ odeIdentifier: '20251201123456ABCDEF' }, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new Scorm12Exporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const lom = localZip.files.get('imslrm.xml') as string;
+            // Both artifacts must reference the same project-identity root.
+            expect(manifest).toContain('20251201123456ABCDEF');
+            expect(lom).toContain('20251201123456ABCDEF');
+        });
+
+        it('strips the eXe-MANIFEST- prefix when scormIdentifier override already carries it', async () => {
+            // Defensive: if the user types a full eXe-MANIFEST-<X> into the override
+            // field, the organization id and LOM catalog/entry must derive from <X>,
+            // not from the literal "MANIFEST-<X>" tail.
+            document = new MockDocument({ scormIdentifier: 'eXe-MANIFEST-CUSTOM-ROOT' }, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new Scorm12Exporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const lom = localZip.files.get('imslrm.xml') as string;
+            expect(manifest).toContain('identifier="eXe-MANIFEST-CUSTOM-ROOT"');
+            expect(manifest).toContain('identifier="eXe-CUSTOM-ROOT"'); // organization
+            expect(lom).toContain('ODE-CUSTOM-ROOT'); // catalog/entry
+            expect(manifest).not.toContain('eXe-MANIFEST-MANIFEST-');
+        });
+
+        it('returns the same manifest root across all references on the FALLBACK path (memoization invariant)', async () => {
+            // With no override and no odeIdentifier, getManifestIdentifier()
+            // falls back to generateOdeId() ONCE per exporter instance.
+            // Manifest, organization id and LOM catalog/entry must all
+            // observe that same random root.
+            document = new MockDocument({}, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new Scorm12Exporter(document, resources, assets, localZip);
+            await exporter.export();
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const lom = localZip.files.get('imslrm.xml') as string;
+            const manifestMatch = manifest.match(/<manifest\s+identifier="eXe-MANIFEST-([A-Z0-9]+)"/);
+            const orgMatch = manifest.match(/<organization\s+identifier="eXe-([A-Z0-9]+)"/);
+            const lomEntryMatch = lom.match(/<entry[^>]*>\s*ODE-([A-Z0-9]+)/);
+            expect(manifestMatch).not.toBeNull();
+            expect(orgMatch).not.toBeNull();
+            expect(lomEntryMatch).not.toBeNull();
+            const root = manifestMatch![1];
+            expect(orgMatch![1]).toBe(root);
+            expect(lomEntryMatch![1]).toBe(root);
+        });
+
+        it('shares a single root id across manifest, organization and LOM entry on the FALLBACK path (#1785)', async () => {
+            // No odeIdentifier, no scormIdentifier -> getManifestIdentifier() falls back
+            // to generateOdeId(). The bug: getBareProjectIdentifier() invokes
+            // getManifestIdentifier() a SECOND time, generating a different random id,
+            // so the manifest, organization and LOM end up referencing unrelated roots.
+            document = new MockDocument({}, samplePages);
+            const localZip = new MockZipProvider();
+            exporter = new Scorm12Exporter(document, resources, assets, localZip);
+            await exporter.export();
+
+            const manifest = localZip.files.get('imsmanifest.xml') as string;
+            const lom = localZip.files.get('imslrm.xml') as string;
+
+            const manifestMatch = manifest.match(/<manifest\s+identifier="eXe-MANIFEST-([A-Z0-9]+)"/);
+            const orgMatch = manifest.match(/<organization\s+identifier="eXe-([A-Z0-9]+)"/);
+            const lomEntryMatch = lom.match(/<entry[^>]*>\s*ODE-([A-Z0-9]+)/);
+
+            expect(manifestMatch).not.toBeNull();
+            expect(orgMatch).not.toBeNull();
+            expect(lomEntryMatch).not.toBeNull();
+
+            const root = manifestMatch![1];
+            expect(orgMatch![1]).toBe(root);
+            expect(lomEntryMatch![1]).toBe(root);
         });
     });
 

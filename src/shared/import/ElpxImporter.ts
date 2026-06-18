@@ -24,7 +24,7 @@
 
 import * as Y from 'yjs';
 import * as fflate from 'fflate';
-import { DOMParser } from '@xmldom/xmldom';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 
 import type {
     AssetHandler,
@@ -48,7 +48,54 @@ import {
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
 
 import { LegacyXmlParser } from './LegacyXmlParser';
+import { generateId } from '../ids';
 import type { LegacyParseResult, LegacyPage, LegacyBlock, LegacyIdevice, LegacyMetadata } from './LegacyXmlParser';
+import { generateOdeId } from '../export/utils/odeId';
+
+/**
+ * Decompression safety limits (ZIP-bomb / DoS protection).
+ *
+ * DEFLATE achieves ratios near 1000:1 on repetitive data, so a tiny upload can
+ * expand to tens of GB and OOM the shared server. `fflate.unzipSync` returns
+ * every entry fully decompressed in memory, so we MUST refuse oversized entries
+ * BEFORE they are inflated.
+ *
+ * fflate exposes each entry's `originalSize` (the uncompressed size recorded in
+ * the ZIP central directory) to the `filter` callback, and that callback runs
+ * *before* the entry is decompressed. We use it to enforce three independent
+ * caps and abort by throwing — guaranteeing we never inflate beyond the cap.
+ *
+ * Defaults are conservative but comfortably above real .elp files: the largest
+ * shipped fixtures (`todos-los-idevices.elp`, `Manual de eXeLearning 3.0.elpx`)
+ * decompress to ~42 MB across ~1440 entries, with a largest single entry of
+ * ~3.4 MB. The limits below leave ample headroom for legitimate packages.
+ */
+export interface ZipDecompressionLimits {
+    /** Maximum total uncompressed bytes across all entries. */
+    maxTotalBytes: number;
+    /** Maximum uncompressed bytes for any single entry. */
+    maxEntryBytes: number;
+    /** Maximum number of entries in the archive. */
+    maxEntries: number;
+}
+
+/** Default ZIP decompression limits applied to every inflate path. */
+export const DEFAULT_ZIP_LIMITS: ZipDecompressionLimits = {
+    maxTotalBytes: 500 * 1024 * 1024, // 500 MB cumulative
+    maxEntryBytes: 200 * 1024 * 1024, // 200 MB per entry
+    maxEntries: 10000, // entry-count cap
+};
+
+/**
+ * Thrown when a ZIP archive would exceed the configured decompression limits.
+ * The inflate is aborted before the offending data is materialised in memory.
+ */
+export class ZipLimitError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'ZipLimitError';
+    }
+}
 
 /**
  * ElpxImporter class
@@ -60,17 +107,128 @@ export class ElpxImporter {
     private assetMap: Map<string, string> = new Map();
     private onProgress: ((progress: ImportProgress) => void) | null = null;
     private logger: Logger;
+    private zipLimits: ZipDecompressionLimits;
 
     /**
      * Create a new ElpxImporter
      * @param ydoc - Yjs document to populate
      * @param assetHandler - Asset handler for storing assets (optional)
      * @param logger - Logger for debug output (optional)
+     * @param zipLimits - ZIP-bomb decompression limits (optional, sensible defaults)
      */
-    constructor(ydoc: Y.Doc, assetHandler: AssetHandler | null = null, logger: Logger = defaultLogger) {
+    constructor(
+        ydoc: Y.Doc,
+        assetHandler: AssetHandler | null = null,
+        logger: Logger = defaultLogger,
+        zipLimits: Partial<ZipDecompressionLimits> = {},
+    ) {
         this.ydoc = ydoc;
         this.assetHandler = assetHandler;
         this.logger = logger;
+        this.zipLimits = { ...DEFAULT_ZIP_LIMITS, ...zipLimits };
+    }
+
+    /**
+     * Decompress a ZIP buffer with hard limits enforced BEFORE inflation.
+     *
+     * fflate's `filter` callback receives each entry's `originalSize` (read from
+     * the ZIP central directory) and runs before that entry is decompressed.
+     * We use it to reject the archive the moment a per-entry, cumulative, or
+     * entry-count cap would be exceeded, throwing {@link ZipLimitError}. This
+     * guarantees the offending bytes are never materialised in memory, so a
+     * zip bomb cannot OOM the process.
+     *
+     * KNOWN LIMITATION (intentional, documented): `originalSize` is the
+     * *declared* uncompressed size in the central directory, i.e. it is
+     * attacker-controlled metadata, not a measured value. A crafted archive can
+     * understate `originalSize` so an entry passes the pre-inflation filter and
+     * then inflates to more bytes than declared. fflate decompresses
+     * synchronously and does not stream/abort mid-inflation through this filter,
+     * so we cannot enforce the cap against the *actual* inflated length here. We
+     * accept this trade-off: the declared-size check stops the common
+     * over-declared zip bomb cheaply and without inflation, and a single
+     * entry's actual overrun is bounded in practice by available memory; full
+     * defence would require a streaming inflater that aborts on byte count.
+     * `maxEntryBytes` therefore caps *declared* per-entry size, not guaranteed
+     * inflated size.
+     *
+     * @param buffer - Raw ZIP bytes
+     * @param label - Human-readable archive label for error messages
+     * @returns Map of entry path -> decompressed bytes
+     */
+    private safeUnzip(buffer: Uint8Array, label: string): Record<string, Uint8Array> {
+        const { maxTotalBytes, maxEntryBytes, maxEntries } = this.zipLimits;
+        let cumulativeBytes = 0;
+        let entryCount = 0;
+
+        return fflate.unzipSync(buffer, {
+            filter: (file: { name: string; originalSize: number }) => {
+                entryCount++;
+                if (entryCount > maxEntries) {
+                    throw new ZipLimitError(`${label} exceeds the maximum allowed number of entries (${maxEntries}).`);
+                }
+
+                // NOTE: `originalSize` is the attacker-declared uncompressed
+                // size from the central directory, not a measured value (see the
+                // KNOWN LIMITATION in this method's doc comment). It is checked
+                // before inflation as a cheap zip-bomb guard.
+                const entrySize = file.originalSize;
+                if (entrySize > maxEntryBytes) {
+                    throw new ZipLimitError(
+                        `Entry '${file.name}' in ${label} is too large when decompressed ` +
+                            `(${entrySize} bytes > ${maxEntryBytes} byte limit).`,
+                    );
+                }
+
+                cumulativeBytes += entrySize;
+                if (cumulativeBytes > maxTotalBytes) {
+                    throw new ZipLimitError(
+                        `${label} exceeds the maximum total decompressed size ` +
+                            `(${cumulativeBytes} bytes > ${maxTotalBytes} byte limit).`,
+                    );
+                }
+
+                return true;
+            },
+        });
+    }
+
+    /**
+     * Validate an already-decompressed entry map against the same limits as
+     * {@link safeUnzip}. Used by `importFromZipContents`, whose caller provides
+     * the contents already inflated: we cannot prevent the original inflation,
+     * but we refuse to keep processing (asset writes, Y.Doc population) an
+     * archive whose materialised payload exceeds the configured caps, so the
+     * server-side path stays bounded.
+     *
+     * @param zipContents - Already-extracted entry map
+     * @param label - Human-readable archive label for error messages
+     */
+    private assertZipContentsWithinLimits(zipContents: Record<string, Uint8Array>, label: string): void {
+        const { maxTotalBytes, maxEntryBytes, maxEntries } = this.zipLimits;
+        const entries = Object.entries(zipContents);
+
+        if (entries.length > maxEntries) {
+            throw new ZipLimitError(`${label} exceeds the maximum allowed number of entries (${maxEntries}).`);
+        }
+
+        let cumulativeBytes = 0;
+        for (const [name, data] of entries) {
+            const entrySize = data.length;
+            if (entrySize > maxEntryBytes) {
+                throw new ZipLimitError(
+                    `Entry '${name}' in ${label} is too large when decompressed ` +
+                        `(${entrySize} bytes > ${maxEntryBytes} byte limit).`,
+                );
+            }
+            cumulativeBytes += entrySize;
+            if (cumulativeBytes > maxTotalBytes) {
+                throw new ZipLimitError(
+                    `${label} exceeds the maximum total decompressed size ` +
+                        `(${cumulativeBytes} bytes > ${maxTotalBytes} byte limit).`,
+                );
+            }
+        }
     }
 
     // =========================================================================
@@ -169,8 +327,8 @@ export class ElpxImporter {
         // Phase 1: Decompressing (0-10%)
         this.reportProgress('decompress', 0, 'Decompressing...');
 
-        // Decompress ZIP
-        const zip = fflate.unzipSync(buffer);
+        // Decompress ZIP with hard limits enforced before inflation (ZIP-bomb guard)
+        const zip = this.safeUnzip(buffer, 'ELP/ELPX archive');
 
         // Report decompression complete (10%)
         this.reportProgress('decompress', 10, 'File decompressed');
@@ -189,7 +347,8 @@ export class ElpxImporter {
             if (elpFiles.length === 1) {
                 this.logger.log(`[ElpxImporter] Found nested ELP file: ${elpFiles[0]}, extracting...`);
                 const nestedElpData = workingZip[elpFiles[0]];
-                workingZip = fflate.unzipSync(nestedElpData);
+                // Apply the same ZIP-bomb guard to the nested-ELP decompression path.
+                workingZip = this.safeUnzip(nestedElpData, `nested ELP file '${elpFiles[0]}'`);
             } else if (elpFiles.length > 1) {
                 throw new Error('ZIP contains multiple ELP files. Please extract and open one at a time.');
             }
@@ -283,6 +442,10 @@ export class ElpxImporter {
         }
 
         this.logger.log('[ElpxImporter] Starting import from zip contents');
+
+        // Enforce the same decompression caps on the pre-extracted payload so the
+        // server-side path cannot be driven to OOM with an oversized entry map.
+        this.assertZipContentsWithinLimits(zipContents, 'extracted ELP contents');
 
         // Skip decompression phase since contents are already extracted
         this.reportProgress('decompress', 10, 'Files ready');
@@ -419,6 +582,20 @@ export class ElpxImporter {
         const odeProperties = this.getElement(xmlDoc, 'odeProperties');
         const metadataValues = this.extractMetadata(xmlDoc, odeProperties);
 
+        // Preserve stable identifiers from <odeResources> (odeId, odeVersionId).
+        // Without this, every round-trip generates a fresh pair, defeating
+        // diff stability and SCORM manifest identity. See #1784.
+        const odeResources = this.extractOdeResources(xmlDoc);
+        if (odeResources.odeId) {
+            metadataValues.odeIdentifier = odeResources.odeId;
+        }
+        if (odeResources.odeVersionId) {
+            metadataValues.odeVersionId = odeResources.odeVersionId;
+        }
+        if (odeResources.scormIdentifier) {
+            metadataValues.scormIdentifier = odeResources.scormIdentifier;
+        }
+
         // Extract screenshot.png from archive root if present
         const screenshot = this.extractScreenshotFromZip(zip);
         if (screenshot) {
@@ -435,6 +612,11 @@ export class ElpxImporter {
         // Build all page structures as a FLAT list
         const pageStructures: PageData[] = [];
         const idRemap = new Map<string, string>();
+        // Pre-seed the set of "ids already taken" with whatever lives in the
+        // target Y.Doc navigation when merging. On a fresh import (clearExisting)
+        // the navigation will be wiped inside the transaction below, so we start
+        // empty and let the original ids from content.xml flow through verbatim.
+        const usedIds = clearExisting ? new Set<string>() : this.collectExistingIds();
         this.buildFlatPageList(
             rootNavStructures,
             zip,
@@ -444,6 +626,7 @@ export class ElpxImporter {
             orderOffset,
             idRemap,
             true,
+            usedIds,
         );
         this.logger.log(
             '[ElpxImporter] Built flat page list:',
@@ -475,8 +658,13 @@ export class ElpxImporter {
                     this.logger.log('[ElpxImporter] Navigation cleared');
                 }
 
-                // Set metadata only if clearing (replacing) the document
-                if (odeProperties && clearExisting) {
+                // Set metadata only if clearing (replacing) the document.
+                // <odeProperties> is optional per the DTD, so we also write
+                // when <odeResources> alone carried stable identifiers --
+                // otherwise odeIdentifier / odeVersionId would never reach
+                // the Y.Doc on those minimal documents.
+                const hasStableIdentifiers = Boolean(metadataValues.odeIdentifier || metadataValues.odeVersionId);
+                if (clearExisting && (odeProperties || hasStableIdentifiers)) {
                     this.logger.log('[ElpxImporter] Setting metadata...');
                     this.setMetadata(metadata, metadataValues);
                     this.logger.log('[ElpxImporter] Metadata set');
@@ -652,11 +840,11 @@ export class ElpxImporter {
         // Legacy IDs are stable inside .elp files (e.g. page-4, idevice-2).
         // On repeated imports into the same Y.Doc we must remap to unique IDs to avoid collisions.
         for (const legacyPage of legacyPages) {
-            pageIdRemap.set(legacyPage.id, this.generateId('page'));
+            pageIdRemap.set(legacyPage.id, generateId('page'));
         }
 
         for (const legacyPage of legacyPages) {
-            const pageId = pageIdRemap.get(legacyPage.id) || this.generateId('page');
+            const pageId = pageIdRemap.get(legacyPage.id) || generateId('page');
             const parentId =
                 legacyPage.parent_id === null ? rootParentId : (pageIdRemap.get(legacyPage.parent_id) ?? rootParentId);
             const order = legacyPage.parent_id === null ? rootOrderOffset + legacyPage.position : legacyPage.position;
@@ -692,7 +880,7 @@ export class ElpxImporter {
      * Convert legacy block to BlockData format
      */
     private convertLegacyBlockToBlockData(legacyBlock: LegacyBlock): BlockData {
-        const blockId = this.generateId('block');
+        const blockId = generateId('block');
 
         const blockData: BlockData = {
             id: blockId,
@@ -718,7 +906,7 @@ export class ElpxImporter {
      * Convert legacy iDevice to ComponentData format
      */
     private convertLegacyIdeviceToComponentData(legacyIdevice: LegacyIdevice): ComponentData {
-        const componentId = this.generateId('idevice');
+        const componentId = generateId('idevice');
 
         // Build HTML view with feedback if present
         let htmlView = legacyIdevice.htmlView || '';
@@ -752,6 +940,19 @@ export class ElpxImporter {
                 ...properties,
                 textTextarea: htmlView,
             };
+        }
+        if (legacyIdevice.type === 'scrambled-list' && htmlView) {
+            const extractedProperties = this.extractScrambledListProperties(htmlView);
+            if (extractedProperties) {
+                const previousOptions = (properties as Record<string, unknown>).options;
+                properties = {
+                    ...extractedProperties,
+                    ...properties,
+                };
+                if (!Array.isArray(previousOptions) || previousOptions.length === 0) {
+                    properties.options = extractedProperties.options;
+                }
+            }
         }
 
         const componentData: ComponentData = {
@@ -812,6 +1013,12 @@ export class ElpxImporter {
 
         metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
         metadata.set('footer', legacyMeta.footer);
+
+        // Legacy contentv3.xml has no <odeResources>. Generate fresh stable
+        // identifiers once at import time so subsequent re-exports of the
+        // converted project keep the same odeId / odeVersionId. See #1784.
+        metadata.set('odeIdentifier', generateOdeId());
+        metadata.set('odeVersionId', generateOdeId());
     }
 
     /**
@@ -860,6 +1067,92 @@ export class ElpxImporter {
         );
     }
 
+    private extractScrambledListProperties(htmlView: string): Record<string, unknown> | null {
+        if (!htmlView || !htmlView.includes('exe-sortableList')) return null;
+
+        const doc = new DOMParser().parseFromString(`<div>${htmlView}</div>`, 'text/html');
+        const activity = this.getFirstElementByClass(doc, 'exe-sortableList');
+        if (!activity) return null;
+
+        const optionsList =
+            this.getFirstElementByClass(activity, 'exe-sortableList-list') || this.getElements(activity, 'ul')[0];
+        const options = optionsList
+            ? this.getDirectChildElements(optionsList, 'li')
+                  .map(item => this.getElementInnerHtml(item) || (item.textContent || '').trim())
+                  .filter(option => option !== '')
+            : [];
+        if (options.length === 0) return null;
+
+        const textAfter = this.getElementInnerHtmlByClass(activity, 'exe-sortableList-textAfter');
+
+        return {
+            typeGame: 'ScrambledList',
+            instructions: this.getElementInnerHtmlByClass(activity, 'exe-sortableList-instructions'),
+            textAfter,
+            afterElement: textAfter ? `<div class="exe-sortableList-textAfter">${textAfter}</div>` : '',
+            options,
+            time: 0,
+            buttonText: this.getElementTextByClass(activity, 'exe-sortableList-buttonText') || 'Check',
+            rightText: this.getElementTextByClass(activity, 'exe-sortableList-rightText') || 'Right!',
+            wrongText:
+                this.getElementTextByClass(activity, 'exe-sortableList-wrongText') ||
+                "Sorry, that's incorrect... The right answer is:",
+            isScorm: 0,
+            textButtonScorm: 'Save score',
+            repeatActivity: false,
+            weighted: 100,
+            showSolutions: true,
+            attemptsNumber: 1,
+        };
+    }
+
+    private getFirstElementByClass(parent: Document | Element, className: string): Element | null {
+        return this.getElementsByClass(parent, className)[0] || null;
+    }
+
+    private getElementsByClass(parent: Document | Element, className: string): Element[] {
+        return this.getElements(parent, '*').filter(element => this.elementHasClass(element, className));
+    }
+
+    private elementHasClass(element: Element, className: string): boolean {
+        return ` ${element.getAttribute('class') || ''} `.includes(` ${className} `);
+    }
+
+    private getDirectChildElements(parent: Element, tagName: string): Element[] {
+        const normalizedTag = tagName.toLowerCase();
+        return Array.from(parent.childNodes || []).filter(child => {
+            if (child.nodeType !== 1) return false;
+            return ((child as Element).tagName || '').toLowerCase() === normalizedTag;
+        }) as Element[];
+    }
+
+    private getElementTextByClass(parent: Document | Element, className: string): string {
+        const element = this.getFirstElementByClass(parent, className);
+        return (element?.textContent || '').trim();
+    }
+
+    private getElementInnerHtmlByClass(parent: Document | Element, className: string): string {
+        const element = this.getFirstElementByClass(parent, className);
+        return element ? this.getElementInnerHtml(element) : '';
+    }
+
+    private getElementInnerHtml(element: Element): string {
+        const elementWithInnerHtml = element as Element & { innerHTML?: string };
+        if (typeof elementWithInnerHtml.innerHTML === 'string') {
+            return this.stripXhtmlNamespaceAttributes(elementWithInnerHtml.innerHTML).trim();
+        }
+
+        const serializer = new XMLSerializer();
+        const html = Array.from(element.childNodes || [])
+            .map(child => serializer.serializeToString(child))
+            .join('');
+        return this.stripXhtmlNamespaceAttributes(html).trim();
+    }
+
+    private stripXhtmlNamespaceAttributes(html: string): string {
+        return html.replace(/\s+xmlns="http:\/\/www\.w3\.org\/1999\/xhtml"/g, '');
+    }
+
     /**
      * Extract screenshot.png from archive root and return as data URL, or undefined.
      */
@@ -873,6 +1166,28 @@ export class ElpxImporter {
             this.logger.warn('[ElpxImporter] Failed to read screenshot.png:', error);
             return undefined;
         }
+    }
+
+    /**
+     * Extract <odeResources> entries from a v4 content.xml document.
+     * Returns an empty object when the section is missing or empty so callers
+     * can fall back to fresh identifiers without crashing.
+     */
+    private extractOdeResources(xmlDoc: Document): Partial<Record<string, string>> {
+        const result: Partial<Record<string, string>> = {};
+        const container = this.getElement(xmlDoc, 'odeResources');
+        if (!container) return result;
+        const resources = this.getElements(container, 'odeResource');
+        for (const res of resources) {
+            const keyEl = this.getElement(res, 'key');
+            const valEl = this.getElement(res, 'value');
+            const key = keyEl?.textContent?.trim();
+            const value = valEl?.textContent?.trim();
+            if (key && value) {
+                result[key] = value;
+            }
+        }
+        return result;
     }
 
     /**
@@ -947,6 +1262,17 @@ export class ElpxImporter {
         if (values.screenshot) {
             metadata.set('screenshot', values.screenshot);
         }
+        // Stable identifiers preserved from <odeResources>. Only set when present —
+        // export-side fallback (OdeXmlGenerator) generates fresh values otherwise.
+        if (values.odeIdentifier) {
+            metadata.set('odeIdentifier', values.odeIdentifier);
+        }
+        if (values.odeVersionId) {
+            metadata.set('odeVersionId', values.odeVersionId);
+        }
+        if (values.scormIdentifier) {
+            metadata.set('scormIdentifier', values.scormIdentifier);
+        }
     }
 
     /**
@@ -961,19 +1287,27 @@ export class ElpxImporter {
         orderOffset: number,
         idRemap: Map<string, string>,
         isRootLevel: boolean,
+        usedIds: Set<string>,
     ): void {
         let siblingOrder = 0;
 
         for (const navNode of navNodes) {
             const originalPageId = this.getPageId(navNode);
-            const newPageId = this.generateId('page');
+            // Preserve the original <odePageId> verbatim when it is present and
+            // does not collide with an id already used in the target Y.Doc or
+            // assigned earlier in this same import. Collisions only happen in
+            // merge-mode imports (clearExisting=false); when they do, we
+            // regenerate and the remap is later used to rewrite internal
+            // exe-node: links.
+            const newPageId = originalPageId && !usedIds.has(originalPageId) ? originalPageId : generateId('page');
+            usedIds.add(newPageId);
 
-            if (originalPageId) {
+            if (originalPageId && newPageId !== originalPageId) {
                 idRemap.set(originalPageId, newPageId);
             }
 
             const calculatedOrder = isRootLevel ? orderOffset + siblingOrder : siblingOrder;
-            const pageData = this.buildPageData(navNode, zip, parentId, newPageId, calculatedOrder);
+            const pageData = this.buildPageData(navNode, zip, parentId, newPageId, calculatedOrder, usedIds);
 
             if (pageData) {
                 flatList.push(pageData);
@@ -1000,6 +1334,7 @@ export class ElpxImporter {
                         0,
                         idRemap,
                         false,
+                        usedIds,
                     );
                 }
             }
@@ -1015,6 +1350,7 @@ export class ElpxImporter {
         parentId: string | null,
         newPageId: string,
         calculatedOrder: number,
+        usedIds: Set<string>,
     ): PageData {
         const pageId = newPageId;
         const pageName = this.getPageName(navNode);
@@ -1040,7 +1376,7 @@ export class ElpxImporter {
         });
 
         for (const pagNode of sortedPagStructures) {
-            const blockData = this.buildBlockData(pagNode, zip);
+            const blockData = this.buildBlockData(pagNode, zip, usedIds);
             if (blockData) {
                 pageData.blocks.push(blockData);
             }
@@ -1052,11 +1388,14 @@ export class ElpxImporter {
     /**
      * Build plain JavaScript data structure for a block
      */
-    private buildBlockData(pagNode: Element, zip: Record<string, Uint8Array>): BlockData {
-        const blockId =
-            pagNode.getAttribute('odePagStructureId') ||
-            this.getTextContent(pagNode, 'odeBlockId') ||
-            this.generateId('block');
+    private buildBlockData(pagNode: Element, zip: Record<string, Uint8Array>, usedIds: Set<string>): BlockData {
+        // Preserve the original block id from XML when present and not colliding
+        // with an id already used in this import or in the target Y.Doc.
+        // Otherwise generate a fresh id.
+        const originalBlockId =
+            pagNode.getAttribute('odePagStructureId') || this.getTextContent(pagNode, 'odeBlockId') || null;
+        const blockId = originalBlockId && !usedIds.has(originalBlockId) ? originalBlockId : generateId('block');
+        usedIds.add(blockId);
         const blockName = pagNode.getAttribute('blockName') || this.getTextContent(pagNode, 'blockName') || '';
         const order = this.getPagOrder(pagNode);
         const iconName = pagNode.getAttribute('iconName') || this.getTextContent(pagNode, 'iconName') || '';
@@ -1080,7 +1419,7 @@ export class ElpxImporter {
         });
 
         for (const compNode of sortedComponents) {
-            const compData = this.buildComponentData(compNode, zip);
+            const compData = this.buildComponentData(compNode, zip, usedIds);
             if (compData) {
                 blockData.components.push(compData);
             }
@@ -1092,11 +1431,19 @@ export class ElpxImporter {
     /**
      * Build plain JavaScript data structure for a component
      */
-    private buildComponentData(compNode: Element, _zip: Record<string, Uint8Array>): ComponentData {
+    private buildComponentData(
+        compNode: Element,
+        _zip: Record<string, Uint8Array>,
+        usedIds: Set<string>,
+    ): ComponentData {
+        // Preserve the original iDevice id from XML when present and not colliding
+        // with an id already used in this import or in the target Y.Doc.
+        // Otherwise generate a fresh id.
+        const originalComponentId =
+            compNode.getAttribute('odeComponentId') || this.getTextContent(compNode, 'odeIdeviceId') || null;
         const componentId =
-            compNode.getAttribute('odeComponentId') ||
-            this.getTextContent(compNode, 'odeIdeviceId') ||
-            this.generateId('idevice');
+            originalComponentId && !usedIds.has(originalComponentId) ? originalComponentId : generateId('idevice');
+        usedIds.add(componentId);
 
         let ideviceType =
             compNode.getAttribute('odeIdeviceTypeDirName') ||
@@ -1127,7 +1474,10 @@ export class ElpxImporter {
         // Extract HTML view content
         const htmlViewNode = this.getElement(compNode, 'htmlView');
         if (htmlViewNode) {
-            let htmlContent = this.decodeHtmlContent(htmlViewNode.textContent || '') || '';
+            let htmlContent = this.getCdataAwareTextContent(htmlViewNode);
+            if (!this.hasCdataChild(htmlViewNode)) {
+                htmlContent = this.decodeHtmlContent(htmlContent);
+            }
             htmlContent = this.normalizeTextIdeviceHtml(ideviceType, htmlContent);
 
             // Convert {{context_path}} to asset:// URLs
@@ -1172,7 +1522,7 @@ export class ElpxImporter {
                     props = {};
                 }
 
-                props = this.decodeHtmlEntitiesInObject(props) as Record<string, unknown>;
+                props = this.decodeLegacyEncodedHtmlInObject(props) as Record<string, unknown>;
 
                 // Convert {{context_path}} in parsed JSON values
                 if (this.assetHandler && this.assetMap.size > 0 && props && typeof props === 'object') {
@@ -1189,6 +1539,20 @@ export class ElpxImporter {
 
                 if (typeof props.htmlView === 'string') {
                     props.htmlView = stripLegacyExeTextWrapper(props.htmlView);
+                }
+
+                // When merge-mode collision regenerated the component id, an embedded
+                // `ideviceId` inside jsonProperties (commonly stored by text/quiz
+                // iDevices and used by the workarea for self-reference) would still
+                // point at the old XML id. Rewrite it so the Yjs field and the JSON
+                // payload stay in sync.
+                if (
+                    originalComponentId &&
+                    originalComponentId !== componentId &&
+                    typeof props.ideviceId === 'string' &&
+                    props.ideviceId === originalComponentId
+                ) {
+                    props.ideviceId = componentId;
                 }
 
                 compData.properties = props;
@@ -1245,13 +1609,30 @@ export class ElpxImporter {
             .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
     }
 
-    private decodeHtmlEntitiesInObject(obj: unknown): unknown {
+    private hasCdataChild(element: Element): boolean {
+        return Array.from(element.childNodes || []).some(child => child.nodeType === 4);
+    }
+
+    private getCdataAwareTextContent(element: Element): string {
+        const childNodes = Array.from(element.childNodes || []);
+        if (childNodes.some(child => child.nodeType === 4)) {
+            return childNodes.map(child => child.nodeValue || '').join('');
+        }
+
+        return element.textContent || '';
+    }
+
+    private decodeLegacyEncodedHtmlInObject(obj: unknown): unknown {
         if (typeof obj === 'string') {
-            return this.decodeHtmlContent(obj);
+            if (/&lt;div\b/i.test(obj) && /exe-text/i.test(obj)) {
+                return this.decodeHtmlContent(obj);
+            }
+
+            return obj;
         }
 
         if (Array.isArray(obj)) {
-            return obj.map(item => this.decodeHtmlEntitiesInObject(item));
+            return obj.map(item => this.decodeLegacyEncodedHtmlInObject(item));
         }
 
         if (!obj || typeof obj !== 'object') {
@@ -1260,7 +1641,7 @@ export class ElpxImporter {
 
         const result: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-            result[key] = this.decodeHtmlEntitiesInObject(value);
+            result[key] = this.decodeLegacyEncodedHtmlInObject(value);
         }
         return result;
     }
@@ -1453,9 +1834,14 @@ export class ElpxImporter {
     private remapInternalPageLinks(pageStructures: PageData[], idRemap: Map<string, string>): void {
         if (idRemap.size === 0) return;
 
-        // Build regex that matches any of the old page IDs
-        const escapedIds = Array.from(idRemap.keys()).map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        const pattern = new RegExp(`(exe-node:)(${escapedIds.join('|')})(#[^"'\\s]*)?`, 'g');
+        // Sort keys by descending length so longer ids (e.g. "page-10") are tried
+        // before shorter prefixes (e.g. "page-1") in the regex alternation.
+        // Combined with the (?![A-Za-z0-9_-]) boundary lookahead below, this
+        // prevents partial-prefix remaps that would otherwise rewrite
+        // "exe-node:page-10" using the mapping for "page-1" and leave a stray "0".
+        const sortedKeys = Array.from(idRemap.keys()).sort((a, b) => b.length - a.length);
+        const escapedIds = sortedKeys.map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const pattern = new RegExp(`(exe-node:)(${escapedIds.join('|')})(?![A-Za-z0-9_-])(#[^"'\\s]*)?`, 'g');
 
         const replacer = (_m: string, prefix: string, oldId: string, fragment: string | undefined) => {
             const newId = idRemap.get(oldId) ?? oldId;
@@ -1819,12 +2205,48 @@ export class ElpxImporter {
     }
 
     /**
-     * Generate a unique ID
+     * Collect every page, block and component (iDevice) id currently present in
+     * the Y.Doc navigation. Used by merge-mode v4 imports to detect collisions
+     * with the existing document before deciding to preserve or regenerate ids.
+     *
+     * On a clean v4 import (clearExisting=true) the navigation will be wiped
+     * inside the import transaction, so the caller starts with an empty Set
+     * instead of invoking this scan.
      */
-    private generateId(prefix: string): string {
-        const timestamp = Date.now().toString(36);
-        const random = Math.random().toString(36).substring(2, 11);
-        return `${prefix}-${timestamp}-${random}`;
+    private collectExistingIds(): Set<string> {
+        const ids = new Set<string>();
+        const navigation = this.getNavigation();
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            if (!page) continue;
+            const pageIdValue = page.get('id');
+            if (typeof pageIdValue === 'string') ids.add(pageIdValue);
+            const pageIdMirror = page.get('pageId');
+            if (typeof pageIdMirror === 'string') ids.add(pageIdMirror);
+
+            const blocks = page.get('blocks') as Y.Array<unknown> | undefined;
+            if (!blocks || typeof blocks.length !== 'number') continue;
+            for (let j = 0; j < blocks.length; j++) {
+                const block = blocks.get(j) as Y.Map<unknown>;
+                if (!block) continue;
+                const blockIdValue = block.get('id');
+                if (typeof blockIdValue === 'string') ids.add(blockIdValue);
+                const blockIdMirror = block.get('blockId');
+                if (typeof blockIdMirror === 'string') ids.add(blockIdMirror);
+
+                const components = block.get('components') as Y.Array<unknown> | undefined;
+                if (!components || typeof components.length !== 'number') continue;
+                for (let k = 0; k < components.length; k++) {
+                    const comp = components.get(k) as Y.Map<unknown>;
+                    if (!comp) continue;
+                    const compIdValue = comp.get('id');
+                    if (typeof compIdValue === 'string') ids.add(compIdValue);
+                    const compIdMirror = comp.get('ideviceId');
+                    if (typeof compIdMirror === 'string') ids.add(compIdMirror);
+                }
+            }
+        }
+        return ids;
     }
 
     /**

@@ -231,8 +231,9 @@
     </div>
   </div>
 
-  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>
-  <script src="//api.filestackapi.com/filestack.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js" integrity="sha384-n8WjrHJwg2HtuTVvw/b3de4eZQn0J7PNJXXHIQo7W5laymknFUgUF/3TUMmiWT7g" crossorigin="anonymous"></script>
+  <!-- Filestack's legacy loader is an unversioned, mutable endpoint, so a Subresource Integrity hash cannot be pinned without breaking on its next update; force https to remove the protocol-downgrade vector. -->
+  <script src="https://api.filestackapi.com/filestack.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.3/FileSaver.min.js" integrity="sha512-DvLlX4EDfBZuesenAya2TOiF+cR7GbRsV+IElolKTYIj8JJHr9BFTcznTuRFabG26vcVsmDCcv2dL7m8Ov1XfA==" crossorigin="anonymous"></script>
 
   <!-- DEBUG -->

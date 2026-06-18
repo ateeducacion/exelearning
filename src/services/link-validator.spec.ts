@@ -182,6 +182,33 @@ describe('Link Validator Service', () => {
             expect(result).toHaveLength(0);
         });
 
+        it('should remove schemes whose own letters/colon are HTML-entity encoded', () => {
+            // The old normalizer only decoded whitespace entities, so these
+            // (the scheme characters themselves encoded) slipped through. They
+            // must be caught to match the client-side LinkValidationAdapter.
+            const links: RawExtractedLink[] = [
+                { url: '&#106;avascript:alert(1)', count: 1 }, // 'j' as &#106;
+                { url: '&#x6a;avascript:alert(2)', count: 1 }, // 'j' as &#x6a;
+                { url: 'javascript&#58;alert(3)', count: 1 }, // ':' as &#58;
+                { url: 'javascript&colon;alert(4)', count: 1 }, // ':' as &colon;
+                { url: 'data&colon;text/html,evil', count: 1 },
+            ];
+            const result = removeInvalidLinks(links);
+            expect(result).toHaveLength(0);
+        });
+
+        it('should not throw on out-of-range numeric entities and keep the benign link', () => {
+            // Out-of-range code points must not crash String.fromCodePoint; the
+            // junk entity is dropped, so the benign link survives while the
+            // still-dangerous one is removed.
+            const links: RawExtractedLink[] = [
+                { url: 'https://example.com/&#x110000;page', count: 1 },
+                { url: '&#x110000;javascript:alert(1)', count: 1 },
+            ];
+            const result = removeInvalidLinks(links);
+            expect(result.map(l => l.url)).toEqual(['https://example.com/&#x110000;page']);
+        });
+
         it('should keep legitimate http/https/relative links', () => {
             const links: RawExtractedLink[] = [
                 { url: 'http://example.com', count: 1 },

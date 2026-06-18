@@ -92,14 +92,17 @@ export default class EmbeddingBridge {
         const documentManager = bridge?.documentManager;
         const navigation = documentManager?.getNavigation?.();
 
-        window.parent.postMessage({
+        // Route through postToParent so this inherits the known-origin guard.
+        // DOCUMENT_LOADED carries project metadata (id, dirty state, page count)
+        // that must never be broadcast to '*': until the parent handshake has
+        // set a trusted parentOrigin, the message is dropped rather than leaked
+        // to every embedding origin (js/cross-window-information-leak).
+        this.postToParent({
             type: 'DOCUMENT_LOADED',
             projectId: bridge?.projectId || null,
             isDirty: documentManager?.isDirty || false,
             pageCount: navigation?.length || 0,
-        }, this.parentOrigin || '*');
-
-        getLogger().log('[EmbeddingBridge] Announced DOCUMENT_LOADED to parent');
+        });
     }
 
     /**

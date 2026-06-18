@@ -92,21 +92,47 @@ export function cleanAndCountLinks(links: RawExtractedLink[]): RawExtractedLink[
 const DANGEROUS_URL_SCHEMES = ['javascript:', 'vbscript:', 'data:'];
 
 /**
- * Normalize a URL for scheme inspection: decode the HTML entities and strip
- * the leading whitespace / control characters that browsers ignore when
- * resolving a URL scheme, then lowercase the result. This prevents bypasses
- * such as " javascript:", "JaVaScRiPt:", or "java&#9;script:".
+ * Normalize a URL for scheme inspection so an encoded or padded scheme cannot
+ * slip past the dangerous-scheme filter. Decodes HTML entities (named and
+ * numeric - e.g. "java&#115;cript:", "javascript&#58;", "data&colon;..."),
+ * then strips the whitespace and C0/DEL control characters that browsers ignore
+ * when resolving a URL scheme, and lowercases the result. This prevents bypasses
+ * such as " javascript:", "JaVaScRiPt:", "java&#9;script:", or "&#106;avascript:".
+ *
+ * Kept in sync with the client-side `LinkValidationAdapter._hasDangerousScheme()`
+ * so the broken-link checker rejects the same set of links on both ends.
  */
 function normalizeUrlForSchemeCheck(url: string): string {
-    return (
-        url
-            // Decode HTML entities for whitespace/control chars (tab, LF, CR).
-            .replace(/&(?:#x0*9|#0*9|#x0*a|#0*10|#x0*d|#0*13|tab|newline);/gi, '')
-            // Strip leading/embedded whitespace and C0 control characters (U+0000-U+0020).
-            // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally matching the C0 control chars browsers ignore when resolving a URL scheme, to block obfuscated-scheme bypasses.
-            .replace(/[\u0000-\u0020]+/g, '')
-            .toLowerCase()
-    );
+    // Safely convert a numeric code point, returning '' for invalid or
+    // out-of-range values so String.fromCodePoint cannot throw a RangeError
+    // (e.g. on "&#x110000;" or "&#9999999999;"). Dropping such junk only makes
+    // scheme detection stricter, never weaker.
+    const safeFromCodePoint = (cp: number): string =>
+        Number.isInteger(cp) && cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : '';
+
+    const namedEntities: Record<string, string> = {
+        amp: '&',
+        lt: '<',
+        gt: '>',
+        quot: '"',
+        apos: "'",
+        colon: ':',
+        tab: '\t',
+        newline: '\n',
+    };
+
+    const decoded = url
+        .replace(/&#x([0-9a-f]+);?/gi, (_m, hex: string) => safeFromCodePoint(Number.parseInt(hex, 16)))
+        .replace(/&#(\d+);?/g, (_m, dec: string) => safeFromCodePoint(Number.parseInt(dec, 10)))
+        .replace(
+            /&(amp|lt|gt|quot|apos|colon|tab|newline);/gi,
+            (_m, name: string) => namedEntities[name.toLowerCase()] ?? _m,
+        );
+
+    // Strip whitespace and control characters (incl. NUL and DEL) that browsers
+    // ignore when resolving the scheme, then lowercase for comparison.
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally matching the C0/DEL control chars browsers ignore when resolving a URL scheme, to block obfuscated-scheme bypasses.
+    return decoded.replace(/[\u0000-\u0020\u007f]+/g, '').toLowerCase();
 }
 
 /**

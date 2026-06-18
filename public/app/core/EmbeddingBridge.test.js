@@ -1178,24 +1178,25 @@ describe('EmbeddingBridge', () => {
             );
         });
 
-        it('should use * as target origin when parentOrigin is not set', async () => {
+        it('does not broadcast DOCUMENT_LOADED to "*" when parentOrigin is not set', async () => {
             let resolveDocReady;
             window.eXeLearning.documentReady = new Promise((resolve) => {
                 resolveDocReady = resolve;
             });
 
             bridge.init();
-            // parentOrigin is null by default
+            // parentOrigin is null by default (no parent handshake received yet)
 
             resolveDocReady();
             await new Promise(resolve => setTimeout(resolve, 0));
 
-            // Should have posted DOCUMENT_LOADED with '*' origin
+            // The project metadata (id, dirty state, page count) must NOT leak to
+            // every embedding origin: with no known parent origin the announcement
+            // is dropped rather than sent to '*' (js/cross-window-information-leak).
             const docLoadedCall = window.parent.postMessage.mock.calls.find(
                 call => call[0]?.type === 'DOCUMENT_LOADED'
             );
-            expect(docLoadedCall).toBeTruthy();
-            expect(docLoadedCall[1]).toBe('*');
+            expect(docLoadedCall).toBeUndefined();
         });
 
         it('should handle missing yjsBridge gracefully in DOCUMENT_LOADED', async () => {
@@ -1207,6 +1208,9 @@ describe('EmbeddingBridge', () => {
             mockApp.project._yjsBridge = null;
 
             bridge.init();
+            // A trusted parent origin is known, so the announcement is sent and
+            // we can assert it degrades gracefully (null/zero) without a bridge.
+            bridge.parentOrigin = 'https://parent.com';
             resolveDocReady();
             await new Promise(resolve => setTimeout(resolve, 0));
 
@@ -1217,6 +1221,7 @@ describe('EmbeddingBridge', () => {
             expect(docLoadedCall[0].projectId).toBeNull();
             expect(docLoadedCall[0].isDirty).toBe(false);
             expect(docLoadedCall[0].pageCount).toBe(0);
+            expect(docLoadedCall[1]).toBe('https://parent.com');
         });
 
         it('should not send DOCUMENT_LOADED when documentReady is not available', () => {

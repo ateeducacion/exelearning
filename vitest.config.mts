@@ -129,6 +129,11 @@ export default defineConfig({
                 'public/files/perm/idevices/base/*/edition/*.js',
                 'public/files/perm/idevices/base/*/export/*.js',
                 'public/files/perm/idevices/base/*/src/test/fixtures/**',
+                // Bundle entry points only assign the window globals; v8 can't
+                // see them through imports (they run as compiled IIFEs) — the
+                // bundle-contract specs exercise them instead.
+                'public/files/perm/idevices/base/*/src/edition/index.ts',
+                'public/files/perm/idevices/base/*/src/export/index.ts',
             ],
         },
     },

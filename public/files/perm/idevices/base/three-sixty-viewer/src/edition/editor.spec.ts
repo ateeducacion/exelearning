@@ -190,6 +190,98 @@ describe('createEditor — saving', () => {
     });
 });
 
+describe('createEditor — assets and selection', () => {
+    afterEach(() => {
+        delete (globalThis as { eXeLearning?: unknown }).eXeLearning;
+    });
+
+    function installFileManager(assetUrl: string): void {
+        (globalThis as { eXeLearning?: unknown }).eXeLearning = {
+            app: {
+                modals: {
+                    filemanager: {
+                        show: (options: { onSelect: (result: { assetUrl?: string }) => void }) =>
+                            options.onSelect({ assetUrl }),
+                    },
+                },
+            },
+        };
+    }
+
+    it('picks the scene image through the file manager', () => {
+        const { body, editor } = makeEditor();
+        installFileManager('asset://picked-scene.jpg');
+        click(body, '#threeSixtyImageButton');
+        expect(editor.state.activeScene().src).toBe('asset://picked-scene.jpg');
+        expect(body.querySelector('#threeSixtyImageName')?.textContent).toBe('asset://picked-scene.jpg');
+        editor.destroy();
+    });
+
+    it('reads a fallback file into a data URL for the scene image', async () => {
+        const { body, editor } = makeEditor();
+        const input = body.querySelector<HTMLInputElement>('#threeSixtyImageFile');
+        if (!input) throw new Error('missing file input');
+        const file = new File(['fake-bytes'], 'p.png', { type: 'image/png' });
+        Object.defineProperty(input, 'files', { value: [file], configurable: true });
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        await expect
+            .poll(() => editor.state.activeScene().src.startsWith('data:'), { timeout: 3000 })
+            .toBe(true);
+        editor.destroy();
+    });
+
+    it('picks hotspot media through the file manager', () => {
+        const { body, editor } = makeEditor();
+        click(body, '#threeSixtyAddHotspot');
+        editor.state.setHotspotActionType(0, 'image');
+        // Re-render so the pick button exists, then pick.
+        installFileManager('asset://hotspot-image.jpg');
+        const actionType = body.querySelector<HTMLSelectElement>('.hotspot-action-type');
+        actionType?.dispatchEvent(new Event('change', { bubbles: true }));
+        editor.state.setHotspotActionType(0, 'image');
+        click(body, '#threeSixtyAddScene'); // force list rebuild via activity
+        editor.state.setActiveScene(0);
+        click(body, '.three-sixty-scene-item:first-child [data-action="select"]');
+        const pick = body.querySelector<HTMLButtonElement>('.hotspot-payload-pickImage');
+        pick?.click();
+        const hotspot = editor.state.hotspotAt(0);
+        expect(hotspot?.action.type === 'image' && hotspot.action.payload.src).toBe('asset://hotspot-image.jpg');
+        editor.destroy();
+    });
+
+    it('clicking a hotspot row selects and highlights it', () => {
+        const { body, editor } = makeEditor();
+        click(body, '#threeSixtyAddHotspot');
+        click(body, '#threeSixtyAddHotspot');
+        editor.state.selectedHotspotIndex = -1;
+        const row = body.querySelector<HTMLElement>('.three-sixty-hotspot-item[data-hotspot-index="1"]');
+        row?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(editor.state.selectedHotspotIndex).toBe(1);
+        expect(body.querySelector('.three-sixty-hotspot-item.is-selected')?.getAttribute('data-hotspot-index')).toBe('1');
+        editor.destroy();
+    });
+
+    it('editing the scene title live-updates the scene list', () => {
+        const { body, editor } = makeEditor();
+        const title = body.querySelector<HTMLInputElement>('#threeSixtySceneTitle');
+        if (!title) throw new Error('missing title');
+        title.value = 'Renamed scene';
+        title.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(body.querySelector('#threeSixtySceneList')?.textContent).toContain('Renamed scene');
+        editor.destroy();
+    });
+
+    it('behaviour toggles reach the state through the wired controls', () => {
+        const { body, editor } = makeEditor();
+        const zoom = body.querySelector<HTMLInputElement>('#threeSixtyZoom');
+        if (!zoom) throw new Error('missing zoom');
+        zoom.checked = false;
+        zoom.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(editor.state.doc.behaviour.zoomEnabled).toBe(false);
+        editor.destroy();
+    });
+});
+
 describe('createEditor — lifecycle', () => {
     it('destroy() releases the placement Escape listener', () => {
         const { body, editor } = makeEditor();

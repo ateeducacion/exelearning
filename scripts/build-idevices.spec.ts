@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { discoverTsIdevices, IDEVICES_BASE, resolveEntries } from './build-idevices';
 
 function makeIdevice(base: string, name: string, files: Record<string, string>): string {
@@ -130,5 +130,28 @@ describe('resolveEntries', () => {
         });
         const viewer = resolveEntries('three-d-viewer', join(IDEVICES_BASE, 'three-d-viewer'));
         expect(viewer.map(e => e.label)).toEqual(['three-d-viewer/edition', 'three-d-viewer/export']);
+    });
+});
+
+describe('maintained iDevice sources', () => {
+    // A `.gitignore` rule meant for a generated directory can silently match a
+    // source directory of the same name at any depth (an unanchored `runtime/`
+    // swallowed `three-d-viewer/src/runtime/`). Nothing else catches that: the
+    // working tree still builds, only the commit is incomplete.
+    it('are never matched by a gitignore rule', () => {
+        const sources = discoverTsIdevices().flatMap(idevice =>
+            Array.from(new Bun.Glob('src/**/*.ts').scanSync({ cwd: idevice.dir }), file => join(idevice.dir, file)),
+        );
+        expect(sources.length).toBeGreaterThan(0);
+
+        // --no-index tests the ignore rules themselves. Without it git skips
+        // paths already in the index, so a rule that would drop a *new* source
+        // file goes unnoticed once someone has force-added the existing ones.
+        const check = Bun.spawnSync(['git', 'check-ignore', '--no-index', '--stdin'], {
+            cwd: resolve(import.meta.dir, '..'),
+            stdin: Buffer.from(`${sources.join('\n')}\n`),
+        });
+
+        expect(check.stdout.toString().trim()).toBe('');
     });
 });

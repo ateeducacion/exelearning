@@ -65,6 +65,11 @@ export function normalizeAction(raw: unknown): HotspotAction {
     if (type === undefined && Object.keys(record).length === 0) {
         return createDefaultAction('text');
     }
+    // Re-normalizing an already-normalized in-memory action keeps its wire
+    // identity (idempotence for editor working copies).
+    if (type === 'unsupported' && typeof record.originalType === 'string') {
+        return { type: 'unsupported', originalType: record.originalType, originalPayload: record.originalPayload };
+    }
     if (!isKnownActionType(type)) {
         return {
             type: 'unsupported',

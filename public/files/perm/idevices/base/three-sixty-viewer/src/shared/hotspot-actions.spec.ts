@@ -70,6 +70,11 @@ describe('normalizeAction', () => {
         });
     });
 
+    it('is idempotent over already-normalized unsupported actions', () => {
+        const once = normalizeAction({ type: 'quiz3d', payload: { a: 1 } });
+        expect(normalizeAction(once)).toEqual(once);
+    });
+
     it('preserves unknown actions even without a payload', () => {
         expect(normalizeAction({ type: 'future' })).toEqual({
             type: 'unsupported',

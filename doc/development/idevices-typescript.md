@@ -4,7 +4,7 @@ Most iDevices are classic-script vanilla JavaScript committed directly under
 `edition/` and `export/`. An iDevice whose maintained source lives in a
 **`src/` directory is a TypeScript iDevice**: its shipped `edition/*.js` /
 `export/*.js` files are **generated bundles** (gitignored — never edit or
-commit them) compiled by the centralized build. Slide and Interactive Video
+commit them) compiled by the centralized build. Slide and the 3D Viewer
 follow this model today. The decision record is
 [ADR-0006](../architecture/adr/ADR-0006-typescript-idevices-build-convention.md).
 
@@ -81,13 +81,15 @@ exposes it as the module's default export.
 ## Testing
 
 - Unit tests are **colocated `*.spec.ts`** files next to each module, run by
-  **Vitest** (`bun test` deliberately ignores `public/**`). Add the iDevice's
-  `src/**/*.spec.ts` glob to `vitest.config.mts` `include` when creating a new
-  TypeScript iDevice.
+  **Vitest** (`bun test` deliberately ignores `public/**`). Discovery is by
+  convention — `vitest.config.mts` already includes
+  `public/files/perm/idevices/**/src/**/*.spec.ts` and measures coverage on
+  `public/files/perm/idevices/base/*/src/**/*.ts` — so a new TypeScript iDevice
+  needs no config edit.
 - Add **bundle-contract smoke tests** that evaluate the ACTUAL compiled IIFEs
   and assert the window globals and their public methods — they catch bundling
   problems source-level imports cannot (see
-  `interactive-video/src/test/bundle-contract.spec.ts`).
+  `three-d-viewer/src/test/bundle-contract.spec.ts`).
 - Playwright coverage works on the built bundles like for any other iDevice.
 
 ## Debugging

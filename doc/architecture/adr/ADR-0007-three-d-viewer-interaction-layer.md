@@ -17,6 +17,7 @@ superseded_by: []
 ai_assistance:
   tool: "Claude Code"
   model: "claude-opus-4-8"
+  notes: "Decision revised for the TypeScript implementation with claude-opus-5"
 ---
 
 # ADR-0007: 3D Viewer interaction layer: renderer adapters over a shared runtime controller
@@ -37,6 +38,11 @@ occlusion (`slot="hotspot-*"`, `positionAndNormalFromPoint()`), while the STL pa
 Three.js objects (`scene/camera/renderer/canvas/mesh`) and normalizes the mesh (`geometry.center()`
 + `2/maxDim` scale, runtime lines 478-485), so markers only make sense in normalized model space
 and must be projected to a DOM overlay by hand each frame.
+
+(That runtime was a hand-written classic script at the time of this decision. It is now
+`src/runtime/` inside the iDevice's TypeScript source tree, compiled into both generated bundles —
+see [ADR-0006](ADR-0006-typescript-idevices-build-convention.md). The render-path analysis above is
+unchanged by that move.)
 
 The sibling `three-sixty-viewer` already implements a hotspot system, but because it has **no shared
 runtime**, it duplicates its entire state + projection + dialog stack across `edition/` and `export/`,
@@ -107,11 +113,14 @@ Adapter contract:
 
 Two supporting decisions ride with this ADR:
 
-- **Schema `normalize*`/migration are mirrored (byte-identical) in `edition/` and `export/`**, marked
-  `// mirror edition`, exactly as `three-sixty-viewer` does — rather than adding a new shared
-  classic-script file (which would need the ~6-site registration + bundle regen and introduce a
-  runtime load-order dependency). Only the *pure, small* schema layer is duplicated; the large
-  behavioural layer lives single-copy in the runtime.
+- **Schema `normalize*`/migration have exactly one maintained source.** The iDevice follows the
+  TypeScript iDevice convention ([ADR-0006](ADR-0006-typescript-idevices-build-convention.md)): all
+  source lives under `src/`, and the edition and export bundles are generated IIFEs that each
+  compile in a copy of `src/shared/schema.ts`. This replaces the alternative that a classic-script
+  implementation would have forced — mirroring the pure schema layer byte-for-byte in `edition/`
+  and `export/`, as `three-sixty-viewer` does — because a compile step removes the drift risk
+  without adding a new registered runtime file or a load-order dependency. Duplicated bytes in the
+  two generated bundles are accepted; duplicated maintained source is not.
 - **Interaction state is serialized as a JSON `<script type="application/json">` block inside the
   wrapper** (mirroring `three-sixty-viewer`'s `script.three-sixty-viewer-data`, export line 348),
   not flattened into `data-*` attributes, because markers are a nested/variable-length array. The
@@ -129,11 +138,16 @@ Two supporting decisions ride with this ADR:
 
 ## Decision
 
-We will implement **Option 3**: a single renderer-agnostic `InteractionController` in the shared
-`three-d-viewer-runtime.js`, with two thin renderer adapters (`ModelViewerMarkerAdapter`,
-`StlMarkerAdapter`) implementing a small common contract, constructed by one factory shared between
-the editor preview and the export runtime. Schema `normalize*`/migration are mirrored byte-identical
-in `edition/` and `export/`; interaction state is serialized as an escaped JSON `<script>` block.
+We will implement **Option 3**: a single renderer-agnostic `InteractionController`, with two thin
+renderer adapters (`src/adapters/model-viewer-adapter.ts`, `src/adapters/stl-adapter.ts`)
+implementing a small common contract, constructed by one factory
+(`eXe3DViewer.createInteractionLayer`) shared between the editor preview and the export runtime.
+Schema and migration have one TypeScript source under `src/shared/`; interaction state is
+serialized as an escaped JSON `<script>` block.
+
+The shared runtime is **not a separate file**. Both generated bundles carry a compiled copy and
+publish `window.eXe3DViewer` idempotently, so a page still has exactly one instance registry while
+no additional script has to be injected, registered or packaged.
 
 ## Consequences
 
@@ -151,8 +165,11 @@ in `edition/` and `export/`; interaction state is serialized as an escaped JSON 
 ### Negative
 
 - The adapter seam adds one layer of indirection.
-- Pure schema `normalize*` is duplicated in two files; drift is possible if not kept in sync (mitigated
-  by identical tests + `// mirror edition` marker, following existing precedent).
+- The shipped `edition/` and `export/` bundles are generated, so they must be built before the
+  preview, the resource ZIPs or E2E can serve them — `build:all` and the E2E workflow both account
+  for this.
+- The shared code is compiled into both bundles, so the same bytes ship twice on a page that loads
+  both. That is the accepted cost of having one maintained source.
 
 ### Neutral
 
@@ -173,20 +190,24 @@ in `edition/` and `export/`; interaction state is serialized as an escaped JSON 
 - Unit tests for the adapter contract behaviours reachable without WebGL (marker markup, active
   state, guided nav, question validation, fallback) and for pure STL projection/occlusion math with a
   stubbed `THREE`.
+- Generated-bundle contract tests that evaluate the compiled IIFEs and assert the window globals
+  the engine depends on (`$exeDevice`, `$threedviewer`, `ThreeDViewerExportObject`, `eXe3DViewer`).
 - Export tests proving markers reach the JSON block, `asset://` is rewritten, and no `blob:` leaks.
 - A Playwright spec exercising the GLB editor→save→reopen→preview→navigate→answer flow.
 - Follow-up review after merge to confirm no marker-logic duplication crept back in.
 
 ## Follow-up work
 
-- Implement per SDD-0002 checklist on branch `2153-3d-viewer-edevice`.
-- Consider extracting the mirrored `normalize*` into a shared runtime helper in a later iteration if
-  the load-order constraint is lifted.
+- Implemented per the SDD-0002 checklist.
+- Consider promoting the shared schema layer into a cross-iDevice package if a second iDevice ever
+  needs the same document primitives.
 - Revisit animated-surface anchoring once a reliable `model-viewer` surface API is validated.
 
 ## References
 
-- SDD-0002 (`doc/architecture/sdd/SDD-0002-three-d-viewer-interactions.md`).
+- [SDD-0002](../sdd/SDD-0002-three-d-viewer-interactions.md).
+- [ADR-0006](ADR-0006-typescript-idevices-build-convention.md) — the TypeScript iDevice build
+  convention this iDevice follows.
 - Issue: https://github.com/exelearning/exelearning/issues/2153
 - `three-d-viewer` and `three-sixty-viewer` sources @ f3a32e774 (paths cited above).
 - model-viewer Annotations/hotspots documentation: https://modelviewer.dev/docs/index.html

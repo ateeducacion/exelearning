@@ -1,1761 +1,2733 @@
-/* global eXe */
+(() => {
+  // public/files/perm/idevices/base/three-d-viewer/src/interactions/marker-renderer.ts
+  function createMarkerButton(marker, options) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `tdv-marker ${options.variantClass}`;
+    button.dataset.markerId = marker.id;
+    button.dataset.markerOrder = String(options.index);
+    button.setAttribute("aria-label", options.label);
+    const icon = document.createElement("span");
+    icon.className = `tdv-marker-icon tdv-icon-${marker.icon}`;
+    icon.setAttribute("aria-hidden", "true");
+    button.appendChild(icon);
+    if (options.showLabels && marker.label) {
+      const label = document.createElement("span");
+      label.className = "tdv-marker-label";
+      label.textContent = marker.label;
+      button.appendChild(label);
+    }
+    if (options.activeId === marker.id) {
+      button.classList.add("tdv-marker--active");
+      button.setAttribute("aria-current", "true");
+    }
+    button.addEventListener("click", () => options.onActivate(marker.id));
+    return button;
+  }
+  function applyActiveMarker(buttons, activeId) {
+    for (const button of buttons) {
+      const isActive = button.dataset.markerId === activeId;
+      button.classList.toggle("tdv-marker--active", isActive);
+      if (isActive) {
+        button.setAttribute("aria-current", "true");
+      } else {
+        button.removeAttribute("aria-current");
+      }
+    }
+  }
 
-/**
- * Three D Viewer iDevice (export runtime)
- *
- * - Loads the model-viewer web component (ES module) once per page.
- * - Renders a <model-viewer> using the JSON stored by the edition view.
- * - Works on initial page load (refresh) without entering Edit mode.
- */
-
-(function () {
-    const globalScope = typeof window !== 'undefined' ? window : globalThis;
-
-    /** Default background color */
-    const DEFAULT_BACKGROUND = '#f5f5f5';
-
-    /** Fallback translations when i18n is not available */
-    const FALLBACK_TRANSLATIONS = {
-        'viewer.empty_state': 'Select a 3D model to display',
-        'viewer.animation_paused': 'Animation paused',
-        'viewer.animation_enabled': 'Animation enabled',
-        'viewer.local_warning_title': '3D Viewer not available',
-        'viewer.local_warning_message': 'The 3D viewer requires a web server to work. Open this content from a web server or use eXeLearning preview.',
-        'viewer.fullscreen': 'Fullscreen',
-        'viewer.exit_fullscreen': 'Exit fullscreen',
-        'viewer.rotate_left': 'Rotate left',
-        'viewer.rotate_right': 'Rotate right',
-        'viewer.tilt_up': 'Tilt up',
-        'viewer.tilt_down': 'Tilt down'
+  // public/files/perm/idevices/base/three-d-viewer/src/adapters/geometry.ts
+  var FACING_THRESHOLD = -0.15;
+  function ndcToScreen(ndc, width, height) {
+    return {
+      x: (ndc.x * 0.5 + 0.5) * width,
+      y: (-ndc.y * 0.5 + 0.5) * height
     };
-
-    /** Camera nudge step (radians) — matches threesixty viewer feel */
-    const YAW_STEP = (15 * Math.PI) / 180;
-    const PITCH_STEP = (10 * Math.PI) / 180;
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Interaction schema (mirror edition/three-d-viewer.js). These pure
-    // helpers must stay byte-identical with the edition copy — see
-    // doc/architecture/sdd/SDD-0001. Used by renderView/renderBehaviour and
-    // consumed by the shared runtime (three-d-viewer-runtime.js).
-    // ─────────────────────────────────────────────────────────────────────
-    var STATE_VERSION = 2;
-    var MARKER_ICONS = ['circle', 'pin', 'info', 'question', 'star'];
-    var INTERACTION_ACTION_TYPES = ['information', 'image', 'video', 'link', 'question'];
-
-    function tdNum(v, fallback) { var n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : fallback; }
-    function tdClamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
-    function tdStr(v, fallback) { return typeof v === 'string' ? v : (fallback || ''); }
-    function tdId(prefix, existing) {
-        if (typeof existing === 'string' && existing) return existing;
-        return prefix + '-' + Math.floor(Math.random() * 1e9).toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+  }
+  function isOnScreen(ndc) {
+    const inFrustum = ndc.z < 1 && ndc.z > -1;
+    return inFrustum && ndc.x >= -1 && ndc.x <= 1 && ndc.y >= -1 && ndc.y <= 1;
+  }
+  function isFacingCamera(normal, toCamera) {
+    return normal.x * toCamera.x + normal.y * toCamera.y + normal.z * toCamera.z > FACING_THRESHOLD;
+  }
+  function isMarkerVisible(ndc, normal, toCamera) {
+    return isFacingCamera(normal, toCamera) && isOnScreen(ndc);
+  }
+  function parseTriple(value) {
+    const parts = String(value ?? "").trim().split(/\s+/).map(Number.parseFloat);
+    return {
+      x: Number.isFinite(parts[0]) ? parts[0] : 0,
+      y: Number.isFinite(parts[1]) ? parts[1] : 0,
+      z: Number.isFinite(parts[2]) ? parts[2] : 0
+    };
+  }
+  function formatTriple(vector) {
+    return `${vector.x} ${vector.y} ${vector.z}`;
+  }
+  function pointerToNdc(rect, clientX, clientY) {
+    if (!rect.width || !rect.height) {
+      return null;
     }
-    function tdStripUnsafeUrl(v) { var s = tdStr(v, ''); return /^\s*(blob:|data:|javascript:|vbscript:)/i.test(s) ? '' : s.trim(); }
-    function tdInt(v, fallback) { var n = parseInt(v, 10); return Number.isFinite(n) ? n : fallback; }
-    /** Normalize the SCORM scoring config (mirror edition/export). */
-    function normalizeScorm(data) {
-        var o = data && typeof data === 'object' ? data : {};
+    return {
+      x: (clientX - rect.left) / rect.width * 2 - 1,
+      y: -((clientY - rect.top) / rect.height) * 2 + 1
+    };
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/adapters/model-viewer-adapter.ts
+  var EMPTY_CAMERA = { orbit: "", target: "", fieldOfView: "" };
+  function createModelViewerAdapter(modelViewer, deps) {
+    let placeHandler = null;
+    const clearMarkers = () => {
+      for (const element of Array.from(modelViewer.querySelectorAll('.tdv-marker[slot^="hotspot-"]'))) {
+        element.remove();
+      }
+    };
+    const captureCamera = () => {
+      try {
         return {
-            isScorm: tdClamp(tdInt(o.isScorm, 0), 0, 2),
-            weighted: tdClamp(tdNum(o.weighted, 100), 1, 100),
-            textButtonScorm: tdStr(o.textButtonScorm, ''),
+          orbit: modelViewer.getCameraOrbit?.().toString() ?? "",
+          target: modelViewer.getCameraTarget?.().toString() ?? "",
+          fieldOfView: modelViewer.getFieldOfView ? `${modelViewer.getFieldOfView()}deg` : ""
         };
-    }
-    function normalizeVec3(v, dflt) {
-        var o = v && typeof v === 'object' ? v : {};
-        return { x: tdNum(o.x, dflt.x), y: tdNum(o.y, dflt.y), z: tdNum(o.z, dflt.z) };
-    }
-    function normalizeAnchor(a) {
-        var o = a && typeof a === 'object' ? a : {};
-        return {
-            position: normalizeVec3(o.position, { x: 0, y: 0, z: 0 }),
-            normal: normalizeVec3(o.normal, { x: 0, y: 1, z: 0 }),
-            surface: tdStr(o.surface, ''),
-        };
-    }
-    function normalizeCamera(c) {
-        var o = c && typeof c === 'object' ? c : {};
-        return { orbit: tdStr(o.orbit, ''), target: tdStr(o.target, ''), fieldOfView: tdStr(o.fieldOfView, '') };
-    }
-    function normalizeQuestion(p) {
-        var o = p && typeof p === 'object' ? p : {};
-        var rawOpts = Array.isArray(o.options) ? o.options : [];
-        var seenCorrect = false;
-        var options = rawOpts.slice(0, 10).map(function (opt) {
-            var oo = opt && typeof opt === 'object' ? opt : {};
-            var correct = !!oo.correct && !seenCorrect;
-            if (correct) seenCorrect = true;
-            return { id: tdId('option', oo.id), text: tdStr(oo.text, ''), correct: correct };
+      } catch {
+        return { ...EMPTY_CAMERA };
+      }
+    };
+    return {
+      renderMarkers(markers, options) {
+        clearMarkers();
+        markers.forEach((marker, index) => {
+          const button = createMarkerButton(marker, {
+            ...options,
+            index,
+            label: deps.markerLabel(marker, index),
+            variantClass: "tdv-marker--mv",
+            onActivate: deps.onActivate
+          });
+          button.setAttribute("slot", `hotspot-${marker.id}`);
+          button.dataset.position = formatTriple(marker.anchor.position);
+          button.dataset.normal = formatTriple(marker.anchor.normal);
+          if (marker.anchor.surface) {
+            button.dataset.surface = marker.anchor.surface;
+          }
+          modelViewer.appendChild(button);
         });
-        if (options.length === 0) {
-            options = [{ id: tdId('option'), text: '', correct: true }, { id: tdId('option'), text: '', correct: false }];
-        } else if (!seenCorrect) {
-            options[0].correct = true;
+      },
+      setActive(activeId) {
+        applyActiveMarker(modelViewer.querySelectorAll(".tdv-marker"), activeId);
+      },
+      focusMarker(marker) {
+        const camera = marker.camera;
+        if (camera.orbit) {
+          modelViewer.cameraOrbit = camera.orbit;
         }
-        return {
-            prompt: tdStr(o.prompt, ''),
-            type: 'single-choice',
-            options: options,
-            feedbackCorrect: tdStr(o.feedbackCorrect, ''),
-            feedbackIncorrect: tdStr(o.feedbackIncorrect, ''),
-            attemptsAllowed: tdClamp(Math.round(tdNum(o.attemptsAllowed, 0)), 0, 20),
-        };
-    }
-    function normalizeAction(a) {
-        var o = a && typeof a === 'object' ? a : {};
-        var type = INTERACTION_ACTION_TYPES.indexOf(o.type) >= 0 ? o.type : 'information';
-        var pin = o.payload && typeof o.payload === 'object' ? o.payload : {};
-        var payload;
-        switch (type) {
-            case 'image': payload = { src: tdStripUnsafeUrl(pin.src), alt: tdStr(pin.alt, ''), caption: tdStr(pin.caption, '') }; break;
-            case 'video': payload = { src: tdStripUnsafeUrl(pin.src), poster: tdStripUnsafeUrl(pin.poster) }; break;
-            case 'link': payload = { url: tdStripUnsafeUrl(pin.url), newTab: pin.newTab !== false }; break;
-            case 'question': payload = normalizeQuestion(pin); break;
-            default: payload = { html: tdStr(pin.html, '') }; break;
+        if (camera.target) {
+          modelViewer.cameraTarget = camera.target;
         }
-        return { type: type, payload: payload };
-    }
-    function normalizeMarker(m, index) {
-        var o = m && typeof m === 'object' ? m : {};
-        var order = tdNum(o.order, NaN);
-        return {
-            id: tdId('marker', o.id),
-            label: tdStr(o.label, ''),
-            description: tdStr(o.description, ''),
-            icon: MARKER_ICONS.indexOf(o.icon) >= 0 ? o.icon : 'circle',
-            order: Number.isFinite(order) ? order : index,
-            anchor: normalizeAnchor(o.anchor),
-            camera: normalizeCamera(o.camera),
-            action: normalizeAction(o.action),
-        };
-    }
-    function normalizeInteraction(it) {
-        var o = it && typeof it === 'object' ? it : {};
-        var markers = (Array.isArray(o.markers) ? o.markers : []).map(normalizeMarker);
-        markers.sort(function (a, b) { return a.order - b.order; });
-        markers.forEach(function (mk, i) { mk.order = i; });
-        var ids = markers.map(function (mk) { return mk.id; });
-        return {
-            enabled: !!o.enabled,
-            guidedMode: !!o.guidedMode,
-            wrapNavigation: !!o.wrapNavigation,
-            showMarkerLabels: o.showMarkerLabels !== false,
-            activeMarkerId: ids.indexOf(o.activeMarkerId) >= 0 ? o.activeMarkerId : '',
-            markers: markers,
-        };
-    }
-    /** Pure single-choice grading — chosen option id → correct? */
-    function gradeSingleChoice(question, selectedOptionId) {
-        var q = normalizeQuestion(question);
-        var chosen = q.options.filter(function (op) { return op.id === selectedOptionId; })[0];
-        return !!(chosen && chosen.correct);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Interaction export markup
-    //
-    // The interaction state ships as an escaped JSON <script> block inside the
-    // wrapper (mirrors three-sixty-viewer's data script). A static, escaped
-    // fallback <ul> lists every marker for the no-WebGL case, and guided-nav
-    // controls are baked when guided mode is on. asset:// media inside the
-    // JSON block is rewritten to content/resources/... by the global export
-    // rewriter (IdeviceRenderer.fixAssetUrls); we never emit blob:.
-    // ─────────────────────────────────────────────────────────────────────
-
-    /** Content-locale translation, degrading to _() then identity. */
-    function tdT(s) {
-        if (typeof c_ === 'function') return c_(s);
-        if (typeof _ === 'function') return _(s);
-        return s;
-    }
-
-    /** Allow only safe URL schemes (mirror runtime safeUrl). */
-    function tdSafeUrl(url) {
-        var s = typeof url === 'string' ? url.trim() : '';
-        if (!s) return '';
-        if (/^\s*javascript:/i.test(s)) return '';
-        if (/^(https?:|mailto:|tel:|asset:)/i.test(s)) return s;
-        if (!/^[a-z][a-z0-9+.-]*:/i.test(s)) return s;
-        return '';
-    }
-
-    /** Extract plain text from marker HTML for the escaped text fallback. */
-    function stripHtmlToText(html) {
-        return String(html == null ? '' : html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    }
-
-    /** Learner-facing micro-strings baked for the runtime controller. */
-    function buildRuntimeI18n() {
-        return {
-            Marker: tdT('Marker'),
-            Close: tdT('Close'),
-            Check: tdT('Check'),
-            Correct: tdT('Correct'),
-            Incorrect: tdT('Incorrect'),
-            Previous: tdT('Previous'),
-            Next: tdT('Next'),
-            'Please select an answer': tdT('Please select an answer'),
-            'No attempts left': tdT('No attempts left'),
-        };
-    }
-
-    /** Build the static, escaped fallback list of markers. */
-    function buildInteractionFallback(interaction) {
-        var items = (interaction.markers || []).map(function (m, i) {
-            var label = m.label || (tdT('Marker') + ' ' + (i + 1));
-            var parts = ['<strong>' + (i + 1) + '. ' + escapeAttr(label) + '</strong>'];
-            if (m.description) parts.push('<p>' + escapeAttr(m.description) + '</p>');
-            var a = m.action || {};
-            var p = a.payload || {};
-            if (a.type === 'information') {
-                var text = stripHtmlToText(p.html);
-                if (text) parts.push('<p>' + escapeAttr(text) + '</p>');
-            } else if (a.type === 'image') {
-                if (p.alt) parts.push('<p>' + escapeAttr(p.alt) + '</p>');
-                if (p.caption) parts.push('<p>' + escapeAttr(p.caption) + '</p>');
-            } else if (a.type === 'link') {
-                var url = tdSafeUrl(p.url);
-                if (url) parts.push('<a href="' + escapeAttr(url) + '" rel="noopener noreferrer">' + escapeAttr(url) + '</a>');
-            } else if (a.type === 'question') {
-                if (p.prompt) parts.push('<p>' + escapeAttr(p.prompt) + '</p>');
-                var opts = (p.options || []).map(function (o) { return '<li>' + escapeAttr(o.text || '') + '</li>'; }).join('');
-                if (opts) parts.push('<ul>' + opts + '</ul>');
-            }
-            return '<li>' + parts.join('') + '</li>';
-        }).join('');
-        return '<ul class="tdv-fallback" hidden>' + items + '</ul>';
-    }
-
-    /**
-     * Build the interaction markup appended inside the wrapper: JSON data
-     * block + fallback list + guided-nav controls. Empty when disabled.
-     * @param {object} interaction - already normalized
-     * @returns {string}
-     */
-    function buildInteractionMarkup(interaction, scorm) {
-        if (!interaction || !interaction.enabled) return '';
-        var payload = Object.assign({}, interaction, { i18n: buildRuntimeI18n(), scorm: normalizeScorm(scorm) });
-        // Escape < so a payload value can never terminate the <script>.
-        var json = JSON.stringify(payload).replace(/</g, '\\u003c');
-        var script = '<script type="application/json" class="tdv-interaction-data">' + json + '</' + 'script>';
-        var nav = '';
-        if (interaction.guidedMode) {
-            nav = '<div class="tdv-guided-nav" data-guided hidden>'
-                + '<button type="button" class="tdv-nav-prev">' + escapeAttr(tdT('Previous')) + '</button>'
-                + '<span class="tdv-guided-status" aria-live="polite"></span>'
-                + '<button type="button" class="tdv-nav-next">' + escapeAttr(tdT('Next')) + '</button>'
-                + '</div>';
+        if (camera.fieldOfView) {
+          modelViewer.fieldOfView = camera.fieldOfView;
         }
-        return script + buildInteractionFallback(interaction) + nav;
-    }
-
-    /** Reveal the static text fallback for a wrapper (no WebGL / boot failure). */
-    function revealInteractionFallback(wrapper) {
-        if (!wrapper || typeof wrapper.querySelector !== 'function') return;
-        var fb = wrapper.querySelector('.tdv-fallback');
-        if (fb) fb.hidden = false;
-    }
-
-    /** Read + parse the interaction data block from a booted wrapper. */
-    function parseInteractionData(wrapper) {
-        if (!wrapper || typeof wrapper.querySelector !== 'function') return null;
-        var script = wrapper.querySelector('script.tdv-interaction-data, script[type="application/json"].tdv-interaction-data');
-        if (!script) return null;
-        try {
-            return JSON.parse(script.textContent || script.innerHTML || '{}');
-        } catch (e) {
-            return null;
+      },
+      captureCamera,
+      updateOverlay() {},
+      enterPlacementMode(onPlaced) {
+        placeHandler = (event) => {
+          const hit = modelViewer.positionAndNormalFromPoint?.(event.clientX, event.clientY);
+          if (!hit) {
+            return;
+          }
+          onPlaced({
+            position: parseTriple(hit.position?.toString()),
+            normal: parseTriple(hit.normal?.toString()),
+            surface: "",
+            camera: captureCamera()
+          });
+        };
+        modelViewer.addEventListener("click", placeHandler);
+      },
+      exitPlacementMode() {
+        if (placeHandler) {
+          modelViewer.removeEventListener("click", placeHandler);
+          placeHandler = null;
         }
+      },
+      destroy() {
+        this.exitPlacementMode();
+        clearMarkers();
+      }
+    };
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/shared/urls.ts
+  var EXECUTABLE_SCHEME = /^\s*(javascript|vbscript):/i;
+  var EPHEMERAL_OR_EXECUTABLE_SCHEME = /^\s*(blob:|data:|javascript:|vbscript:)/i;
+  var ALLOWED_RENDER_SCHEME = /^(https?:|mailto:|tel:|asset:|blob:)/i;
+  var HAS_EXPLICIT_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+  var ABSOLUTE_URL = /^(https?:)?\/\//i;
+  function stripUnsafeUrl(value) {
+    const raw = typeof value === "string" ? value : "";
+    return EPHEMERAL_OR_EXECUTABLE_SCHEME.test(raw) ? "" : raw.trim();
+  }
+  function safeUrl(value) {
+    const raw = typeof value === "string" ? value.trim() : "";
+    if (!raw) {
+      return "";
     }
-
-    /** The shared SCORM export helper, or null when the framework is absent. */
-    function getScormRuntime() {
-        var g = globalScope.$exeDevices
-            && globalScope.$exeDevices.iDevice
-            && globalScope.$exeDevices.iDevice.gamification
-            && globalScope.$exeDevices.iDevice.gamification.scorm;
-        return g || null;
+    if (EXECUTABLE_SCHEME.test(raw)) {
+      return "";
     }
-
-    /**
-     * Wire SCORM scoring for question markers onto the interaction hooks.
-     * No-op unless this is a SCORM export, scoring is enabled, the framework is
-     * present, and there is at least one question marker.
-     * @param {HTMLElement} wrapper
-     * @param {object} interaction - normalized interaction state
-     * @param {object} rawScorm - the persisted SCORM config
-     * @param {object} hooks - interaction hooks to augment (onQuestionAnswered)
-     */
-    function setupScormScoring(wrapper, interaction, rawScorm, hooks) {
-        var cfg = normalizeScorm(rawScorm);
-        if (cfg.isScorm <= 0) return;
-        var inScormExport = typeof document !== 'undefined'
-            && document.body && document.body.classList
-            && document.body.classList.contains('exe-scorm');
-        if (!inScormExport) return;
-        var scorm = getScormRuntime();
-        if (!scorm) return;
-        var questionMarkers = (interaction.markers || []).filter(function (m) {
-            return m.action && m.action.type === 'question';
-        });
-        if (!questionMarkers.length) return;
-
-        var correctIds = {};
-        var game = {
-            main: wrapper.id,
-            idevice: 'three-d-viewer',
-            isScorm: cfg.isScorm,
-            weighted: cfg.weighted,
-            scorerp: 0,
-            gameStarted: true,
-            msgs: {},
-        };
-        try {
-            if (typeof scorm.registerActivity === 'function') scorm.registerActivity(game);
-        } catch (e) { /* framework not fully available — degrade silently */ }
-
-        hooks.onQuestionAnswered = function (markerId, correct) {
-            if (correct) correctIds[markerId] = true;
-            var right = Object.keys(correctIds).length;
-            game.scorerp = (right * 10) / questionMarkers.length;
-            game.gameOver = right >= questionMarkers.length;
-            try {
-                if (typeof scorm.sendScoreNew === 'function') scorm.sendScoreNew(true, game);
-            } catch (e) { /* degrade silently */ }
-        };
+    if (ALLOWED_RENDER_SCHEME.test(raw)) {
+      return raw;
     }
+    return HAS_EXPLICIT_SCHEME.test(raw) ? "" : raw;
+  }
+  function isAbsoluteUrl(value) {
+    return ABSOLUTE_URL.test(value);
+  }
+  function normalizePath(value) {
+    const clean = String(value ?? "").trim().replace(/\\+/g, "/");
+    if (!clean) {
+      return "";
+    }
+    return isAbsoluteUrl(clean) ? clean : clean.replace(/^\/+/, "");
+  }
+  function stripQueryAndHash(value) {
+    let out = value;
+    const query = out.indexOf("?");
+    if (query !== -1) {
+      out = out.substring(0, query);
+    }
+    const hash = out.indexOf("#");
+    if (hash !== -1) {
+      out = out.substring(0, hash);
+    }
+    return out;
+  }
+  function joinAppUrl(baseURL, basePath, path) {
+    const base = String(baseURL ?? "").replace(/\/+$/g, "");
+    const prefixPath = basePath ? `/${String(basePath).replace(/^\/+|\/+$/g, "")}` : "";
+    const prefix = `${base}${prefixPath}`.replace(/\/+$/g, "");
+    const normalized = String(path ?? "").replace(/^\/+/, "");
+    return prefix ? `${prefix}/${normalized}` : `/${normalized}`;
+  }
 
-    /**
-     * Attach the shared interaction layer to a booted wrapper. Resolves the
-     * right handle per render path (native model-viewer hotspots vs. STL
-     * instance) and is idempotent.
-     * @param {HTMLElement} wrapper
-     */
-    function attachInteractionLayer(wrapper) {
-        var runtime = globalScope.eXe3DViewer;
-        if (!runtime || typeof runtime.createInteractionLayer !== 'function') return;
-        var ds = wrapper.dataset || {};
-        if (ds._tdvInteractionBooted === '1') return;
-        var raw = parseInteractionData(wrapper);
-        if (!raw || !raw.enabled) return;
-        var interaction = normalizeInteraction(raw);
-        var i18nMap = raw.i18n && typeof raw.i18n === 'object' ? raw.i18n : {};
-        var hooks = {
-            t: function (k) { return i18nMap[k] || k; },
-            resolveMediaUrl: function (u) {
-                try { return resolveRuntimeSrc(u, wrapper.id) || u; } catch (e) { return u; }
-            },
-        };
-        // Optional SCORM scoring for question markers. Reuses the shared
-        // gamification.scorm framework (registerActivity + sendScoreNew). Only
-        // active in a SCORM export (body.exe-scorm), when configured, and when
-        // there is at least one question to score. Score is the fraction of
-        // question markers answered correctly, on the 0..10 convention.
-        setupScormScoring(wrapper, interaction, raw.scorm, hooks);
-        var type = ds.modelType || detectModelTypeFromSrc(ds.modelSrc || '');
-        ds._tdvInteractionBooted = '1';
-        if (type === 'stl') {
-            // Wait (time-based, tolerant of a cold Three.js module load + STL
-            // fetch/parse) for the shared runtime to finish booting the STL
-            // scene before attaching markers. A fixed frame budget was too
-            // short and fell back to the text list even though the model
-            // eventually rendered.
-            var deadline = Date.now() + 20000;
-            var poll = function () {
-                var inst = runtime.getInstance(wrapper);
-                if (inst && inst.mesh) {
-                    inst.interaction = runtime.createInteractionLayer(
-                        { wrapper: wrapper, type: 'stl', instance: inst }, interaction, 'view', hooks);
-                } else if (Date.now() < deadline) {
-                    (globalScope.requestAnimationFrame || function (cb) { return setTimeout(cb, 16); })(poll);
-                } else {
-                    // STL never produced a mesh (no WebGL / load failure):
-                    // expose the accessible text fallback instead.
-                    revealInteractionFallback(wrapper);
-                }
-            };
-            poll();
+  // public/files/perm/idevices/base/three-d-viewer/src/shared/model-source.ts
+  var KNOWN_EXTENSIONS = ["stl", "glb", "gltf", "obj", "fbx"];
+  function detectModelType(src) {
+    if (typeof src !== "string") {
+      return "unknown";
+    }
+    const clean = stripQueryAndHash(src.trim());
+    const dot = clean.lastIndexOf(".");
+    if (dot === -1) {
+      return "unknown";
+    }
+    const ext = clean.substring(dot + 1).toLowerCase();
+    return KNOWN_EXTENSIONS.includes(ext) ? ext : "unknown";
+  }
+  function isStlSource(src) {
+    return detectModelType(src) === "stl";
+  }
+  function normalizeModelSource(src) {
+    if (typeof src !== "string") {
+      return "";
+    }
+    const clean = src.trim();
+    if (!clean || clean.startsWith("blob:") || clean.startsWith("data:")) {
+      return "";
+    }
+    return clean;
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/runtime/lifecycle.ts
+  function createInstance(wrapper, options) {
+    return {
+      wrapper,
+      options,
+      type: options.type || detectModelType(options.src),
+      modelViewer: null,
+      canvas: null,
+      scene: null,
+      camera: null,
+      renderer: null,
+      controls: null,
+      mesh: null,
+      geometry: null,
+      material: null,
+      rafId: null,
+      stopped: false,
+      listeners: [],
+      objectURLs: [],
+      onFrame: [],
+      interaction: null
+    };
+  }
+  function addFrameCallback(instance, callback) {
+    if (!instance.onFrame.includes(callback)) {
+      instance.onFrame.push(callback);
+    }
+  }
+  function removeFrameCallback(instance, callback) {
+    const index = instance.onFrame.indexOf(callback);
+    if (index !== -1) {
+      instance.onFrame.splice(index, 1);
+    }
+  }
+  function isTexture(value) {
+    return Boolean(value && typeof value === "object" && value.isTexture && typeof value.dispose === "function");
+  }
+  function disposeMaterial(material) {
+    if (!material) {
+      return;
+    }
+    const list = Array.isArray(material) ? material : [material];
+    for (const entry of list) {
+      if (!entry || typeof entry !== "object") {
+        continue;
+      }
+      const record = entry;
+      for (const key of Object.keys(record)) {
+        const value = record[key];
+        if (isTexture(value)) {
+          value.dispose();
+        }
+      }
+      const dispose = entry.dispose;
+      if (typeof dispose === "function") {
+        dispose.call(entry);
+      }
+    }
+  }
+  function disposeObject3D(object) {
+    const traverse = object?.traverse;
+    if (typeof traverse !== "function") {
+      return;
+    }
+    object.traverse((node) => {
+      if (node?.geometry && typeof node.geometry.dispose === "function") {
+        node.geometry.dispose();
+      }
+      if (node?.material) {
+        disposeMaterial(node.material);
+      }
+    });
+  }
+  function cancelFrame(rafId) {
+    if (typeof globalThis.cancelAnimationFrame === "function") {
+      globalThis.cancelAnimationFrame(rafId);
+    } else {
+      clearTimeout(rafId);
+    }
+  }
+  function disposeInstance(instance) {
+    instance.stopped = true;
+    if (instance.interaction) {
+      try {
+        instance.interaction.destroy();
+      } catch {}
+      instance.interaction = null;
+    }
+    instance.onFrame.length = 0;
+    if (instance.rafId !== null) {
+      cancelFrame(instance.rafId);
+      instance.rafId = null;
+    }
+    for (const { target, type, handler, options } of instance.listeners) {
+      try {
+        target.removeEventListener(type, handler, options);
+      } catch {}
+    }
+    instance.listeners.length = 0;
+    try {
+      disposeObject3D(instance.scene);
+    } catch {}
+    try {
+      disposeMaterial(instance.material);
+    } catch {}
+    try {
+      instance.geometry?.dispose?.();
+    } catch {}
+    try {
+      instance.controls?.dispose?.();
+    } catch {}
+    try {
+      instance.renderer?.dispose?.();
+    } catch {}
+    for (const url of instance.objectURLs) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {}
+    }
+    instance.objectURLs.length = 0;
+    instance.scene = null;
+    instance.camera = null;
+    instance.renderer = null;
+    instance.controls = null;
+    instance.mesh = null;
+    instance.geometry = null;
+    instance.material = null;
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/adapters/raycast.ts
+  function raycastFromPointer(target, clientX, clientY) {
+    const three = globalThis.THREE;
+    if (!three || !target.mesh || !target.camera || !target.canvas) {
+      return null;
+    }
+    const ndc = pointerToNdc(target.canvas.getBoundingClientRect(), clientX, clientY);
+    if (!ndc) {
+      return null;
+    }
+    const raycaster = new three.Raycaster;
+    raycaster.setFromCamera(new three.Vector2(ndc.x, ndc.y), target.camera);
+    const hit = raycaster.intersectObject(target.mesh, true)[0];
+    if (!hit) {
+      return null;
+    }
+    const local = target.mesh.worldToLocal(hit.point.clone());
+    const faceNormal = hit.face?.normal;
+    return {
+      position: { x: local.x, y: local.y, z: local.z },
+      normal: faceNormal ? { x: faceNormal.x, y: faceNormal.y, z: faceNormal.z } : { x: 0, y: 1, z: 0 }
+    };
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/adapters/stl-adapter.ts
+  var EMPTY_CAMERA2 = { orbit: "", target: "", fieldOfView: "" };
+  function ensureLayer(wrapper) {
+    const existing = wrapper.querySelector(".tdv-marker-layer");
+    if (existing) {
+      return existing;
+    }
+    const layer = document.createElement("div");
+    layer.className = "tdv-marker-layer";
+    wrapper.appendChild(layer);
+    return layer;
+  }
+  function createStlAdapter(instance, wrapper, deps) {
+    const layer = ensureLayer(wrapper);
+    let entries = [];
+    let placeHandler = null;
+    const updateOverlay = () => {
+      const three = globalThis.THREE;
+      const { mesh, camera, canvas } = instance;
+      if (!three || !mesh || !camera || !canvas || entries.length === 0) {
+        return;
+      }
+      mesh.updateMatrixWorld();
+      camera.updateMatrixWorld();
+      const width = canvas.clientWidth || canvas.width || 1;
+      const height = canvas.clientHeight || canvas.height || 1;
+      for (const entry of entries) {
+        const world = mesh.localToWorld(entry.local.clone());
+        const ndc = world.clone().project(camera);
+        const worldNormal = entry.normal.clone().transformDirection(mesh.matrixWorld);
+        const toCamera = new three.Vector3().subVectors(camera.position, world).normalize();
+        const visible = isMarkerVisible(ndc, worldNormal, toCamera);
+        const screen = ndcToScreen(ndc, width, height);
+        entry.element.style.left = `${screen.x}px`;
+        entry.element.style.top = `${screen.y}px`;
+        entry.element.classList.toggle("tdv-marker--hidden", !visible);
+        if (visible) {
+          entry.element.removeAttribute("tabindex");
+          entry.element.removeAttribute("aria-hidden");
         } else {
-            var mv = wrapper.querySelector('model-viewer');
-            wrapper.__tdvInteraction = runtime.createInteractionLayer(
-                { wrapper: wrapper, type: type, modelViewer: mv }, interaction, 'view', hooks);
+          entry.element.setAttribute("tabindex", "-1");
+          entry.element.setAttribute("aria-hidden", "true");
         }
-    }
-
-    /**
-     * Build the toolbar markup (fullscreen button + 4-direction nav pad).
-     * Rendered once into the wrapper so it ships with the static export.
-     * Returns empty string when nav controls are not enabled in the config.
-     * @param {object} [cfg]
-     * @returns {string}
-     */
-    function buildControlsMarkup(cfg) {
-        if (!cfg?.showNavControls) return '';
-        const fs = translate('viewer.fullscreen');
-        const nav = [
-            ['left',  '←', translate('viewer.rotate_left')],
-            ['up',    '↑', translate('viewer.tilt_up')],
-            ['down',  '↓', translate('viewer.tilt_down')],
-            ['right', '→', translate('viewer.rotate_right')],
-        ];
-        const navBtns = nav
-            .map(([key, glyph, label]) =>
-                `<button type="button" class="three-d-viewer-nav-btn three-d-viewer-nav-${key}" data-nav="${key}" aria-label="${label}" title="${label}">${glyph}</button>`)
-            .join('');
-        return `
-            <button type="button" class="three-d-viewer-fullscreen-button" data-fullscreen aria-label="${fs}" title="${fs}">⛶</button>
-            <div class="three-d-viewer-nav" role="group" aria-label="${translate('viewer.rotate_left')}">${navBtns}</div>
-        `;
-    }
-
-    /**
-     * Clamp a value to [min, max].
-     */
-    function clamp(value, min, max) {
-        return Math.min(max, Math.max(min, value));
-    }
-
-    /**
-     * Simple i18n helper. Falls back to built-in translations if _() is not present.
-     * @param {string} key
-     * @returns {string}
-     */
-    function translate(key) {
-        try {
-            if (typeof globalScope._ === 'function') {
-                const translated = globalScope._(key);
-                // If translation returns the key, use fallback
-                if (translated !== key) {
-                    return translated;
-                }
-            }
-        } catch (err) {}
-        return FALLBACK_TRANSLATIONS[key] || key;
-    }
-
-    /**
-     * Build an absolute URL for an app-relative path using eXe symfony baseURL/basePath.
-     * @param {string} path
-     * @returns {string}
-     */
-    function resolveAssetUrl(path) {
-        const sym = globalScope.eXeLearning?.symfony || {};
-        const baseURL = String(sym.baseURL || '').replace(/\/+$/g, '');
-        const basePath = sym.basePath ? '/' + String(sym.basePath).replace(/^\/+|\/+$/g, '') : '';
-        const norm = String(path || '').replace(/^\/+/, '');
-        const prefix = (baseURL + basePath).replace(/\/+$/g, '');
-        return prefix ? `${prefix}/${norm}` : `/${norm}`;
-    }
-
-    /**
-     * Detect the current execution mode for path resolution.
-     *
-     * Modes are checked in priority order but may overlap:
-     * 1. Static mode - PWA/offline build (isStaticMode or isOfflineInstallation in config)
-     * 2. Server mode - Running on eXeLearning server (config.baseURL is defined)
-     * 3. Export mode - Standalone HTML export (html id starts with 'exe-')
-     * 4. Preview mode - Inside workarea preview panel (AssetManager available)
-     *
-     * WHY check html[id^="exe-"]: Exported HTML files have the root element id
-     * set to 'exe-index' or 'exe-{pageId}', which distinguishes them from
-     * the workarea or server-rendered pages.
-     *
-     * @returns {{isStaticMode: boolean, isServerMode: boolean, isExportMode: boolean, isOnIndexPage: boolean, isPreviewMode: boolean}}
-     */
-    function detectMode() {
-        const config = globalScope.eXeLearning?.config;
-        const parsedConfig = typeof config === 'string'
-            ? (function() { try { return JSON.parse(config); } catch(e) { return null; } })()
-            : config;
-
-        return {
-            isStaticMode: !!(parsedConfig?.isStaticMode || parsedConfig?.isOfflineInstallation),
-            isServerMode: parsedConfig?.baseURL !== undefined,
-            isExportMode: document.documentElement.id === 'exe-index' ||
-                          document.querySelector('html[id^="exe-"]') !== null,
-            isOnIndexPage: document.documentElement.id === 'exe-index',
-            isPreviewMode: !!getAssetManager()
-        };
-    }
-
-    /**
-     * Compute the resources base path for offline export: content/resources/<ideviceId>/
-     * Falls back to ../content/resources when not on index.
-     * @param {string} ideviceId
-     * @returns {string}
-     */
-    function getIdeviceResourcesBase(ideviceId) {
-        if (!ideviceId) return '';
-        const onIndex = document.documentElement.id === 'exe-index';
-        return onIndex
-            ? `content/resources/${ideviceId}/`
-            : `../content/resources/${ideviceId}/`;
-    }
-
-    /**
-     * Get the URL for the model-viewer library.
-     *
-     * Mode-aware path resolution:
-     * - Static mode: Returns `./files/perm/...` (relative to app root)
-     * - Server mode: Returns resolved absolute URL via resolveAssetUrl
-     * - Export mode on index: Returns `./idevices/...` (relative to index.html)
-     * - Export mode on subpage: Returns `../idevices/...` (up one level from html/)
-     * - Fallback: Uses symfony config via resolveAssetUrl
-     *
-     * WHY different paths for export: Exported packages have a specific structure
-     * where libraries are in `idevices/<type>/` folder. Index.html is at the root,
-     * while subpages are in `html/` folder, requiring the `../` prefix.
-     *
-     * @returns {string} URL to model-viewer.min.js
-     */
-    function getModelViewerLibUrl() {
-        const mode = detectMode();
-
-        if (mode.isStaticMode) {
-            return './files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js';
-        }
-        if (mode.isServerMode) {
-            return resolveAssetUrl('files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js');
-        }
-        if (mode.isExportMode) {
-            return mode.isOnIndexPage
-                ? './idevices/three-d-viewer/model-viewer.min.js'
-                : '../idevices/three-d-viewer/model-viewer.min.js';
-        }
-        // Fallback to resolveAssetUrl
-        return resolveAssetUrl('files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js');
-    }
-
-    /**
-     * Get the base URL for Three.js modules (STLLoader, OrbitControls, etc.).
-     *
-     * WHY mode-aware: Different execution contexts need different path strategies:
-     * - Static: Uses origin for absolute URL (prevents path duplication in dynamic imports)
-     * - Server: Builds from config.baseURL + basePath (handles subdirectory installs)
-     * - Export: Uses page URL base + relative paths (./idevices or ../idevices)
-     *   based on whether we're on index.html or a subpage in html/ folder
-     * - Fallback: Uses symfony config (legacy support for workarea)
-     *
-     * WHY absolute URLs for imports: Dynamic import() resolves paths relative to the
-     * current module's location. If we return a relative path and the module is loaded
-     * from a nested location, the browser may resolve it incorrectly, causing path
-     * duplication (e.g., `/path/to/files/perm/.../path/to/...`). Using absolute URLs
-     * with protocol (http://... or https://...) prevents this issue entirely.
-     *
-     * @returns {string} Absolute URL ending with trailing slash for module base path
-     */
-    function getThreeJSBaseUrl() {
-        const mode = detectMode();
-
-        if (mode.isStaticMode) {
-            // Static mode: use origin + absolute path for dynamic imports
-            return `${globalScope.location.origin}/files/perm/idevices/base/three-d-viewer/export/`;
-        }
-        if (mode.isServerMode) {
-            // Server mode: build absolute URL with protocol
-            const config = globalScope.eXeLearning?.config;
-            const baseURL = (config?.baseURL || globalScope.location.origin).replace(/\/+$/g, '');
-            const basePath = config?.basePath ? `/${config.basePath.replace(/^\/+|\/+$/g, '')}` : '';
-            return `${baseURL}${basePath}/files/perm/idevices/base/three-d-viewer/export/`;
-        }
-        if (mode.isExportMode) {
-            // Export mode: resolve relative to current page location
-            const currentUrl = globalScope.location.href;
-            const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
-            const prefix = mode.isOnIndexPage ? '' : '../';
-            return `${baseUrl}${prefix}idevices/three-d-viewer/`;
-        }
-        // Fallback: use symfony config with absolute URL
-        const sym = globalScope.eXeLearning?.symfony || {};
-        const baseURL = (sym.baseURL || globalScope.location.origin).replace(/\/+$/g, '');
-        const basePath = sym.basePath ? '/' + String(sym.basePath).replace(/^\/+|\/+$/g, '') : '';
-        return `${baseURL}${basePath}/files/perm/idevices/base/three-d-viewer/export/`;
-    }
-
-    /**
-     * Check if a path refers to an STL file.
-     * @param {string} path
-     * @returns {boolean}
-     */
-    function isSTLFile(path) {
-        if (!path) return false;
-        const filename = path.split('/').pop() || '';
-        return filename.toLowerCase().endsWith('.stl');
-    }
-
-    /**
-     * Check if we're running from file:// protocol (local HTML file).
-     * ES modules and model-viewer don't work with file:// due to CORS restrictions.
-     * @returns {boolean}
-     */
-    function isLocalFileProtocol() {
-        try {
-            return globalScope.location?.protocol === 'file:';
-        } catch (e) {
-            return false;
-        }
-    }
-
-    /**
-     * Build the HTML for the local file warning.
-     * @returns {string}
-     */
-    function buildLocalWarningHTML() {
-        const title = translate('viewer.local_warning_title');
-        const message = translate('viewer.local_warning_message');
-        return `
-            <div class="three-d-viewer-local-warning" style="
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100%;
-                min-height: 200px;
-                padding: 2rem;
-                text-align: center;
-                background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
-                border-radius: 8px;
-                border: 2px dashed #ccc;
-            ">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5" style="margin-bottom: 1rem; opacity: 0.7;">
-                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-                <strong style="font-size: 1.1rem; color: #333; margin-bottom: 0.5rem;">${title}</strong>
-                <p style="color: #666; margin: 0; max-width: 300px; line-height: 1.4;">${message}</p>
-            </div>
-        `;
-    }
-
-    /**
-     * Normalize input path.
-     * - Trim, unify slashes, strip leading slash.
-     * - Keep absolute URLs as-is.
-     * @param {string} path
-     * @returns {string}
-     */
-    function normalizePath(path) {
-        const clean = String(path || '').trim().replace(/\\+/g, '/');
-        if (!clean) return '';
-        if (/^(https?:)?\/\//i.test(clean)) return clean;
-        return clean.replace(/^\/+/, '');
-    }
-
-    /**
-     * Get the AssetManager from current window or parent window (for preview iframe).
-     * @returns {object|null}
-     */
-    function getAssetManager() {
-        // Check current window
-        let assetManager = globalScope.eXeLearning?.app?.project?.assetManager ||
-                           globalScope.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-        if (assetManager) return assetManager;
-
-        // Check parent window (for preview iframe)
-        try {
-            assetManager = globalScope.parent?.eXeLearning?.app?.project?.assetManager ||
-                           globalScope.parent?.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) return assetManager;
-        } catch (e) {
-            // Cross-origin access denied - we're in a true export context
-        }
-
-        return null;
-    }
-
-    /**
-     * Check if we're in preview/online context (AssetManager available).
-     * In preview context, asset:// URLs should be kept for blob resolution.
-     * In export context (offline HTML), they should be converted to content/resources/.
-     * @returns {boolean}
-     */
-    function isPreviewContext() {
-        return !!getAssetManager();
-    }
-
-    /**
-     * Try to use ODE session-based temporary path if available, then fall back to plain asset path.
-     * Accept already sessionized or absolute URLs as-is.
-     * Handles asset:// URLs by resolving to iDevice resources path in export context.
-     * In preview context, resolves asset:// URLs to blob URLs via AssetManager.
-     * @param {string} path
-     * @param {string} [ideviceId] - Optional iDevice ID for asset:// resolution
-     * @returns {string}
-     */
-    function resolveRuntimeSrc(path, ideviceId) {
-        const clean = normalizePath(path);
-        if (!clean) return '';
-        if (/^(https?:)?\/\//i.test(clean)) return clean;
-        if (clean.startsWith('blob:')) return clean;
-        if (clean.startsWith('files/tmp/')) return resolveAssetUrl(clean);
-
-        // Handle asset:// URLs
-        if (clean.startsWith('asset://')) {
-            // In preview/online context, resolve to blob URL via AssetManager
-            const assetManager = getAssetManager();
-            if (assetManager) {
-                if (typeof assetManager.resolveAssetURLSync === 'function') {
-                    const blobUrl = assetManager.resolveAssetURLSync(clean);
-                    if (blobUrl) {
-                        return blobUrl;
-                    }
-                }
-                // If AssetManager can't resolve it yet, return empty to prevent 404
-                // The async resolution in applyConfig will handle it
-                return '';
-            }
-
-            // In export context (offline HTML), resolve to content/resources path
-            // asset://uuid.glb -> content/resources/uuid.glb
-            const assetPath = clean.substring('asset://'.length);
-            if (assetPath) {
-                const onIndex = document.documentElement.id === 'exe-index';
-                return (onIndex ? 'content/resources/' : '../content/resources/') + assetPath;
-            }
-            return '';
-        }
-
-        // Post-export paths already rewritten by IdeviceRenderer.fixAssetUrls
-        // (preview pipeline AND static export both run that helper). Return
-        // them *relative* — calling `resolveAssetUrl` here would prepend a
-        // leading `/` making the URL absolute to the origin, so a preview
-        // iframe served at `/viewer/index.html` would request
-        // `/content/resources/foo.stl` instead of
-        // `/viewer/content/resources/foo.stl` and miss the Service Worker
-        // interceptor (404 → STLLoader parses the HTML 404 page → the
-        // "Invalid typed array length" crash). Relative paths resolve
-        // against the document URL: in preview they pick up the `/viewer/`
-        // prefix automatically, in static export they stay relative to
-        // index.html / html/<page>.html.
-        if (clean.startsWith('content/resources/') || clean.startsWith('../content/resources/')) {
-            return clean;
-        }
-
-        // If the edition stored "file_manager/..." and an ODE session exists, build the session path.
-        const sessionId = (function () {
-            const s = globalScope.eXeLearning?.app?.project?.odeSession;
-            return typeof s === 'string' && s.trim().length >= 8 ? s.trim() : '';
-        })();
-
-        if (sessionId) {
-            const year = sessionId.substring(0, 4);
-            const month = sessionId.substring(4, 6);
-            const day = sessionId.substring(6, 8);
-            const sessionPath = `files/tmp/${year}/${month}/${day}/${sessionId}/${clean}`;
-            return resolveAssetUrl(sessionPath);
-        }
-
-        // Plain file inside app
-        return resolveAssetUrl(clean);
-    }
-
-    /**
-     * Resolve asset:// URL to blob URL asynchronously.
-     * Waits for AssetManager to be available and the asset to be loaded.
-     * @param {string} assetUrl - asset:// URL
-     * @param {number} [timeout=10000] - Max wait time in ms
-     * @returns {Promise<string|null>}
-     */
-    async function resolveAssetUrlAsync(assetUrl, timeout = 10000) {
-        if (!assetUrl || !assetUrl.startsWith('asset://')) {
-            return null;
-        }
-
-        const startTime = Date.now();
-        const pollInterval = 100;
-
-        while (Date.now() - startTime < timeout) {
-            const assetManager = getAssetManager();
-            if (assetManager) {
-                // Try sync method first (faster if asset is already loaded)
-                if (typeof assetManager.resolveAssetURLSync === 'function') {
-                    const blobUrl = assetManager.resolveAssetURLSync(assetUrl);
-                    if (blobUrl) {
-                        return blobUrl;
-                    }
-                }
-                // Try async method which will load the asset if needed
-                if (typeof assetManager.resolveAssetURL === 'function') {
-                    try {
-                        const blobUrl = await assetManager.resolveAssetURL(assetUrl);
-                        if (blobUrl) {
-                            return blobUrl;
-                        }
-                    } catch (err) {
-                        // Asset not ready yet, keep polling
-                    }
-                }
-            }
-            await new Promise(resolve => setTimeout(resolve, pollInterval));
-        }
-
-        console.warn('[3D Viewer] Timeout resolving asset URL:', assetUrl);
-        return null;
-    }
-
-    /**
-     * Append a single <link rel="modulepreload"> if not present.
-     * @param {string} href
-     */
-    function appendModulePreloadOnce(href) {
-        if (!href) return;
-        if (document.querySelector(`link[rel="modulepreload"][href="${href}"]`)) return;
-        const l = document.createElement('link');
-        l.rel = 'modulepreload';
-        l.href = href;
-        document.head.appendChild(l);
-    }
-
-    /**
-     * Ensure Three.js modules are loaded for STL rendering.
-     * Uses dynamic imports with ES modules.
-     * @returns {Promise<void>}
-     */
-    async function ensureThreeJSLoaded() {
-        if (globalScope.THREE?.STLLoader && globalScope.THREE?.OrbitControls) {
-            return;
-        }
-
-        globalScope.$exeLibs = globalScope.$exeLibs || {};
-        if (globalScope.$exeLibs.threeJSPromise) {
-            return globalScope.$exeLibs.threeJSPromise;
-        }
-
-        const basePath = getThreeJSBaseUrl();
-
-        globalScope.$exeLibs.threeJSPromise = (async () => {
-            try {
-                const THREE = await import(basePath + 'three.module.min.js');
-                const { STLLoader } = await import(basePath + 'STLLoader.js');
-                const { OrbitControls } = await import(basePath + 'OrbitControls.js');
-
-                globalScope.THREE = globalScope.THREE || {};
-                Object.assign(globalScope.THREE, THREE);
-                globalScope.THREE.STLLoader = STLLoader;
-                globalScope.THREE.OrbitControls = OrbitControls;
-            } catch (err) {
-                console.error('[3D Viewer] Failed to load Three.js modules:', err);
-                throw err;
-            }
-        })();
-
-        return globalScope.$exeLibs.threeJSPromise;
-    }
-
-    /**
-     * Ensure the shared eXe3DViewer runtime script is loaded.
-     * Uses a global promise to coordinate with the edition path.
-     */
-    function ensureRuntimeLoaded() {
-        if (globalScope.eXe3DViewer) return Promise.resolve();
-        globalScope.$exeLibs = globalScope.$exeLibs || {};
-        if (globalScope.$exeLibs.threeDViewerRuntimePromise) {
-            return globalScope.$exeLibs.threeDViewerRuntimePromise;
-        }
-        const url = getThreeJSBaseUrl() + 'three-d-viewer-runtime.js';
-        globalScope.$exeLibs.threeDViewerRuntimePromise = new Promise((resolve) => {
-            const existing = document.querySelector('script[data-threedviewer-runtime]');
-            if (existing) {
-                if (globalScope.eXe3DViewer) { resolve(); return; }
-                existing.addEventListener('load', () => resolve());
-                return;
-            }
-            const script = document.createElement('script');
-            script.src = url;
-            script.dataset.threedviewerRuntime = '1';
-            script.addEventListener('load', () => resolve());
-            script.addEventListener('error', () => resolve());
-            document.head.appendChild(script);
+      }
+    };
+    addFrameCallback(instance, updateOverlay);
+    const captureCamera = () => {
+      const camera = instance.camera;
+      if (!camera) {
+        return { ...EMPTY_CAMERA2 };
+      }
+      const position = camera.position;
+      const target = instance.controls?.target ?? { x: 0, y: 0, z: 0 };
+      return {
+        orbit: `${position.x} ${position.y} ${position.z}`,
+        target: `${target.x} ${target.y} ${target.z}`,
+        fieldOfView: `${camera.fov ?? 45}deg`
+      };
+    };
+    return {
+      renderMarkers(markers, options) {
+        const three = globalThis.THREE;
+        layer.innerHTML = "";
+        entries = markers.map((marker, index) => {
+          const element = createMarkerButton(marker, {
+            ...options,
+            index,
+            label: deps.markerLabel(marker, index),
+            variantClass: "tdv-marker--stl",
+            onActivate: deps.onActivate
+          });
+          layer.appendChild(element);
+          const { position, normal } = marker.anchor;
+          return {
+            element,
+            local: new three.Vector3(position.x, position.y, position.z),
+            normal: new three.Vector3(normal.x, normal.y, normal.z)
+          };
         });
-        return globalScope.$exeLibs.threeDViewerRuntimePromise;
-    }
-
-    /**
-     * Ensure the model-viewer module is loaded and defined.
-     * Uses a global promise to prevent duplicate loading.
-     * @param {string} ideviceId
-     */
-    async function ensureModelViewerModule(ideviceId) {
-        // Early exit if already registered
-        if (globalScope.customElements?.get?.('model-viewer')) return;
-
-        // Use global namespace to coordinate loading across edition/export
-        globalScope.$exeLibs = globalScope.$exeLibs || {};
-
-        // If another context (edition) is already loading, wait for it
-        if (globalScope.$exeLibs.modelViewerPromise) {
-            try {
-                await globalScope.$exeLibs.modelViewerPromise;
-            } catch (err) {}
+        updateOverlay();
+      },
+      setActive(activeId) {
+        applyActiveMarker(entries.map((entry) => entry.element), activeId);
+      },
+      focusMarker(marker) {
+        const camera = instance.camera;
+        if (!globalThis.THREE || !camera) {
+          return;
+        }
+        const position = parseTriple(marker.camera.orbit);
+        const target = parseTriple(marker.camera.target);
+        if (marker.camera.orbit) {
+          camera.position.set(position.x, position.y, position.z);
+        }
+        if (!marker.camera.target) {
+          return;
+        }
+        if (instance.controls) {
+          instance.controls.target.set(target.x, target.y, target.z);
+          instance.controls.update?.();
+        } else {
+          camera.lookAt(target.x, target.y, target.z);
+        }
+      },
+      captureCamera,
+      updateOverlay,
+      enterPlacementMode(onPlaced) {
+        const canvas = instance.canvas;
+        if (!canvas) {
+          return;
+        }
+        placeHandler = (event) => {
+          const hit = raycastFromPointer(instance, event.clientX, event.clientY);
+          if (!hit) {
             return;
-        }
-
-        // Re-check after awaiting (edition may have finished loading)
-        if (globalScope.customElements?.get?.('model-viewer')) return;
-
-        const candidates = [
-            getModelViewerLibUrl(),
-            getIdeviceResourcesBase(ideviceId) ? getIdeviceResourcesBase(ideviceId) + 'model-viewer.min.js' : null
-        ].filter(Boolean);
-
-        globalScope.$exeLibs.modelViewerPromise = (async () => {
-            for (const url of candidates) {
-                // Skip if already registered (race condition check)
-                if (globalScope.customElements?.get?.('model-viewer')) return;
-
-                try {
-                    // Inject script and wait for it to load
-                    await new Promise((resolve, reject) => {
-                        const s = document.createElement('script');
-                        s.src = url;
-                        s.onload = resolve;
-                        s.onerror = reject;
-                        document.head.appendChild(s);
-                    });
-                    break;
-                } catch (err) {
-                    // Try next candidate
-                }
-            }
-        })();
-
-        try {
-            await globalScope.$exeLibs.modelViewerPromise;
-            if (globalScope.customElements?.whenDefined) {
-                await globalScope.customElements.whenDefined('model-viewer');
-            }
-        } catch (err) {
-            // Keep going; runtime will attempt again if needed
-        }
-    }
-
-    /**
-     * Build the <model-viewer> tag.
-     *
-     * The `src` attribute is NOT set here — the runtime owns it (sets it
-     * at boot from the wrapper's `data-model-src`). Two reasons:
-     *
-     *   1. STL files would crash model-viewer's GLB/GLTF/USDZ loader with
-     *      `SyntaxError: Unexpected token 'C', "COLOR= "... is not valid
-     *      JSON` (the ASCII STL header starts with "COLOR="). See #1810.
-     *   2. The persisted HTML must not leak blob: URLs; setting the src
-     *      at runtime keeps the wrapper's `data-model-src` the only
-     *      canonical reference (`asset://` in editor, rewritten to
-     *      `content/resources/...` in static export by
-     *      `IdeviceRenderer.fixAssetUrls`).
-     *
-     * @param {object} data
-     * @returns {string}
-     */
-    function buildModelMarkup(data) {
-        const attributes = [
-            ['shadow-intensity', '1'],
-            ['tone-mapping', 'pbr-neutral'],
-            ['reveal', 'auto'],
-            ['style', `background-color: ${data.backgroundColor || DEFAULT_BACKGROUND};`]
-        ];
-        if (data.alt) {
-            attributes.push(['alt', data.alt]);
-            attributes.push(['aria-label', data.alt]);
-        }
-        if (data.cameraControls !== false) attributes.push(['camera-controls', '']);
-        if (data.autoRotate) {
-            attributes.push(['auto-rotate', '']);
-            attributes.push(['rotation-per-second', `${data.autoRotateSpeed || 30}deg`]);
-        }
-
-        const attrString = attributes
-            .map(([k, v]) => (v === '' ? k : `${k}="${v}"`))
-            .join(' ');
-
-        return `<model-viewer ${attrString}></model-viewer>`;
-    }
-
-    /**
-     * Build the flat data-* attribute string for the wrapper.
-     *
-     * Picked up automatically by `IdeviceRenderer.fixAssetUrls` on export
-     * (it runs a global `asset://...` regex over the rendered HTML with
-     * no attribute-name filter), so canonical `asset://uuid.ext` URLs
-     * get rewritten to `content/resources/...` with no special handling.
-     *
-     * @param {object} cfg - normalized config
-     * @returns {string}
-     */
-    function buildWrapperAttrs(cfg) {
-        const src = cfg.src || '';
-        let type = src ? detectModelTypeFromSrc(src) : '';
-        const parts = [];
-        const push = (name, value) => parts.push(`${name}="${escapeAttr(String(value))}"`);
-        if (src) push('data-model-src', src);
-
-        // Canonical AssetManager reference (no `asset://` prefix so
-        // IdeviceRenderer.fixAssetUrls' global URL regex doesn't touch
-        // it). Lets the runtime recover the original asset:// URL in
-        // contexts where AssetManager is live (workarea view +
-        // preview-with-AssetManager) even when `data-model-src` arrives
-        // as a blob: URL or as a `content/resources/...` relative
-        // path.
-        //
-        // Two recovery paths:
-        //   * `cfg.src` starts with `asset://` (fresh save before any
-        //     downstream URL rewriting): take the path part directly.
-        //   * `cfg.src` is a `blob:` URL (the workarea engine resolves
-        //     asset:// → blob: when reading the iDevice JSON, so by the
-        //     time `data` reaches `renderView` the asset URL is
-        //     already gone). Look the blob up in
-        //     AssetManager.reverseBlobCache to recover the asset id,
-        //     then read the filename from getAssetMetadata so the
-        //     reconstructed `asset://<id>.<ext>` can be resolved back
-        //     to the same blob by AssetManager.
-        let assetRef = '';
-        if (src.startsWith('asset://')) {
-            assetRef = src.substring('asset://'.length);
-        } else if (src.startsWith('blob:')) {
-            const am = getAssetManager();
-            const assetId = am?.reverseBlobCache?.get?.(src) || null;
-            if (assetId) {
-                const meta = typeof am.getAssetMetadata === 'function'
-                    ? am.getAssetMetadata(assetId)
-                    : null;
-                const filename = (meta && meta.filename) || '';
-                const dot = filename.lastIndexOf('.');
-                const ext = dot !== -1 ? filename.substring(dot + 1).toLowerCase() : '';
-                assetRef = ext ? `${assetId}.${ext}` : String(assetId);
-                if (!type && ext && ['stl', 'glb', 'gltf', 'obj', 'fbx'].includes(ext)) {
-                    type = ext;
-                }
-            }
-        }
-        if (assetRef) push('data-model-asset-ref', assetRef);
-        if (type) push('data-model-type', type);
-        push('data-model-color', cfg.modelColor || '#888888');
-        push('data-background-color', cfg.backgroundColor || DEFAULT_BACKGROUND);
-        push('data-camera-controls', cfg.cameraControls !== false ? 'true' : 'false');
-        push('data-auto-rotate', cfg.autoRotate ? 'true' : 'false');
-        push('data-auto-rotate-speed', cfg.autoRotateSpeed || 30);
-        push('data-show-nav-controls', cfg.showNavControls ? 'true' : 'false');
-        push('data-animation-enabled', cfg.animation?.enabled ? 'true' : 'false');
-        if (cfg.animation?.name) push('data-animation-name', cfg.animation.name);
-        push('data-animation-speed', cfg.animation?.speed ?? 1);
-        if (cfg.alt) push('data-alt', cfg.alt);
-        return parts.join(' ');
-    }
-
-    /**
-     * Escape characters that would break out of an HTML attribute.
-     * @param {string} s
-     * @returns {string}
-     */
-    function escapeAttr(s) {
-        return s
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    }
-
-    /**
-     * Cheap extension-based detection used by `buildWrapperAttrs` and
-     * `migrateLegacyConfig` so they don't have to wait for the runtime
-     * to load. Mirrors `eXe3DViewer.detectModelType` semantics; the two
-     * must stay in sync.
-     *
-     * @param {string} src
-     * @returns {string}
-     */
-    function detectModelTypeFromSrc(src) {
-        if (typeof src !== 'string') return '';
-        let s = src.trim();
-        const q = s.indexOf('?'); if (q !== -1) s = s.substring(0, q);
-        const h = s.indexOf('#'); if (h !== -1) s = s.substring(0, h);
-        const dot = s.lastIndexOf('.');
-        if (dot === -1) return '';
-        const ext = s.substring(dot + 1).toLowerCase();
-        if (['stl', 'glb', 'gltf', 'obj', 'fbx'].includes(ext)) return ext;
-        return '';
-    }
-
-    /**
-     * One-shot migration for persisted HTML from PRs #888/#1810: copies
-     * the base64 `data-config` payload into the new flat `data-*` attrs
-     * and removes the legacy attribute. Idempotent and silent — runs
-     * once per wrapper at first render and is a no-op for wrappers
-     * already in the new format.
-     *
-     * @param {HTMLElement} wrapper
-     */
-    function migrateLegacyConfig(wrapper) {
-        const encoded = wrapper.getAttribute && wrapper.getAttribute('data-config');
-        if (!encoded) return;
-        let cfg = {};
-        try {
-            cfg = JSON.parse(decodeURIComponent(escape(atob(encoded))));
-        } catch (_) {
-            try { cfg = JSON.parse(encoded); } catch (_) { cfg = {}; }
-        }
-        const ds = wrapper.dataset;
-        const setIfMissing = (key, value) => {
-            if (ds[key] == null && value != null && value !== '') ds[key] = String(value);
+          }
+          onPlaced({ position: hit.position, normal: hit.normal, surface: "", camera: captureCamera() });
         };
-        setIfMissing('modelSrc', cfg.src);
-        setIfMissing('alt', cfg.alt);
-        setIfMissing('backgroundColor', cfg.backgroundColor);
-        if (cfg.cameraControls != null) setIfMissing('cameraControls', !!cfg.cameraControls);
-        if (cfg.autoRotate != null) setIfMissing('autoRotate', !!cfg.autoRotate);
-        setIfMissing('autoRotateSpeed', cfg.autoRotateSpeed);
-        if (cfg.showNavControls != null) setIfMissing('showNavControls', !!cfg.showNavControls);
-        if (cfg.animation) {
-            if (cfg.animation.enabled != null) setIfMissing('animationEnabled', !!cfg.animation.enabled);
-            setIfMissing('animationName', cfg.animation.name);
-            setIfMissing('animationSpeed', cfg.animation.speed);
+        canvas.addEventListener("click", placeHandler);
+      },
+      exitPlacementMode() {
+        if (placeHandler && instance.canvas) {
+          instance.canvas.removeEventListener("click", placeHandler);
         }
-        if (!ds.modelType && ds.modelSrc) {
-            const ext = detectModelTypeFromSrc(ds.modelSrc);
-            if (ext) ds.modelType = ext;
-        }
-        if (!ds.modelColor) ds.modelColor = '#888888';
-        wrapper.removeAttribute('data-config');
+        placeHandler = null;
+      },
+      destroy() {
+        this.exitPlacementMode();
+        removeFrameCallback(instance, updateOverlay);
+        try {
+          layer.remove();
+        } catch {}
+        entries = [];
+      }
+    };
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/runtime/asset-resolver.ts
+  function getAssetManager() {
+    const project = globalThis.eXeLearning?.app?.project;
+    const local = project?.assetManager ?? project?._yjsBridge?.assetManager;
+    if (local) {
+      return local;
     }
-
-    /**
-     * Decide whether the empty-state overlay ("Select a 3D model to display")
-     * should be shown.
-     *
-     * A model is present when the iDevice has a configured source (single
-     * source of truth, mirroring edition's `[data-empty-state]` logic) OR the
-     * `<model-viewer>` already resolved a `src`. The configured source may be
-     * a relative `content/resources/...` path (static export + the preview
-     * URL-rewrite pipeline), an `asset://` handle (live editor / preview), a
-     * `blob:` URL, or an absolute http(s) URL — all mean "model selected".
-     * The previous blob:/http:/asset:// allowlist missed the relative export
-     * path and left the overlay covering a rendered model (issue #1957).
-     *
-     * @param {string} configSrc - the configured model source
-     * @param {string} viewerSrc - the current `<model-viewer>` src, if any
-     * @returns {'none'|'grid'} CSS display value for the overlay
-     */
-    function computeEmptyStateDisplay(configSrc, viewerSrc) {
-        const hasModel = !!(
-            (configSrc && String(configSrc).trim()) ||
-            (viewerSrc && String(viewerSrc).trim())
-        );
-        return hasModel ? 'none' : 'grid';
+    try {
+      const parentWindow = globalThis.parent;
+      const parentProject = parentWindow?.eXeLearning?.app?.project;
+      return parentProject?.assetManager ?? parentProject?._yjsBridge?.assetManager ?? null;
+    } catch {
+      return null;
     }
-
-    /**
-     * Runtime controller for each wrapper.
-     */
-    class ThreeDViewerRuntime {
-        /**
-         * @param {HTMLElement} wrapper
-         * @param {object} config
-         */
-        constructor(wrapper, config) {
-            this.wrapper = wrapper;
-            this.ideviceId = wrapper.id || '';
-            this.modelViewer = wrapper.querySelector('model-viewer');
-            this.emptyState = wrapper.querySelector('[data-empty]');
-            this.ariaLive = wrapper.querySelector('[data-live]');
-            this.config = this.normalizeConfig(config);
-            this.availableAnimations = [];
-            this.init();
-        }
-
-        /**
-         * Normalize and coerce config values.
-         * @param {object} config
-         * @returns {object}
-         */
-        normalizeConfig(config = {}) {
-            const anim = config.animation || {};
-            const parsedSpeed = parseFloat(anim.speed);
-            const showNavControls = !!config.showNavControls;
-
-            return {
-                src: normalizePath(config.src),
-                alt: config.alt || '',
-                modelColor: config.modelColor || '#888888',
-                backgroundColor: config.backgroundColor || DEFAULT_BACKGROUND,
-                cameraControls: config.cameraControls !== false,
-                // Mutually exclusive: nav controls override auto-rotate
-                autoRotate: !showNavControls && config.autoRotate !== false,
-                autoRotateSpeed: Number.isFinite(parseFloat(config.autoRotateSpeed))
-                    ? parseFloat(config.autoRotateSpeed)
-                    : 30,
-                showNavControls,
-                animation: {
-                    enabled: !!anim.enabled,
-                    name: anim.name || '',
-                    speed: Number.isFinite(parsedSpeed) ? parsedSpeed : 1
-                }
-            };
-        }
-
-        /**
-         * Initialize runtime: apply config and hook events.
-         */
-        async init() {
-            // Check if we're running from file:// protocol - show warning
-            if (isLocalFileProtocol()) {
-                this.showLocalWarning();
-                return;
-            }
-
-            // Check if this is an STL file - render with Three.js instead
-            if (isSTLFile(this.config.src)) {
-                await this.renderSTL();
-            } else {
-                this.applyConfig();
-                this.setupEvents();
-            }
-
-            this.setupControls();
-        }
-
-        /**
-         * Wire fullscreen toggle and 4-direction nav buttons. Works for both
-         * STL (Three.js scene) and GLB/GLTF (model-viewer) modes.
-         */
-        setupControls() {
-            const fsBtn = this.wrapper.querySelector('[data-fullscreen]');
-            if (fsBtn) {
-                const isFs = () =>
-                    document.fullscreenElement === this.wrapper ||
-                    document.webkitFullscreenElement === this.wrapper;
-                const syncLabel = () => {
-                    const label = isFs() ? translate('viewer.exit_fullscreen') : translate('viewer.fullscreen');
-                    fsBtn.setAttribute('aria-label', label);
-                    fsBtn.setAttribute('title', label);
-                };
-                fsBtn.addEventListener('click', () => {
-                    if (isFs()) {
-                        (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
-                    } else {
-                        (this.wrapper.requestFullscreen || this.wrapper.webkitRequestFullscreen)?.call(this.wrapper);
-                    }
-                });
-                document.addEventListener('fullscreenchange', syncLabel);
-                document.addEventListener('webkitfullscreenchange', syncLabel);
-            }
-
-            // Arrow direction matches user expectation: pressing → makes the
-            // model appear to rotate right (camera orbits the opposite way).
-            this.wrapper.querySelectorAll('[data-nav]').forEach((btn) => {
-                const dir = btn.getAttribute('data-nav');
-                const dAz = dir === 'right' ? -YAW_STEP : dir === 'left' ? YAW_STEP : 0;
-                const dPo = dir === 'up' ? PITCH_STEP : dir === 'down' ? -PITCH_STEP : 0;
-                btn.addEventListener('click', () => this.nudgeCamera(dAz, dPo));
-            });
-        }
-
-        /**
-         * Orbit camera by (dAz, dPo) radians around the model. Dispatches to the
-         * STL three.js scene we control directly, or to model-viewer's
-         * cameraOrbit API for GLB/GLTF.
-         */
-        nudgeCamera(dAz, dPo) {
-            // STL path: the shared runtime owns the camera + OrbitControls.
-            // bootSTL is async, so re-read the instance on every nudge —
-            // the cached `_threeJSCamera` may have been null when init
-            // returned synchronously.
-            const inst = globalScope.eXe3DViewer?.getInstance?.(this.wrapper);
-            const camera = inst?.camera || this._threeJSCamera;
-            if (camera) {
-                const controls = inst?.controls || this._threeJSControls;
-                const r = camera.position.length() || 1;
-                let az = controls?.getAzimuthalAngle?.() ?? Math.atan2(camera.position.x, camera.position.z);
-                let po = controls?.getPolarAngle?.() ?? Math.acos(clamp((camera.position.y || 0) / r, -1, 1));
-                az += dAz;
-                po = clamp(po + dPo, 0.05, Math.PI - 0.05);
-                const sinPo = Math.sin(po);
-                camera.position.set(r * sinPo * Math.sin(az), r * Math.cos(po), r * sinPo * Math.cos(az));
-                camera.lookAt(0, 0, 0);
-                controls?.update?.();
-                return;
-            }
-            // GLB/GLTF path: drive model-viewer's camera orbit.
-            const mv = this.modelViewer;
-            if (mv && typeof mv.getCameraOrbit === 'function') {
-                const orbit = mv.getCameraOrbit();
-                const theta = (orbit.theta || 0) + dAz;
-                const phi = clamp((orbit.phi || Math.PI / 2) + dPo, 0.05, Math.PI - 0.05);
-                mv.cameraOrbit = `${theta}rad ${phi}rad ${orbit.radius || 'auto'}m`;
-                mv.jumpCameraToGoal?.();
-            }
-        }
-
-        /**
-         * Show warning when running from local file:// protocol.
-         */
-        showLocalWarning() {
-            // Hide model-viewer and empty state
-            if (this.modelViewer) {
-                this.modelViewer.style.display = 'none';
-            }
-            if (this.emptyState) {
-                this.emptyState.style.display = 'none';
-            }
-
-            // Insert warning HTML
-            const warningDiv = document.createElement('div');
-            warningDiv.innerHTML = buildLocalWarningHTML();
-            this.wrapper.appendChild(warningDiv.firstElementChild);
-        }
-
-        /**
-         * Render STL file via the shared eXe3DViewer runtime.
-         *
-         * Scene/camera/renderer setup, STL fetch+parse, OrbitControls and
-         * the animate loop all live in `three-d-viewer-runtime.js` so the
-         * editor and the exported package share a single implementation.
-         */
-        async renderSTL() {
-            const cfg = this.config;
-
-            // Resolve the STL file URL (preview AssetManager or static
-            // export resources path).
-            let stlUrl = resolveRuntimeSrc(cfg.src, this.ideviceId);
-            if (!stlUrl && cfg.src && cfg.src.startsWith('asset://')) {
-                stlUrl = await resolveAssetUrlAsync(cfg.src);
-            }
-            if (!stlUrl) {
-                console.warn('[3D Viewer] No STL URL resolved for:', cfg.src);
-                this.toggleEmpty();
-                return;
-            }
-
-            try {
-                await ensureThreeJSLoaded();
-                await ensureRuntimeLoaded();
-
-                // Tear down any previous instance bound to this wrapper.
-                globalScope.eXe3DViewer.destroy(this.wrapper);
-
-                globalScope.eXe3DViewer.init(this.wrapper, {
-                    src: stlUrl,
-                    type: 'stl',
-                    modelColor: cfg.modelColor || '#888888',
-                    backgroundColor: cfg.backgroundColor || DEFAULT_BACKGROUND,
-                    cameraControls: !!cfg.cameraControls,
-                    autoRotate: !!cfg.autoRotate,
-                    autoRotateSpeed: cfg.autoRotateSpeed || 30,
-                });
-
-                // Expose runtime fields for nudgeCamera (the runtime
-                // populates these asynchronously inside bootSTL; nudge
-                // reads them later when the user clicks).
-                const inst = globalScope.eXe3DViewer.getInstance(this.wrapper);
-                if (inst) {
-                    this._threeJSRenderer = inst.renderer;
-                    this._threeJSControls = inst.controls;
-                    this._threeJSCamera = inst.camera;
-                }
-
-                // Hide the empty-state overlay now that a model is configured
-                // and the STL renderer has booted. The shared runtime also
-                // clears it after a successful parse (three-d-viewer-runtime.js),
-                // but doing it here makes the result deterministic regardless of
-                // the async parse timing — and keeps STL aligned with the
-                // GLB/GLTF path (issue #1957).
-                this.toggleEmpty();
-            } catch (err) {
-                console.error('[3D Viewer] Failed to render STL:', err);
-                this.toggleEmpty();
-            }
-        }
-
-        /**
-         * Hook model-viewer events once the element is defined.
-         */
-        setupEvents() {
-            if (!this.modelViewer) return;
-
-            // Hide empty state when model loads
-            this.modelViewer.addEventListener('load', () => {
-                this.updateAnimationOptions();
-                this.applyAnimation();
-                this.toggleEmpty();
-            });
-
-            // Also observe src attribute changes (for async blob URL resolution)
-            const observer = new MutationObserver((mutations) => {
-                for (const mutation of mutations) {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
-                        this.toggleEmpty();
-                    }
-                }
-            });
-            observer.observe(this.modelViewer, { attributes: true, attributeFilter: ['src'] });
-        }
-
-        /**
-         * Apply config to the <model-viewer> element.
-         */
-        async applyConfig() {
-            if (!this.modelViewer) return;
-            const cfg = this.config;
-
-            // First try synchronous resolution
-            let viewerSrc = resolveRuntimeSrc(cfg.src, this.ideviceId);
-
-            // If src is an asset:// URL and sync resolution returned empty, try async
-            if (!viewerSrc && cfg.src && cfg.src.startsWith('asset://')) {
-                viewerSrc = await resolveAssetUrlAsync(cfg.src);
-            }
-
-            if (viewerSrc) {
-                this.modelViewer.src = viewerSrc;
-                // model-viewer's property doesn't always reflect to the
-                // attribute reliably (custom-element timing), so set both.
-                this.modelViewer.setAttribute('src', viewerSrc);
-            }
-
-            const alt = cfg.alt || '';
-            this.modelViewer.alt = alt;
-            if (alt) {
-                this.modelViewer.setAttribute('aria-label', alt);
-            } else {
-                this.modelViewer.removeAttribute('aria-label');
-            }
-
-            // Only apply background if it's explicitly set in config
-            // Otherwise, preserve whatever was set in the HTML
-            if (cfg.backgroundColor) {
-                this.modelViewer.style.backgroundColor = cfg.backgroundColor;
-            }
-
-            this.modelViewer.setAttribute('shadow-intensity', '1');
-            this.modelViewer.setAttribute('tone-mapping', 'pbr-neutral');
-
-            if (cfg.cameraControls) {
-                this.modelViewer.setAttribute('camera-controls', '');
-            } else {
-                this.modelViewer.removeAttribute('camera-controls');
-            }
-
-            if (cfg.autoRotate) {
-                this.modelViewer.setAttribute('auto-rotate', '');
-                this.modelViewer.setAttribute('rotation-per-second', `${cfg.autoRotateSpeed || 30}deg`);
-            } else {
-                this.modelViewer.removeAttribute('auto-rotate');
-                this.modelViewer.removeAttribute('rotation-per-second');
-            }
-
-            this.applyAnimation();
-            this.toggleEmpty();
-        }
-
-        /**
-         * Cache available animations from the loaded model, if any.
-         */
-        updateAnimationOptions() {
-            if (!this.modelViewer) return;
-            this.availableAnimations = Array.from(this.modelViewer.availableAnimations || []);
-            if (!this.availableAnimations.length) {
-                this.config.animation.name = '';
-                this.config.animation.enabled = false;
-            } else if (!this.availableAnimations.includes(this.config.animation.name)) {
-                this.config.animation.name = this.availableAnimations[0];
-            }
-        }
-
-        /**
-         * Apply animation state (play/pause/speed/name).
-         */
-        applyAnimation() {
-            if (!this.modelViewer) return;
-            const animation = this.config.animation || {};
-            if (!animation.enabled) {
-                this.modelViewer.pause?.();
-                this.announce(translate('viewer.animation_paused'));
-                return;
-            }
-            const available = this.availableAnimations.length
-                ? this.availableAnimations
-                : Array.from(this.modelViewer.availableAnimations || []);
-            const name = animation.name && available.includes(animation.name)
-                ? animation.name
-                : available[0];
-
-            if (!name) {
-                this.modelViewer.pause?.();
-                return;
-            }
-
-            this.modelViewer.animationName = name;
-            this.modelViewer.animationSpeed = animation.speed || 1;
-            this.modelViewer.play?.({ repetitions: Infinity });
-            this.announce(`${translate('viewer.animation_enabled')}: ${name}`);
-        }
-
-        /**
-         * Show/hide empty-state banner.
-         */
-        toggleEmpty() {
-            if (!this.emptyState) return;
-            const viewerSrc = this.modelViewer?.getAttribute('src') || this.modelViewer?.src || '';
-            this.emptyState.style.display = computeEmptyStateDisplay(this.config.src, viewerSrc);
-        }
-
-        /**
-         * Announce a short message to screen readers.
-         * @param {string} message
-         */
-        announce(message) {
-            if (!this.ariaLive) return;
-            this.ariaLive.textContent = message;
-        }
+  }
+  async function resolveModelSource(src, assetManager) {
+    if (typeof src !== "string") {
+      return "";
     }
+    const trimmed = src.trim();
+    if (!trimmed) {
+      return "";
+    }
+    if (!trimmed.startsWith("asset://")) {
+      return trimmed;
+    }
+    const manager = assetManager ?? getAssetManager();
+    if (!manager) {
+      return "";
+    }
+    try {
+      const sync = manager.resolveAssetURLSync?.(trimmed);
+      if (sync) {
+        return sync;
+      }
+      const resolved = await manager.resolveAssetURL?.(trimmed);
+      return resolved ?? "";
+    } catch {
+      return "";
+    }
+  }
+  function resolveMediaUrlSync(url, assetManager) {
+    const raw = typeof url === "string" ? url.trim() : "";
+    if (!raw || !raw.startsWith("asset://")) {
+      return raw;
+    }
+    const manager = assetManager ?? getAssetManager();
+    if (!manager?.resolveAssetURLSync) {
+      return raw;
+    }
+    try {
+      return manager.resolveAssetURLSync(raw) || raw;
+    } catch {
+      return raw;
+    }
+  }
+  async function resolveAssetUrlAsync(assetUrl, timeoutMs = 1e4, pollIntervalMs = 100) {
+    if (!assetUrl.startsWith("asset://")) {
+      return null;
+    }
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const resolved = await resolveModelSource(assetUrl);
+      if (resolved) {
+        return resolved;
+      }
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+    return null;
+  }
 
-    // ---------------------------------------------------------------------
-    // Export helper class (used by the eXe engine to serialize/deserialize)
-    // ---------------------------------------------------------------------
-    if (!globalScope.ThreeDViewerExportObject) {
-        globalScope.ThreeDViewerExportObject = class {
-            init(node, resources) {
-                this.node = node;
-                this.resources = resources || null;
-                return true;
-            }
-            toJSON() {
-                if (this.node && typeof this.node.get3DViewerJSON === 'function') {
-                    return this.node.get3DViewerJSON();
-                }
-                return {};
-            }
-            fromJSON(data) {
-                if (this.node && typeof this.node.set3DViewerJSON === 'function') {
-                    this.node.set3DViewerJSON(data || {});
-                }
-            }
+  // public/files/perm/idevices/base/three-d-viewer/src/shared/html.ts
+  var ESCAPES = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  };
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ESCAPES[char] ?? char);
+  }
+  function stripHtmlToText(html) {
+    return String(html ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  }
+  function escapeJsonForScript(value) {
+    return JSON.stringify(value).replace(/</g, "\\u003c");
+  }
+  var BANNED_TAGS = new Set([
+    "SCRIPT",
+    "STYLE",
+    "IFRAME",
+    "OBJECT",
+    "EMBED",
+    "LINK",
+    "META",
+    "BASE",
+    "FORM",
+    "FRAME",
+    "FRAMESET",
+    "FOREIGNOBJECT",
+    "ANNOTATION-XML"
+  ]);
+  var URL_ATTRIBUTES = new Set([
+    "href",
+    "src",
+    "srcset",
+    "srcdoc",
+    "xlink:href",
+    "action",
+    "formaction",
+    "poster",
+    "ping",
+    "data",
+    "background"
+  ]);
+  function sanitizeElement(element) {
+    if (BANNED_TAGS.has(element.tagName.toUpperCase())) {
+      element.remove();
+      return false;
+    }
+    for (const attribute of Array.from(element.attributes)) {
+      const name = attribute.name.toLowerCase();
+      if (name.startsWith("on")) {
+        element.removeAttribute(attribute.name);
+        continue;
+      }
+      if (URL_ATTRIBUTES.has(name) && !safeUrl(attribute.value)) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+    return true;
+  }
+  function sanitizeChildren(node) {
+    for (const child of Array.from(node.childNodes)) {
+      if (child.nodeType !== 1) {
+        continue;
+      }
+      if (sanitizeElement(child)) {
+        sanitizeChildren(child);
+      }
+    }
+  }
+  function sanitizeHtml(html) {
+    const source = typeof html === "string" ? html : "";
+    if (!source) {
+      return "";
+    }
+    if (typeof document === "undefined" || typeof document.createElement !== "function") {
+      return escapeHtml(source);
+    }
+    const template = document.createElement("template");
+    template.innerHTML = source;
+    sanitizeChildren(template.content);
+    return template.innerHTML;
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/interactions/dialog.ts
+  var FOCUSABLE_SELECTOR = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  function getFocusable(container) {
+    return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR)).filter((element) => element.offsetParent !== null || element === document.activeElement);
+  }
+  function openDialog(options, buildBody) {
+    const previouslyFocused = document.activeElement;
+    const overlay = document.createElement("div");
+    overlay.className = "tdv-dialog-overlay";
+    const dialog = document.createElement("div");
+    dialog.className = "tdv-dialog";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.setAttribute("aria-label", options.title);
+    const header = document.createElement("div");
+    header.className = "tdv-dialog-header";
+    const heading = document.createElement("h2");
+    heading.className = "tdv-dialog-title";
+    heading.textContent = options.title;
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = "tdv-dialog-close";
+    closeButton.setAttribute("aria-label", options.closeLabel);
+    closeButton.textContent = "✕";
+    header.append(heading, closeButton);
+    const body = document.createElement("div");
+    body.className = "tdv-dialog-body";
+    dialog.append(header, body);
+    overlay.appendChild(dialog);
+    (options.host ?? document.body).appendChild(overlay);
+    buildBody(body);
+    let closed = false;
+    const close = () => {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      try {
+        overlay.remove();
+      } catch {}
+      if (previouslyFocused instanceof HTMLElement) {
+        try {
+          previouslyFocused.focus();
+        } catch {}
+      }
+      options.onClose?.();
+    };
+    closeButton.addEventListener("click", close);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        close();
+      }
+    });
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        close();
+        return;
+      }
+      if (event.key !== "Tab") {
+        return;
+      }
+      const focusable = getFocusable(dialog);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) {
+        return;
+      }
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
+    try {
+      closeButton.focus();
+    } catch {}
+    return { overlay, dialog, body, close };
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/interactions/fallback.ts
+  var webglAvailable = null;
+  function hasWebGL() {
+    if (typeof globalThis.__tdvForceWebGL === "boolean") {
+      return globalThis.__tdvForceWebGL;
+    }
+    if (webglAvailable !== null) {
+      return webglAvailable;
+    }
+    try {
+      if (typeof document === "undefined" || typeof document.createElement !== "function") {
+        webglAvailable = true;
+        return webglAvailable;
+      }
+      const canvas = document.createElement("canvas");
+      webglAvailable = Boolean(canvas.getContext && (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")));
+    } catch {
+      webglAvailable = false;
+    }
+    return webglAvailable;
+  }
+  function revealFallback(wrapper, show) {
+    const list = wrapper?.querySelector(".tdv-fallback");
+    if (list) {
+      list.hidden = !show;
+    }
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/interactions/guided-navigation.ts
+  function resolveStepIndex(current, delta, total, wrap) {
+    if (total <= 0) {
+      return null;
+    }
+    const start = current < 0 ? delta > 0 ? -1 : total : current;
+    const next = start + delta;
+    if (wrap) {
+      return (next % total + total) % total;
+    }
+    return next < 0 || next >= total ? null : next;
+  }
+  function buildControls(t) {
+    const nav = document.createElement("div");
+    nav.className = "tdv-guided-nav";
+    nav.setAttribute("data-guided", "");
+    const previous = document.createElement("button");
+    previous.type = "button";
+    previous.className = "tdv-nav-prev";
+    previous.textContent = t("Previous");
+    const status = document.createElement("span");
+    status.className = "tdv-guided-status";
+    status.setAttribute("aria-live", "polite");
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "tdv-nav-next";
+    next.textContent = t("Next");
+    nav.append(previous, status, next);
+    return nav;
+  }
+  function createGuidedNavigation(wrapper, deps) {
+    let nav = wrapper?.querySelector(".tdv-guided-nav") ?? null;
+    let created = false;
+    const listeners = [];
+    const ensureNav = () => {
+      if (nav || !wrapper) {
+        return nav;
+      }
+      nav = buildControls(deps.t);
+      created = true;
+      wrapper.appendChild(nav);
+      return nav;
+    };
+    const bindOnce = (element) => {
+      if (element.dataset.tdvBound === "1") {
+        return;
+      }
+      element.dataset.tdvBound = "1";
+      const previousButton = element.querySelector(".tdv-nav-prev");
+      const nextButton = element.querySelector(".tdv-nav-next");
+      if (previousButton) {
+        const handler = () => deps.onGo(-1);
+        previousButton.addEventListener("click", handler);
+        listeners.push(() => previousButton.removeEventListener("click", handler));
+      }
+      if (nextButton) {
+        const handler = () => deps.onGo(1);
+        nextButton.addEventListener("click", handler);
+        listeners.push(() => nextButton.removeEventListener("click", handler));
+      }
+    };
+    return {
+      update({ enabled, index, total, wrap }) {
+        if (!enabled) {
+          if (nav) {
+            nav.hidden = true;
+          }
+          return;
+        }
+        const element = ensureNav();
+        if (!element) {
+          return;
+        }
+        element.hidden = false;
+        const previousButton = element.querySelector(".tdv-nav-prev");
+        const nextButton = element.querySelector(".tdv-nav-next");
+        if (previousButton && !previousButton.textContent) {
+          previousButton.textContent = deps.t("Previous");
+        }
+        if (nextButton && !nextButton.textContent) {
+          nextButton.textContent = deps.t("Next");
+        }
+        bindOnce(element);
+        const empty = total === 0;
+        if (previousButton) {
+          previousButton.disabled = empty || !wrap && index <= 0;
+        }
+        if (nextButton) {
+          nextButton.disabled = empty || !wrap && index >= total - 1;
+        }
+        const status = element.querySelector(".tdv-guided-status");
+        if (status) {
+          status.textContent = `${deps.t("Marker")} ${index < 0 ? 0 : index + 1} / ${total}`;
+        }
+      },
+      destroy() {
+        for (const off of listeners) {
+          off();
+        }
+        listeners.length = 0;
+        if (created && nav) {
+          try {
+            nav.remove();
+          } catch {}
+        }
+        nav = null;
+      }
+    };
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/shared/scoring.ts
+  var SCORE_SCALE = 10;
+  function gradeSingleChoice(question, selectedOptionId) {
+    const chosen = question.options.find((option) => option.id === selectedOptionId);
+    return Boolean(chosen?.correct);
+  }
+  function questionMarkers(markers) {
+    return markers.filter((marker) => marker.action.type === "question");
+  }
+  function computeScore(markers, correctMarkerIds) {
+    const questions = questionMarkers(markers);
+    if (questions.length === 0) {
+      return 0;
+    }
+    const correct = questions.filter((marker) => correctMarkerIds.has(marker.id)).length;
+    return correct * SCORE_SCALE / questions.length;
+  }
+  function isActivityComplete(markers, correctMarkerIds) {
+    const questions = questionMarkers(markers);
+    return questions.length > 0 && questions.every((marker) => correctMarkerIds.has(marker.id));
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/interactions/question.ts
+  function lockQuestion(inputs, checkButton) {
+    checkButton.disabled = true;
+    for (const input of inputs) {
+      input.disabled = true;
+    }
+  }
+  function renderQuestion(body, marker, deps) {
+    if (marker.action.type !== "question") {
+      return;
+    }
+    const question = marker.action.payload;
+    const { answers, t } = deps;
+    const state = answers.get(marker.id);
+    const fieldset = document.createElement("fieldset");
+    fieldset.className = "tdv-question";
+    const legend = document.createElement("legend");
+    legend.className = "tdv-question-prompt";
+    legend.textContent = question.prompt;
+    fieldset.appendChild(legend);
+    const groupName = `tdv-q-${marker.id}`;
+    const inputs = [];
+    for (const option of question.options) {
+      const label = document.createElement("label");
+      label.className = "tdv-question-option";
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = groupName;
+      input.value = option.id;
+      if (option.id === state.selectedOptionId) {
+        input.checked = true;
+      }
+      const text = document.createElement("span");
+      text.textContent = option.text;
+      label.append(input, text);
+      fieldset.appendChild(label);
+      inputs.push(input);
+    }
+    const checkButton = document.createElement("button");
+    checkButton.type = "button";
+    checkButton.className = "tdv-q-check";
+    checkButton.textContent = t("Check");
+    const feedback = document.createElement("div");
+    feedback.className = "tdv-q-feedback";
+    feedback.setAttribute("role", "status");
+    feedback.setAttribute("aria-live", "polite");
+    body.append(fieldset, checkButton, feedback);
+    if (state.resolved) {
+      feedback.className = "tdv-q-feedback tdv-q-feedback--correct";
+      feedback.textContent = question.feedbackCorrect || t("Correct");
+      lockQuestion(inputs, checkButton);
+    } else if (answers.isExhausted(marker.id, question.attemptsAllowed)) {
+      feedback.className = "tdv-q-feedback tdv-q-feedback--incorrect";
+      feedback.textContent = `${question.feedbackIncorrect || t("Incorrect")} ${t("No attempts left")}`;
+      lockQuestion(inputs, checkButton);
+    }
+    checkButton.addEventListener("click", () => {
+      const chosen = inputs.find((input) => input.checked);
+      if (!chosen) {
+        feedback.className = "tdv-q-feedback";
+        feedback.textContent = t("Please select an answer");
+        return;
+      }
+      const correct = gradeSingleChoice(question, chosen.value);
+      const next = answers.recordAttempt(marker.id, chosen.value, correct);
+      try {
+        deps.onAnswered?.(marker.id, correct);
+      } catch {}
+      if (correct) {
+        feedback.className = "tdv-q-feedback tdv-q-feedback--correct";
+        feedback.textContent = question.feedbackCorrect || t("Correct");
+        lockQuestion(inputs, checkButton);
+        return;
+      }
+      feedback.className = "tdv-q-feedback tdv-q-feedback--incorrect";
+      let message = question.feedbackIncorrect || t("Incorrect");
+      if (question.attemptsAllowed > 0 && next.attempts >= question.attemptsAllowed) {
+        lockQuestion(inputs, checkButton);
+        message += ` ${t("No attempts left")}`;
+      }
+      feedback.textContent = message;
+    });
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/interactions/state.ts
+  function emptyState() {
+    return { attempts: 0, resolved: false, selectedOptionId: "" };
+  }
+  function createAnswerStore() {
+    const states = new Map;
+    const get = (markerId) => states.get(markerId) ?? emptyState();
+    return {
+      get,
+      recordAttempt(markerId, selectedOptionId, correct) {
+        const previous = get(markerId);
+        const next = {
+          attempts: previous.attempts + 1,
+          resolved: previous.resolved || correct,
+          selectedOptionId
         };
+        states.set(markerId, next);
+        return next;
+      },
+      isExhausted(markerId, attemptsAllowed) {
+        if (attemptsAllowed <= 0) {
+          return false;
+        }
+        return get(markerId).attempts >= attemptsAllowed;
+      },
+      correctMarkerIds() {
+        const ids = new Set;
+        for (const [markerId, state] of states) {
+          if (state.resolved) {
+            ids.add(markerId);
+          }
+        }
+        return ids;
+      },
+      retain(markerIds) {
+        const keep = new Set(markerIds);
+        for (const markerId of [...states.keys()]) {
+          if (!keep.has(markerId)) {
+            states.delete(markerId);
+          }
+        }
+      },
+      clear() {
+        states.clear();
+      }
+    };
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/interactions/controller.ts
+  var EMPTY_CAMERA3 = { orbit: "", target: "", fieldOfView: "" };
+  function emptyState2() {
+    return {
+      enabled: false,
+      guidedMode: false,
+      wrapNavigation: false,
+      showMarkerLabels: true,
+      activeMarkerId: "",
+      markers: []
+    };
+  }
+  function buildActionBody(body, marker, deps) {
+    if (marker.description) {
+      const description = document.createElement("p");
+      description.className = "tdv-dialog-description";
+      description.textContent = marker.description;
+      body.appendChild(description);
     }
+    const action = marker.action;
+    switch (action.type) {
+      case "information": {
+        const container = document.createElement("div");
+        container.className = "tdv-dialog-html";
+        container.innerHTML = deps.sanitize(action.payload.html);
+        body.appendChild(container);
+        return;
+      }
+      case "image": {
+        const figure = document.createElement("figure");
+        figure.className = "tdv-dialog-figure";
+        const image = document.createElement("img");
+        image.src = deps.resolveMedia(action.payload.src);
+        image.alt = action.payload.alt;
+        figure.appendChild(image);
+        if (action.payload.caption) {
+          const caption = document.createElement("figcaption");
+          caption.textContent = action.payload.caption;
+          figure.appendChild(caption);
+        }
+        body.appendChild(figure);
+        return;
+      }
+      case "video": {
+        const video = document.createElement("video");
+        video.className = "tdv-dialog-video";
+        video.controls = true;
+        video.src = deps.resolveMedia(action.payload.src);
+        if (action.payload.poster) {
+          video.poster = deps.resolveMedia(action.payload.poster);
+        }
+        body.appendChild(video);
+        return;
+      }
+      case "link":
+      case "question":
+        return;
+    }
+  }
+  function createInteractionController(handle, interaction, mode, hooks = {}) {
+    const wrapper = handle.wrapper;
+    const translate = hooks.t ?? ((key) => key);
+    const resolveMedia = hooks.resolveMediaUrl ?? ((url) => resolveMediaUrlSync(url));
+    const sanitize = hooks.sanitizeHtml ?? sanitizeHtml;
+    const answers = createAnswerStore();
+    let state = interaction ?? emptyState2();
+    let markers = state.markers;
+    let activeId = "";
+    let destroyed = false;
+    let dialog = null;
+    let adapter = null;
+    let guided = null;
+    const markerLabel = (marker, index) => marker.label || `${translate("Marker")} ${index + 1}`;
+    const closeDialog = () => {
+      dialog?.close();
+      dialog = null;
+    };
+    const currentIndex = () => markers.findIndex((marker) => marker.id === activeId);
+    const updateGuided = () => {
+      guided?.update({
+        enabled: Boolean(state.guidedMode),
+        index: currentIndex(),
+        total: markers.length,
+        wrap: Boolean(state.wrapNavigation)
+      });
+    };
+    const setActive = (markerId) => {
+      activeId = markerId;
+      adapter?.setActive(activeId);
+      updateGuided();
+    };
+    const activateMarker = (marker, index) => {
+      if (marker.action.type === "link") {
+        const url = safeUrl(marker.action.payload.url);
+        if (!url) {
+          return;
+        }
+        if (marker.action.payload.newTab) {
+          globalThis.open(url, "_blank", "noopener,noreferrer");
+        } else if (globalThis.location) {
+          globalThis.location.href = url;
+        }
+        return;
+      }
+      closeDialog();
+      dialog = openDialog({
+        title: markerLabel(marker, index),
+        closeLabel: translate("Close"),
+        host: wrapper ?? null,
+        onClose: () => {
+          dialog = null;
+        }
+      }, (body) => {
+        buildActionBody(body, marker, { sanitize, resolveMedia });
+        if (marker.action.type === "question") {
+          renderQuestion(body, marker, {
+            answers,
+            t: translate,
+            onAnswered: hooks.onQuestionAnswered
+          });
+        }
+      });
+      hooks.onActivate?.(marker.id);
+    };
+    const focusMarker = (markerId) => {
+      const index = markers.findIndex((marker2) => marker2.id === markerId);
+      const marker = markers[index];
+      if (!marker) {
+        return;
+      }
+      setActive(markerId);
+      adapter?.focusMarker(marker);
+      activateMarker(marker, index);
+    };
+    const go = (delta) => {
+      const next = resolveStepIndex(currentIndex(), delta, markers.length, Boolean(state.wrapNavigation));
+      const marker = next === null ? undefined : markers[next];
+      if (marker) {
+        focusMarker(marker.id);
+      }
+    };
+    const render = () => {
+      if (destroyed) {
+        return;
+      }
+      markers = state.markers;
+      if (adapter) {
+        adapter.renderMarkers(markers, {
+          showLabels: state.showMarkerLabels !== false,
+          activeId
+        });
+        revealFallback(wrapper, !hasWebGL());
+      } else {
+        revealFallback(wrapper, true);
+      }
+      updateGuided();
+    };
+    const controller = {
+      setState(next) {
+        state = next ?? emptyState2();
+        const ids = state.markers.map((marker) => marker.id);
+        if (activeId && !ids.includes(activeId)) {
+          activeId = "";
+        }
+        answers.retain(ids);
+        render();
+      },
+      render,
+      enterPlacementMode() {
+        if (!adapter || mode !== "edit") {
+          return;
+        }
+        wrapper?.classList.add("tdv-placing");
+        adapter.enterPlacementMode((placement) => {
+          controller.exitPlacementMode();
+          hooks.onPlaced?.(placement);
+        });
+      },
+      exitPlacementMode() {
+        wrapper?.classList.remove("tdv-placing");
+        adapter?.exitPlacementMode();
+      },
+      focusMarker,
+      captureCamera: () => adapter?.captureCamera() ?? { ...EMPTY_CAMERA3 },
+      next: () => go(1),
+      previous: () => go(-1),
+      getActiveId: () => activeId,
+      markerLabel,
+      destroy() {
+        if (destroyed) {
+          return;
+        }
+        destroyed = true;
+        controller.exitPlacementMode();
+        closeDialog();
+        guided?.destroy();
+        guided = null;
+        adapter?.destroy();
+        adapter = null;
+        answers.clear();
+      }
+    };
+    const adapterDeps = { markerLabel, onActivate: focusMarker };
+    if ((handle.type === "glb" || handle.type === "gltf") && handle.modelViewer) {
+      adapter = createModelViewerAdapter(handle.modelViewer, adapterDeps);
+    } else if (handle.type === "stl" && handle.instance) {
+      adapter = createStlAdapter(handle.instance, wrapper, adapterDeps);
+    }
+    guided = createGuidedNavigation(wrapper ?? null, { t: translate, onGo: go });
+    render();
+    return controller;
+  }
 
-    // ---------------------------------------------------------------------
-    // Public API expected by eXe iDevice engine in export runtime
-    // ---------------------------------------------------------------------
-    globalScope.$threedviewer = globalScope.$threedviewer || {};
+  // public/files/perm/idevices/base/three-d-viewer/src/shared/colors.ts
+  var DEFAULT_MODEL_COLOR = "#888888";
+  var DEFAULT_BACKGROUND_COLOR = "#f5f5f5";
+  var HEX6 = /^#[0-9a-f]{6}$/;
+  var HEX3 = /^#[0-9a-f]{3}$/;
+  function normalizeColor(value, fallback = DEFAULT_MODEL_COLOR) {
+    if (typeof value !== "string") {
+      return fallback;
+    }
+    const trimmed = value.trim().toLowerCase();
+    if (HEX6.test(trimmed)) {
+      return trimmed;
+    }
+    if (HEX3.test(trimmed)) {
+      const r = trimmed[1] ?? "0";
+      const g = trimmed[2] ?? "0";
+      const b = trimmed[3] ?? "0";
+      return `#${r}${r}${g}${g}${b}${b}`;
+    }
+    return fallback;
+  }
 
-    Object.assign(globalScope.$threedviewer, {
-        /**
-         * Build the static HTML of the view.
-         * Injects a modulepreload hint for the model-viewer library.
-         */
-        renderView: function (data, accessibility, template) {
-            data = data || {};
+  // public/files/perm/idevices/base/three-d-viewer/src/runtime/instance-registry.ts
+  function createRegistry() {
+    const instances = new Map;
+    const destroy = (wrapper) => {
+      const instance = instances.get(wrapper);
+      if (!instance) {
+        return;
+      }
+      instances.delete(wrapper);
+      disposeInstance(instance);
+    };
+    return {
+      get: (wrapper) => instances.get(wrapper),
+      set: (wrapper, instance) => {
+        instances.set(wrapper, instance);
+      },
+      has: (wrapper) => instances.has(wrapper),
+      destroy,
+      destroyAll: () => {
+        for (const wrapper of [...instances.keys()].reverse()) {
+          destroy(wrapper);
+        }
+      },
+      wrappers: () => [...instances.keys()]
+    };
+  }
 
-            const viewerId = data.ideviceId || `three-d-viewer-${Date.now()}`;
-            const anim = data.animation || {};
-            const showNavControls = !!data.showNavControls;
-            const cfg = {
-                src: normalizePath(data.src),
-                alt: data.alt || '',
-                modelColor: data.modelColor || '#888888',
-                backgroundColor: data.backgroundColor || DEFAULT_BACKGROUND,
-                cameraControls: data.cameraControls !== false,
-                // Mutually exclusive: nav controls override auto-rotate
-                autoRotate: !showNavControls && data.autoRotate !== false,
-                autoRotateSpeed: Number.isFinite(parseFloat(data.autoRotateSpeed))
-                    ? parseFloat(data.autoRotateSpeed)
-                    : 30,
-                showNavControls,
-                animation: {
-                    enabled: !!anim.enabled,
-                    name: anim.name || '',
-                    speed: Number.isFinite(parseFloat(anim.speed)) ? parseFloat(anim.speed) : 1
-                }
-            };
+  // public/files/perm/idevices/base/three-d-viewer/src/runtime/stl-renderer.ts
+  var NORMALIZED_SIZE = 2;
+  function configureRendererColorManagement(renderer) {
+    const three = globalThis.THREE;
+    if (!three || !renderer) {
+      return;
+    }
+    if (three.ColorManagement && "enabled" in three.ColorManagement) {
+      three.ColorManagement.enabled = true;
+    }
+    if ("outputColorSpace" in renderer && three.SRGBColorSpace !== undefined) {
+      renderer.outputColorSpace = three.SRGBColorSpace;
+    } else if ("outputEncoding" in renderer && three.sRGBEncoding !== undefined) {
+      renderer.outputEncoding = three.sRGBEncoding;
+    }
+    if ("toneMapping" in renderer && three.NoToneMapping !== undefined) {
+      renderer.toneMapping = three.NoToneMapping;
+    }
+  }
+  function ensureCanvas(wrapper) {
+    const existing = wrapper.querySelector("canvas.three-js-canvas");
+    if (existing) {
+      return existing;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.className = "three-js-canvas";
+    canvas.style.cssText = "width: 100%; height: 100%; display: block;";
+    wrapper.appendChild(canvas);
+    return canvas;
+  }
+  function requestFrame(callback) {
+    const raf = globalThis.requestAnimationFrame;
+    return typeof raf === "function" ? raf(callback) : setTimeout(callback, 16);
+  }
+  async function bootStl(instance) {
+    const three = globalThis.THREE;
+    if (!three?.STLLoader || instance.stopped) {
+      return;
+    }
+    const { options, wrapper } = instance;
+    const url = await resolveModelSource(options.src);
+    if (instance.stopped || !url) {
+      return;
+    }
+    const canvas = ensureCanvas(wrapper);
+    instance.canvas = canvas;
+    const modelViewer = wrapper.querySelector("model-viewer");
+    if (modelViewer) {
+      modelViewer.style.display = "none";
+      instance.modelViewer = modelViewer;
+    }
+    const width = wrapper.clientWidth || 400;
+    const height = wrapper.clientHeight || 300;
+    const scene = new three.Scene;
+    scene.background = new three.Color(normalizeColor(options.backgroundColor, DEFAULT_BACKGROUND_COLOR));
+    const camera = new three.PerspectiveCamera(45, width / height, 0.1, 1000);
+    const renderer = new three.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio?.(Math.min(globalThis.devicePixelRatio || 1, 2));
+    configureRendererColorManagement(renderer);
+    instance.scene = scene;
+    instance.camera = camera;
+    instance.renderer = renderer;
+    scene.add(new three.AmbientLight(16777215, 0.6));
+    const keyLight = new three.DirectionalLight(16777215, 0.8);
+    keyLight.position.set(1, 1, 1);
+    scene.add(keyLight);
+    const fillLight = new three.DirectionalLight(16777215, 0.4);
+    fillLight.position.set(-1, -1, -1);
+    scene.add(fillLight);
+    try {
+      const response = await fetch(url);
+      if (instance.stopped) {
+        return;
+      }
+      const buffer = await response.arrayBuffer();
+      if (instance.stopped) {
+        return;
+      }
+      const geometry = new three.STLLoader().parse(buffer);
+      geometry.computeBoundingBox();
+      geometry.center();
+      const size = geometry.boundingBox?.getSize(new three.Vector3);
+      const maxDimension = size ? Math.max(size.x, size.y, size.z) || 1 : 1;
+      const scale = NORMALIZED_SIZE / maxDimension;
+      geometry.scale(scale, scale, scale);
+      if (!geometry.hasAttribute("normal")) {
+        geometry.computeVertexNormals();
+      }
+      const material = new three.MeshStandardMaterial({
+        color: new three.Color(normalizeColor(options.modelColor, DEFAULT_MODEL_COLOR)),
+        metalness: 0,
+        roughness: 0.55
+      });
+      const mesh = new three.Mesh(geometry, material);
+      scene.add(mesh);
+      camera.position.set(3, 3, 3);
+      camera.lookAt(0, 0, 0);
+      let controls = null;
+      if (options.cameraControls && three.OrbitControls) {
+        const orbitControls = new three.OrbitControls(camera, canvas);
+        orbitControls.enableDamping = true;
+        orbitControls.dampingFactor = 0.05;
+        controls = orbitControls;
+      }
+      instance.mesh = mesh;
+      instance.geometry = geometry;
+      instance.material = material;
+      instance.controls = controls;
+      const autoRotate = options.autoRotate;
+      const radiansPerSecond = (options.autoRotateSpeed || 30) * Math.PI / 180;
+      const animate = () => {
+        if (instance.stopped || !instance.renderer || !instance.scene || !instance.camera) {
+          return;
+        }
+        if (autoRotate && instance.mesh) {
+          instance.mesh.rotation.y += radiansPerSecond / 60;
+        }
+        instance.controls?.update?.();
+        for (const callback of instance.onFrame) {
+          try {
+            callback();
+          } catch {}
+        }
+        instance.renderer.render(instance.scene, instance.camera);
+        instance.rafId = requestFrame(animate);
+      };
+      animate();
+      const empty = wrapper.querySelector("[data-empty], [data-empty-state]");
+      if (empty) {
+        empty.style.display = "none";
+      }
+    } catch (error) {
+      console.error("[3D Viewer] Failed to render STL:", error);
+    }
+  }
 
-            // Preload the ES module for faster first paint
-            appendModulePreloadOnce(getModelViewerLibUrl());
+  // public/files/perm/idevices/base/three-d-viewer/src/runtime/viewer-runtime.ts
+  function readWrapperOptions(wrapper) {
+    const data = wrapper.dataset;
+    const showNavControls = data.showNavControls === "true";
+    const src = normalizeModelSource(data.modelSrc ?? "");
+    return {
+      src,
+      type: data.modelType || detectModelType(src),
+      modelColor: normalizeColor(data.modelColor, DEFAULT_MODEL_COLOR),
+      backgroundColor: normalizeColor(data.backgroundColor, DEFAULT_BACKGROUND_COLOR),
+      cameraControls: data.cameraControls !== "false",
+      autoRotate: !showNavControls && data.autoRotate !== "false",
+      autoRotateSpeed: Number.parseFloat(data.autoRotateSpeed ?? "") || 30
+    };
+  }
+  function createViewerRuntime() {
+    const registry = createRegistry();
+    let unloadBound = false;
+    const bindUnloadOnce = () => {
+      if (unloadBound || typeof globalThis.addEventListener !== "function") {
+        return;
+      }
+      unloadBound = true;
+      globalThis.addEventListener("beforeunload", () => registry.destroyAll());
+    };
+    return {
+      init(wrapper, options) {
+        if (!wrapper) {
+          return null;
+        }
+        const existing = registry.get(wrapper);
+        if (existing) {
+          return existing;
+        }
+        const instance = createInstance(wrapper, options ?? readWrapperOptions(wrapper));
+        registry.set(wrapper, instance);
+        bindUnloadOnce();
+        if (instance.type === "stl" && instance.options.src) {
+          bootStl(instance).catch((error) => {
+            console.error("[3D Viewer] STL boot failed:", error);
+          });
+        }
+        return instance;
+      },
+      destroy: (wrapper) => registry.destroy(wrapper),
+      destroyAll: () => registry.destroyAll(),
+      getInstance: (wrapper) => registry.get(wrapper) ?? null,
+      createInteractionLayer: (handle, interaction, mode, hooks) => createInteractionController(handle, interaction, mode, hooks),
+      detectModelType,
+      normalizeColor,
+      normalizeModelSource,
+      resolveModelSource,
+      configureRendererColorManagement,
+      disposeObject3D,
+      disposeMaterial,
+      readWrapperOptions,
+      registry
+    };
+  }
+  function publishViewerRuntime() {
+    const existing = globalThis.eXe3DViewer;
+    if (existing) {
+      return existing;
+    }
+    const runtime = createViewerRuntime();
+    globalThis.eXe3DViewer = runtime;
+    return runtime;
+  }
 
-            // Store current iDevice ID for asset:// resolution
-            globalScope.$threedviewer._currentIdeviceId = viewerId;
+  // public/files/perm/idevices/base/three-d-viewer/src/runtime/paths.ts
+  var LIB_RELATIVE_PATH = "files/perm/idevices/base/three-d-viewer/export/";
+  var EXPORT_LIB_PATH = "idevices/three-d-viewer/";
+  function parseRuntimeConfig() {
+    const config = globalThis.eXeLearning?.config;
+    if (typeof config !== "string") {
+      return config ?? null;
+    }
+    try {
+      return JSON.parse(config);
+    } catch {
+      return null;
+    }
+  }
+  function detectMode() {
+    const config = parseRuntimeConfig();
+    const documentId = typeof document !== "undefined" ? document.documentElement.id : "";
+    const isOnIndexPage = documentId === "exe-index";
+    return {
+      isStaticMode: Boolean(config?.isStaticMode || config?.isOfflineInstallation),
+      isServerMode: config?.baseURL !== undefined,
+      isExportMode: isOnIndexPage || typeof document !== "undefined" && document.querySelector('html[id^="exe-"]') !== null,
+      isOnIndexPage
+    };
+  }
+  function resolveAppUrl(path) {
+    const symfony = globalThis.eXeLearning?.symfony ?? {};
+    return joinAppUrl(symfony.baseURL, symfony.basePath, path);
+  }
+  function getIdeviceResourcesBase(ideviceId) {
+    if (!ideviceId) {
+      return "";
+    }
+    const onIndex = typeof document !== "undefined" && document.documentElement.id === "exe-index";
+    return onIndex ? `content/resources/${ideviceId}/` : `../content/resources/${ideviceId}/`;
+  }
+  function getExportLibBaseUrl() {
+    const mode = detectMode();
+    if (mode.isStaticMode) {
+      return `${globalThis.location?.origin ?? ""}/${LIB_RELATIVE_PATH}`;
+    }
+    if (mode.isServerMode) {
+      const config = parseRuntimeConfig();
+      const baseURL2 = String(config?.baseURL || globalThis.location?.origin || "").replace(/\/+$/g, "");
+      const basePath2 = config?.basePath ? `/${config.basePath.replace(/^\/+|\/+$/g, "")}` : "";
+      return `${baseURL2}${basePath2}/${LIB_RELATIVE_PATH}`;
+    }
+    if (mode.isExportMode) {
+      const href = globalThis.location?.href ?? "";
+      const pageBase = href.substring(0, href.lastIndexOf("/") + 1);
+      return `${pageBase}${mode.isOnIndexPage ? "" : "../"}${EXPORT_LIB_PATH}`;
+    }
+    const symfony = globalThis.eXeLearning?.symfony ?? {};
+    const baseURL = String(symfony.baseURL || globalThis.location?.origin || "").replace(/\/+$/g, "");
+    const basePath = symfony.basePath ? `/${String(symfony.basePath).replace(/^\/+|\/+$/g, "")}` : "";
+    return `${baseURL}${basePath}/${LIB_RELATIVE_PATH}`;
+  }
+  function getExportModelViewerUrl() {
+    const mode = detectMode();
+    const path = `${LIB_RELATIVE_PATH}model-viewer.min.js`;
+    if (mode.isStaticMode) {
+      return `./${path}`;
+    }
+    if (mode.isServerMode) {
+      return resolveAppUrl(path);
+    }
+    if (mode.isExportMode) {
+      return `${mode.isOnIndexPage ? "./" : "../"}${EXPORT_LIB_PATH}model-viewer.min.js`;
+    }
+    return resolveAppUrl(path);
+  }
 
-            // Optional interaction layer (markers / guided nav / questions).
-            const interaction = normalizeInteraction(data.interaction);
-            const scorm = normalizeScorm(data);
+  // public/files/perm/idevices/base/three-d-viewer/src/shared/types.ts
+  var MARKER_ICONS = ["circle", "pin", "info", "question", "star"];
+  var MARKER_ACTION_TYPES = ["information", "image", "video", "link", "question"];
 
-            // Flat data-* attributes — exposed to grep/inspect and picked
-            // up by IdeviceRenderer.fixAssetUrls during export.
-            const wrapperAttrs = buildWrapperAttrs(cfg);
-            const content = `
-                <div class="three-d-viewer-wrapper" data-three-d id="${viewerId}" ${wrapperAttrs}>
-                    ${buildModelMarkup(cfg)}
+  // public/files/perm/idevices/base/three-d-viewer/src/shared/schema.ts
+  var MAX_QUESTION_OPTIONS = 10;
+  var MAX_ATTEMPTS_ALLOWED = 20;
+  var defaultIdFactory = (prefix) => `${prefix}-${Math.floor(Math.random() * 1e9).toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
+  function asRecord(value) {
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  }
+  function toNumber(value, fallback) {
+    const parsed = typeof value === "number" ? value : Number.parseFloat(String(value));
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  function toInteger(value, fallback) {
+    const parsed = Number.parseInt(String(value), 10);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  function toText(value, fallback = "") {
+    return typeof value === "string" ? value : fallback;
+  }
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+  function keepOrCreateId(value, prefix, createId) {
+    return typeof value === "string" && value ? value : createId(prefix);
+  }
+  function normalizeVector3(value, fallback) {
+    const raw = asRecord(value);
+    return {
+      x: toNumber(raw.x, fallback.x),
+      y: toNumber(raw.y, fallback.y),
+      z: toNumber(raw.z, fallback.z)
+    };
+  }
+  function normalizeAnchor(value) {
+    const raw = asRecord(value);
+    return {
+      position: normalizeVector3(raw.position, { x: 0, y: 0, z: 0 }),
+      normal: normalizeVector3(raw.normal, { x: 0, y: 1, z: 0 }),
+      surface: toText(raw.surface)
+    };
+  }
+  function normalizeCamera(value) {
+    const raw = asRecord(value);
+    return {
+      orbit: toText(raw.orbit),
+      target: toText(raw.target),
+      fieldOfView: toText(raw.fieldOfView)
+    };
+  }
+  function normalizeQuestion(value, createId = defaultIdFactory) {
+    const raw = asRecord(value);
+    const rawOptions = Array.isArray(raw.options) ? raw.options : [];
+    let seenCorrect = false;
+    const options = rawOptions.slice(0, MAX_QUESTION_OPTIONS).map((option) => {
+      const item = asRecord(option);
+      const correct = Boolean(item.correct) && !seenCorrect;
+      if (correct) {
+        seenCorrect = true;
+      }
+      return { id: keepOrCreateId(item.id, "option", createId), text: toText(item.text), correct };
+    });
+    if (options.length === 0) {
+      options.push({ id: createId("option"), text: "", correct: true }, { id: createId("option"), text: "", correct: false });
+    } else if (!seenCorrect) {
+      const first = options[0];
+      if (first) {
+        first.correct = true;
+      }
+    }
+    return {
+      prompt: toText(raw.prompt),
+      type: "single-choice",
+      options,
+      feedbackCorrect: toText(raw.feedbackCorrect),
+      feedbackIncorrect: toText(raw.feedbackIncorrect),
+      attemptsAllowed: clamp(Math.round(toNumber(raw.attemptsAllowed, 0)), 0, MAX_ATTEMPTS_ALLOWED)
+    };
+  }
+  function normalizeInformationPayload(raw) {
+    return { html: toText(raw.html) };
+  }
+  function normalizeImagePayload(raw) {
+    return { src: stripUnsafeUrl(raw.src), alt: toText(raw.alt), caption: toText(raw.caption) };
+  }
+  function normalizeVideoPayload(raw) {
+    return { src: stripUnsafeUrl(raw.src), poster: stripUnsafeUrl(raw.poster) };
+  }
+  function normalizeLinkPayload(raw) {
+    return { url: stripUnsafeUrl(raw.url), newTab: raw.newTab !== false };
+  }
+  function toActionType(value) {
+    return MARKER_ACTION_TYPES.includes(String(value)) ? value : "information";
+  }
+  function normalizeAction(value, createId = defaultIdFactory) {
+    const raw = asRecord(value);
+    const type = toActionType(raw.type);
+    const payload = asRecord(raw.payload);
+    switch (type) {
+      case "image":
+        return { type, payload: normalizeImagePayload(payload) };
+      case "video":
+        return { type, payload: normalizeVideoPayload(payload) };
+      case "link":
+        return { type, payload: normalizeLinkPayload(payload) };
+      case "question":
+        return { type, payload: normalizeQuestion(payload, createId) };
+      case "information":
+        return { type, payload: normalizeInformationPayload(payload) };
+    }
+    const unreachable = type;
+    return { type: "information", payload: { html: "" } };
+  }
+  function toIcon(value) {
+    return MARKER_ICONS.includes(String(value)) ? value : "circle";
+  }
+  function normalizeMarker(value, index, createId = defaultIdFactory) {
+    const raw = asRecord(value);
+    const order = toNumber(raw.order, Number.NaN);
+    return {
+      id: keepOrCreateId(raw.id, "marker", createId),
+      label: toText(raw.label),
+      description: toText(raw.description),
+      icon: toIcon(raw.icon),
+      order: Number.isFinite(order) ? order : index,
+      anchor: normalizeAnchor(raw.anchor),
+      camera: normalizeCamera(raw.camera),
+      action: normalizeAction(raw.action, createId)
+    };
+  }
+  function normalizeInteraction(value, createId = defaultIdFactory) {
+    const raw = asRecord(value);
+    const markers = (Array.isArray(raw.markers) ? raw.markers : []).map((marker, index) => normalizeMarker(marker, index, createId));
+    markers.sort((a, b) => a.order - b.order);
+    markers.forEach((marker, index) => {
+      marker.order = index;
+    });
+    const ids = markers.map((marker) => marker.id);
+    const activeMarkerId = toText(raw.activeMarkerId);
+    return {
+      enabled: Boolean(raw.enabled),
+      guidedMode: Boolean(raw.guidedMode),
+      wrapNavigation: Boolean(raw.wrapNavigation),
+      showMarkerLabels: raw.showMarkerLabels !== false,
+      activeMarkerId: ids.includes(activeMarkerId) ? activeMarkerId : "",
+      markers
+    };
+  }
+  function normalizeAnimation(value) {
+    const raw = asRecord(value);
+    return {
+      enabled: Boolean(raw.enabled),
+      name: toText(raw.name),
+      speed: clamp(toNumber(raw.speed, 1), 0.1, 3)
+    };
+  }
+  function normalizeScorm(value) {
+    const raw = asRecord(value);
+    const mode = clamp(toInteger(raw.mode ?? raw.isScorm, 0), 0, 2);
+    return {
+      mode,
+      weighted: clamp(toNumber(raw.weighted, 100), 1, 100),
+      saveButtonText: toText(raw.saveButtonText ?? raw.textButtonScorm)
+    };
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/runtime/model-viewer-loader.ts
+  var SCRIPT_MARKER = "data-threedviewer-lib";
+  var DEFINITION_TIMEOUT_MS = 15000;
+  function libs() {
+    globalThis.$exeLibs = globalThis.$exeLibs ?? {};
+    return globalThis.$exeLibs;
+  }
+  function isModelViewerDefined() {
+    return Boolean(globalThis.customElements?.get?.("model-viewer"));
+  }
+  function injectScript(url, origin) {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = url;
+      script.setAttribute(SCRIPT_MARKER, origin);
+      script.addEventListener("load", () => resolve());
+      script.addEventListener("error", () => {
+        console.error("[3D Viewer] Unable to load the model-viewer library from", url);
+        resolve();
+      });
+      document.head.appendChild(script);
+    });
+  }
+  async function ensureModelViewerLoaded(candidates, origin) {
+    if (isModelViewerDefined()) {
+      return;
+    }
+    const shared = libs();
+    const pending = shared.modelViewerPromise;
+    if (pending instanceof Promise) {
+      await pending;
+      return;
+    }
+    const existing = typeof document !== "undefined" ? document.querySelector(`script[${SCRIPT_MARKER}]`) : null;
+    const loading = (async () => {
+      if (!existing) {
+        for (const url of candidates.filter(Boolean)) {
+          if (isModelViewerDefined()) {
+            return;
+          }
+          await injectScript(url, origin);
+          if (isModelViewerDefined()) {
+            return;
+          }
+        }
+      }
+      const whenDefined = globalThis.customElements?.whenDefined;
+      if (whenDefined) {
+        try {
+          await Promise.race([
+            whenDefined.call(globalThis.customElements, "model-viewer"),
+            new Promise((resolve) => setTimeout(resolve, DEFINITION_TIMEOUT_MS))
+          ]);
+        } catch {}
+      }
+    })();
+    shared.modelViewerPromise = loading;
+    await loading;
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/runtime/three-loader.ts
+  function libs2() {
+    globalThis.$exeLibs = globalThis.$exeLibs ?? {};
+    return globalThis.$exeLibs;
+  }
+  function isThreeJsReady() {
+    const three = globalThis.THREE;
+    return Boolean(three?.STLLoader && three?.OrbitControls);
+  }
+  async function ensureThreeJsLoaded(baseUrl) {
+    if (isThreeJsReady()) {
+      return;
+    }
+    const shared = libs2();
+    const pending = shared.threeJsPromise;
+    if (pending instanceof Promise) {
+      await pending;
+      return;
+    }
+    const loading = (async () => {
+      const core = await import(`${baseUrl}three.module.min.js`);
+      const { STLLoader } = await import(`${baseUrl}STLLoader.js`);
+      const { OrbitControls } = await import(`${baseUrl}OrbitControls.js`);
+      const three = globalThis.THREE ?? {};
+      Object.assign(three, core);
+      three.STLLoader = STLLoader;
+      three.OrbitControls = OrbitControls;
+      globalThis.THREE = three;
+    })();
+    shared.threeJsPromise = loading;
+    await loading;
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/export/source-resolver.ts
+  function getOdeSessionId() {
+    const session = globalThis.eXeLearning?.app?.project?.odeSession;
+    return typeof session === "string" && session.trim().length >= 8 ? session.trim() : "";
+  }
+  function sessionPrefix(sessionId) {
+    return `files/tmp/${sessionId.substring(0, 4)}/${sessionId.substring(4, 6)}/${sessionId.substring(6, 8)}/${sessionId}/`;
+  }
+  function resolveRuntimeSrc(path) {
+    const clean = normalizePath(path);
+    if (!clean) {
+      return "";
+    }
+    if (isAbsoluteUrl(clean) || clean.startsWith("blob:")) {
+      return clean;
+    }
+    if (clean.startsWith("files/tmp/")) {
+      return resolveAppUrl(clean);
+    }
+    if (clean.startsWith("asset://")) {
+      const assetManager = getAssetManager();
+      if (assetManager) {
+        return assetManager.resolveAssetURLSync?.(clean) || "";
+      }
+      const assetPath = clean.substring("asset://".length);
+      if (!assetPath) {
+        return "";
+      }
+      const onIndex = typeof document !== "undefined" && document.documentElement.id === "exe-index";
+      return `${onIndex ? "content/resources/" : "../content/resources/"}${assetPath}`;
+    }
+    if (clean.startsWith("content/resources/") || clean.startsWith("../content/resources/")) {
+      return clean;
+    }
+    const sessionId = getOdeSessionId();
+    return resolveAppUrl(sessionId ? `${sessionPrefix(sessionId)}${clean}` : clean);
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/export/scorm.ts
+  function getScormRuntime() {
+    return globalThis.$exeDevices?.iDevice?.gamification?.scorm ?? null;
+  }
+  function isScormExport() {
+    return Boolean(typeof document !== "undefined" && document.body?.classList?.contains("exe-scorm"));
+  }
+  function setupScormScoring(wrapper, interaction, scorm, hooks) {
+    if (scorm.mode <= 0 || !isScormExport()) {
+      return null;
+    }
+    const runtime = getScormRuntime();
+    if (!runtime || questionMarkers(interaction.markers).length === 0) {
+      return null;
+    }
+    const correctMarkerIds = new Set;
+    const game = {
+      main: wrapper.id,
+      idevice: "three-d-viewer",
+      isScorm: scorm.mode,
+      weighted: scorm.weighted,
+      scorerp: 0,
+      gameStarted: true,
+      msgs: {}
+    };
+    try {
+      runtime.registerActivity?.(game);
+    } catch {}
+    hooks.onQuestionAnswered = (markerId, correct) => {
+      if (correct) {
+        correctMarkerIds.add(markerId);
+      }
+      game.scorerp = computeScore(interaction.markers, correctMarkerIds);
+      game.gameOver = isActivityComplete(interaction.markers, correctMarkerIds);
+      try {
+        runtime.sendScoreNew?.(true, game);
+      } catch {}
+    };
+    return { game, correctMarkerIds };
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/export/i18n.ts
+  var FALLBACK_TRANSLATIONS = {
+    "viewer.empty_state": "Select a 3D model to display",
+    "viewer.animation_paused": "Animation paused",
+    "viewer.animation_enabled": "Animation enabled",
+    "viewer.local_warning_title": "3D Viewer not available",
+    "viewer.local_warning_message": "The 3D viewer requires a web server to work. Open this content from a web server or use eXeLearning preview.",
+    "viewer.fullscreen": "Fullscreen",
+    "viewer.exit_fullscreen": "Exit fullscreen",
+    "viewer.rotate_left": "Rotate left",
+    "viewer.rotate_right": "Rotate right",
+    "viewer.tilt_up": "Tilt up",
+    "viewer.tilt_down": "Tilt down"
+  };
+  function translate(key) {
+    try {
+      const translator = globalThis._;
+      if (typeof translator === "function") {
+        const translated = translator(key);
+        if (translated && translated !== key) {
+          return translated;
+        }
+      }
+    } catch {}
+    return FALLBACK_TRANSLATIONS[key] ?? key;
+  }
+  function translateContent(text) {
+    if (typeof globalThis.c_ === "function") {
+      return globalThis.c_(text);
+    }
+    if (typeof globalThis._ === "function") {
+      return globalThis._(text);
+    }
+    return text;
+  }
+  function buildRuntimeI18n() {
+    const keys = [
+      "Marker",
+      "Close",
+      "Check",
+      "Correct",
+      "Incorrect",
+      "Previous",
+      "Next",
+      "Please select an answer",
+      "No attempts left"
+    ];
+    const map = {};
+    for (const key of keys) {
+      map[key] = translateContent(key);
+    }
+    return map;
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/export/renderer.ts
+  function buildModelMarkup(config) {
+    const attributes = [
+      ["shadow-intensity", "1"],
+      ["tone-mapping", "pbr-neutral"],
+      ["reveal", "auto"],
+      ["style", `background-color: ${config.backgroundColor || DEFAULT_BACKGROUND_COLOR};`]
+    ];
+    if (config.alt) {
+      attributes.push(["alt", config.alt], ["aria-label", config.alt]);
+    }
+    if (config.cameraControls) {
+      attributes.push(["camera-controls", ""]);
+    }
+    if (config.autoRotate) {
+      attributes.push(["auto-rotate", ""], ["rotation-per-second", `${config.autoRotateSpeed || 30}deg`]);
+    }
+    const rendered = attributes.map(([name, value]) => value === "" ? name : `${name}="${escapeHtml(value)}"`).join(" ");
+    return `<model-viewer ${rendered}></model-viewer>`;
+  }
+  function buildWrapperAttributes(config, assetRef = "") {
+    const parts = [];
+    const push = (name, value) => {
+      parts.push(`${name}="${escapeHtml(String(value))}"`);
+    };
+    const src = config.src;
+    const type = config.type || (src ? detectModelType(src) : "");
+    if (src) {
+      push("data-model-src", src);
+    }
+    if (assetRef) {
+      push("data-model-asset-ref", assetRef);
+    }
+    if (type && type !== "unknown") {
+      push("data-model-type", type);
+    }
+    push("data-model-color", config.modelColor || DEFAULT_MODEL_COLOR);
+    push("data-background-color", config.backgroundColor || DEFAULT_BACKGROUND_COLOR);
+    push("data-camera-controls", config.cameraControls ? "true" : "false");
+    push("data-auto-rotate", config.autoRotate ? "true" : "false");
+    push("data-auto-rotate-speed", config.autoRotateSpeed || 30);
+    push("data-show-nav-controls", config.showNavControls ? "true" : "false");
+    push("data-animation-enabled", config.animation.enabled ? "true" : "false");
+    if (config.animation.name) {
+      push("data-animation-name", config.animation.name);
+    }
+    push("data-animation-speed", config.animation.speed);
+    if (config.alt) {
+      push("data-alt", config.alt);
+    }
+    return parts.join(" ");
+  }
+  function buildControlsMarkup(config) {
+    if (!config.showNavControls) {
+      return "";
+    }
+    const fullscreenLabel = escapeHtml(translate("viewer.fullscreen"));
+    const directions = [
+      ["left", "←", translate("viewer.rotate_left")],
+      ["up", "↑", translate("viewer.tilt_up")],
+      ["down", "↓", translate("viewer.tilt_down")],
+      ["right", "→", translate("viewer.rotate_right")]
+    ];
+    const buttons = directions.map(([key, glyph, label]) => {
+      const safeLabel = escapeHtml(label);
+      return `<button type="button" class="three-d-viewer-nav-btn three-d-viewer-nav-${key}" data-nav="${key}" aria-label="${safeLabel}" title="${safeLabel}">${glyph}</button>`;
+    }).join("");
+    return `
+            <button type="button" class="three-d-viewer-fullscreen-button" data-fullscreen aria-label="${fullscreenLabel}" title="${fullscreenLabel}">⛶</button>
+            <div class="three-d-viewer-nav" role="group" aria-label="${escapeHtml(translate("viewer.rotate_left"))}">${buttons}</div>
+        `;
+  }
+  function buildMarkerFallbackItem(marker, index) {
+    const label = marker.label || `${translateContent("Marker")} ${index + 1}`;
+    const parts = [`<strong>${index + 1}. ${escapeHtml(label)}</strong>`];
+    if (marker.description) {
+      parts.push(`<p>${escapeHtml(marker.description)}</p>`);
+    }
+    const action = marker.action;
+    switch (action.type) {
+      case "information": {
+        const text = stripHtmlToText(action.payload.html);
+        if (text) {
+          parts.push(`<p>${escapeHtml(text)}</p>`);
+        }
+        break;
+      }
+      case "image": {
+        if (action.payload.alt) {
+          parts.push(`<p>${escapeHtml(action.payload.alt)}</p>`);
+        }
+        if (action.payload.caption) {
+          parts.push(`<p>${escapeHtml(action.payload.caption)}</p>`);
+        }
+        break;
+      }
+      case "link": {
+        const url = safeUrl(action.payload.url);
+        if (url) {
+          parts.push(`<a href="${escapeHtml(url)}" rel="noopener noreferrer">${escapeHtml(url)}</a>`);
+        }
+        break;
+      }
+      case "question": {
+        if (action.payload.prompt) {
+          parts.push(`<p>${escapeHtml(action.payload.prompt)}</p>`);
+        }
+        const options = action.payload.options.map((option) => `<li>${escapeHtml(option.text)}</li>`).join("");
+        if (options) {
+          parts.push(`<ul>${options}</ul>`);
+        }
+        break;
+      }
+      case "video":
+        break;
+    }
+    return `<li>${parts.join("")}</li>`;
+  }
+  function buildInteractionFallback(interaction) {
+    const items = interaction.markers.map(buildMarkerFallbackItem).join("");
+    return `<ul class="tdv-fallback" hidden>${items}</ul>`;
+  }
+  function buildInteractionMarkup(interaction, scorm) {
+    if (!interaction.enabled) {
+      return "";
+    }
+    const payload = { ...interaction, i18n: buildRuntimeI18n(), scorm };
+    const dataBlock = `<script type="application/json" class="tdv-interaction-data">${escapeJsonForScript(payload)}</${"script"}>`;
+    let nav = "";
+    if (interaction.guidedMode) {
+      nav = '<div class="tdv-guided-nav" data-guided hidden>' + `<button type="button" class="tdv-nav-prev">${escapeHtml(translateContent("Previous"))}</button>` + '<span class="tdv-guided-status" aria-live="polite"></span>' + `<button type="button" class="tdv-nav-next">${escapeHtml(translateContent("Next"))}</button>` + "</div>";
+    }
+    return dataBlock + buildInteractionFallback(interaction) + nav;
+  }
+  function buildViewerMarkup(options) {
+    const { viewerId, config, interaction, scorm } = options;
+    return `
+                <div class="three-d-viewer-wrapper" data-three-d id="${escapeHtml(viewerId)}" ${buildWrapperAttributes(config, options.assetRef ?? "")}>
+                    ${buildModelMarkup(config)}
                     <span class="sr-only" data-live aria-live="polite"></span>
-                    <div class="viewer-empty" data-empty>${translate('viewer.empty_state')}</div>
-                    ${buildControlsMarkup(cfg)}
+                    <div class="viewer-empty" data-empty>${escapeHtml(translate("viewer.empty_state"))}</div>
+                    ${buildControlsMarkup(config)}
                     ${buildInteractionMarkup(interaction, scorm)}
                 </div>
             `;
-            return template.replace('{content}', content);
-        },
+  }
+  function computeEmptyStateDisplay(configSrc, viewerSrc) {
+    return configSrc.trim() || viewerSrc.trim() ? "none" : "grid";
+  }
 
-        /**
-         * Resolve the boot config for a wrapper from its flat data-*
-         * attributes.
-         *
-         * The `data` argument is kept for engine ABI parity but ignored —
-         * the wrapper attributes are the single source of truth. The
-         * exporter rewrites `asset://uuid.ext` → `content/resources/...`
-         * directly inside `data-model-src` via
-         * `IdeviceRenderer.fixAssetUrls`, so editor (asset://) and static
-         * export (content/resources/...) read the same code path.
-         *
-         * Legacy persisted HTML that still carries the base64
-         * `data-config` is upgraded by `migrateLegacyConfig` (called in
-         * `renderBehaviour` before this function runs).
-         *
-         * @param {object|undefined} _data - ignored
-         * @param {HTMLElement} wrapper
-         * @returns {object}
-         */
-        resolveBootConfig: function (_data, wrapper) {
-            if (!wrapper || !wrapper.dataset) return {};
-            const ds = wrapper.dataset;
-            const showNav = ds.showNavControls === 'true';
-            const rawSrc = (ds.modelSrc || '').trim();
-            const assetRef = (ds.modelAssetRef || '').trim();
-            // Prefer the canonical asset:// URL when AssetManager is live
-            // — `data-model-src` may have been rewritten by
-            // IdeviceRenderer.fixAssetUrls to a `content/resources/...`
-            // path that only exists inside an export ZIP, or replaced
-            // with a `blob:` URL by the workarea's asset resolver.
-            // In both contexts `asset://` is the only durable handle
-            // because AssetManager / the export pipeline know how to
-            // serve it.
-            let src = rawSrc;
-            if (assetRef && getAssetManager()) {
-                src = 'asset://' + assetRef;
-            }
-            // data: URLs are still rejected (would never round-trip),
-            // but `blob:` is left intact when no asset-ref recovery is
-            // possible — the browser can still fetch a live blob URL
-            // directly and that's better than the empty-state UI.
-            const sanitized = src.startsWith('data:') ? '' : src;
-            return {
-                src: sanitized,
-                type: ds.modelType || detectModelTypeFromSrc(sanitized),
-                modelColor: ds.modelColor || '#888888',
-                alt: ds.alt || '',
-                backgroundColor: ds.backgroundColor || DEFAULT_BACKGROUND,
-                cameraControls: ds.cameraControls !== 'false',
-                autoRotate: !showNav && ds.autoRotate !== 'false',
-                autoRotateSpeed: parseFloat(ds.autoRotateSpeed) || 30,
-                showNavControls: showNav,
-                animation: {
-                    enabled: ds.animationEnabled === 'true',
-                    name: ds.animationName || '',
-                    speed: parseFloat(ds.animationSpeed) || 1,
-                },
-            };
-        },
+  // public/files/perm/idevices/base/three-d-viewer/src/export/viewer-controller.ts
+  var YAW_STEP = 15 * Math.PI / 180;
+  var PITCH_STEP = 10 * Math.PI / 180;
+  var MIN_POLAR = 0.05;
+  var MAX_POLAR = Math.PI - 0.05;
+  function clamp2(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+  function isLocalFileProtocol() {
+    try {
+      return globalThis.location?.protocol === "file:";
+    } catch {
+      return false;
+    }
+  }
+  function buildLocalWarning() {
+    const container = document.createElement("div");
+    container.className = "three-d-viewer-local-warning";
+    const title = document.createElement("strong");
+    title.className = "three-d-viewer-local-warning-title";
+    title.textContent = translate("viewer.local_warning_title");
+    const message = document.createElement("p");
+    message.className = "three-d-viewer-local-warning-message";
+    message.textContent = translate("viewer.local_warning_message");
+    container.append(title, message);
+    return container;
+  }
+  function orbitPosition(position, dAzimuth, dPolar, currentAngles) {
+    const radius = Math.hypot(position.x, position.y, position.z) || 1;
+    const azimuth = (currentAngles?.azimuth ?? Math.atan2(position.x, position.z)) + dAzimuth;
+    const polar = clamp2((currentAngles?.polar ?? Math.acos(clamp2(position.y / radius, -1, 1))) + dPolar, MIN_POLAR, MAX_POLAR);
+    const sinPolar = Math.sin(polar);
+    return {
+      x: radius * sinPolar * Math.sin(azimuth),
+      y: radius * Math.cos(polar),
+      z: radius * sinPolar * Math.cos(azimuth)
+    };
+  }
+  var ASSET_TIMEOUT_MS = 1e4;
 
-        /**
-         * Attach behaviors. Robust to missing data argument.
-         * Ensures the model-viewer module is loaded before booting wrappers.
-         */
-        renderBehaviour: function (data, accessibility, ideviceId) {
-            const id =
-                (data && data.ideviceId) ||
-                ideviceId ||
-                '';
+  class ThreeDViewerController {
+    wrapper;
+    ideviceId;
+    config;
+    modelViewer;
+    emptyState;
+    ariaLive;
+    observers = [];
+    assetTimeoutMs;
+    availableAnimations = [];
+    constructor(wrapper, config, options = {}) {
+      this.wrapper = wrapper;
+      this.ideviceId = wrapper.id;
+      this.config = config;
+      this.assetTimeoutMs = options.assetTimeoutMs ?? ASSET_TIMEOUT_MS;
+      this.modelViewer = wrapper.querySelector("model-viewer");
+      this.emptyState = wrapper.querySelector("[data-empty]");
+      this.ariaLive = wrapper.querySelector("[data-live]");
+    }
+    async start() {
+      if (isLocalFileProtocol()) {
+        this.showLocalWarning();
+        return;
+      }
+      if (isStlSource(this.config.src)) {
+        await this.renderStl();
+      } else {
+        await this.applyModelViewerConfig();
+        this.observeModelViewer();
+      }
+      this.setupControls();
+    }
+    showLocalWarning() {
+      if (this.modelViewer) {
+        this.modelViewer.style.display = "none";
+      }
+      if (this.emptyState) {
+        this.emptyState.style.display = "none";
+      }
+      this.wrapper.appendChild(buildLocalWarning());
+    }
+    async renderStl() {
+      let url = resolveRuntimeSrc(this.config.src);
+      if (!url && this.config.src.startsWith("asset://")) {
+        url = await resolveAssetUrlAsync(this.config.src, this.assetTimeoutMs) ?? "";
+      }
+      if (!url) {
+        console.warn("[3D Viewer] No STL URL resolved for:", this.config.src);
+        this.toggleEmptyState();
+        return;
+      }
+      try {
+        await ensureThreeJsLoaded(getExportLibBaseUrl());
+        const runtime = publishViewerRuntime();
+        runtime.destroy(this.wrapper);
+        runtime.init(this.wrapper, {
+          src: url,
+          type: "stl",
+          modelColor: this.config.modelColor || DEFAULT_MODEL_COLOR,
+          backgroundColor: this.config.backgroundColor || DEFAULT_BACKGROUND_COLOR,
+          cameraControls: this.config.cameraControls,
+          autoRotate: this.config.autoRotate,
+          autoRotateSpeed: this.config.autoRotateSpeed || 30
+        });
+        this.toggleEmptyState();
+      } catch (error) {
+        console.error("[3D Viewer] Failed to render STL:", error);
+        this.toggleEmptyState();
+      }
+    }
+    async applyModelViewerConfig() {
+      const modelViewer = this.modelViewer;
+      if (!modelViewer) {
+        return;
+      }
+      let src = resolveRuntimeSrc(this.config.src);
+      if (!src && this.config.src.startsWith("asset://")) {
+        src = await resolveAssetUrlAsync(this.config.src, this.assetTimeoutMs) ?? "";
+      }
+      if (src) {
+        modelViewer.src = src;
+        modelViewer.setAttribute("src", src);
+      }
+      modelViewer.alt = this.config.alt;
+      if (this.config.alt) {
+        modelViewer.setAttribute("aria-label", this.config.alt);
+      } else {
+        modelViewer.removeAttribute("aria-label");
+      }
+      if (this.config.backgroundColor) {
+        modelViewer.style.backgroundColor = this.config.backgroundColor;
+      }
+      modelViewer.setAttribute("shadow-intensity", "1");
+      modelViewer.setAttribute("tone-mapping", "pbr-neutral");
+      if (this.config.cameraControls) {
+        modelViewer.setAttribute("camera-controls", "");
+      } else {
+        modelViewer.removeAttribute("camera-controls");
+      }
+      if (this.config.autoRotate) {
+        modelViewer.setAttribute("auto-rotate", "");
+        modelViewer.setAttribute("rotation-per-second", `${this.config.autoRotateSpeed || 30}deg`);
+      } else {
+        modelViewer.removeAttribute("auto-rotate");
+        modelViewer.removeAttribute("rotation-per-second");
+      }
+      this.applyAnimation();
+      this.toggleEmptyState();
+    }
+    observeModelViewer() {
+      const modelViewer = this.modelViewer;
+      if (!modelViewer) {
+        return;
+      }
+      modelViewer.addEventListener("load", () => {
+        this.updateAnimationOptions();
+        this.applyAnimation();
+        this.toggleEmptyState();
+      });
+      const observer = new MutationObserver(() => this.toggleEmptyState());
+      observer.observe(modelViewer, { attributes: true, attributeFilter: ["src"] });
+      this.observers.push(observer);
+    }
+    setupControls() {
+      const fullscreenButton = this.wrapper.querySelector("[data-fullscreen]");
+      if (fullscreenButton) {
+        const isFullscreen = () => document.fullscreenElement === this.wrapper;
+        const syncLabel = () => {
+          const label = translate(isFullscreen() ? "viewer.exit_fullscreen" : "viewer.fullscreen");
+          fullscreenButton.setAttribute("aria-label", label);
+          fullscreenButton.setAttribute("title", label);
+        };
+        fullscreenButton.addEventListener("click", () => {
+          if (isFullscreen()) {
+            document.exitFullscreen?.();
+          } else {
+            this.wrapper.requestFullscreen?.();
+          }
+        });
+        document.addEventListener("fullscreenchange", syncLabel);
+      }
+      for (const button of Array.from(this.wrapper.querySelectorAll("[data-nav]"))) {
+        const direction = button.getAttribute("data-nav");
+        const dAzimuth = direction === "right" ? -YAW_STEP : direction === "left" ? YAW_STEP : 0;
+        const dPolar = direction === "up" ? PITCH_STEP : direction === "down" ? -PITCH_STEP : 0;
+        button.addEventListener("click", () => this.nudgeCamera(dAzimuth, dPolar));
+      }
+    }
+    nudgeCamera(dAzimuth, dPolar) {
+      const instance = publishViewerRuntime().getInstance(this.wrapper);
+      const camera = instance?.camera;
+      if (camera) {
+        const controls = instance?.controls;
+        const angles = controls?.getAzimuthalAngle && controls?.getPolarAngle ? { azimuth: controls.getAzimuthalAngle(), polar: controls.getPolarAngle() } : undefined;
+        const next = orbitPosition(camera.position, dAzimuth, dPolar, angles);
+        camera.position.set(next.x, next.y, next.z);
+        camera.lookAt(0, 0, 0);
+        controls?.update?.();
+        return;
+      }
+      const modelViewer = this.modelViewer;
+      const orbit = modelViewer?.getCameraOrbit?.();
+      if (!modelViewer || !orbit) {
+        return;
+      }
+      const theta = (orbit.theta ?? 0) + dAzimuth;
+      const phi = clamp2((orbit.phi ?? Math.PI / 2) + dPolar, MIN_POLAR, MAX_POLAR);
+      modelViewer.cameraOrbit = `${theta}rad ${phi}rad ${orbit.radius ?? "auto"}m`;
+      modelViewer.jumpCameraToGoal?.();
+    }
+    updateAnimationOptions() {
+      const available = Array.from(this.modelViewer?.availableAnimations ?? []);
+      this.availableAnimations = available;
+      if (available.length === 0) {
+        this.config.animation.name = "";
+        this.config.animation.enabled = false;
+        return;
+      }
+      if (!available.includes(this.config.animation.name)) {
+        this.config.animation.name = available[0] ?? "";
+      }
+    }
+    applyAnimation() {
+      const modelViewer = this.modelViewer;
+      if (!modelViewer) {
+        return;
+      }
+      const animation = this.config.animation;
+      if (!animation.enabled) {
+        modelViewer.pause?.();
+        this.announce(translate("viewer.animation_paused"));
+        return;
+      }
+      const available = this.availableAnimations.length ? this.availableAnimations : Array.from(modelViewer.availableAnimations ?? []);
+      const name = animation.name && available.includes(animation.name) ? animation.name : available[0];
+      if (!name) {
+        modelViewer.pause?.();
+        return;
+      }
+      modelViewer.animationName = name;
+      modelViewer.animationSpeed = animation.speed || 1;
+      modelViewer.play?.({ repetitions: Number.POSITIVE_INFINITY });
+      this.announce(`${translate("viewer.animation_enabled")}: ${name}`);
+    }
+    toggleEmptyState() {
+      if (!this.emptyState) {
+        return;
+      }
+      const viewerSrc = this.modelViewer?.getAttribute("src") ?? this.modelViewer?.src ?? "";
+      this.emptyState.style.display = computeEmptyStateDisplay(this.config.src, viewerSrc);
+    }
+    announce(message) {
+      if (this.ariaLive) {
+        this.ariaLive.textContent = message;
+      }
+    }
+    destroy() {
+      for (const observer of this.observers) {
+        observer.disconnect();
+      }
+      this.observers.length = 0;
+      publishViewerRuntime().destroy(this.wrapper);
+    }
+  }
 
-            // Try multiple selector patterns for the iDevice container
-            let scope = document;
-            if (id) {
-                scope = document.querySelector(`.idevice_node.three-d-viewer[id="${id}"]`) ||
-                        document.querySelector(`[idevice-id="${id}"]`) ||
-                        document.querySelector(`#${id}`) ||
-                        document;
-            }
-
-            // Find all wrappers, either in scope or in entire document
-            let wrappers = Array.from(scope.querySelectorAll('.three-d-viewer-wrapper[data-three-d]'));
-
-            // If no wrappers found in scope, search entire document
-            if (!wrappers.length && scope !== document) {
-                wrappers = Array.from(document.querySelectorAll('.three-d-viewer-wrapper[data-three-d]'));
-            }
-
-            if (!wrappers.length) return true;
-
-            // Phase 1: upgrade legacy persisted HTML (PR #888/#1810 wrote a
-            // base64 `data-config`) to the new flat data-* attributes. No-op
-            // when the wrapper is already in the new format.
-            wrappers.forEach(migrateLegacyConfig);
-
-            // Phase 2: strip stale `src` attribute from any <model-viewer>
-            // inside an STL wrapper BEFORE we load the model-viewer custom
-            // element definition. Persisted iDevice HTML may still carry
-            // `<model-viewer src="…stl">`, and the moment model-viewer's
-            // custom element activates it would fetch that URL and throw
-            // `SyntaxError: Unexpected token 'C', "COLOR= "... is not valid
-            // JSON` (model-viewer routes the bytes through the GLB / GLTF /
-            // USDZ loaders). Driven by `data-model-type === "stl"`, which
-            // survives the exporter's URL rewrite. See issue #1810.
-            wrappers.forEach((w) => {
-                const mv = w.querySelector('model-viewer');
-                if (!mv) return;
-                const ds = w.dataset || {};
-                const isStl = ds.modelType === 'stl'
-                    || (ds.modelSrc && detectModelTypeFromSrc(ds.modelSrc) === 'stl')
-                    || isSTLFile(mv.getAttribute('src') || '');
-                if (isStl) mv.removeAttribute('src');
-            });
-
-            const boot = () => {
-                wrappers.forEach((w) => {
-                    if (w.dataset._threedBooted === '1') return;
-                    w.dataset._threedBooted = '1';
-                    const cfg = globalScope.$threedviewer.resolveBootConfig(data, w);
-                    new ThreeDViewerRuntime(w, cfg);
-                });
-            };
-
-            ensureModelViewerModule(id).then(boot);
-
-            // Attach interaction layers for wrappers that carry an enabled
-            // data block. The shared runtime (three-d-viewer-runtime.js) is
-            // loaded on demand — GLB/GLTF pages don't otherwise need it.
-            const interactive = wrappers.filter((w) => {
-                const raw = parseInteractionData(w);
-                return raw && raw.enabled;
-            });
-            if (interactive.length) {
-                ensureRuntimeLoaded()
-                    .then(() => { interactive.forEach(attachInteractionLayer); })
-                    .catch(() => { interactive.forEach(revealInteractionFallback); });
-            }
-            return true;
-        },
-
-        /** Not used here but kept for parity with other iDevices */
-        init: function () {}
+  // public/files/perm/idevices/base/three-d-viewer/src/export/bootstrap.ts
+  var STL_INTERACTION_TIMEOUT_MS = 20000;
+  function migrateLegacyConfig(wrapper) {
+    const encoded = wrapper.getAttribute("data-config");
+    if (!encoded) {
+      return;
+    }
+    let config = {};
+    try {
+      config = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    } catch {
+      try {
+        config = JSON.parse(encoded);
+      } catch {
+        config = {};
+      }
+    }
+    const data = wrapper.dataset;
+    const setIfMissing = (key, value) => {
+      if (data[key] == null && value != null && value !== "") {
+        data[key] = String(value);
+      }
+    };
+    setIfMissing("modelSrc", config.src);
+    setIfMissing("alt", config.alt);
+    setIfMissing("backgroundColor", config.backgroundColor);
+    if (config.cameraControls != null) {
+      setIfMissing("cameraControls", Boolean(config.cameraControls));
+    }
+    if (config.autoRotate != null) {
+      setIfMissing("autoRotate", Boolean(config.autoRotate));
+    }
+    setIfMissing("autoRotateSpeed", config.autoRotateSpeed);
+    if (config.showNavControls != null) {
+      setIfMissing("showNavControls", Boolean(config.showNavControls));
+    }
+    const animation = config.animation;
+    if (animation) {
+      if (animation.enabled != null) {
+        setIfMissing("animationEnabled", Boolean(animation.enabled));
+      }
+      setIfMissing("animationName", animation.name);
+      setIfMissing("animationSpeed", animation.speed);
+    }
+    if (!data.modelType && data.modelSrc) {
+      const type = detectModelType(data.modelSrc);
+      if (type !== "unknown") {
+        data.modelType = type;
+      }
+    }
+    if (!data.modelColor) {
+      data.modelColor = DEFAULT_MODEL_COLOR;
+    }
+    wrapper.removeAttribute("data-config");
+  }
+  function resolveBootConfig(wrapper) {
+    const data = wrapper.dataset;
+    const showNavControls = data.showNavControls === "true";
+    const rawSrc = (data.modelSrc ?? "").trim();
+    const assetRef = (data.modelAssetRef ?? "").trim();
+    let src = assetRef && getAssetManager() ? `asset://${assetRef}` : rawSrc;
+    if (src.startsWith("data:")) {
+      src = "";
+    }
+    return {
+      src,
+      type: data.modelType ? data.modelType : detectModelType(src),
+      alt: data.alt ?? "",
+      modelColor: normalizeColor(data.modelColor, DEFAULT_MODEL_COLOR),
+      backgroundColor: normalizeColor(data.backgroundColor, DEFAULT_BACKGROUND_COLOR),
+      cameraControls: data.cameraControls !== "false",
+      autoRotate: !showNavControls && data.autoRotate !== "false",
+      autoRotateSpeed: Number.parseFloat(data.autoRotateSpeed ?? "") || 30,
+      showNavControls,
+      animation: normalizeAnimation({
+        enabled: data.animationEnabled === "true",
+        name: data.animationName ?? "",
+        speed: Number.parseFloat(data.animationSpeed ?? "") || 1
+      })
+    };
+  }
+  function parseInteractionData(wrapper) {
+    const script = wrapper.querySelector("script.tdv-interaction-data");
+    if (!script) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(script.textContent || "{}");
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  function buildInteractionHooks(wrapper, raw) {
+    const i18n = raw.i18n && typeof raw.i18n === "object" ? raw.i18n : {};
+    return {
+      t: (key) => i18n[key] ?? key,
+      resolveMediaUrl: (url) => {
+        try {
+          return resolveRuntimeSrc(url) || url;
+        } catch {
+          return url;
+        }
+      }
+    };
+  }
+  function waitForStlMesh(wrapper, timeoutMs) {
+    const runtime = publishViewerRuntime();
+    const deadline = Date.now() + timeoutMs;
+    return new Promise((resolve) => {
+      const poll = () => {
+        const instance = runtime.getInstance(wrapper);
+        if (instance?.mesh || Date.now() >= deadline) {
+          resolve(instance);
+          return;
+        }
+        const raf = globalThis.requestAnimationFrame;
+        if (typeof raf === "function") {
+          raf(poll);
+        } else {
+          setTimeout(poll, 16);
+        }
+      };
+      poll();
     });
+  }
+  async function attachInteractionLayer(wrapper, timeoutMs = STL_INTERACTION_TIMEOUT_MS) {
+    if (wrapper.dataset.tdvInteractionBooted === "1") {
+      return;
+    }
+    const raw = parseInteractionData(wrapper);
+    if (!raw?.enabled) {
+      return;
+    }
+    wrapper.dataset.tdvInteractionBooted = "1";
+    const interaction = normalizeInteraction(raw);
+    const scorm = normalizeScorm(raw.scorm);
+    const hooks = buildInteractionHooks(wrapper, raw);
+    setupScormScoring(wrapper, interaction, scorm, hooks);
+    const runtime = publishViewerRuntime();
+    const type = wrapper.dataset.modelType || detectModelType(wrapper.dataset.modelSrc ?? "");
+    if (type === "stl") {
+      const instance = await waitForStlMesh(wrapper, timeoutMs);
+      if (!instance?.mesh) {
+        revealFallback(wrapper, true);
+        return;
+      }
+      instance.interaction = runtime.createInteractionLayer({ wrapper, type: "stl", instance }, interaction, "view", hooks);
+      return;
+    }
+    const modelViewer = wrapper.querySelector("model-viewer");
+    runtime.createInteractionLayer({ wrapper, type, modelViewer }, interaction, "view", hooks);
+  }
+  function findWrappers(ideviceId) {
+    const selector = ".three-d-viewer-wrapper[data-three-d]";
+    let scope = document;
+    if (ideviceId) {
+      scope = document.querySelector(`.idevice_node.three-d-viewer[id="${ideviceId}"]`) ?? document.querySelector(`[idevice-id="${ideviceId}"]`) ?? document.getElementById(ideviceId) ?? document;
+    }
+    const scoped = Array.from(scope.querySelectorAll(selector));
+    if (scoped.length > 0 || scope === document) {
+      return scoped;
+    }
+    return Array.from(document.querySelectorAll(selector));
+  }
+  function stripStlModelViewerSrc(wrapper) {
+    const modelViewer = wrapper.querySelector("model-viewer");
+    if (!modelViewer) {
+      return;
+    }
+    const data = wrapper.dataset;
+    const isStl = data.modelType === "stl" || isStlSource(data.modelSrc ?? "") || isStlSource(modelViewer.getAttribute("src") ?? "");
+    if (isStl) {
+      modelViewer.removeAttribute("src");
+    }
+  }
+  function bootWrappers(ideviceId) {
+    const wrappers = findWrappers(ideviceId);
+    if (wrappers.length === 0) {
+      return true;
+    }
+    wrappers.forEach(migrateLegacyConfig);
+    wrappers.forEach(stripStlModelViewerSrc);
+    const modelViewerCandidates = [getExportModelViewerUrl()];
+    const resourcesBase = getIdeviceResourcesBase(ideviceId);
+    if (resourcesBase) {
+      modelViewerCandidates.push(`${resourcesBase}model-viewer.min.js`);
+    }
+    ensureModelViewerLoaded(modelViewerCandidates, "export").then(() => {
+      for (const wrapper of wrappers) {
+        if (wrapper.dataset.threedBooted === "1") {
+          continue;
+        }
+        wrapper.dataset.threedBooted = "1";
+        new ThreeDViewerController(wrapper, resolveBootConfig(wrapper)).start();
+      }
+    });
+    const interactive = wrappers.filter((wrapper) => parseInteractionData(wrapper)?.enabled);
+    if (interactive.length > 0) {
+      const needsThree = interactive.some((wrapper) => wrapper.dataset.modelType === "stl");
+      const ready = needsThree ? ensureThreeJsLoaded(getExportLibBaseUrl()) : Promise.resolve();
+      ready.then(() => Promise.all(interactive.map(attachInteractionLayer))).catch(() => {
+        for (const wrapper of interactive) {
+          revealFallback(wrapper, true);
+        }
+      });
+    }
+    return true;
+  }
 
-    // Instance used by the engine to serialize/deserialize node data
-    globalScope.$threedviewer.exportHelper = new globalScope.ThreeDViewerExportObject();
+  // public/files/perm/idevices/base/three-d-viewer/src/export/runtime.ts
+  function appendModulePreloadOnce(href) {
+    if (!href || typeof document === "undefined") {
+      return;
+    }
+    if (document.querySelector(`link[rel="modulepreload"][href="${href}"]`)) {
+      return;
+    }
+    const link = document.createElement("link");
+    link.rel = "modulepreload";
+    link.href = href;
+    document.head.appendChild(link);
+  }
+  function buildAssetRef(src) {
+    if (src.startsWith("asset://")) {
+      return src.substring("asset://".length);
+    }
+    if (!src.startsWith("blob:")) {
+      return "";
+    }
+    const assetManager = getAssetManager();
+    const assetId = assetManager?.reverseBlobCache?.get?.(src);
+    if (!assetId) {
+      return "";
+    }
+    const filename = assetManager?.getAssetMetadata?.(assetId)?.filename ?? "";
+    const dot = filename.lastIndexOf(".");
+    const extension = dot !== -1 ? filename.substring(dot + 1).toLowerCase() : "";
+    return extension ? `${assetId}.${extension}` : String(assetId);
+  }
+  function toDisplayConfig(data) {
+    const showNavControls = Boolean(data.showNavControls);
+    const src = normalizePath(data.src);
+    const speed = Number.parseFloat(String(data.autoRotateSpeed));
+    return {
+      src,
+      type: detectModelType(src),
+      alt: typeof data.alt === "string" ? data.alt : "",
+      modelColor: normalizeColor(data.modelColor, DEFAULT_MODEL_COLOR),
+      backgroundColor: normalizeColor(data.backgroundColor, DEFAULT_BACKGROUND_COLOR),
+      cameraControls: data.cameraControls !== false,
+      autoRotate: !showNavControls && data.autoRotate !== false,
+      autoRotateSpeed: Number.isFinite(speed) ? speed : 30,
+      showNavControls,
+      animation: normalizeAnimation(data.animation)
+    };
+  }
+  function createExportRuntime() {
+    const runtime = {
+      currentIdeviceId: "",
+      renderView(data, _accessibility, template) {
+        const record = data && typeof data === "object" ? data : {};
+        const viewerId = typeof record.ideviceId === "string" && record.ideviceId ? record.ideviceId : `three-d-viewer-${Date.now()}`;
+        const config = toDisplayConfig(record);
+        const interaction = normalizeInteraction(record.interaction);
+        const scorm = normalizeScorm(record.scorm ?? record);
+        appendModulePreloadOnce(getExportModelViewerUrl());
+        runtime.currentIdeviceId = viewerId;
+        const content = buildViewerMarkup({
+          viewerId,
+          config,
+          interaction,
+          scorm,
+          assetRef: buildAssetRef(config.src)
+        });
+        return typeof template === "string" ? template.replace("{content}", content) : content;
+      },
+      renderBehaviour(data, _accessibility, ideviceId) {
+        const record = data && typeof data === "object" ? data : {};
+        const id = (typeof record.ideviceId === "string" ? record.ideviceId : "") || ideviceId || "";
+        return bootWrappers(id);
+      },
+      init() {},
+      resolveBootConfig: (_data, wrapper) => resolveBootConfig(wrapper)
+    };
+    return runtime;
+  }
 
-    // Optional helpers exposed for debugging
-    globalScope.$threedviewer.getModelViewerLibUrl = getModelViewerLibUrl;
-    globalScope.$threedviewer.resolveAssetUrl = resolveAssetUrl;
-    globalScope.$threedviewer.__migrateLegacyConfig = migrateLegacyConfig;
-    globalScope.$threedviewer.__detectModelTypeFromSrc = detectModelTypeFromSrc;
-    // Interaction schema helpers (mirror edition) — exposed for unit tests.
-    globalScope.$threedviewer.__normalizeInteraction = normalizeInteraction;
-    globalScope.$threedviewer.__normalizeMarker = normalizeMarker;
-    globalScope.$threedviewer.__normalizeAnchor = normalizeAnchor;
-    globalScope.$threedviewer.__normalizeCamera = normalizeCamera;
-    globalScope.$threedviewer.__normalizeAction = normalizeAction;
-    globalScope.$threedviewer.__normalizeQuestion = normalizeQuestion;
-    globalScope.$threedviewer.__gradeSingleChoice = gradeSingleChoice;
-    globalScope.$threedviewer.__buildInteractionMarkup = buildInteractionMarkup;
-    globalScope.$threedviewer.__parseInteractionData = parseInteractionData;
-    globalScope.$threedviewer.__attachInteractionLayer = attachInteractionLayer;
-    globalScope.$threedviewer.__normalizeScorm = normalizeScorm;
-    globalScope.$threedviewer.__setupScormScoring = setupScormScoring;
-    globalScope.$threedviewer.__resolveRuntimeSrc = resolveRuntimeSrc;
-    globalScope.$threedviewer.__computeEmptyStateDisplay = computeEmptyStateDisplay;
-    globalScope.$threedviewer.__ThreeDViewerRuntime = ThreeDViewerRuntime;
+  class ThreeDViewerExportObject {
+    node = null;
+    resources = null;
+    init(node, resources) {
+      this.node = node ?? null;
+      this.resources = resources ?? null;
+      return true;
+    }
+    toJSON() {
+      return this.node?.get3DViewerJSON?.() ?? {};
+    }
+    fromJSON(data) {
+      this.node?.set3DViewerJSON?.(data ?? {});
+    }
+    getResources() {
+      return this.resources;
+    }
+  }
+
+  // public/files/perm/idevices/base/three-d-viewer/src/export/index.ts
+  var runtime = createExportRuntime();
+  publishViewerRuntime();
+  globalThis.$threedviewer = runtime;
+  globalThis.ThreeDViewerExportObject = ThreeDViewerExportObject;
+  if (typeof window !== "undefined") {
+    window.$threedviewer = runtime;
+    window.ThreeDViewerExportObject = ThreeDViewerExportObject;
+  }
 })();
+
+//# debugId=773D4950041C5E6264756E2164756E21
+//# sourceMappingURL=three-d-viewer.js.map

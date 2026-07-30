@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InteractionController, InteractionHooks } from '../interactions/types';
-import type { ThreeDViewerDocumentV2 } from '../shared/types';
+import type { AnimationSettings, ThreeDViewerDocumentV2 } from '../shared/types';
 import { readFixture, resetDom, sequentialIds } from '../test/helpers';
 import { createThreeDViewerDevice, type DeviceDependencies } from './device';
 import type { EditorPreview } from './preview';
@@ -13,17 +13,23 @@ import type { EditorPreview } from './preview';
 interface PreviewSpy extends EditorPreview {
     readonly updates: Array<{ src: string; force: boolean }>;
     readonly attachments: ThreeDViewerDocumentV2[];
+    readonly animations: AnimationSettings[];
     hooks: InteractionHooks | null;
     layer: InteractionController | null;
     fireLoaded(animations: readonly string[]): void;
     fireError(): void;
 }
 
-function createPreviewSpy(): { factory: DeviceDependencies['createPreview']; get: () => PreviewSpy } {
-    let spy: PreviewSpy | null = null;
+function createPreviewSpy(): {
+    factory: DeviceDependencies['createPreview'];
+    get: () => PreviewSpy;
+    all: () => PreviewSpy[];
+} {
+    const created: PreviewSpy[] = [];
     const factory: DeviceDependencies['createPreview'] = (_container, callbacks) => {
         const updates: Array<{ src: string; force: boolean }> = [];
         const attachments: ThreeDViewerDocumentV2[] = [];
+        const animations: AnimationSettings[] = [];
         const controller: InteractionController = {
             setState: vi.fn(),
             render: vi.fn(),
@@ -40,11 +46,16 @@ function createPreviewSpy(): { factory: DeviceDependencies['createPreview']; get
         const preview: PreviewSpy = {
             updates,
             attachments,
+            animations,
             hooks: null,
             layer: controller,
             mount: async () => {},
             update: async (document, force = false) => {
                 updates.push({ src: document.src, force });
+                animations.push(document.animation);
+            },
+            applyAnimation: animation => {
+                animations.push(animation);
             },
             attachInteractions: async (document, hooks) => {
                 attachments.push(document);
@@ -60,17 +71,19 @@ function createPreviewSpy(): { factory: DeviceDependencies['createPreview']; get
             fireLoaded: animations => callbacks.onModelLoaded(animations),
             fireError: () => callbacks.onModelError(),
         };
-        spy = preview;
+        created.push(preview);
         return preview;
     };
     return {
         factory,
         get: () => {
-            if (!spy) {
+            const latest = created[created.length - 1];
+            if (!latest) {
                 throw new Error('The preview was never created');
             }
-            return spy;
+            return latest;
         },
+        all: () => created,
     };
 }
 
@@ -78,6 +91,7 @@ function build(overrides: Partial<DeviceDependencies> = {}): {
     device: ReturnType<typeof createThreeDViewerDevice>;
     host: HTMLElement;
     preview: () => PreviewSpy;
+    previews: () => PreviewSpy[];
     alerts: string[];
 } {
     const alerts: string[] = [];
@@ -91,7 +105,7 @@ function build(overrides: Partial<DeviceDependencies> = {}): {
         alert: message => alerts.push(message),
         ...overrides,
     });
-    return { device, host, preview: previewSpy.get, alerts };
+    return { device, host, preview: previewSpy.get, previews: previewSpy.all, alerts };
 }
 
 beforeEach(() => {
@@ -145,16 +159,13 @@ describe('init', () => {
     });
 
     it('tears the previous preview down before rebuilding', async () => {
-        const { device, host } = build();
+        const { device, host, previews } = build();
         await device.init(host, { src: 'asset://a.glb' });
-        const first = device;
-        const destroy = vi.spyOn({ run: () => {} }, 'run');
-        void first;
-        void destroy;
-        const previousPreviewDestroy = vi.fn();
-        // Re-initialising the same device must dispose what it built before.
+        // Re-opening the same iDevice replaces the form markup; without this
+        // teardown the previous WebGL context and animation loop would leak.
         await device.init(host, { src: 'asset://a.glb' });
-        expect(previousPreviewDestroy).not.toHaveBeenCalled();
+        expect(previews()).toHaveLength(2);
+        expect(previews()[0]?.destroy).toHaveBeenCalledTimes(1);
         expect(host.querySelectorAll('#threeDViewerEditor')).toHaveLength(1);
     });
 
@@ -448,6 +459,17 @@ describe('display behaviour', () => {
         preview().fireLoaded(['Spin', 'Bounce']);
         expect(host.querySelectorAll('#threeDAnimationName option')).toHaveLength(2);
         expect(device.getDocument().animation.name).toBe('Spin');
+    });
+
+    it('applies the resolved animation to the preview once the model has loaded', async () => {
+        const { device, host, preview } = build();
+        await device.init(host, {
+            schemaVersion: 2,
+            src: 'asset://a.glb',
+            animation: { enabled: true, name: 'Bounce', speed: 2 },
+        });
+        preview().fireLoaded(['Spin', 'Bounce']);
+        expect(preview().animations.at(-1)).toMatchObject({ enabled: true, name: 'Bounce', speed: 2 });
     });
 
     it('retries a failed preview a bounded number of times', async () => {

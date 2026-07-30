@@ -10,6 +10,11 @@ update the table and the per-status lists below.
 | ID | Title | Status | Date |
 |---|---|---|---|
 | SDD-0000 | Template | Template | — |
+| SDD-0002 | 360° Viewer iDevice: TypeScript refactor on the centralized build convention | Implemented | 2026-07-30 |
+
+SDD-0001 is reserved by the upstream Interactive Video refactor
+(exelearning/exelearning#2147) and is intentionally skipped here so the two
+histories can merge without renumbering.
 
 ## Draft SDDs
 
@@ -25,7 +30,8 @@ _No accepted SDDs yet._
 
 ## Implemented SDDs
 
-_No implemented SDDs yet._
+- [SDD-0002](SDD-0002-three-sixty-viewer-typescript-refactor.md) — 360° Viewer
+  iDevice: TypeScript refactor on the centralized build convention.
 
 ## Superseded SDDs
 

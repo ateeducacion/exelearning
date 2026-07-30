@@ -1,0 +1,55 @@
+{
+    "schemaVersion": 2,
+    "src": "asset://8f3c2a10-0b41-4f0f-9a1c-2b7d5e6f7a90.glb",
+    "alt": "A cube",
+    "modelColor": "#aabbcc",
+    "backgroundColor": "#ffffff",
+    "cameraControls": true,
+    "autoRotate": false,
+    "autoRotateSpeed": 30,
+    "showNavControls": true,
+    "animation": { "enabled": false, "name": "", "speed": 1 },
+    "interaction": {
+        "enabled": true,
+        "guidedMode": true,
+        "wrapNavigation": false,
+        "showMarkerLabels": true,
+        "activeMarkerId": "",
+        "markers": [
+            {
+                "id": "marker-summit",
+                "label": "Summit",
+                "description": "The top",
+                "icon": "info",
+                "order": 0,
+                "anchor": { "position": { "x": 0, "y": 1, "z": 0 }, "normal": { "x": 0, "y": 1, "z": 0 }, "surface": "" },
+                "camera": { "orbit": "1rad 1rad 3m", "target": "0m 0m 0m", "fieldOfView": "45deg" },
+                "action": { "type": "information", "payload": { "html": "<p>The highest point.</p>" } }
+            },
+            {
+                "id": "marker-quiz",
+                "label": "Quiz",
+                "description": "",
+                "icon": "question",
+                "order": 1,
+                "anchor": { "position": { "x": 1, "y": 0, "z": 0 }, "normal": { "x": 1, "y": 0, "z": 0 }, "surface": "" },
+                "camera": { "orbit": "", "target": "", "fieldOfView": "" },
+                "action": {
+                    "type": "question",
+                    "payload": {
+                        "prompt": "Is Teide a volcano?",
+                        "type": "single-choice",
+                        "options": [
+                            { "id": "option-yes", "text": "Yes", "correct": true },
+                            { "id": "option-no", "text": "No", "correct": false }
+                        ],
+                        "feedbackCorrect": "Right!",
+                        "feedbackIncorrect": "Try again",
+                        "attemptsAllowed": 1
+                    }
+                }
+            }
+        ]
+    },
+    "scorm": { "mode": 1, "weighted": 80, "saveButtonText": "" }
+}

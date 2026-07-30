@@ -128,6 +128,12 @@ export default defineConfig({
                 // TypeScript sources, not on their compiled output.
                 'public/files/perm/idevices/**/edition/*.js',
                 'public/files/perm/idevices/**/export/*.js',
+                // Test doubles and fixtures live beside the sources they serve.
+                'public/files/perm/idevices/base/*/src/test/**',
+                // Bundle entry points: a few lines of global assignment,
+                // exercised through the compiled IIFEs by the bundle-contract
+                // tests — which v8 cannot attribute back to the source.
+                'public/files/perm/idevices/base/*/src/*/index.ts',
             ],
         },
     },

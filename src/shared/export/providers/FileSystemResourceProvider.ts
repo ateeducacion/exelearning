@@ -102,9 +102,13 @@ export class FileSystemResourceProvider implements ResourceProvider {
         if (await fs.pathExists(idevicePath)) {
             // No prefix - files go to idevices/{type}/ folder (prefix added by caller)
             const files = await this.readDirectoryRecursive(idevicePath, '');
-            // Filter out test files (should not be included in exports)
+            // Filter out development-only files. Tests never belong in an
+            // export, and neither do the source maps that sit next to a
+            // TypeScript iDevice's generated bundle (see ADR-0006) — the
+            // browser export path already drops them when building the
+            // resource ZIP, so this keeps the server path consistent.
             for (const filePath of files.keys()) {
-                if (filePath.endsWith('.test.js') || filePath.endsWith('.spec.js')) {
+                if (filePath.endsWith('.test.js') || filePath.endsWith('.spec.js') || filePath.endsWith('.map')) {
                     files.delete(filePath);
                 }
             }

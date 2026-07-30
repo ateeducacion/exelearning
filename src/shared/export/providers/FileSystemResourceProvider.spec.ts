@@ -212,6 +212,22 @@ describe('FileSystemResourceProvider', () => {
 
             expect(files.size).toBe(0);
         });
+
+        it('should exclude tests and source maps from the exported files', async () => {
+            const exportDir = path.join(testDir, 'files', 'perm', 'idevices', 'base', 'text', 'export');
+            await fs.writeFile(path.join(exportDir, 'text.test.js'), 'test();');
+            await fs.writeFile(path.join(exportDir, 'text.spec.js'), 'spec();');
+            // A TypeScript iDevice ships its generated bundle with a linked
+            // source map (ADR-0006); that map is a development aid only.
+            await fs.writeFile(path.join(exportDir, 'text.js.map'), '{"version":3}');
+
+            const files = await provider.fetchIdeviceResources('text');
+
+            expect(files.has('text.js')).toBe(true);
+            expect(files.has('text.test.js')).toBe(false);
+            expect(files.has('text.spec.js')).toBe(false);
+            expect(files.has('text.js.map')).toBe(false);
+        });
     });
 
     describe('normalizeIdeviceType', () => {

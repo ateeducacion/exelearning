@@ -16,7 +16,7 @@ import type { ViewerInstance } from '../runtime/types';
 import { publishViewerRuntime } from '../runtime/viewer-runtime';
 import { DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR } from '../shared/colors';
 import { detectModelType, isStlSource } from '../shared/model-source';
-import type { InteractionSettings, ThreeDViewerDocumentV2 } from '../shared/types';
+import type { AnimationSettings, InteractionSettings, ThreeDViewerDocumentV2 } from '../shared/types';
 
 /** How long to wait for a booted STL mesh before giving up on markers. */
 const STL_READY_TIMEOUT_MS = 20000;
@@ -26,6 +26,10 @@ export interface PreviewCallbacks {
     onModelLoaded: (availableAnimations: readonly string[]) => void;
     /** The model failed to load; the caller may retry. */
     onModelError: () => void;
+    /** Announce a short message to screen readers. */
+    announce?: (message: string) => void;
+    /** GUI translator for the announcements; defaults to the identity. */
+    translate?: (text: string) => string;
 }
 
 export interface EditorPreview {
@@ -33,6 +37,8 @@ export interface EditorPreview {
     mount(): Promise<void>;
     /** Re-render for the current document. */
     update(document: ThreeDViewerDocumentV2, force?: boolean): Promise<void>;
+    /** Apply the document's animation settings to the live `<model-viewer>`. */
+    applyAnimation(animation: AnimationSettings): void;
     /** (Re)create the interaction layer; resolves to null when unavailable. */
     attachInteractions(
         document: ThreeDViewerDocumentV2,
@@ -60,6 +66,7 @@ function clamp(value: number, min: number, max: number): number {
 
 export function createEditorPreview(container: HTMLElement, callbacks: PreviewCallbacks): EditorPreview {
     const runtime = publishViewerRuntime();
+    const t = callbacks.translate ?? ((text: string) => text);
     let modelViewer: ModelViewerElement | null = null;
     let interactions: InteractionController | null = null;
     let previewBlobUrl = '';
@@ -192,6 +199,29 @@ export function createEditorPreview(container: HTMLElement, callbacks: PreviewCa
                 modelViewer.removeAttribute('auto-rotate');
                 modelViewer.removeAttribute('rotation-per-second');
             }
+            preview.applyAnimation(documentState.animation);
+        },
+
+        applyAnimation(animation) {
+            if (!modelViewer) {
+                return;
+            }
+            if (!animation.enabled) {
+                modelViewer.pause?.();
+                callbacks.announce?.(t('Animation paused'));
+                return;
+            }
+            const available = Array.from(modelViewer.availableAnimations ?? []);
+            const name = animation.name && available.includes(animation.name) ? animation.name : available[0];
+            if (!name) {
+                // The model exposes no animation to play.
+                modelViewer.pause?.();
+                return;
+            }
+            modelViewer.animationName = name;
+            modelViewer.animationSpeed = animation.speed || 1;
+            modelViewer.play?.({ repetitions: Number.POSITIVE_INFINITY });
+            callbacks.announce?.(`${t('Playing animation')}: ${name}`);
         },
 
         async attachInteractions(documentState, hooks) {

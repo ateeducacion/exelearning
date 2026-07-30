@@ -389,12 +389,17 @@ export function createThreeDViewerDevice(overrides: Partial<DeviceDependencies> 
             refreshMarkerList();
 
             preview = deps.createPreview(elements.preview, {
+                translate: t,
+                announce,
                 onModelLoaded: available => {
                     if (!elements) {
                         return;
                     }
                     previewRetries = 0;
                     documentState.animation = updateAnimationOptions(elements, available, documentState.animation);
+                    // The picker now reflects what this model actually offers,
+                    // so playback can follow it.
+                    preview?.applyAnimation(documentState.animation);
                     updateEmptyState(elements, documentState.src);
                     void preview?.attachInteractions(documentState, interactionHooks());
                 },

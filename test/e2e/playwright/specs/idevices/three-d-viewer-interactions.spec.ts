@@ -62,14 +62,18 @@ async function save3DViewerIdevice(page: Page): Promise<void> {
 }
 
 /** Inject a marker placement through the live editor device (deterministic). */
+interface ThreeDViewerDeviceProbe {
+    handleMarkerPlaced?: (placement: unknown) => void;
+}
+
 async function placeMarker(page: Page, x: number, y: number, z: number): Promise<void> {
     await page.evaluate(
         ([mx, my, mz]) => {
-            const dev = (window as any).$exeDevice;
-            if (!dev || typeof dev.handleMarkerPlaced !== 'function') {
+            const device = (window as { $exeDevice?: ThreeDViewerDeviceProbe }).$exeDevice;
+            if (typeof device?.handleMarkerPlaced !== 'function') {
                 throw new Error('3D viewer device not available on window');
             }
-            dev.handleMarkerPlaced({
+            device.handleMarkerPlaced({
                 position: { x: mx, y: my, z: mz },
                 normal: { x: 0, y: 0, z: 1 },
                 surface: '',
@@ -126,8 +130,21 @@ test.describe('3D Viewer interactions', () => {
         await page.locator('#tdvActionFields .tdv-q-options input[type="radio"]').nth(0).check();
         await page.locator('#threeDMarkerEditorHost [data-save]').click();
 
-        // Two rows in the marker list.
-        await expect(page.locator('#threeDMarkerList .tdv-marker-row')).toHaveCount(2);
+        // Marker 3 — a question with a single attempt, used below to prove the
+        // attempt allowance survives closing and reopening the dialog.
+        await placeMarker(page, 0, 0.3, 1);
+        await page.locator('#tdvMkLabel').fill('OneShot');
+        await page.locator('#tdvMkType').selectOption('question');
+        await page.locator('#tdvActionFields textarea').first().fill('Only one try?');
+        const oneShotOptions = page.locator('#tdvActionFields .tdv-q-options .input-group input[type="text"]');
+        await oneShotOptions.nth(0).fill('Right');
+        await oneShotOptions.nth(1).fill('Wrong');
+        await page.locator('#tdvActionFields .tdv-q-options input[type="radio"]').nth(0).check();
+        await page.locator('#tdvMkAttempts').fill('1');
+        await page.locator('#threeDMarkerEditorHost [data-save]').click();
+
+        // Three rows in the marker list.
+        await expect(page.locator('#threeDMarkerList .tdv-marker-row')).toHaveCount(3);
 
         // Persist.
         await save3DViewerIdevice(page);
@@ -151,7 +168,7 @@ test.describe('3D Viewer interactions', () => {
 
         // Markers render as accessible buttons with our labels.
         const markers = iframe.locator('.three-d-viewer-wrapper .tdv-marker');
-        await expect(markers).toHaveCount(2, { timeout: 15000 });
+        await expect(markers).toHaveCount(3, { timeout: 15000 });
         await expect(iframe.locator('.tdv-marker[aria-label="Summit"]')).toBeAttached();
 
         // Guided navigation controls are present.
@@ -181,6 +198,77 @@ test.describe('3D Viewer interactions', () => {
         const feedback = iframe.locator('.tdv-q-feedback');
         await expect(feedback).toHaveClass(/tdv-q-feedback--correct/, { timeout: 10000 });
         await expect(feedback).toHaveAttribute('aria-live', 'polite');
+        await iframe.locator('.tdv-dialog-close').click();
+        await expect(iframe.locator('.tdv-dialog')).toHaveCount(0);
+
+        // A resolved question stays resolved after reopening its marker.
+        await iframe.locator('.tdv-marker[aria-label="Quiz"]').dispatchEvent('click');
+        await expect(iframe.locator('.tdv-q-feedback')).toHaveClass(/tdv-q-feedback--correct/, { timeout: 10000 });
+        await expect(iframe.locator('.tdv-q-check')).toBeDisabled();
+        await iframe.locator('.tdv-dialog-close').click();
+        await expect(iframe.locator('.tdv-dialog')).toHaveCount(0);
+
+        // A spent attempt allowance also survives the close/reopen: the learner
+        // gets one try per marker per activity session, not one per dialog.
+        await iframe.locator('.tdv-marker[aria-label="OneShot"]').dispatchEvent('click');
+        await expect(iframe.locator('.tdv-question legend')).toHaveText('Only one try?', { timeout: 10000 });
+        await iframe.locator('.tdv-question input[type="radio"]').nth(1).check();
+        await iframe.locator('.tdv-q-check').click();
+        await expect(iframe.locator('.tdv-q-feedback')).toHaveClass(/tdv-q-feedback--incorrect/, { timeout: 10000 });
+        await expect(iframe.locator('.tdv-q-check')).toBeDisabled();
+        await iframe.locator('.tdv-dialog-close').click();
+        await expect(iframe.locator('.tdv-dialog')).toHaveCount(0);
+
+        await iframe.locator('.tdv-marker[aria-label="OneShot"]').dispatchEvent('click');
+        await expect(iframe.locator('.tdv-question legend')).toHaveText('Only one try?', { timeout: 10000 });
+        await expect(iframe.locator('.tdv-q-check')).toBeDisabled();
+        await expect(iframe.locator('.tdv-q-feedback')).toContainText('No attempts left');
+    });
+
+    test('keeps interaction-free content rendering exactly as before', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        test.setTimeout(120000);
+
+        const projectUuid = await createProject(page, '3D Viewer Legacy Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+
+        await add3DViewerIdevice(page);
+        await uploadModelViaFilePicker(page, 'test/fixtures/sample-model.glb');
+        await page.waitForFunction(
+            () => {
+                const viewer = document.querySelector('#threeDViewerPreview model-viewer') as {
+                    loaded?: boolean;
+                    src?: string;
+                } | null;
+                return !!(viewer?.loaded || viewer?.src);
+            },
+            { timeout: 30000 },
+        );
+
+        // Interactions stay off — this is what pre-interaction content looks
+        // like once it has been migrated to schema v2.
+        await expect(page.locator('#threeDInteractionsEnable')).not.toBeChecked();
+        await expect(page.locator('#threeDInteractionsBody')).toBeHidden();
+
+        await save3DViewerIdevice(page);
+        await saveProject(page);
+
+        await page.click('#head-bottom-preview');
+        await expect(page.locator('#previewsidenav')).toBeVisible({ timeout: 15000 });
+        const iframe = page.frameLocator('#preview-iframe');
+        await iframe.locator('article').waitFor({ state: 'attached', timeout: 30000 });
+        await iframe
+            .locator('.three-d-viewer-wrapper model-viewer[src]')
+            .first()
+            .waitFor({ state: 'attached', timeout: 20000 });
+
+        // No interaction payload, no markers, no guided controls, no fallback.
+        await expect(iframe.locator('.tdv-interaction-data')).toHaveCount(0);
+        await expect(iframe.locator('.tdv-marker')).toHaveCount(0);
+        await expect(iframe.locator('.tdv-guided-nav')).toHaveCount(0);
+        await expect(iframe.locator('.tdv-fallback')).toHaveCount(0);
     });
 
     test('authors an STL marker that persists and reaches the preview', async ({
@@ -202,8 +290,8 @@ test.describe('3D Viewer interactions', () => {
         // "load" event.
         await page.waitForFunction(
             () => {
-                const inp = document.querySelector('#threeD3DModelFile');
-                return !!(inp && inp.value && inp.value.toLowerCase().includes('.stl'));
+                const input = document.querySelector<HTMLInputElement>('#threeD3DModelFile');
+                return !!input?.value?.toLowerCase().includes('.stl');
             },
             { timeout: 20000 },
         );

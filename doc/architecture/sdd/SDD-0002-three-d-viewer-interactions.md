@@ -9,14 +9,15 @@ reviewers:
   - "@erseco"
 related:
   issues: [2153]
-  prs: []
-  adrs: [1]
+  prs: [2157]
+  adrs: [ADR-0006, ADR-0007]
   sdds: []
 supersedes: []
 superseded_by: []
 ai_assistance:
   tool: "Claude Code"
   model: "claude-opus-4-8"
+  notes: "TypeScript implementation section revised with claude-opus-5"
 ---
 
 # SDD-0002: 3D Viewer interactions: hotspots, guided navigation and questions
@@ -118,27 +119,36 @@ Introduce a **renderer-agnostic interaction layer** shared by editor and export,
 thin **renderer adapters** for the two model paths. State and rendering split by concern:
 
 ```
-                    normalized interaction state (schema v2)
-                                   │
+                          src/shared  — schema v2, migration, sanitizer, scoring
+                                   │  (ONE source; both bundles compile it in)
         ┌──────────────────────────┼──────────────────────────┐
         │                          │                          │
-  edition/three-d-viewer.js   three-d-viewer-runtime.js   export/three-d-viewer.js
-  (editor UI: enable,          (SHARED, single copy)       (renderView markup +
-   add/edit/reorder markers,   InteractionController +      JSON <script> data block +
-   placement mode,             ModelViewer/STL adapters +   accessible fallback list +
-   live preview)               accessible dialog +          guided-nav controls)
-        │                       question renderer +              │
-        └──── normalize* ───────  guided nav + ARIA ──── normalize* ────┘
-              (mirrored)                                   (mirrored)
+  src/edition/**              src/interactions/**        src/export/**
+  (editor UI: enable,          InteractionController +    (renderView markup +
+   add/edit/reorder markers,   accessible dialog +         JSON <script> data block +
+   placement mode,             question renderer +         accessible fallback list +
+   live preview)               guided nav + ARIA           guided-nav controls)
+        │                          │                          │
+        │                   src/adapters/**                   │
+        │              model-viewer adapter | STL adapter      │
+        │                          │                          │
+        └──────────────── src/runtime/** (eXe3DViewer) ───────┘
+                     registry, lifecycle, STL scene, loaders
+                                   │
+             ┌─────────────────────┴─────────────────────┐
+      edition/three-d-viewer.js                  export/three-d-viewer.js
+        (GENERATED IIFE, gitignored)              (GENERATED IIFE, gitignored)
 ```
 
-- **`three-d-viewer-runtime.js`** gains the *behavioural* interaction layer (coordinate math,
-  DOM overlays, dialogs, questions, guided navigation, ARIA) as **one shared copy** used by both
-  the editor preview and the exported page. This is the key structural advantage over the 360
-  viewer, which had to duplicate that logic because it has no shared runtime.
-- **Schema normalization** (pure functions) is **mirrored** (byte-identical, `// mirror edition`)
-  in `edition/` and `export/`, matching the established `three-sixty-viewer` convention and
-  avoiding any runtime load-order coupling.
+- The interaction layer lives **once**, in `src/interactions/`, and is used by the editor preview
+  and the exported page alike. This is the key structural advantage over the 360 viewer, which had
+  to duplicate that logic because it has no shared runtime.
+- **Schema normalization has one source** (`src/shared/schema.ts`) rather than mirrored copies:
+  both bundles import it and the compiler inlines a copy into each generated IIFE. Duplicated
+  bytes are fine; duplicated *maintained source* is not. There is therefore no `// mirror edition`
+  convention and no drift to police.
+- There is **no separate runtime JavaScript file**. `window.eXe3DViewer` is published by whichever
+  bundle loads first (idempotently), so a page still has exactly one instance registry.
 - **Renderer adapters** implement one small contract (see Technical design). The `<model-viewer>`
   adapter uses **native declarative hotspots** (`slot="hotspot-*"` + `data-position`/`data-normal`,
   placement via `positionAndNormalFromPoint()`); model-viewer handles projection + occlusion. The
@@ -188,50 +198,93 @@ Files changed (no new registered lib; all new code lives in already-loaded files
 registration edits are required** — confirmed by directory-recursion packaging in
 `src/shared/export/providers/FileSystemResourceProvider.ts:93`):
 
-- `edition/three-d-viewer.js` — state (`version`, `interaction`), migration, editor UI, placement,
-  marker editor, live preview wiring; `ensureRuntimeLoaded()` now runs whenever interactions are
-  enabled (GLB **and** STL).
-- `export/three-d-viewer.js` — serialize interaction state into a JSON `<script type="application/json">`
-  block inside the wrapper (mirrors `three-sixty-viewer` `script.three-sixty-viewer-data`, export
-  line 348); render the accessible fallback `<ul>` and guided-nav controls; boot the layer in
-  `renderBehaviour`.
-- `export/three-d-viewer-runtime.js` — `InteractionController`, `ModelViewerMarkerAdapter`,
-  `StlMarkerAdapter`, accessible dialog, single-choice question renderer, guided navigation, ARIA;
-  a new per-frame `onFrame` hook and a `raycastFromPointer` helper added to the STL instance;
-  marker overlays/anchors registered for cleanup in `destroy()`.
-- `edition/three-d-viewer.css` + `export/three-d-viewer.css` — marker button, overlay layer,
-  dialog, question and guided-nav styles (no inline styles).
-- Colocated `*.test.js` for edition/export/runtime; a new Playwright spec.
-- `config.xml` — bump `<version>` 1.0 → 1.1 (hygiene only; not a compatibility gate).
+The iDevice is a **TypeScript iDevice** ([ADR-0006](../adr/ADR-0006-typescript-idevices-build-convention.md)):
+all maintained source lives under `src/`, and `edition/three-d-viewer.js` /
+`export/three-d-viewer.js` are generated, gitignored bundles built by
+`scripts/build-idevices.ts`. `config.xml` keeps loading those two filenames, so nothing about the
+engine contract changes.
 
-**Renderer adapter contract** (see ADR-0007):
+```text
+public/files/perm/idevices/base/three-d-viewer/
+├── config.xml                 # unchanged: loads the two GENERATED bundles
+├── tsconfig.json              # strict, noUncheckedIndexedAccess, no `any`
+├── src/
+│   ├── globals.d.ts           # minimal slices of THREE, <model-viewer>, AssetManager, eXe
+│   ├── shared/                # types, schema v2, migration, colours, urls, html, model-source, scoring
+│   ├── runtime/               # registry, lifecycle, asset + path resolution, loaders, STL scene, eXe3DViewer
+│   ├── interactions/          # controller, answer state, dialog, question, guided nav, fallback
+│   ├── adapters/              # geometry + raycast maths, model-viewer adapter, STL adapter
+│   ├── edition/               # $exeDevice: template, form, preview, marker list/editor, SCORM
+│   ├── export/                # $threedviewer: renderer, bootstrap, per-wrapper controller, SCORM
+│   └── test/                  # THREE / model-viewer stubs, helpers, fixtures, bundle contract
+├── edition/three-d-viewer.css # hand-maintained
+└── export/three-d-viewer.css  # hand-maintained
+```
 
-```js
-{
-  enterPlacementMode(onPlaced),   // onPlaced({ position, normal, surface, camera })
-  exitPlacementMode(),
-  renderMarkers(markers, { showLabels, activeId }),
-  focusMarker(marker),            // apply marker.camera if present
-  captureCamera(),                // -> { orbit, target, fieldOfView } (opaque, adapter-defined)
-  updateOverlay(),                // per-frame reprojection (STL); no-op for model-viewer
-  destroy(),
+- `edition/three-d-viewer.css` + `export/three-d-viewer.css` carry the marker button, overlay
+  layer, dialog, question and guided-nav styles (no inline styles).
+- Colocated `*.spec.ts` files sit next to every module, plus bundle-contract tests over the
+  compiled IIFEs and a Playwright spec.
+- No new registered export lib: the vendored Three.js/model-viewer files already ship from
+  `export/`, and directory-recursion packaging picks up the generated bundle
+  (`src/shared/export/providers/FileSystemResourceProvider.ts:93`).
+
+**Build and debugging**
+
+```bash
+bun run typecheck:idevices                             # tsc -p for every TypeScript iDevice
+bun run bundle:idevices                                # build them all
+bun run bundle:idevices:watch                          # rebuild on src/ changes
+bun scripts/build-idevices.ts --only three-d-viewer    # just this one
+bun scripts/build-idevices.ts --typecheck --only three-d-viewer
+```
+
+Bundles ship linked `.js.map` source maps so browser stack traces point back at the TypeScript;
+`scripts/build-resource-bundles.js` keeps `.map` files out of the resource ZIPs and therefore out
+of production exports. Run `make bundle` after editing `src/` and **before** E2E, or the preview
+service worker serves the stale bundle from `public/bundles/idevices.zip`.
+
+**Browser globals the bundles publish**
+
+| Global | Published by | Used by |
+|---|---|---|
+| `window.$exeDevice` | edition | the workarea JSON-iDevice engine (`init`, `save`) |
+| `window.$threedviewer` | export | the export engine (`renderView`, `renderBehaviour`) |
+| `window.ThreeDViewerExportObject` | export | the engine's serialization helper |
+| `window.eXe3DViewer` | both (idempotent, first wins) | STL scene lifecycle + interaction factory |
+
+**Renderer adapter contract** (see [ADR-0007](../adr/ADR-0007-three-d-viewer-interaction-layer.md)):
+
+```ts
+interface MarkerAdapter {
+    enterPlacementMode(onPlaced: (placement: MarkerPlacement) => void): void;
+    exitPlacementMode(): void;
+    renderMarkers(markers: readonly Marker[], options: MarkerRenderOptions): void;
+    setActive(activeId: string): void;
+    focusMarker(marker: Marker): void;      // apply marker.camera if present
+    captureCamera(): MarkerCamera;          // opaque, adapter-defined
+    updateOverlay(): void;                  // per-frame reprojection (STL); no-op for model-viewer
+    destroy(): void;
 }
 ```
 
 `InteractionController` owns marker state, active-marker tracking, guided navigation, dialog and
 question lifecycle, ARIA announcements, and the fallback list; it is renderer-agnostic and talks to
-the model only through the adapter. It is created by both the editor (live preview, `interactive`
-mode) and the export runtime (`readonly` learner mode) via a single
-`window.eXe3DViewer.createInteractionLayer(instance, state, mode, hooks)` factory.
+the model only through the adapter. It is created by both the editor (live preview, `'edit'` mode) and the
+export runtime (`'view'` learner mode) via the single
+`window.eXe3DViewer.createInteractionLayer(handle, state, mode, hooks)` factory. Learner answer
+state lives on the controller keyed by marker id, so a question's attempt allowance applies for the
+whole activity session rather than resetting each time its dialog is reopened.
 
 ## Data model
 
-State is versioned. Legacy state has no `version` (treated as v1) and is migrated to v2 by adding a
-disabled `interaction` block. Existing visual fields are unchanged.
+State is versioned with an explicit `schemaVersion`. Original, pre-interaction content carries no
+version marker and is migrated straight to v2 by adding a disabled `interaction` block and a
+default `scorm` block. Existing visual fields are unchanged.
 
-```js
+```ts
 {
-  version: 2,
+  schemaVersion: 2,
   src: '', alt: '',
   modelColor: '#888888', backgroundColor: '#f5f5f5',
   cameraControls: true, autoRotate: true, autoRotateSpeed: 30, showNavControls: false,
@@ -243,9 +296,14 @@ disabled `interaction` block. Existing visual fields are unchanged.
     showMarkerLabels: true,
     activeMarkerId: '',
     markers: []            // ordered
-  }
+  },
+  scorm: { mode: 0, weighted: 100, saveButtonText: '' }
 }
 ```
+
+SCORM configuration has **one canonical home** — the nested `scorm` block. The shared gamification
+framework speaks a flatter dialect (`isScorm`, `weighted`, `textButtonScorm`); `normalizeScorm()`
+is the single place the two vocabularies meet, in both directions.
 
 Marker (renderer-independent):
 
@@ -285,10 +343,26 @@ media, exactly one option may be `correct` (first wins on conflict). Normalizati
 
 ## Migration and compatibility
 
-- Missing `version` ⇒ v1 ⇒ add disabled `interaction`, stamp `version: 2`. Branch on **data shape**,
-  never on `config.xml <version>` (informational only, `doc/elpx-format/idevices/config-xml.md:31`).
-- Existing visual options preserved byte-for-byte; a legacy project renders identically.
-- Idempotent and tolerant of malformed nested values (never throws, never drops a valid `src`).
+Exactly three transitions exist, and `hydrateDocument()` is the only entry point:
+
+| Input | Result |
+|---|---|
+| original unversioned 3D Viewer state | `{ status: 'ok' }` — migrated to schema v2 |
+| schema v2 | `{ status: 'ok' }` — normalized schema v2 |
+| `schemaVersion > 2` | `{ status: 'unsupported-version' }` — the original is preserved |
+| anything that is not an object | `{ status: 'invalid' }` — the original is preserved |
+
+- Migration branches on **data shape and `schemaVersion`**, never on `config.xml <version>`
+  (informational only, `doc/elpx-format/idevices/config-xml.md:31`).
+- Persisted data is parsed as `unknown` and validated; it is never cast to the document type.
+- A document from a newer schema is **not opened and then overwritten**: the editor shows a notice
+  instead of the form, and `save()` returns the original object untouched.
+- There is deliberately **no migration for intermediate development shapes**. The interaction
+  feature has never been released, so v2 is the only version that has ever been published.
+- Existing visual options are preserved; a legacy project renders identically, with a disabled and
+  empty interaction layer.
+- Normalization is idempotent and tolerant of malformed nested values (never throws, never drops a
+  valid `src`).
 - Runtime-only fields (`blob:` URLs, object refs) are never serialized.
 - Older exported HTML keeps working: the JSON data block is additive; absent block ⇒ interactions off.
 
@@ -334,24 +408,35 @@ media, exactly one option may be `correct` (first wins on conflict). Normalizati
 
 ## Testing strategy
 
-- **Unit (Vitest/happy-dom, colocated `*.test.js`)**: normalization, migration (v1→v2, idempotent
-  round-trip), invalid/malformed data, anchor/camera/action/question normalization, id generation,
-  ordering/reorder, single-choice validation (correct/incorrect/attempts), JSON block
-  serialize/parse (incl. `</script>` escaping and no `blob:`), accessible-label construction, and
-  the pure STL projection/occlusion math (injected minimal `THREE` stub, per the runtime test
-  pattern). `public/files/perm/**` is excluded from the v8 coverage *include*, so the ≥90% patch
-  gate is met by shipping colocated tests for every new function.
-- **Runtime**: marker overlay markup, active-marker state, dialog open/close + focus return, guided
-  prev/next, question feedback, keyboard activation, fallback rendering, cleanup.
-- **Export**: markers reach the exported JSON block; `asset://` rewritten; **no `blob:`**; required
-  scripts/styles present; legacy state exports without interactions; attributes escaped; fallback
-  present.
+- **Unit (Vitest/happy-dom, colocated `src/**/*.spec.ts`)**: normalization, migration (legacy → v2,
+  future-version rejection, idempotent round-trip), invalid/malformed data,
+  anchor/camera/action/question normalization, deterministic id generation through an injected id
+  factory, ordering/reorder, single-choice grading, JSON block serialize/parse (incl. `</script>`
+  escaping and no `blob:`), accessible-label construction, and the pure STL projection/occlusion
+  maths against a small deterministic `THREE` stub. Because the sources are real ES modules, v8 can
+  instrument them: `vitest.config.mts` includes
+  `public/files/perm/idevices/base/*/src/**/*.ts` in coverage and excludes the generated bundles,
+  the test doubles and the two entry points.
+- **Generated-bundle contract** (`src/test/bundle-contract.spec.ts`): evaluates the ACTUAL compiled
+  IIFEs as classic scripts and asserts the four window globals, that neither bundle carries
+  top-level `import`/`export`/`require(`, that source maps are linked rather than inlined, that a
+  schema-v2 document renders end to end through the export bundle, and that the two bundles share
+  one `eXe3DViewer` rather than replacing each other.
+- **Runtime and interactions**: registry lifecycle and teardown, multiple-instance isolation,
+  marker overlay markup, active-marker state, dialog open/close + focus trap + focus return,
+  Escape, guided prev/next with and without wrapping, question feedback, **attempts surviving a
+  dialog reopen**, fallback rendering, listener cleanup.
+- **Export**: markers reach the exported JSON block; `asset://` survives for the export rewriter;
+  **no `blob:`**; legacy state exports without interactions; attributes escaped; fallback present;
+  SCORM registration and score reporting.
 - **Playwright** (`test/e2e/playwright/specs/idevices/three-d-viewer-interactions.spec.ts`): GLB flow
-  — add viewer, enable interactions, add informational marker, add question marker, enable guided
-  mode, save, reopen, assert persistence, open preview (direct `#head-bottom-preview` click, wait for
-  `article`), navigate markers, answer the question, assert accessible labels + feedback. STL:
-  cover the raycasting adapter with a deterministic unit/integration fixture; keep pointer-based
-  WebGL E2E minimal. Run `make test-e2e-static` (export/preview affected).
+  — add viewer, enable interactions, add informational marker, add two question markers, enable
+  guided mode, save, reopen, assert persistence, open preview (direct `#head-bottom-preview` click,
+  wait for `article`), assert accessible labels and guided controls, answer the question, and
+  confirm both a resolved question and a spent attempt allowance survive closing and reopening the
+  dialog. A second spec asserts interaction-free content exports unchanged. STL: the raycasting
+  adapter is unit-tested with a stub; the E2E spec asserts the WebGL-independent guarantees. Run
+  `make test-e2e-static` (export/preview affected).
 
 ## Rollout plan
 
@@ -368,9 +453,12 @@ until an author enables it.
 - **Animated GLB surface anchoring** may drift on skinned meshes → store position+normal anchors as
   the reliable default; use `model-viewer` `surface` only when available; document the limitation;
   never block the base feature.
-- **Duplication drift** between mirrored `normalize*` in edition/export → keep blocks byte-identical
-  with a `// mirror edition` marker and identical tests; the behavioural logic lives single-copy in
-  the runtime to minimize what is duplicated.
+- **Duplication drift** between edition and export → eliminated by construction: the schema and the
+  behavioural layer have one TypeScript source that both bundles compile in. Duplicated *bytes* in
+  the two generated IIFEs are accepted; duplicated maintained source is not.
+- **Stale generated bundles** during development or E2E → `build:all` (and therefore `make bundle`)
+  runs `typecheck:idevices` + `bundle:idevices` before `bundle:resources`, and the E2E workflow
+  uploads both generated bundles as artifacts because the runners get a fresh checkout.
 - **Round-trip data loss** (the #1 iDevice bug) → mandatory `load(save(x))` test for every field.
 
 ## Open questions
@@ -417,17 +505,23 @@ until an author enables it.
 
 ## Implementation checklist
 
-- [ ] Schema + `normalize*`/migration (mirrored edition/export) + unit tests.
-- [ ] Runtime `InteractionController` + adapters + dialog + question + guided nav + hooks + tests.
-- [ ] Editor UI (enable, add/edit/reorder, placement, marker editor, live preview) + tests.
-- [ ] Export markup (JSON block, fallback list, nav controls) + tests.
-- [ ] CSS (edition + export).
-- [ ] Playwright spec + `make test-e2e` / `make test-e2e-static`.
-- [ ] `config.xml` version bump; ADR-0007; records index updates.
+- [x] Schema v2 + migration in `src/shared/` (one source) + unit tests.
+- [x] `InteractionController` + adapters + dialog + question + guided nav + hooks + tests.
+- [x] Editor UI (enable, add/edit/reorder, placement, marker editor, live preview) + tests.
+- [x] Export markup (JSON block, fallback list, nav controls) + tests.
+- [x] CSS (edition + export).
+- [x] TypeScript build convention ([ADR-0006](../adr/ADR-0006-typescript-idevices-build-convention.md)):
+      `src/` sources, generated bundles gitignored, bundle-contract tests.
+- [x] Playwright spec + `make test-e2e` / `make test-e2e-static`.
+- [x] ADR-0007; records index updates. `config.xml` unchanged — the generated bundles keep the
+      existing filenames.
 
 ## References
 
 - Issue: https://github.com/exelearning/exelearning/issues/2153
-- ADR-0007 (this feature's durable decisions).
+- [ADR-0007](../adr/ADR-0007-three-d-viewer-interaction-layer.md) (this feature's durable decisions).
+- [ADR-0006](../adr/ADR-0006-typescript-idevices-build-convention.md) and
+  [doc/development/idevices-typescript.md](../../development/idevices-typescript.md) (the build
+  convention this iDevice follows).
 - `doc/elpx-format/idevices/patterns.md` (Pattern 1: JSON iDevice), `config-xml.md`.
 - Repo memory: `E2E preview-open gotcha`, `sanitizeHtml DOM fallback`, `Export lib registration sites`.

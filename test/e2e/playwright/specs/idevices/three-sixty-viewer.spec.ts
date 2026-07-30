@@ -100,6 +100,59 @@ async function saveIdeviceInPage(page: Page): Promise<void> {
     await page.waitForTimeout(500);
 }
 
+/** After a reload: select the page node and reopen the iDevice for editing. */
+async function reopenForEdit(page: Page, readySelector = '#threeSixtyAlt'): Promise<void> {
+    const pageNode = page
+        .locator('.nav-element-text')
+        .filter({ hasText: /New page|Nueva página/i })
+        .first();
+    if ((await pageNode.count()) > 0) {
+        await pageNode.click({ force: true, timeout: 5000 });
+        await page.waitForTimeout(500);
+    }
+    await page
+        .waitForFunction(() => !!document.querySelector('#node-content .idevice_node.three-sixty-viewer'), undefined, {
+            timeout: 15000,
+        })
+        .catch(() => {});
+    const editBtn = page.locator('#node-content .idevice_node.three-sixty-viewer .btn-edit-idevice').first();
+    if (await editBtn.isVisible().catch(() => false)) {
+        await editBtn.click();
+    } else {
+        await page
+            .locator('#node-content .idevice_node.three-sixty-viewer .idevice_body')
+            .first()
+            .dblclick({ timeout: 5000 })
+            .catch(() => {});
+    }
+    await page.locator(readySelector).waitFor({ state: 'visible', timeout: 10000 });
+}
+
+/** A 2x1 PNG the hidden file-input fallback turns into a data-URL source. */
+const TINY_PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADUlEQVR4nGNgYGD4DwABBAEAX+XLSQAAAABJRU5ErkJggg==',
+    'base64',
+);
+
+/** Give the active scene an image through the hidden file input. */
+async function setSceneImage(page: Page): Promise<void> {
+    await page.setInputFiles('#threeSixtyImageFile', {
+        name: 'tiny.png',
+        mimeType: 'image/png',
+        buffer: TINY_PNG,
+    });
+    await page
+        .waitForFunction(
+            () => {
+                const name = document.querySelector('#threeSixtyImageName');
+                return !!name && name.textContent !== 'No image selected' && name.textContent !== '';
+            },
+            undefined,
+            { timeout: 10000 },
+        )
+        .catch(() => {});
+}
+
 test.describe('Three Sixty Viewer iDevice', () => {
     test('adds three-sixty-viewer and shows all configuration fields', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
@@ -137,38 +190,7 @@ test.describe('Three Sixty Viewer iDevice', () => {
         await page.waitForTimeout(500);
 
         await reloadPage(page);
-
-        const pageNode = page
-            .locator('.nav-element-text')
-            .filter({ hasText: /New page|Nueva página/i })
-            .first();
-        if ((await pageNode.count()) > 0) {
-            await pageNode.click({ force: true, timeout: 5000 });
-            await page.waitForTimeout(500);
-        }
-
-        // Wait for the idevice wrapper to be present after reload
-        await page
-            .waitForFunction(
-                () => !!document.querySelector('#node-content .idevice_node.three-sixty-viewer'),
-                undefined,
-                { timeout: 15000 },
-            )
-            .catch(() => {});
-
-        // Enter edit mode and verify persisted values
-        const editBtn = page.locator('#node-content .idevice_node.three-sixty-viewer .btn-edit-idevice').first();
-        if (await editBtn.isVisible().catch(() => false)) {
-            await editBtn.click();
-        } else {
-            await page
-                .locator('#node-content .idevice_node.three-sixty-viewer .idevice_body')
-                .first()
-                .dblclick({ timeout: 5000 })
-                .catch(() => {});
-        }
-
-        await page.locator('#threeSixtyAlt').waitFor({ state: 'visible', timeout: 10000 });
+        await reopenForEdit(page);
         await expect(page.locator('#threeSixtyAlt')).toHaveValue(TEST_DATA.alt);
         await expect(page.locator('#threeSixtyYaw')).toHaveValue(TEST_DATA.yaw);
         await expect(page.locator('#threeSixtyPitch')).toHaveValue(TEST_DATA.pitch);
@@ -277,36 +299,7 @@ test.describe('Three Sixty Viewer iDevice', () => {
             await page.waitForTimeout(500);
 
             await reloadPage(page);
-
-            const pageNode = page
-                .locator('.nav-element-text')
-                .filter({ hasText: /New page|Nueva página/i })
-                .first();
-            if ((await pageNode.count()) > 0) {
-                await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(500);
-            }
-
-            await page
-                .waitForFunction(
-                    () => !!document.querySelector('#node-content .idevice_node.three-sixty-viewer'),
-                    undefined,
-                    { timeout: 15000 },
-                )
-                .catch(() => {});
-
-            const editBtn = page.locator('#node-content .idevice_node.three-sixty-viewer .btn-edit-idevice').first();
-            if (await editBtn.isVisible().catch(() => false)) {
-                await editBtn.click();
-            } else {
-                await page
-                    .locator('#node-content .idevice_node.three-sixty-viewer .idevice_body')
-                    .first()
-                    .dblclick({ timeout: 5000 })
-                    .catch(() => {});
-            }
-
-            await page.locator('#threeSixtyIsPanorama').waitFor({ state: 'visible', timeout: 10000 });
+            await reopenForEdit(page, '#threeSixtyIsPanorama');
             await expect(page.locator('#threeSixtyIsPanorama')).not.toBeChecked();
             await expect(page.locator('#threeSixtyYaw')).toHaveCount(0);
         });
@@ -381,38 +374,7 @@ test.describe('Three Sixty Viewer iDevice', () => {
             await page.waitForTimeout(500);
 
             await reloadPage(page);
-
-            // Navigate back to the page
-            const pageNode = page
-                .locator('.nav-element-text')
-                .filter({ hasText: /New page|Nueva página/i })
-                .first();
-            if ((await pageNode.count()) > 0) {
-                await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(500);
-            }
-
-            await page
-                .waitForFunction(
-                    () => !!document.querySelector('#node-content .idevice_node.three-sixty-viewer'),
-                    undefined,
-                    { timeout: 15000 },
-                )
-                .catch(() => {});
-
-            // Re-enter edit mode
-            const editBtn = page.locator('#node-content .idevice_node.three-sixty-viewer .btn-edit-idevice').first();
-            if (await editBtn.isVisible().catch(() => false)) {
-                await editBtn.click();
-            } else {
-                await page
-                    .locator('#node-content .idevice_node.three-sixty-viewer .idevice_body')
-                    .first()
-                    .dblclick({ timeout: 5000 })
-                    .catch(() => {});
-            }
-
-            await page.locator('#threeSixtyHotspotList').waitFor({ state: 'visible', timeout: 10000 });
+            await reopenForEdit(page, '#threeSixtyHotspotList');
 
             // Verify persisted link hotspot values
             await expect(page.locator('#threeSixtyHotspotList .hotspot-action-type').first()).toHaveValue('link');
@@ -422,47 +384,227 @@ test.describe('Three Sixty Viewer iDevice', () => {
             await expect(page.locator('#threeSixtyHotspotList .hotspot-payload-newTab').first()).not.toBeChecked();
         });
 
-        test('export runtime opens URL via window.open when newTab is true', async ({ authenticatedPage }) => {
+        test('export runtime exposes the engine contract and preserves link payloads', async ({
+            authenticatedPage,
+        }) => {
             const page = authenticatedPage;
 
-            // Load the export script and exercise _openLink directly.
-            // The module exposes itself as $threesixtyviewer (not $exeDevice).
+            // Load the generated export bundle (a classic-script IIFE) and
+            // assert the window.$threesixtyviewer contract it publishes.
             const result = await page.evaluate(async () => {
                 const res = await fetch('/files/perm/idevices/base/three-sixty-viewer/export/three-sixty-viewer.js');
                 const code = await res.text();
                 // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
                 const factory = new Function('_', code + '; return $threesixtyviewer;');
                 const dev = factory((s: string) => s);
-
-                const opened: string[] = [];
-                const hrefs: string[] = [];
-
-                // Patch _openLink to capture calls without real navigation
-                dev._openLink = (payload: { url: string; newTab: boolean }) => {
-                    if (!payload.url) return;
-                    if (payload.newTab !== false) {
-                        opened.push(payload.url);
-                    } else {
-                        hrefs.push(payload.url);
-                    }
+                const normalized = dev.normalize({
+                    version: 2,
+                    scenes: [
+                        {
+                            id: 's1',
+                            hotspots: [
+                                {
+                                    id: 'h1',
+                                    action: { type: 'link', payload: { url: 'https://example.com', newTab: false } },
+                                },
+                            ],
+                        },
+                    ],
+                });
+                return {
+                    api: {
+                        renderView: typeof dev.renderView,
+                        renderBehaviour: typeof dev.renderBehaviour,
+                        init: typeof dev.init,
+                        destroyAll: typeof dev.destroyAll,
+                    },
+                    linkAction: normalized.scenes[0].hotspots[0].action,
                 };
-
-                dev._openLink({ url: 'https://example.com', newTab: true });
-                dev._openLink({ url: 'https://same.com', newTab: false });
-                dev._openLink({ url: '', newTab: true }); // empty → no-op
-
-                return { opened, hrefs };
             });
 
-            expect(result.opened).toEqual(['https://example.com']);
-            expect(result.hrefs).toEqual(['https://same.com']);
+            expect(result.api).toEqual({
+                renderView: 'function',
+                renderBehaviour: 'function',
+                init: 'function',
+                destroyAll: 'function',
+            });
+            expect(result.linkAction).toEqual({ type: 'link', payload: { url: 'https://example.com', newTab: false } });
         });
     });
 
-    test('migrates v1 saved data into a one-scene tour without losing fields', async ({ authenticatedPage }) => {
+    test.describe('Scenes and hotspot placement', () => {
+        test('second scene and start scene persist through save + reload', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+            const projectUuid = await createProject(page, 'Three Sixty Scenes Persist');
+            await gotoWorkarea(page, projectUuid);
+
+            await addThreeSixtyIdeviceFromPanel(page);
+
+            // Add a second scene; it becomes the active one.
+            await page.locator('#threeSixtyAddScene').click();
+            await expect(page.locator('#threeSixtySceneList .three-sixty-scene-item')).toHaveCount(2);
+            await page.locator('#threeSixtySceneTitle').fill('Second room');
+            await page.locator('#threeSixtySceneTitle').dispatchEvent('input');
+
+            // Make it the start scene.
+            await page
+                .locator('#threeSixtySceneList .three-sixty-scene-item')
+                .nth(1)
+                .locator('[data-action="set-start"]')
+                .click();
+            await expect(
+                page.locator('#threeSixtySceneList .three-sixty-scene-item').nth(1).locator('.badge'),
+            ).toBeVisible();
+
+            await saveIdeviceInPage(page);
+            await workarea.save();
+            await page.waitForTimeout(500);
+            await reloadPage(page);
+            await reopenForEdit(page, '#threeSixtySceneList');
+
+            await expect(page.locator('#threeSixtySceneList .three-sixty-scene-item')).toHaveCount(2);
+            // The start badge survived on the second scene.
+            await expect(
+                page.locator('#threeSixtySceneList .three-sixty-scene-item').nth(1).locator('.badge'),
+            ).toBeVisible();
+            await expect(page.locator('#threeSixtySceneList')).toContainText('Second room');
+        });
+
+        test('goToScene hotspot edited in the list persists its target', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+            const projectUuid = await createProject(page, 'Three Sixty GoToScene');
+            await gotoWorkarea(page, projectUuid);
+
+            await addThreeSixtyIdeviceFromPanel(page);
+
+            // Two scenes; go back to the first one.
+            await page.locator('#threeSixtyAddScene').click();
+            await page
+                .locator('#threeSixtySceneList .three-sixty-scene-item')
+                .first()
+                .locator('[data-action="select"]')
+                .click();
+
+            // Add a hotspot from the list and point it at scene 2.
+            await page.locator('#threeSixtyAddHotspot').click();
+            const actionType = page.locator('#threeSixtyHotspotList .hotspot-action-type').first();
+            await actionType.selectOption('goToScene');
+            await actionType.dispatchEvent('change');
+            const targetSelect = page.locator('#threeSixtyHotspotList .hotspot-payload-sceneId').first();
+            await targetSelect.waitFor({ state: 'visible', timeout: 5000 });
+            const targetValue = await targetSelect.locator('option').nth(2).getAttribute('value');
+            await targetSelect.selectOption(targetValue ?? '');
+            await targetSelect.dispatchEvent('input');
+
+            await saveIdeviceInPage(page);
+            await workarea.save();
+            await page.waitForTimeout(500);
+            await reloadPage(page);
+            await reopenForEdit(page, '#threeSixtyHotspotList');
+
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-action-type').first()).toHaveValue('goToScene');
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-payload-sceneId').first()).toHaveValue(
+                targetValue ?? '',
+            );
+        });
+
+        test('placement mode places a hotspot by clicking the flat preview', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Three Sixty Placement');
+            await gotoWorkarea(page, projectUuid);
+
+            await addThreeSixtyIdeviceFromPanel(page);
+
+            // Flat scene with a real (tiny) image via the hidden file input.
+            const panoramaToggle = page.locator('#threeSixtyIsPanorama');
+            await panoramaToggle.uncheck();
+            await panoramaToggle.dispatchEvent('change');
+            await page.waitForTimeout(300);
+            await setSceneImage(page);
+
+            const previewImage = page.locator('#threeSixtyPreview img.three-sixty-preview-flat');
+            await previewImage.waitFor({ state: 'visible', timeout: 10000 });
+
+            // Enter placement mode: reflected via aria-pressed, not colour.
+            const placeButton = page.locator('#threeSixtyPlaceHotspot');
+            await placeButton.click();
+            await expect(placeButton).toHaveAttribute('aria-pressed', 'true');
+            await expect(page.locator('#threeSixtyPlacementHint')).toBeVisible();
+
+            // Escape cancels…
+            await page.keyboard.press('Escape');
+            await expect(placeButton).toHaveAttribute('aria-pressed', 'false');
+
+            // …and a click inside the image places a hotspot. The element
+            // centre is always inside the contained image rectangle (corners
+            // may be letterbox bars, which placement deliberately ignores).
+            await placeButton.click();
+            await previewImage.click({ force: true });
+            await expect(page.locator('#threeSixtyHotspotList .three-sixty-hotspot-item')).toHaveCount(1);
+            await expect(placeButton).toHaveAttribute('aria-pressed', 'false');
+            // Flat placement produces editable X/Y percent fields.
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-x').first()).toBeVisible();
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-y').first()).toBeVisible();
+        });
+
+        test('deleting a scene referenced by a hotspot asks for confirmation', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Three Sixty Scene Delete');
+            await gotoWorkarea(page, projectUuid);
+
+            await addThreeSixtyIdeviceFromPanel(page);
+            await page.locator('#threeSixtyAddScene').click();
+            await page
+                .locator('#threeSixtySceneList .three-sixty-scene-item')
+                .first()
+                .locator('[data-action="select"]')
+                .click();
+            await page.locator('#threeSixtyAddHotspot').click();
+            const actionType = page.locator('#threeSixtyHotspotList .hotspot-action-type').first();
+            await actionType.selectOption('goToScene');
+            await actionType.dispatchEvent('change');
+            const targetSelect = page.locator('#threeSixtyHotspotList .hotspot-payload-sceneId').first();
+            const targetValue = await targetSelect.locator('option').nth(2).getAttribute('value');
+            await targetSelect.selectOption(targetValue ?? '');
+            await targetSelect.dispatchEvent('input');
+
+            // Deleting the referenced scene surfaces a confirm() that names
+            // the affected hotspots; accept it and verify the repair.
+            let confirmMessage = '';
+            page.once('dialog', dialog => {
+                confirmMessage = dialog.message();
+                void dialog.accept();
+            });
+            await page
+                .locator('#threeSixtySceneList .three-sixty-scene-item')
+                .nth(1)
+                .locator('[data-action="remove"]')
+                .click();
+            await expect(page.locator('#threeSixtySceneList .three-sixty-scene-item')).toHaveCount(1);
+            expect(confirmMessage).toContain('1 hotspot');
+            // The dangling target now shows an inline validation message.
+            await expect(page.locator('#threeSixtyHotspotList .hotspot-field-error').first()).toBeVisible();
+        });
+    });
+
+    test('legacy v1 content opens in the editor and saves as v2', async ({ authenticatedPage }) => {
         const page = authenticatedPage;
-        // Load the iDevice script directly in the page and call its migration to assert
-        // that legacy single-image data lifts cleanly into the v2 schema.
+        // Load the generated edition bundle, open real v1 data through the
+        // public init/save contract and assert the persisted v2 result.
         const result = await page.evaluate(async () => {
             const res = await fetch('/files/perm/idevices/base/three-sixty-viewer/edition/three-sixty-viewer.js');
             const code = await res.text();
@@ -478,7 +620,14 @@ test.describe('Three Sixty Viewer iDevice', () => {
                 zoomEnabled: false,
                 fullscreenEnabled: true,
             };
-            return dev.normalizeData(v1);
+            const host = document.createElement('div');
+            host.setAttribute('idevice-id', 'idev-v1');
+            document.body.appendChild(host);
+            dev.init(host, v1, '');
+            const saved = dev.save();
+            dev.destroy();
+            host.remove();
+            return saved;
         });
 
         expect(result.version).toBe(2);

@@ -67,6 +67,8 @@ jobs:
             public/bundles/**
             public/style/workarea/main.css
             public/files/perm/idevices/base/slide/edition/slide-editor.bundle.js
+            public/files/perm/idevices/base/three-sixty-viewer/edition/three-sixty-viewer.js
+            public/files/perm/idevices/base/three-sixty-viewer/export/three-sixty-viewer.js
 
       - name: Upload static distribution (static project)
         uses: actions/upload-artifact@v7

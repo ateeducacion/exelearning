@@ -10,10 +10,16 @@ changes status, update the table and the per-status lists below.
 | ID | Title | Status | Date |
 |---|---|---|---|
 | ADR-0000 | Template | Template | — |
+| ADR-0006 | TypeScript iDevices: src/ sources compiled by one convention-based build | Proposed | 2026-07-30 |
+
+IDs ADR-0001 through ADR-0005 are reserved by the upstream Interactive Video
+refactor (exelearning/exelearning#2147) and are intentionally skipped here so
+the two histories can merge without renumbering.
 
 ## Proposed ADRs
 
-_No proposed ADRs yet._
+- [ADR-0006](ADR-0006-typescript-idevices-build-convention.md) — TypeScript
+  iDevices: `src/` sources compiled by one convention-based build.
 
 ## Accepted ADRs
 

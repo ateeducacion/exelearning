@@ -77,6 +77,9 @@ function scanDirectory(dirPath, basePath = '') {
 
   for (const entry of entries) {
     if (entry.name.startsWith('.')) continue;
+    // Source maps are a development aid next to generated bundles (e.g. the
+    // TypeScript iDevices, ADR-0006); they must not ship inside resource ZIPs.
+    if (entry.isFile() && entry.name.endsWith('.map')) continue;
 
     const fullPath = path.join(dirPath, entry.name);
     const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;

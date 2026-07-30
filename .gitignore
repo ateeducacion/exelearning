@@ -106,7 +106,10 @@ symfony.lock
 .phpunit.cache
 .idea/
 
-runtime/
+# Anchored to the repository root: an unanchored `runtime/` also matches source
+# directories named `runtime` at any depth (e.g. a TypeScript iDevice's
+# `src/runtime/`) and silently drops them from commits.
+/runtime/
 symfony_legacy
 nestjs_legacy
 test-results/

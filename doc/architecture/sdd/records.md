@@ -10,11 +10,14 @@ update the table and the per-status lists below.
 | ID | Title | Status | Date |
 |---|---|---|---|
 | SDD-0000 | Template | Template | — |
-| [SDD-0001](SDD-0001-three-d-viewer-interactions.md) | 3D Viewer interactions: hotspots, guided navigation and questions | Draft | 2026-07-10 |
+| [SDD-0002](SDD-0002-three-d-viewer-interactions.md) | 3D Viewer interactions: hotspots, guided navigation and questions | Draft | 2026-07-10 |
+
+ID SDD-0001 is reserved by the Interactive Video refactor
+(exelearning/exelearning#2147) and lands with that pull request.
 
 ## Draft SDDs
 
-- [SDD-0001](SDD-0001-three-d-viewer-interactions.md) — 3D Viewer interactions: hotspots, guided navigation and questions
+- [SDD-0002](SDD-0002-three-d-viewer-interactions.md) — 3D Viewer interactions: hotspots, guided navigation and questions
 
 ## In Review SDDs
 

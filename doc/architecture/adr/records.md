@@ -10,11 +10,17 @@ changes status, update the table and the per-status lists below.
 | ID | Title | Status | Date |
 |---|---|---|---|
 | ADR-0000 | Template | Template | — |
-| [ADR-0001](ADR-0001-three-d-viewer-interaction-layer.md) | 3D Viewer interaction layer: renderer adapters over a shared runtime controller | Proposed | 2026-07-10 |
+| [ADR-0006](ADR-0006-typescript-idevices-build-convention.md) | TypeScript iDevices: src/ sources compiled by one convention-based build | Proposed | 2026-07-30 |
+| [ADR-0007](ADR-0007-three-d-viewer-interaction-layer.md) | 3D Viewer interaction layer: renderer adapters over a shared runtime controller | Proposed | 2026-07-10 |
+
+IDs ADR-0001 … ADR-0005 are reserved by the Interactive Video refactor
+(exelearning/exelearning#2147) and land with that pull request.
 
 ## Proposed ADRs
 
-- [ADR-0001](ADR-0001-three-d-viewer-interaction-layer.md) — 3D Viewer interaction layer: renderer adapters over a shared runtime controller
+- [ADR-0006](ADR-0006-typescript-idevices-build-convention.md) — TypeScript
+  iDevices: `src/` sources compiled by one convention-based build.
+- [ADR-0007](ADR-0007-three-d-viewer-interaction-layer.md) — 3D Viewer interaction layer: renderer adapters over a shared runtime controller
 
 ## Accepted ADRs
 

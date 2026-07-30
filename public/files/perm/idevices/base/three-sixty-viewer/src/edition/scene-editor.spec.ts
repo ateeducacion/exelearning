@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSequentialIdGenerator } from '../shared/ids';
 import { hydrateDocument } from '../shared/schema';
 import { formHtml } from './form';
-import { refreshActiveSceneInputs, refreshImageLabel, wireActiveSceneFields } from './scene-editor';
+import { refreshActiveSceneInputs, refreshImageLabel, wireActiveSceneFields, wireBehaviourFields } from './scene-editor';
 import { createEditorState } from './state';
 import type { EditorState } from './state';
 
@@ -81,6 +81,32 @@ describe('wireActiveSceneFields', () => {
         body.querySelector<HTMLButtonElement>('#threeSixtyImageClear')?.click();
         expect(state.activeScene().src).toBe('');
         expect(callbacks.onChanged).toHaveBeenCalled();
+    });
+});
+
+describe('wireBehaviourFields', () => {
+    it('updates every behaviour toggle and the clamped autorotate speed', () => {
+        const { body, state } = makeForm();
+        const onChanged = vi.fn();
+        wireBehaviourFields(body, state, onChanged);
+        for (const [selector, read] of [
+            ['#threeSixtyAutorotate', () => state.doc.behaviour.autorotate.enabled],
+            ['#threeSixtyZoom', () => state.doc.behaviour.zoomEnabled],
+            ['#threeSixtyFullscreen', () => state.doc.behaviour.fullscreenEnabled],
+            ['#threeSixtyShowLabels', () => state.doc.behaviour.showLabels],
+            ['#threeSixtyNavControls', () => state.doc.behaviour.showNavControls],
+        ] as Array<[string, () => boolean]>) {
+            const checkbox = body.querySelector<HTMLInputElement>(selector);
+            if (!checkbox) throw new Error(`missing ${selector}`);
+            checkbox.checked = selector === '#threeSixtyAutorotate';
+            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            expect(read()).toBe(selector === '#threeSixtyAutorotate');
+        }
+        fire(body, '#threeSixtyAutorotateSpeed', '99');
+        expect(state.doc.behaviour.autorotate.speed).toBe(10);
+        fire(body, '#threeSixtyAutorotateSpeed', '2.5');
+        expect(state.doc.behaviour.autorotate.speed).toBe(2.5);
+        expect(onChanged).toHaveBeenCalled();
     });
 });
 

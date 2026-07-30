@@ -23,7 +23,7 @@ import type { Translate } from './i18n';
 import { createPreviewController } from './preview';
 import type { PlacementPosition, PreviewController } from './preview';
 import { removeSceneConfirmation, renderSceneList, wireSceneList } from './scene-list';
-import { refreshActiveSceneInputs, refreshImageLabel, wireActiveSceneFields } from './scene-editor';
+import { refreshActiveSceneInputs, refreshImageLabel, wireActiveSceneFields, wireBehaviourFields } from './scene-editor';
 import { createEditorState } from './state';
 import type { EditorState } from './state';
 
@@ -166,6 +166,8 @@ export function createEditor(
                     preview.refresh();
                 }),
         });
+
+        wireBehaviourFields(body, state, () => preview.refresh());
 
         query('#threeSixtyAddScene')?.addEventListener('click', () => {
             state.addScene(`${tr('Scene')} ${state.doc.scenes.length + 1}`);

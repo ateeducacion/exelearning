@@ -70,6 +70,30 @@ export function wireActiveSceneFields(body: HTMLElement, state: EditorState, cal
     }
 }
 
+/** Wire the viewer-behaviour controls (autorotate, zoom, fullscreen…). */
+export function wireBehaviourFields(body: HTMLElement, state: EditorState, onChanged: () => void): void {
+    const behaviour = state.doc.behaviour;
+    const checkboxes: Array<[string, (checked: boolean) => void]> = [
+        ['#threeSixtyAutorotate', checked => void (behaviour.autorotate.enabled = checked)],
+        ['#threeSixtyZoom', checked => void (behaviour.zoomEnabled = checked)],
+        ['#threeSixtyFullscreen', checked => void (behaviour.fullscreenEnabled = checked)],
+        ['#threeSixtyShowLabels', checked => void (behaviour.showLabels = checked)],
+        ['#threeSixtyNavControls', checked => void (behaviour.showNavControls = checked)],
+    ];
+    for (const [selector, assign] of checkboxes) {
+        const element = input<HTMLInputElement>(body, selector);
+        element?.addEventListener('change', () => {
+            assign(Boolean(element.checked));
+            onChanged();
+        });
+    }
+    const speed = input<HTMLInputElement>(body, '#threeSixtyAutorotateSpeed');
+    speed?.addEventListener('input', () => {
+        behaviour.autorotate.speed = clamp(toFiniteNumber(speed.value, 0), 0, 10);
+        onChanged();
+    });
+}
+
 /** Point the active-scene inputs at the (new) active scene's values. */
 export function refreshActiveSceneInputs(body: HTMLElement, state: EditorState, tr: Translate): void {
     const scene = state.activeScene();

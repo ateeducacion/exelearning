@@ -17,6 +17,7 @@ function makeIdevice(base: string, name: string, files: Record<string, string>):
 describe('discoverTsIdevices', () => {
     it('finds the real TypeScript iDevices of the repo', () => {
         const names = discoverTsIdevices().map(i => i.name);
+        expect(names).toContain('three-sixty-viewer');
         expect(names).toContain('slide');
         // Classic-script iDevices without src/ are not build candidates.
         expect(names).not.toContain('text');
@@ -31,6 +32,7 @@ describe('discoverTsIdevices', () => {
 
     it('records the per-iDevice tsconfig when one exists', () => {
         const byName = new Map(discoverTsIdevices().map(i => [i.name, i]));
+        expect(byName.get('three-sixty-viewer')?.tsconfig).toContain('tsconfig.json');
         expect(byName.get('slide')?.tsconfig).toBeNull();
     });
 });
@@ -118,7 +120,7 @@ describe('resolveEntries', () => {
         }
     });
 
-    it('matches the repo state: slide builds via its manifest', () => {
+    it('matches the repo state: slide via manifest, three-sixty-viewer via convention', () => {
         const slide = resolveEntries('slide', join(IDEVICES_BASE, 'slide'));
         expect(slide).toHaveLength(1);
         expect(slide[0]).toMatchObject({
@@ -126,5 +128,7 @@ describe('resolveEntries', () => {
             globalName: '__slideEditorInit',
             minify: true,
         });
+        const viewer = resolveEntries('three-sixty-viewer', join(IDEVICES_BASE, 'three-sixty-viewer'));
+        expect(viewer.map(e => e.label)).toEqual(['three-sixty-viewer/edition', 'three-sixty-viewer/export']);
     });
 });

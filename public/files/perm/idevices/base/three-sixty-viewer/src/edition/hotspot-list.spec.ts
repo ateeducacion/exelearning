@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createSequentialIdGenerator } from '../shared/ids';
 import { hydrateDocument } from '../shared/schema';
-import { renderHotspotList, wireHotspotList } from './hotspot-list';
+import { hotspotSummary, renderHotspotList, wireHotspotList } from './hotspot-list';
 import { createEditorState } from './state';
 import type { EditorState } from './state';
 
@@ -25,14 +25,17 @@ function makeState(sceneOverrides: Record<string, unknown> = {}): EditorState {
         createSequentialIdGenerator(),
     );
     if (result.status !== 'ok') throw new Error('fixture');
-    return createEditorState(result.document, createSequentialIdGenerator());
+    const state = createEditorState(result.document, createSequentialIdGenerator());
+    // Accordion: fields only render for the selected row.
+    state.selectedHotspotIndex = 0;
+    return state;
 }
 
 function renderInto(state: EditorState): { container: HTMLElement; callbacks: ReturnType<typeof makeCallbacks> } {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const callbacks = makeCallbacks();
-    wireHotspotList(container, state, callbacks);
+    wireHotspotList(container, state, callbacks, identity);
     renderHotspotList(container, state, identity);
     return { container, callbacks };
 }
@@ -42,6 +45,7 @@ function makeCallbacks() {
         onChanged: vi.fn(),
         onStructureChanged: vi.fn(),
         onSelect: vi.fn(),
+        onDeselect: vi.fn(),
         onPickMedia: vi.fn(),
     };
 }
@@ -53,11 +57,43 @@ function setInput(container: HTMLElement, selector: string, value: string): void
     input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+describe('hotspotSummary', () => {
+    it('prefers the label, otherwise describes the action', () => {
+        const labeled = makeState().hotspotAt(0);
+        expect(labeled && hotspotSummary(labeled, identity)).toBe('First');
+
+        const state = makeState({ hotspots: [{ id: 'h', label: '', action: { type: 'link', payload: { url: '' } } }] });
+        const emptyLink = state.hotspotAt(0);
+        expect(emptyLink && hotspotSummary(emptyLink, identity)).toBe('Link (no URL)');
+    });
+});
+
 describe('renderHotspotList', () => {
     it('shows an empty message without hotspots', () => {
         const state = makeState({ hotspots: [] });
+        state.selectedHotspotIndex = -1;
         const { container } = renderInto(state);
         expect(container.textContent).toContain('No hotspots in this scene yet.');
+        container.remove();
+    });
+
+    it('collapses non-selected rows and expands only the selected one', () => {
+        const state = makeState({
+            hotspots: [
+                { id: 'h1', label: 'A', action: { type: 'text', payload: { html: 'a' } } },
+                { id: 'h2', label: 'B', action: { type: 'link', payload: { url: 'https://x.test' } } },
+            ],
+        });
+        state.selectedHotspotIndex = 0;
+        const { container } = renderInto(state);
+        expect(container.querySelectorAll('.three-sixty-hotspot-item')).toHaveLength(2);
+        expect(container.querySelectorAll('.three-sixty-hotspot-detail')).toHaveLength(1);
+        expect(container.querySelector('.three-sixty-hotspot-item.is-selected .hotspot-label')).toBeTruthy();
+        // Collapsed row shows badge + summary, not the editor fields.
+        const collapsed = container.querySelector('.three-sixty-hotspot-item:not(.is-selected)');
+        expect(collapsed?.querySelector('.hotspot-action-type')).toBeNull();
+        expect(collapsed?.textContent).toContain('External link');
+        expect(collapsed?.textContent).toContain('B');
         container.remove();
     });
 
@@ -76,7 +112,6 @@ describe('renderHotspotList', () => {
     it('renders the action-specific payload editor for each type', () => {
         const state = makeState();
         const { container } = renderInto(state);
-        // text
         expect(container.querySelector('.hotspot-payload-html')).toBeTruthy();
         for (const [type, selector] of [
             ['goToScene', '.hotspot-payload-sceneId'],
@@ -88,7 +123,6 @@ describe('renderHotspotList', () => {
             renderHotspotList(container, state, identity);
             expect(container.querySelector(selector), type).toBeTruthy();
         }
-        // image editor also exposes alt + caption; link exposes newTab.
         state.setHotspotActionType(0, 'image');
         renderHotspotList(container, state, identity);
         expect(container.querySelector('.hotspot-payload-alt')).toBeTruthy();
@@ -108,6 +142,8 @@ describe('renderHotspotList', () => {
         const error = container.querySelector('.hotspot-field-error');
         expect(error?.getAttribute('role')).toBe('alert');
         expect(error?.textContent).toContain('Select a target scene.');
+        // Collapsed validity badge also surfaces on the row header.
+        expect(container.querySelector('.three-sixty-hotspot-validity')?.textContent).toContain('⚠');
         container.remove();
     });
 
@@ -120,6 +156,14 @@ describe('renderHotspotList', () => {
         expect(select?.disabled).toBe(true);
         expect(select?.textContent).toContain('quiz3d');
         expect(container.textContent).toContain('newer eXeLearning version');
+        container.remove();
+    });
+
+    it('renders type badges with text labels (not colour alone)', () => {
+        const { container } = renderInto(makeState());
+        const badge = container.querySelector('.three-sixty-hotspot-badge');
+        expect(badge?.textContent).toContain('Text');
+        expect(container.querySelector('.three-sixty-kind--text')).toBeTruthy();
         container.remove();
     });
 });
@@ -136,6 +180,8 @@ describe('wireHotspotList', () => {
         expect(hotspot?.yaw).toBe(180);
         expect(hotspot?.pitch).toBe(-90);
         expect(callbacks.onChanged).toHaveBeenCalledTimes(3);
+        // Transient "Saved" chip after each edit.
+        expect(container.querySelector('.three-sixty-hotspot-saved.is-saved')?.textContent).toContain('Saved');
         container.remove();
     });
 
@@ -201,7 +247,33 @@ describe('wireHotspotList', () => {
         container.remove();
     });
 
-    it('removes hotspots, requests media picking and selects rows', () => {
+    it('confirms deletion inline (no modal) and can be cancelled', () => {
+        const state = makeState();
+        const { container, callbacks } = renderInto(state);
+
+        container.querySelector<HTMLButtonElement>('[data-hotspot-action="remove"]')?.click();
+        expect(state.confirmDeleteHotspotIndex).toBe(0);
+        expect(state.activeScene().hotspots).toHaveLength(1);
+        expect(callbacks.onStructureChanged).toHaveBeenCalled();
+
+        // Simulate re-render after confirm mode is set.
+        renderHotspotList(container, state, identity);
+        expect(container.querySelector('.three-sixty-delete-confirm')).toBeTruthy();
+        expect(container.textContent).toContain('Delete this hotspot?');
+
+        container.querySelector<HTMLButtonElement>('.three-sixty-hotspot-del-no')?.click();
+        expect(state.confirmDeleteHotspotIndex).toBeNull();
+        expect(state.activeScene().hotspots).toHaveLength(1);
+
+        // Confirm delete.
+        state.confirmDeleteHotspotIndex = 0;
+        renderHotspotList(container, state, identity);
+        container.querySelector<HTMLButtonElement>('.three-sixty-hotspot-del-yes')?.click();
+        expect(state.activeScene().hotspots).toHaveLength(0);
+        container.remove();
+    });
+
+    it('selects, deselects (Done / re-click) and requests media picking', () => {
         const state = makeState();
         state.setHotspotActionType(0, 'image');
         const { container, callbacks } = renderInto(state);
@@ -214,13 +286,23 @@ describe('wireHotspotList', () => {
         container.querySelector<HTMLButtonElement>('.hotspot-payload-pickVideo')?.click();
         expect(callbacks.onPickMedia).toHaveBeenCalledWith(0, 'video');
 
-        state.selectedHotspotIndex = -1;
-        container.querySelector<HTMLElement>('.three-sixty-hotspot-item')?.click();
-        expect(callbacks.onSelect).toHaveBeenCalledWith(0);
+        // Re-click selected → deselect.
+        container.querySelector<HTMLButtonElement>('.three-sixty-hotspot-select')?.click();
+        expect(callbacks.onDeselect).toHaveBeenCalled();
 
-        container.querySelector<HTMLButtonElement>('[data-hotspot-action="remove"]')?.click();
-        expect(state.activeScene().hotspots).toHaveLength(0);
-        expect(callbacks.onStructureChanged).toHaveBeenCalled();
+        // Done button also deselects.
+        callbacks.onDeselect.mockClear();
+        container.querySelector<HTMLButtonElement>('.three-sixty-hotspot-done')?.click();
+        expect(callbacks.onDeselect).toHaveBeenCalled();
+
+        // Select another (collapsed) row.
+        state.selectedHotspotIndex = -1;
+        state.addHotspot({ yaw: 0, pitch: 0 }, 'Second');
+        state.selectedHotspotIndex = 0;
+        renderHotspotList(container, state, identity);
+        const second = container.querySelectorAll<HTMLButtonElement>('.three-sixty-hotspot-select')[1];
+        second?.click();
+        expect(callbacks.onSelect).toHaveBeenCalledWith(1);
         container.remove();
     });
 });

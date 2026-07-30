@@ -28,18 +28,25 @@ export function renderSceneList(container: HTMLElement, state: EditorState, tr: 
         row.setAttribute('data-scene-index', String(index));
         const label = scene.title || `${tr('Scene')} ${index + 1}`;
         const isStart = scene.id === state.doc.startSceneId;
+        const projectionBadge =
+            scene.projection === 'flat'
+                ? `<span class="badge three-sixty-scene-badge three-sixty-scene-badge--flat">${escapeHtml(tr('Flat'))}</span>`
+                : `<span class="badge three-sixty-scene-badge three-sixty-scene-badge--pano">${escapeHtml(tr('360°'))}</span>`;
         row.innerHTML =
-            `<button type="button" class="three-sixty-scene-select btn btn-link" data-action="select" data-index="${index}">` +
-            escapeHtml(label) +
-            (isStart ? ` <span class="badge text-bg-info">${tr('Start')}</span>` : '') +
+            `<button type="button" class="three-sixty-scene-select" data-action="select" data-index="${index}" aria-pressed="${index === state.activeSceneIndex ? 'true' : 'false'}">` +
+            projectionBadge +
+            `<span class="three-sixty-scene-label">${escapeHtml(label)}</span>` +
+            (isStart ? ` <span class="badge three-sixty-scene-badge three-sixty-scene-badge--start">${escapeHtml(tr('Start'))}</span>` : '') +
             '</button>' +
-            `<div class="three-sixty-scene-actions" role="group" aria-label="${escapeAttr(tr('Scene actions'))}">` +
-            `<button type="button" class="btn btn-sm btn-link" data-action="set-start" data-index="${index}" ` +
-            `aria-label="${escapeAttr(tr('Set as start scene'))}"${isStart ? ' disabled' : ''}>★</button>` +
-            `<button type="button" class="btn btn-sm btn-link" data-action="duplicate" data-index="${index}" ` +
-            `aria-label="${escapeAttr(tr('Duplicate scene'))}">⎘</button>` +
-            `<button type="button" class="btn btn-sm btn-link" data-action="remove" data-index="${index}" ` +
-            `aria-label="${escapeAttr(tr('Remove scene'))}">✕</button>` +
+            `<div class="three-sixty-scene-actions btn-group btn-group-sm" role="group" aria-label="${escapeAttr(tr('Scene actions'))}">` +
+            `<button type="button" class="btn btn-secondary btn-sm" data-action="set-start" data-index="${index}" ` +
+            `title="${escapeAttr(tr('Set as start scene'))}" aria-label="${escapeAttr(tr('Set as start scene'))}"${isStart ? ' disabled' : ''}>★</button>` +
+            `<button type="button" class="btn btn-secondary btn-sm" data-action="duplicate" data-index="${index}" ` +
+            `title="${escapeAttr(tr('Duplicate scene'))}" aria-label="${escapeAttr(tr('Duplicate scene'))}">` +
+            `<span class="small-icon duplicate-icon-green" aria-hidden="true"></span></button>` +
+            `<button type="button" class="btn btn-secondary btn-sm" data-action="remove" data-index="${index}" ` +
+            `title="${escapeAttr(tr('Remove scene'))}" aria-label="${escapeAttr(tr('Remove scene'))}">` +
+            `<span class="small-icon delete-icon-red" aria-hidden="true"></span></button>` +
             '</div>';
         container.appendChild(row);
     });

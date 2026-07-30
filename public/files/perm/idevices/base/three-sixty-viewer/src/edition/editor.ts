@@ -15,7 +15,7 @@ import { createDisposerBag } from '../viewer/lifecycle';
 import type { FrameScheduler } from '../viewer/lifecycle';
 import { createAssetPicker, readFileAsDataUrl } from './asset-picker';
 import { formHtml } from './form';
-import { renderHotspotList, wireHotspotList } from './hotspot-list';
+import { refreshHotspotCount, renderHotspotList, wireHotspotList } from './hotspot-list';
 import { createPlacementController } from './hotspot-placement';
 import type { PlacementController } from './hotspot-placement';
 import { tr as defaultTr } from './i18n';
@@ -67,22 +67,40 @@ export function createEditor(
     const refreshSceneList = (): void => {
         const list = query('#threeSixtySceneList');
         if (list) renderSceneList(list, state, tr);
+        const countEl = query('#threeSixtyScenesCount');
+        if (countEl) {
+            const count = state.doc.scenes.length;
+            countEl.textContent = count
+                ? `${count} ${tr(count === 1 ? 'scene' : 'scenes')}`
+                : '';
+        }
     };
     const refreshHotspotList = (): void => {
         const list = query('#threeSixtyHotspotList');
         if (list) renderHotspotList(list, state, tr);
-        preview.refreshHotspots();
+        refreshHotspotCount(body, state, tr);
+        // preview is created after the first buildForm(); skip until then.
+        preview?.refreshHotspots();
     };
 
     const selectHotspot = (index: number): void => {
         state.selectedHotspotIndex = index;
+        state.confirmDeleteHotspotIndex = null;
         refreshHotspotList();
         const row = query(`#threeSixtyHotspotList .three-sixty-hotspot-item[data-hotspot-index="${index}"]`);
         if (row && typeof row.scrollIntoView === 'function') {
-            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            row.classList.add('is-highlighted');
-            setTimeout(() => row.classList.remove('is-highlighted'), 1200);
+            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
+        const selectBtn = row?.querySelector<HTMLElement>('.three-sixty-hotspot-select');
+        selectBtn?.focus();
+        announce(tr('Hotspot selected.'));
+    };
+
+    const deselectHotspot = (): void => {
+        state.selectedHotspotIndex = -1;
+        state.confirmDeleteHotspotIndex = null;
+        refreshHotspotList();
+        announce(tr('Hotspot editor closed.'));
     };
 
     const addHotspotAt = (position: PlacementPosition): void => {
@@ -189,27 +207,32 @@ export function createEditor(
         });
         query('#threeSixtyPlaceHotspot')?.addEventListener('click', () => placement.toggle());
 
-        wireHotspotList(query('#threeSixtyHotspotList') as HTMLElement, state, {
-            onChanged: () => preview.refresh(),
-            onStructureChanged: () => {
-                refreshHotspotList();
-                preview.refresh();
+        wireHotspotList(
+            query('#threeSixtyHotspotList') as HTMLElement,
+            state,
+            {
+                onChanged: () => preview.refresh(),
+                onStructureChanged: () => {
+                    refreshHotspotList();
+                    preview.refresh();
+                },
+                onSelect: index => selectHotspot(index),
+                onDeselect: () => deselectHotspot(),
+                onPickMedia: (index, kind) =>
+                    assetPicker.pick(kind, assetUrl => {
+                        const hotspot = state.hotspotAt(index);
+                        if (!hotspot) return;
+                        if (hotspot.action.type === 'image' || hotspot.action.type === 'video') {
+                            hotspot.action.payload.src = assetUrl;
+                            refreshHotspotList();
+                        }
+                    }),
             },
-            onSelect: index => selectHotspot(index),
-            onPickMedia: (index, kind) =>
-                assetPicker.pick(kind, assetUrl => {
-                    const hotspot = state.hotspotAt(index);
-                    if (!hotspot) return;
-                    if (hotspot.action.type === 'image' || hotspot.action.type === 'video') {
-                        hotspot.action.payload.src = assetUrl;
-                        refreshHotspotList();
-                    }
-                }),
-        });
+            tr,
+        );
 
         refreshSceneList();
-        const list = query('#threeSixtyHotspotList');
-        if (list) renderHotspotList(list, state, tr);
+        refreshHotspotList();
     };
 
     const buildPreview = (): PreviewController =>

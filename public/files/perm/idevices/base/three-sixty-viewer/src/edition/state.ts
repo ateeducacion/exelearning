@@ -38,6 +38,11 @@ export interface EditorState {
     activeSceneIndex: number;
     /** The hotspot row currently selected in the list, or -1. */
     selectedHotspotIndex: number;
+    /**
+     * When set, the list renders an inline delete-confirmation for that
+     * hotspot index instead of the normal row (Interactive Video pattern).
+     */
+    confirmDeleteHotspotIndex: number | null;
 
     activeScene(): MutableScene;
     sceneIds(): string[];
@@ -75,6 +80,7 @@ export function createEditorState(document360: ThreeSixtyDocumentV2, ids: IdGene
         doc,
         activeSceneIndex: 0,
         selectedHotspotIndex: -1,
+        confirmDeleteHotspotIndex: null,
 
         activeScene() {
             const index = clamp(this.activeSceneIndex, 0, this.doc.scenes.length - 1);
@@ -125,6 +131,7 @@ export function createEditorState(document360: ThreeSixtyDocumentV2, ids: IdGene
             this.doc.startSceneId = resolveStartSceneId(this.doc.startSceneId, this.doc.scenes as Scene[]);
             this.activeSceneIndex = clamp(this.activeSceneIndex, 0, this.doc.scenes.length - 1);
             this.selectedHotspotIndex = -1;
+            this.confirmDeleteHotspotIndex = null;
             return removed;
         },
 
@@ -136,6 +143,7 @@ export function createEditorState(document360: ThreeSixtyDocumentV2, ids: IdGene
             if (index < 0 || index >= this.doc.scenes.length) return false;
             this.activeSceneIndex = index;
             this.selectedHotspotIndex = -1;
+            this.confirmDeleteHotspotIndex = null;
             return true;
         },
 
@@ -152,6 +160,7 @@ export function createEditorState(document360: ThreeSixtyDocumentV2, ids: IdGene
             }
             scene.hotspots.push(hotspot);
             this.selectedHotspotIndex = scene.hotspots.length - 1;
+            this.confirmDeleteHotspotIndex = null;
             return hotspot;
         },
 
@@ -160,8 +169,11 @@ export function createEditorState(document360: ThreeSixtyDocumentV2, ids: IdGene
             const removed = scene.hotspots[index] ?? null;
             if (removed) {
                 scene.hotspots.splice(index, 1);
-                if (this.selectedHotspotIndex >= scene.hotspots.length) {
-                    this.selectedHotspotIndex = scene.hotspots.length - 1;
+                this.confirmDeleteHotspotIndex = null;
+                if (this.selectedHotspotIndex === index) {
+                    this.selectedHotspotIndex = -1;
+                } else if (this.selectedHotspotIndex > index) {
+                    this.selectedHotspotIndex -= 1;
                 }
             }
             return removed;

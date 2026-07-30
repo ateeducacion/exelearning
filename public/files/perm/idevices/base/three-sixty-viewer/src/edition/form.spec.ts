@@ -50,6 +50,11 @@ describe('formHtml', () => {
         expect(html).toContain('id="threeSixtyIsPanorama" checked');
         expect(html).toContain('aria-live="polite"');
         expect(html).toContain('aria-pressed="false"');
+        // Interactive Video–style section counts + add bar.
+        expect(html).toContain('id="threeSixtyHotspotsCount"');
+        expect(html).toContain('id="threeSixtyScenesCount"');
+        expect(html).toContain('three-sixty-add-bar');
+        expect(html).toContain('three-sixty-edit-stage');
     });
 
     it('omits the initial-view fieldset for flat scenes', () => {
@@ -58,7 +63,7 @@ describe('formHtml', () => {
         expect(html).not.toContain('id="threeSixtyYaw"');
         expect(html).not.toContain('id="threeSixtyPitch"');
         expect(html).not.toContain('id="threeSixtyFov"');
-        expect(html).toContain('Click on the image to place a hotspot');
+        expect(html).toContain('Click the image to place a hotspot');
     });
 
     it('escapes scene-provided values', () => {

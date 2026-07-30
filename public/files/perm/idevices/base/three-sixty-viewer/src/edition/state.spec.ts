@@ -104,7 +104,8 @@ describe('createEditorState — hotspots', () => {
         state.addHotspot({ x: 10, y: 10 }, 'H2');
         expect(state.selectedHotspotIndex).toBe(1);
         expect(state.removeHotspot(1)?.label).toBe('H2');
-        expect(state.selectedHotspotIndex).toBe(0);
+        // Deleting the selected hotspot collapses the accordion selection.
+        expect(state.selectedHotspotIndex).toBe(-1);
         expect(state.removeHotspot(42)).toBeNull();
         expect(state.hotspotAt(0)?.id).toBe('h1');
         expect(state.hotspotAt(9)).toBeNull();

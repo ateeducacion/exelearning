@@ -233,31 +233,35 @@ describe('createEditor — assets and selection', () => {
     it('picks hotspot media through the file manager', () => {
         const { body, editor } = makeEditor();
         click(body, '#threeSixtyAddHotspot');
-        editor.state.setHotspotActionType(0, 'image');
-        // Re-render so the pick button exists, then pick.
         installFileManager('asset://hotspot-image.jpg');
+        // Switch the expanded row to "image" so the Choose image… control appears.
         const actionType = body.querySelector<HTMLSelectElement>('.hotspot-action-type');
-        actionType?.dispatchEvent(new Event('change', { bubbles: true }));
-        editor.state.setHotspotActionType(0, 'image');
-        click(body, '#threeSixtyAddScene'); // force list rebuild via activity
-        editor.state.setActiveScene(0);
-        click(body, '.three-sixty-scene-item:first-child [data-action="select"]');
+        if (!actionType) throw new Error('missing action type');
+        actionType.value = 'image';
+        actionType.dispatchEvent(new Event('change', { bubbles: true }));
         const pick = body.querySelector<HTMLButtonElement>('.hotspot-payload-pickImage');
-        pick?.click();
+        if (!pick) throw new Error('missing pick button');
+        pick.click();
         const hotspot = editor.state.hotspotAt(0);
         expect(hotspot?.action.type === 'image' && hotspot.action.payload.src).toBe('asset://hotspot-image.jpg');
         editor.destroy();
     });
 
-    it('clicking a hotspot row selects and highlights it', () => {
+    it('clicking a hotspot row header selects it; Done collapses the editor', () => {
         const { body, editor } = makeEditor();
         click(body, '#threeSixtyAddHotspot');
         click(body, '#threeSixtyAddHotspot');
-        editor.state.selectedHotspotIndex = -1;
-        const row = body.querySelector<HTMLElement>('.three-sixty-hotspot-item[data-hotspot-index="1"]');
-        row?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        expect(editor.state.selectedHotspotIndex).toBe(1);
-        expect(body.querySelector('.three-sixty-hotspot-item.is-selected')?.getAttribute('data-hotspot-index')).toBe('1');
+        // Second hotspot is selected after add; switch to the first via its header.
+        click(body, '.three-sixty-hotspot-item[data-hotspot-index="0"] .three-sixty-hotspot-select');
+        expect(editor.state.selectedHotspotIndex).toBe(0);
+        expect(body.querySelector('.three-sixty-hotspot-item.is-selected')?.getAttribute('data-hotspot-index')).toBe(
+            '0',
+        );
+        expect(body.querySelector('.three-sixty-hotspot-detail')).toBeTruthy();
+        // Done collapses the accordion (Interactive Video pattern).
+        click(body, '.three-sixty-hotspot-done');
+        expect(editor.state.selectedHotspotIndex).toBe(-1);
+        expect(body.querySelector('.three-sixty-hotspot-detail')).toBeNull();
         editor.destroy();
     });
 

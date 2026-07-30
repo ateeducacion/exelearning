@@ -3,6 +3,10 @@
  * editor state; no listeners are attached here. Control ids and classes are
  * part of the editor's public surface (CSS + Playwright) and must not change.
  *
+ * Layout mirrors the Interactive Video authoring surface: section heads with
+ * live counts → edit stage (preview) → add bar → single-editor accordion list
+ * → behaviour controls. Colour is never the sole cue.
+ *
  * Released under Attribution-ShareAlike 4.0 International License.
  * Author: eXeLearning - https://exelearning.net
  */
@@ -20,7 +24,7 @@ export function formHtml(state: EditorState, tr: Translate): string {
     const initialViewFieldset = isFlat
         ? ''
         : `
-            <fieldset class="exe-fieldset">
+            <fieldset class="exe-fieldset three-sixty-initial-view">
                 <legend>${tr('Initial view')}</legend>
                 <div class="property-row">
                     <label for="threeSixtyYaw">${tr('Yaw')} (-180…180):</label>
@@ -31,16 +35,24 @@ export function formHtml(state: EditorState, tr: Translate): string {
                     <input type="number" id="threeSixtyFov" class="form-control" min="30" max="120" step="1" value="${scene.initialView.fov}" />
                 </div>
             </fieldset>`;
+
+    const hotspotHint = isFlat
+        ? tr('Click the image to place a hotspot, or drag an existing hotspot to move it.')
+        : tr('Click the panorama to place a hotspot, or drag an existing hotspot to move it.');
+
     return `
         <div class="three-sixty-viewer-form">
             <p class="exe-block-info">${tr('Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.')}</p>
             <div id="threeSixtyStatus" class="visually-hidden" role="status" aria-live="polite"></div>
 
             <fieldset class="exe-fieldset three-sixty-scenes">
-                <legend>${tr('Scenes')}</legend>
+                <legend>
+                    <span class="three-sixty-section-title">${tr('Scenes')}</span>
+                    <span id="threeSixtyScenesCount" class="three-sixty-fieldset-count"></span>
+                </legend>
                 <div id="threeSixtySceneList" class="three-sixty-scene-list" role="list"></div>
-                <div class="property-row">
-                    <button type="button" id="threeSixtyAddScene" class="btn btn-secondary">${tr('Add scene')}</button>
+                <div class="three-sixty-add-bar" role="group" aria-label="${escapeAttr(tr('Add scene'))}">
+                    <button type="button" id="threeSixtyAddScene" class="btn btn-primary">+ ${tr('Add scene')}</button>
                 </div>
             </fieldset>
 
@@ -75,20 +87,33 @@ export function formHtml(state: EditorState, tr: Translate): string {
                     <textarea id="threeSixtySceneDescription" class="form-control" rows="2">${escapeHtml(scene.description)}</textarea>
                 </div>
                 ${initialViewFieldset}
-
-                <fieldset class="exe-fieldset three-sixty-hotspots">
-                    <legend>${tr('Hotspots')}</legend>
-                    <p class="exe-block-info small">${isFlat ? tr('Click on the image to place a hotspot, or drag an existing hotspot to move it.') : tr('Click on the panorama to place a hotspot, or drag an existing hotspot to move it.')}</p>
-                    <div id="threeSixtyHotspotList" class="three-sixty-hotspot-list" role="list"></div>
-                    <div class="property-row">
-                        <button type="button" id="threeSixtyPlaceHotspot" class="btn btn-primary" aria-pressed="false">${tr('Place hotspot by clicking')}</button>
-                        <button type="button" id="threeSixtyAddHotspot" class="btn btn-link">${tr('…or add at current view')}</button>
-                    </div>
-                    <p id="threeSixtyPlacementHint" class="small text-muted" hidden>${tr('Click the preview to place the hotspot; press Escape to cancel.')}</p>
-                </fieldset>
             </fieldset>
 
-            <fieldset class="exe-fieldset">
+            <div class="three-sixty-edit-stage">
+                <div class="three-sixty-edit-stage-main">
+                    <div class="three-sixty-viewer-preview">
+                        <div id="threeSixtyPreview" class="three-sixty-preview-stage" aria-label="${escapeAttr(tr('Preview'))}"></div>
+                        <p id="threeSixtyPreviewMessage" class="text-muted small">${tr('Select an image to see a live preview.')}</p>
+                    </div>
+                </div>
+            </div>
+
+            <fieldset class="exe-fieldset three-sixty-hotspots">
+                <legend>
+                    <span class="three-sixty-section-title">${tr('Hotspots')}</span>
+                    <span id="threeSixtyHotspotsCount" class="three-sixty-fieldset-count"></span>
+                </legend>
+                <p class="three-sixty-hint small">${hotspotHint}</p>
+                <div class="three-sixty-add-bar" role="group" aria-label="${escapeAttr(tr('Add hotspot'))}">
+                    <button type="button" id="threeSixtyPlaceHotspot" class="btn btn-primary" aria-pressed="false">+ ${tr('Place hotspot by clicking')}</button>
+                    <button type="button" id="threeSixtyAddHotspot" class="btn btn-secondary">+ ${tr('Add at current view')}</button>
+                </div>
+                <p id="threeSixtyPlacementHint" class="three-sixty-placement-hint small" hidden>${tr('Click the preview to place the hotspot; press Escape to cancel.')}</p>
+                <div id="threeSixtyEditorLive" class="visually-hidden" role="status" aria-live="polite"></div>
+                <div id="threeSixtyHotspotList" class="three-sixty-hotspot-list" role="list"></div>
+            </fieldset>
+
+            <fieldset class="exe-fieldset three-sixty-controls">
                 <legend>${tr('Controls')}</legend>
                 <div class="property-row">
                     <label class="toggle-label">
@@ -117,11 +142,6 @@ export function formHtml(state: EditorState, tr: Translate): string {
                     </label>
                 </div>
             </fieldset>
-
-            <div class="three-sixty-viewer-preview">
-                <div id="threeSixtyPreview" class="three-sixty-preview-stage" aria-label="${escapeAttr(tr('Preview'))}"></div>
-                <p id="threeSixtyPreviewMessage" class="text-muted small">${tr('Select an image to see a live preview.')}</p>
-            </div>
         </div>
     `;
 }

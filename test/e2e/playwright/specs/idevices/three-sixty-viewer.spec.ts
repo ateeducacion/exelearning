@@ -93,6 +93,21 @@ async function fillForm(page: Page): Promise<void> {
     });
 }
 
+/**
+ * Expand a collapsed hotspot accordion row so its action/payload fields are in
+ * the DOM (Interactive Video-style single-editor list). Newly added hotspots
+ * are already expanded; after save+reload nothing is selected.
+ */
+async function expandHotspotRow(page: Page, index = 0): Promise<void> {
+    const item = page.locator('#threeSixtyHotspotList .three-sixty-hotspot-item').nth(index);
+    await item.waitFor({ state: 'visible', timeout: 10000 });
+    const detail = item.locator('.three-sixty-hotspot-detail');
+    if ((await detail.count()) === 0) {
+        await item.locator('.three-sixty-hotspot-select').click();
+        await detail.waitFor({ state: 'visible', timeout: 5000 });
+    }
+}
+
 async function saveIdeviceInPage(page: Page): Promise<void> {
     const block = page.locator('#node-content article .idevice_node.three-sixty-viewer').last();
     const saveBtn = block.locator('.btn-save-idevice');
@@ -375,6 +390,8 @@ test.describe('Three Sixty Viewer iDevice', () => {
 
             await reloadPage(page);
             await reopenForEdit(page, '#threeSixtyHotspotList');
+            // Accordion starts collapsed after reload; expand the row first.
+            await expandHotspotRow(page, 0);
 
             // Verify persisted link hotspot values
             await expect(page.locator('#threeSixtyHotspotList .hotspot-action-type').first()).toHaveValue('link');
@@ -457,7 +474,10 @@ test.describe('Three Sixty Viewer iDevice', () => {
                 .locator('[data-action="set-start"]')
                 .click();
             await expect(
-                page.locator('#threeSixtySceneList .three-sixty-scene-item').nth(1).locator('.badge'),
+                page
+                    .locator('#threeSixtySceneList .three-sixty-scene-item')
+                    .nth(1)
+                    .locator('.three-sixty-scene-badge--start'),
             ).toBeVisible();
 
             await saveIdeviceInPage(page);
@@ -469,7 +489,10 @@ test.describe('Three Sixty Viewer iDevice', () => {
             await expect(page.locator('#threeSixtySceneList .three-sixty-scene-item')).toHaveCount(2);
             // The start badge survived on the second scene.
             await expect(
-                page.locator('#threeSixtySceneList .three-sixty-scene-item').nth(1).locator('.badge'),
+                page
+                    .locator('#threeSixtySceneList .three-sixty-scene-item')
+                    .nth(1)
+                    .locator('.three-sixty-scene-badge--start'),
             ).toBeVisible();
             await expect(page.locator('#threeSixtySceneList')).toContainText('Second room');
         });
@@ -509,6 +532,7 @@ test.describe('Three Sixty Viewer iDevice', () => {
             await page.waitForTimeout(500);
             await reloadPage(page);
             await reopenForEdit(page, '#threeSixtyHotspotList');
+            await expandHotspotRow(page, 0);
 
             await expect(page.locator('#threeSixtyHotspotList .hotspot-action-type').first()).toHaveValue('goToScene');
             await expect(page.locator('#threeSixtyHotspotList .hotspot-payload-sceneId').first()).toHaveValue(
@@ -596,7 +620,9 @@ test.describe('Three Sixty Viewer iDevice', () => {
                 .click();
             await expect(page.locator('#threeSixtySceneList .three-sixty-scene-item')).toHaveCount(1);
             expect(confirmMessage).toContain('1 hotspot');
-            // The dangling target now shows an inline validation message.
+            // Collapsed row surfaces a validity warning; expanding shows the field error.
+            await expect(page.locator('#threeSixtyHotspotList .three-sixty-hotspot-validity').first()).toBeVisible();
+            await expandHotspotRow(page, 0);
             await expect(page.locator('#threeSixtyHotspotList .hotspot-field-error').first()).toBeVisible();
         });
     });

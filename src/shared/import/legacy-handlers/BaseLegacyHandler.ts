@@ -434,7 +434,7 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
             .replace(/&quot;/g, '"')
             .replace(/&#39;/g, "'")
             .replace(/&apos;/g, "'")
-            .replace(/&nbsp;/g, '\u00A0')) // see point 3 below
+            .replace(/&nbsp;/g, '\u00A0') // see point 3 below
             .replace(/&amp;/g, '&');
 
         // 2. Generate a unique and safe placeholder token to avoid collisions

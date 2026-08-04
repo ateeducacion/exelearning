@@ -21,7 +21,7 @@ import { ViewportManager } from '../shared/ViewportManager.js';
 import { DeveloperStatusReporter, STATUS } from '../shared/DeveloperStatusReporter.js';
 import { RoundtripValidator, ROUNDTRIP_STATUS } from '../shared/RoundtripValidator.js';
 
-import samplesManifest from './samples.manifest.json';
+import samplesManifest from './samples.manifest.js';
 
 export class IdeviceLab {
     constructor({ root, window: win = window, registry = null } = {}) {

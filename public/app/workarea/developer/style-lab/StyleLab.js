@@ -21,7 +21,7 @@ import { FixtureRegistry } from '../shared/FixtureRegistry.js';
 import { ExportPresetManager } from '../shared/ExportPresetManager.js';
 import { DeveloperStatusReporter, STATUS } from '../shared/DeveloperStatusReporter.js';
 
-import fixturesManifest from './fixtures.manifest.json';
+import fixturesManifest from './fixtures.manifest.js';
 
 export class StyleLab {
     constructor({ root, window: win = window } = {}) {

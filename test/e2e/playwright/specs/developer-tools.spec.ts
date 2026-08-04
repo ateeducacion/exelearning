@@ -38,9 +38,12 @@ test.describe('Developer menu visibility', () => {
         await expect(menu.styleLabLink).toBeAttached();
         await expect(menu.ideviceLabLink).toBeAttached();
         await expect(menu.restApiLink).toBeAttached();
-        await expect(menu.styleLabLink).toHaveAttribute('href', /\/developer\/style-lab$/);
-        await expect(menu.ideviceLabLink).toHaveAttribute('href', /\/developer\/idevice-lab$/);
-        await expect(menu.restApiLink).toHaveAttribute('href', /\/api\/v1\/docs$/);
+        // Static builds use relative hrefs (./developer/...) and may append a
+        // cache-busting ?v=… query; online builds use absolute /developer/…
+        // paths. Match the path segment only.
+        await expect(menu.styleLabLink).toHaveAttribute('href', /(?:^|\/)developer\/style-lab(?:\?|$)/);
+        await expect(menu.ideviceLabLink).toHaveAttribute('href', /(?:^|\/)developer\/idevice-lab(?:\?|$)/);
+        await expect(menu.restApiLink).toHaveAttribute('href', /(?:^|\/)api\/v1\/docs(?:\?|$)/);
     });
 });
 

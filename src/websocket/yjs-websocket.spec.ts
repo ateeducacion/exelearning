@@ -75,13 +75,13 @@ function createMockAuth(): YjsWebSocketAuth {
     return {
         verifyToken: async (token: string) => {
             if (token === 'valid-token-user-1') {
-                return { sub: 1, email: 'user1@test.com', roles: ['ROLE_USER'] };
+                return { userId: 1, email: 'user1@test.com', roles: ['ROLE_USER'], isGuest: false };
             }
             if (token === 'valid-token-user-2') {
-                return { sub: 2, email: 'user2@test.com', roles: ['ROLE_USER'] };
+                return { userId: 2, email: 'user2@test.com', roles: ['ROLE_USER'], isGuest: false };
             }
             if (token === 'valid-token-admin') {
-                return { sub: 3, email: 'admin@test.com', roles: ['ROLE_ADMIN'] };
+                return { userId: 3, email: 'admin@test.com', roles: ['ROLE_ADMIN'], isGuest: false };
             }
             return null;
         },
@@ -757,7 +757,7 @@ describe('Yjs WebSocket Service', () => {
             const user = await mockAuth.verifyToken('valid-token-user-1');
 
             expect(user).not.toBeNull();
-            expect(user?.sub).toBe(1);
+            expect(user?.userId).toBe(1);
             expect(user?.email).toBe('user1@test.com');
         });
 
@@ -1899,6 +1899,41 @@ describe('Yjs WebSocket Service', () => {
 
             // Should not throw for invalid JSON
             handleWebSocketMessage(ws as any, data, 'not valid json {');
+        });
+
+        it('logs unknown message types when APP_DEBUG is enabled', () => {
+            const original = process.env.APP_DEBUG;
+            process.env.APP_DEBUG = '1';
+            try {
+                const ws = createMockWebSocket();
+                const docName = 'project-unknown-debug-test';
+                roomManager.addConnection(docName, ws as any);
+
+                const logs: string[] = [];
+                const originalLog = console.log;
+                console.log = (...args: unknown[]) => {
+                    logs.push(args.map(String).join(' '));
+                };
+                try {
+                    handleWebSocketMessage(
+                        ws as any,
+                        {
+                            clientId: 'unknown-debug-client',
+                            userId: 1,
+                            projectUuid: 'unknown-debug-uuid',
+                            docName,
+                        },
+                        'not valid json {',
+                    );
+                } finally {
+                    console.log = originalLog;
+                }
+
+                expect(logs.some(line => line.includes('Unknown message type from unknown-debug-client'))).toBe(true);
+            } finally {
+                if (original === undefined) delete process.env.APP_DEBUG;
+                else process.env.APP_DEBUG = original;
+            }
         });
     });
 

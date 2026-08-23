@@ -37,7 +37,7 @@ import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 
 // Import new modules
-import { DEBUG } from './config';
+import { DEBUG, isDebugEnabled } from './config';
 import { startHeartbeat, stopHeartbeat, onPong, stopAllHeartbeats, getHeartbeatStats } from './heartbeat';
 import * as roomManager from './room-manager';
 import { parseMessage } from './message-parser';
@@ -252,13 +252,13 @@ export async function handleWebSocketOpen(
     }
 
     // Check project access
-    const access = await checkWebSocketProjectAccess(projectUuid, user.sub);
+    const access = await checkWebSocketProjectAccess(projectUuid, user.userId);
     if (!access.hasAccess) {
         console.error(`[YjsWebSocket] Access denied: ${access.reason}`);
         return { success: false, error: { code: 4003, reason: access.reason || 'Access denied' } };
     }
 
-    const userId = user.sub;
+    const userId = user.userId;
     const clientId = generateClientId();
 
     // Store metadata
@@ -409,7 +409,7 @@ export function handleWebSocketMessage(ws: YjsSocket, data: YjsSocket['data'], m
 
         case 'unknown':
             // Unknown message type - log and ignore
-            if (DEBUG) {
+            if (isDebugEnabled()) {
                 console.log(`[YjsWebSocket] Unknown message type from ${clientId}`);
             }
             break;

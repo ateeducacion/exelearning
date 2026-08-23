@@ -354,8 +354,8 @@ describe('Export Constants', () => {
             expect(getBinarySize(new Uint8Array([1, 2, 3, 4]))).toBe(4);
         });
 
-        it('returns size for Blob data', () => {
-            expect(getBinarySize(new Blob(['hello']))).toBe(5);
+        it('returns byteLength for empty data', () => {
+            expect(getBinarySize(new Uint8Array([]))).toBe(0);
         });
     });
 

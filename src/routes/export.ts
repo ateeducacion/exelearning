@@ -600,10 +600,7 @@ export function createExportRoutes(deps: ExportDependencies = {}) {
             // Write the ZIP buffer to disk
             const zipPath = path.join(distDir, `${exportType}.zip`);
             if (result.data) {
-                await fs.writeFile(
-                    zipPath,
-                    result.data instanceof Blob ? new Uint8Array(await result.data.arrayBuffer()) : result.data,
-                );
+                await fs.writeFile(zipPath, result.data);
             }
 
             return { ...result, zipPath };

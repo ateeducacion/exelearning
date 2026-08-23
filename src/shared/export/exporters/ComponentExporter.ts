@@ -18,6 +18,7 @@ import {
     type ExportResult,
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
+import { blobFromBytes } from '../../utils/blob';
 
 /**
  * Result of a component export operation
@@ -401,16 +402,14 @@ export class ComponentExporter extends BaseExporter {
      * @param data - ZIP data buffer
      * @param filename - Download filename
      */
-    private downloadBlob(data: Uint8Array | Blob, filename: string): void {
+    private downloadBlob(data: Uint8Array, filename: string): void {
         if (typeof window === 'undefined' || typeof document === 'undefined') {
             console.warn('[ComponentExporter] downloadBlob only works in browser environment');
             return;
         }
 
-        const blob =
-            data instanceof Blob
-                ? data
-                : new Blob([data as unknown as ArrayBufferView<ArrayBuffer>], { type: 'application/zip' });
+        // A Blob is created only here, at the browser download boundary.
+        const blob = blobFromBytes(data, 'application/zip');
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;

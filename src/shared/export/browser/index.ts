@@ -54,6 +54,7 @@ import '../../../../public/app/common/LatexPreRenderer.js';
 
 // Import types
 import type { ExportOptions } from '../interfaces';
+import { blobFromBytes } from '../../utils/blob';
 
 /**
  * Yjs Document Manager interface (browser class)
@@ -588,7 +589,7 @@ export async function exportAndDownload(
 
     // Create download
     // biome-ignore lint/suspicious/noExplicitAny: legacy blob data compatibility
-    const blob = new Blob([result.data as any], { type: 'application/zip' });
+    const blob = blobFromBytes(result.data, 'application/zip');
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

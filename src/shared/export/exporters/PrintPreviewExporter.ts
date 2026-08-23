@@ -16,6 +16,7 @@ import type {
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
+import { blobFromBytes } from '../../utils/blob';
 
 /**
  * Options for print preview generation
@@ -468,11 +469,7 @@ ${logoCss}
                 let blobUrl = '';
                 if (asset.data) {
                     try {
-                        const blob =
-                            asset.data instanceof Blob
-                                ? asset.data
-                                : // biome-ignore lint/suspicious/noExplicitAny: legacy data type compatibility
-                                  new Blob([asset.data as any], { type: asset.mime });
+                        const blob = blobFromBytes(asset.data, asset.mime);
                         blobUrl = URL.createObjectURL(blob);
                     } catch (err) {
                         console.error('[PrintPreview] Failed to create Blob URL for asset:', asset.id, err);

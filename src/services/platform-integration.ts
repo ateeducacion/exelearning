@@ -260,10 +260,7 @@ export async function platformPetitionSet(
         }
 
         // 8. Convert ZIP buffer to base64
-        const zipBase64 =
-            exportResult.data instanceof Blob
-                ? Buffer.from(await exportResult.data.arrayBuffer()).toString('base64')
-                : Buffer.from(exportResult.data as Uint8Array<ArrayBuffer>).toString('base64');
+        const zipBase64 = Buffer.from(exportResult.data).toString('base64');
 
         // 9. Build filename from project title
         const meta = document.getMetadata();

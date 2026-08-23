@@ -5,6 +5,7 @@
  * This test file uses REAL implementations for sibling modules (room-manager, heartbeat,
  * message-parser, config). Only external dependencies are mocked via DI.
  */
+import type { YjsSocketData } from './types';
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
@@ -32,7 +33,6 @@ import {
     handleWebSocketPong,
     handleWebSocketMessage,
     handleWebSocketClose,
-    WsData,
     YJS_WS_MAX_PAYLOAD_LENGTH,
     type YjsWebSocketQueries,
     type YjsWebSocketSessionManager,
@@ -98,7 +98,7 @@ function createMockAssetCoordinator(): YjsWebSocketAssetCoordinator {
 }
 
 // Mock WebSocket for testing
-function createMockWebSocket(data: Partial<WsData> = {}): any {
+function createMockWebSocket(data: Partial<YjsSocketData> = {}): any {
     const sentMessages: any[] = [];
     const closeArgs: any[] = [];
     return {
@@ -1699,7 +1699,7 @@ describe('Yjs WebSocket Service', () => {
             // Start heartbeat first
             heartbeat.startHeartbeat(clientId, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId,
                 userId: 1,
                 projectUuid: 'test-uuid',
@@ -1722,7 +1722,7 @@ describe('Yjs WebSocket Service', () => {
                 userId: 1,
                 projectUuid: 'test-uuid',
                 docName: 'project-test-uuid',
-            } as WsData;
+            } as YjsSocketData;
 
             // Should not throw
             handleWebSocketPong(data);
@@ -1738,7 +1738,7 @@ describe('Yjs WebSocket Service', () => {
             roomManager.addConnection(docName, sender as any);
             roomManager.addConnection(docName, receiver as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'sender-client',
                 userId: 1,
                 projectUuid: 'message-test-uuid',
@@ -1768,7 +1768,7 @@ describe('Yjs WebSocket Service', () => {
             const docName = 'project-asset-msg-test';
             roomManager.addConnection(docName, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'asset-client',
                 userId: 1,
                 projectUuid: 'asset-test-uuid',
@@ -1808,7 +1808,7 @@ describe('Yjs WebSocket Service', () => {
             const docName = 'project-asset-error-test';
             roomManager.addConnection(docName, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'asset-error-client',
                 userId: 1,
                 projectUuid: 'asset-error-uuid',
@@ -1833,26 +1833,26 @@ describe('Yjs WebSocket Service', () => {
             const ws = createMockWebSocket();
 
             expect(() =>
-                handleWebSocketMessage(ws as any, { userId: 1 } as WsData, Buffer.from([1, 2, 3])),
+                handleWebSocketMessage(ws as any, { userId: 1 } as YjsSocketData, Buffer.from([1, 2, 3])),
             ).not.toThrow();
             expect(() =>
                 handleWebSocketMessage(
                     ws as any,
-                    { clientId: 'c1', userId: 1, projectUuid: 'uuid' } as WsData,
+                    { clientId: 'c1', userId: 1, projectUuid: 'uuid' } as YjsSocketData,
                     Buffer.from([1, 2, 3]),
                 ),
             ).not.toThrow();
             expect(() =>
                 handleWebSocketMessage(
                     ws as any,
-                    { docName: 'project-x', userId: 1, projectUuid: 'uuid' } as WsData,
+                    { docName: 'project-x', userId: 1, projectUuid: 'uuid' } as YjsSocketData,
                     Buffer.from([1, 2, 3]),
                 ),
             ).not.toThrow();
             expect(() =>
                 handleWebSocketMessage(
                     ws as any,
-                    { docName: 'project-x', clientId: 'c1', userId: 1 } as WsData,
+                    { docName: 'project-x', clientId: 'c1', userId: 1 } as YjsSocketData,
                     Buffer.from([1, 2, 3]),
                 ),
             ).not.toThrow();
@@ -1861,7 +1861,7 @@ describe('Yjs WebSocket Service', () => {
         it('should ignore messages when room not found', () => {
             const ws = createMockWebSocket();
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'no-room-client',
                 userId: 1,
                 projectUuid: 'no-room-uuid',
@@ -1877,7 +1877,7 @@ describe('Yjs WebSocket Service', () => {
             const docName = 'project-unknown-msg-test';
             roomManager.addConnection(docName, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'unknown-msg-client',
                 userId: 1,
                 projectUuid: 'unknown-msg-uuid',
@@ -1933,7 +1933,7 @@ describe('Yjs WebSocket Service', () => {
             roomManager.addConnection(docName, ws as any);
             heartbeat.startHeartbeat(clientId, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId,
                 userId: 1,
                 projectUuid: 'close-test-uuid',
@@ -1955,7 +1955,7 @@ describe('Yjs WebSocket Service', () => {
         it('should handle data with unknown docName', () => {
             const ws = createMockWebSocket();
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'unknown-doc-client',
                 userId: 1,
                 projectUuid: 'unknown-doc-uuid',
@@ -1982,7 +1982,7 @@ describe('Yjs WebSocket Service', () => {
             const ws = createMockWebSocket();
             const docName = 'project-unregister-test';
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'unregister-client',
                 userId: 1,
                 projectUuid: 'unregister-uuid',

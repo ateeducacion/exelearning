@@ -184,9 +184,6 @@ export function generateClientId(): string {
     return `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-/** @deprecated Use YjsSocket from './types'. Kept as an alias for tests. */
-export type WsData = import('./types').YjsSocketData;
-
 /**
  * Check if user has access to project via WebSocket
  * Uses the centralized checkProjectAccess from db/queries

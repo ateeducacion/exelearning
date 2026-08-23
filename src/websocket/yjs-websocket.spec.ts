@@ -32,6 +32,8 @@ import {
     handleWebSocketPong,
     handleWebSocketMessage,
     handleWebSocketClose,
+    socketQueryToken,
+    socketDocName,
     WsData,
     YJS_WS_MAX_PAYLOAD_LENGTH,
     type YjsWebSocketQueries,
@@ -175,6 +177,17 @@ describe('Yjs WebSocket Service', () => {
             // Should have the /yjs/:docName route registered
         });
 
+        it('parses the upgrade token and docName from socket data', () => {
+            expect(socketQueryToken({ token: 'abc' })).toBe('abc');
+            expect(socketQueryToken({ token: undefined })).toBeUndefined();
+            expect(socketQueryToken({ token: 123 as unknown as string })).toBeUndefined();
+            expect(socketQueryToken(undefined)).toBeUndefined();
+            expect(socketDocName({ docName: 'project-uuid' })).toBe('project-uuid');
+            expect(socketDocName({ docName: '' })).toBe('');
+            expect(socketDocName({})).toBe('');
+            expect(socketDocName(undefined)).toBe('');
+        });
+
         it('should wire websocket handlers to open/pong/message/close', async () => {
             const routes = createWebSocketRoutes();
             const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
@@ -192,6 +205,20 @@ describe('Yjs WebSocket Service', () => {
             wsHook?.pong?.(ws as any, undefined as any);
             wsHook?.message?.(ws as any, Buffer.from([0x01]));
             wsHook?.close?.(ws as any, 1000, 'closed');
+        });
+
+        it('closes the socket when the upgrade token is not a string', async () => {
+            const routes = createWebSocketRoutes();
+            const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
+            const wsHook = (wsRoute?.hooks as any)?.websocket;
+            const ws = createMockWebSocket({
+                params: {},
+                query: { token: ['not-a-string'] as unknown as string },
+            });
+
+            await wsHook?.open?.(ws as any);
+
+            expect(ws.close).toHaveBeenCalled();
         });
 
         it('exposes a public GET /yjs/info liveness probe without leaking ops detail', async () => {
@@ -1825,6 +1852,20 @@ describe('Yjs WebSocket Service', () => {
                 handleWebSocketMessage(
                     ws as any,
                     { clientId: 'c1', userId: 1, projectUuid: 'uuid' } as WsData,
+                    Buffer.from([1, 2, 3]),
+                ),
+            ).not.toThrow();
+            expect(() =>
+                handleWebSocketMessage(
+                    ws as any,
+                    { docName: 'project-x', userId: 1, projectUuid: 'uuid' } as WsData,
+                    Buffer.from([1, 2, 3]),
+                ),
+            ).not.toThrow();
+            expect(() =>
+                handleWebSocketMessage(
+                    ws as any,
+                    { docName: 'project-x', clientId: 'c1', userId: 1 } as WsData,
                     Buffer.from([1, 2, 3]),
                 ),
             ).not.toThrow();

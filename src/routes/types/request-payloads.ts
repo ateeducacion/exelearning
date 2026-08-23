@@ -197,14 +197,21 @@ export interface ConvertRequest {
 // ============================================================================
 
 /**
- * iDevice file upload request
+ * iDevice file upload request.
+ *
+ * Mirrors the wire protocol of `/api/idevices/upload/*`:
+ *   - The small-upload payload may arrive as `base64String` or, for legacy
+ *     clients, as a base64/data-URL string in `file`. The large-upload
+ *     endpoint accepts a Blob/File or a plain string with raw content.
+ *   - `createThumbnail` may be a boolean or the strings 'true'/'false'.
  */
 export interface IdeviceFileUploadRequest {
     odeIdeviceId: string;
-    file?: Blob | Buffer;
-    filename: string;
-    createThumbnail?: boolean;
+    file?: string | Blob | Buffer;
+    filename?: string;
+    createThumbnail?: boolean | string;
     base64String?: string;
+    odeSessionId?: string;
 }
 
 /**

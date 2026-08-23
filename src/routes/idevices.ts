@@ -27,13 +27,6 @@ interface UploadResponseData {
     savedThumbnailName?: string;
 }
 
-/**
- * File with optional name property (for Blob/File uploads)
- */
-interface FileWithName extends Blob {
-    name?: string;
-}
-
 // Base path for iDevices
 const IDEVICES_BASE_PATH = 'public/files/perm/idevices/base';
 const IDEVICES_USERS_PATH = 'public/files/perm/idevices/users';
@@ -400,29 +393,20 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
     })
 
     // POST /api/idevices/upload/file/resources - Upload file resource (base64)
-    .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, request, identity }) => {
+    .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, identity }) => {
         const authErr = requireAuth(identity);
         if (authErr) {
             set.status = authErr.status;
             return { error: authErr.error, message: authErr.message };
         }
-        // Debug: log what we're receiving
-        console.log('[idevices/upload] Content-Type:', request.headers.get('content-type'));
-        console.log('[idevices/upload] Body type:', typeof body);
-        const bodyObj = parsedBody<Record<string, unknown> | null>(body);
-        console.log('[idevices/upload] Body keys:', bodyObj ? Object.keys(bodyObj) : 'null');
-
         const data = parsedBody<IdeviceFileUploadRequest>(body);
         const odeIdeviceId = data?.odeIdeviceId;
         // Support both 'file' (legacy) and 'base64String' fields for base64 data
-        const dataRecord = data as unknown as Record<string, unknown>;
-        const fileFieldValue = dataRecord?.file;
-        const fileAsString = typeof fileFieldValue === 'string' ? fileFieldValue : undefined;
+        const fileAsString = typeof data?.file === 'string' ? data.file : undefined;
         const base64String = data?.base64String || fileAsString;
         const filename = data?.filename;
-        // Support both boolean and string 'true' for createThumbnail
-        const createThumbnailRaw: unknown = data?.createThumbnail;
-        const createThumbnail = createThumbnailRaw === true || createThumbnailRaw === 'true';
+        // Clients send a boolean or the strings 'true'/'false'
+        const createThumbnail = data?.createThumbnail === true || data?.createThumbnail === 'true';
 
         // Validate required parameters
         if (!odeIdeviceId || !base64String || !filename) {
@@ -440,12 +424,8 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         // Get session ID from cookie or body
         // In Yjs mode, we use projectId cookie instead of odeSessionId
-        let odeSessionId: string = String(
-            (data as unknown as { odeSessionId?: string }).odeSessionId ||
-                cookie.odeSessionId?.value ||
-                cookie.projectId?.value ||
-                '',
-        );
+        let odeSessionId: string =
+            data.odeSessionId || String(cookie.odeSessionId?.value || cookie.projectId?.value || '');
 
         // If no session ID, use a default based on the idevice ID
         // This allows uploads to work even without a traditional session
@@ -493,9 +473,14 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         const outputFile = path.join(iDeviceDir, savedFilename);
 
-        // Decode base64 and write file
+        // Decode base64 and write file. Data URLs ("data:mime;base64,xxx")
+        // carry the payload in the second segment.
         const dataParts = base64String.split(',');
-        const base64Data = String(dataParts.length > 1 ? dataParts[1] : dataParts[0]);
+        const base64Data = dataParts.length > 1 ? dataParts[1] : dataParts[0];
+        if (!base64Data) {
+            set.status = 400;
+            return { code: 'error: invalid data', details: { file: false } };
+        }
         const buffer = Buffer.from(base64Data, 'base64');
 
         await fse.writeFile(outputFile, buffer);
@@ -556,7 +541,9 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
         const data = parsedBody<IdeviceFileUploadRequest>(body);
         const odeIdeviceId = data.odeIdeviceId;
         const file = data.file;
-        const filename = data.filename || (file as FileWithName)?.name;
+        const filename =
+            data.filename ||
+            (file instanceof Blob && 'name' in file && typeof file.name === 'string' ? file.name : undefined);
 
         // Validate required parameters
         if (!odeIdeviceId || !file || !filename) {
@@ -566,12 +553,8 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         // Get session ID from cookie or body
         // In Yjs mode, we use projectId cookie instead of odeSessionId
-        let odeSessionId: string = String(
-            (data as unknown as { odeSessionId?: string }).odeSessionId ||
-                cookie.odeSessionId?.value ||
-                cookie.projectId?.value ||
-                '',
-        );
+        let odeSessionId: string =
+            data.odeSessionId || String(cookie.odeSessionId?.value || cookie.projectId?.value || '');
 
         // If no session ID, use a default
         if (!odeSessionId) {
@@ -617,7 +600,8 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         const outputFile = path.join(iDeviceDir, savedFilename);
 
-        // Get file buffer
+        // Get file buffer. Multipart clients send a Blob/File; JSON clients
+        // may send a plain string with the raw content.
         let buffer: Buffer;
         if (file instanceof Blob) {
             buffer = Buffer.from(await file.arrayBuffer());

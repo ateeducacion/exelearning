@@ -5,21 +5,17 @@
  */
 import { t, type Static } from 'elysia';
 import { verifyToken } from '../../auth';
-import { userIdFromJwt } from '../../../utils/guards';
+import type { AuthenticatedIdentity } from '../../../auth/types';
 
 // ============================================================================
 // AUTH TYPES AND HELPERS
 // ============================================================================
 
 /**
- * Authenticated user info extracted from JWT
+ * Authenticated user info extracted from the JWT. This is the same identity
+ * the rest of the backend uses — `sub` is parsed exactly once, in `verifyToken`.
  */
-export interface AuthenticatedUser {
-    userId: number;
-    email: string;
-    roles: string[];
-    isGuest: boolean;
-}
+export type AuthenticatedUser = AuthenticatedIdentity;
 
 /**
  * Auth result - either success with user or error with response
@@ -105,9 +101,9 @@ export async function authenticateRequest(headers: Record<string, string | undef
     return {
         success: true,
         user: {
-            userId: userIdFromJwt(payload)!,
+            userId: payload.userId,
             email: payload.email,
-            roles: payload.roles || [],
+            roles: payload.roles,
             isGuest: false,
         },
     };

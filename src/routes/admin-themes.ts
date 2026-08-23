@@ -13,7 +13,7 @@ import * as path from 'path';
 import { db as defaultDb } from '../db/client';
 import type { Kysely } from 'kysely';
 import type { Database, Theme } from '../db/types';
-import type { JwtPayload } from './auth';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import {
     // Site theme queries (is_builtin=0)
     getSiteThemes as getSiteThemesDefault,
@@ -44,7 +44,7 @@ import {
     slugify as slugifyDefault,
     BASE_THEME_NAMES,
 } from '../services/admin-upload-validator';
-import { userIdFromJwt, requireAdmin } from '../utils/guards';
+import { requireAdmin } from '../utils/guards';
 import { getFilesDir as getFilesDirDefault, getJwtSecret, deleteFileIfExists } from '../utils/admin-route-helpers';
 import { parsedBody } from './types/request-payloads';
 
@@ -226,12 +226,13 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                     }
 
                     const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
-                    if (!payload) {
+                    const identity = payload ? toAuthenticatedIdentity(payload) : null;
+                    if (!identity) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Invalid token' };
                     }
 
-                    const authError = requireAdmin(payload);
+                    const authError = requireAdmin(identity);
                     if (authError) {
                         set.status = 403;
                         return { error: authError.error, message: authError.message };
@@ -371,9 +372,14 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                         const storagePath = `themes/site/${dirName}`;
                         const targetDir = path.join(filesDir(), storagePath);
 
-                        // Get current user ID from JWT
                         const token = cookie.auth?.value as string | undefined;
-                        const payload = (await jwt.verify(token!)) as unknown as JwtPayload;
+                        const uploadIdentity = toAuthenticatedIdentity(
+                            (await jwt.verify(token!)) as unknown as JwtPayload,
+                        );
+                        if (!uploadIdentity) {
+                            set.status = 401;
+                            return { error: 'Unauthorized', message: 'Invalid token' };
+                        }
 
                         if (existingTheme) {
                             // Replace flow: wipe the old directory so leftover files from
@@ -390,7 +396,7 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                                 license: validation.metadata!.license || null,
                                 storage_path: storagePath,
                                 file_size: fileBuffer.length,
-                                uploaded_by: userIdFromJwt(payload)!,
+                                uploaded_by: uploadIdentity.userId,
                                 // is_enabled toggled only if the admin explicitly passed it
                                 ...(isEnabled === undefined ? {} : { is_enabled: isEnabled ? 1 : 0 }),
                             });
@@ -429,7 +435,7 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                             sort_order: sortOrder,
                             storage_path: storagePath,
                             file_size: fileBuffer.length,
-                            uploaded_by: userIdFromJwt(payload)!,
+                            uploaded_by: uploadIdentity.userId,
                         });
 
                         set.status = 201;

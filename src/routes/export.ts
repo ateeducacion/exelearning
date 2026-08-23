@@ -16,7 +16,8 @@ import { isSafePathSegment } from '../utils/safe-path';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import { parsedBody, type ExportOptionsRequest, type YjsExportStructure } from './types/request-payloads';
 import { withJwtAuth } from '../utils/route-auth';
-import { userIdFromJwt, hasRole, ROLES, requireAuth } from '../utils/guards';
+import type { AuthenticatedIdentity } from '../auth/types';
+import { hasRole, ROLES, requireAuth } from '../utils/guards';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -632,12 +633,12 @@ export function createExportRoutes(deps: ExportDependencies = {}) {
      */
     function authorizeExport(
         session: ProjectSession | undefined,
-        jwtPayload: { sub?: string; roles?: string[] } | null | undefined,
+        identity: AuthenticatedIdentity | null | undefined,
     ): { ok: true } | { ok: false; status: 401 | 403; message: string } {
-        const authErr = requireAuth(jwtPayload);
+        const authErr = requireAuth(identity);
         if (authErr) return { ok: false, status: authErr.status, message: authErr.message };
-        if (hasRole(jwtPayload!.roles, ROLES.ADMIN)) return { ok: true };
-        if (session && session.userId !== undefined && session.userId !== userIdFromJwt(jwtPayload)!) {
+        if (hasRole(identity!.roles, ROLES.ADMIN)) return { ok: true };
+        if (session && session.userId !== undefined && session.userId !== identity!.userId) {
             return { ok: false, status: 403, message: 'Access denied' };
         }
         return { ok: true };
@@ -665,7 +666,7 @@ export function createExportRoutes(deps: ExportDependencies = {}) {
             // =====================================================
 
             // GET /api/export/:odeSessionId/:exportType/download - Download export
-            .get('/:odeSessionId/:exportType/download', async ({ params, set, jwtPayload }) => {
+            .get('/:odeSessionId/:exportType/download', async ({ params, set, identity }) => {
                 const { odeSessionId, exportType } = params;
 
                 // Reject path-traversal session ids before any filesystem path is built.
@@ -676,7 +677,7 @@ export function createExportRoutes(deps: ExportDependencies = {}) {
                 }
 
                 const session = getSession(odeSessionId);
-                const authz = authorizeExport(session, jwtPayload);
+                const authz = authorizeExport(session, identity);
                 if (authz.ok === false) {
                     set.status = authz.status;
                     return { success: false, error: authz.message };
@@ -730,7 +731,7 @@ export function createExportRoutes(deps: ExportDependencies = {}) {
             // =====================================================
 
             // POST /api/export/:odeSessionId/:exportType/download - Download export with options
-            .post('/:odeSessionId/:exportType/download', async ({ params, body, set, jwtPayload }) => {
+            .post('/:odeSessionId/:exportType/download', async ({ params, body, set, identity }) => {
                 const { odeSessionId, exportType } = params;
                 const options = parsedBody<ExportOptionsRequest>(body);
 
@@ -742,7 +743,7 @@ export function createExportRoutes(deps: ExportDependencies = {}) {
                 }
 
                 let session = getSession(odeSessionId);
-                const authz = authorizeExport(session, jwtPayload);
+                const authz = authorizeExport(session, identity);
                 if (authz.ok === false) {
                     set.status = authz.status;
                     return { success: false, error: authz.message };

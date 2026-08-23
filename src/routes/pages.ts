@@ -61,9 +61,8 @@ import {
 import * as pathModule from 'path';
 import { detectLocaleFromHeader, trans, DEFAULT_LOCALE } from '../services/translation';
 import { decodePlatformJWT } from '../utils/platform-jwt';
-import type { JwtPayload } from './types/request-payloads';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import { getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
-import { userIdFromJwt } from '../utils/guards';
 
 const CUSTOMIZATION_MIME_TYPES: Record<string, string> = {
     '.ico': 'image/x-icon',
@@ -348,13 +347,16 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 if (impersonatorToken) {
                     try {
                         const originalPayload = (await jwt.verify(impersonatorToken)) as unknown as JwtPayload | false;
-                        if (originalPayload !== false && originalPayload.sub) {
-                            const impersonatorUser = await findUserById(db, userIdFromJwt(originalPayload)!);
+                        const impersonatorIdentity = originalPayload ? toAuthenticatedIdentity(originalPayload) : null;
+                        if (impersonatorIdentity) {
+                            const impersonatorUser = await findUserById(db, impersonatorIdentity.userId);
                             impersonationBase = {
                                 sessionId: (cookie.impersonation_session?.value as string | undefined) || null,
-                                impersonatorId: userIdFromJwt(originalPayload)!,
+                                impersonatorId: impersonatorIdentity.userId,
                                 impersonatorEmail:
-                                    impersonatorUser?.email || originalPayload.email || `user-${originalPayload.sub}`,
+                                    impersonatorUser?.email ||
+                                    impersonatorIdentity.email ||
+                                    `user-${impersonatorIdentity.userId}`,
                             };
                         }
                     } catch {
@@ -380,12 +382,21 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     const authMethod = payload.authMethod;
                     const isImpersonated = payload.isImpersonated || false;
 
-                    const isGuest = payload.isGuest || false;
-                    if (isGuest) {
+                    const identity = toAuthenticatedIdentity(payload);
+                    if (!identity) {
+                        return {
+                            currentUser: null,
+                            isGuest: false,
+                            impersonation: null,
+                            authMethod,
+                            isImpersonated,
+                        };
+                    }
+                    if (identity.isGuest) {
                         return {
                             currentUser: {
-                                id: userIdFromJwt(payload)!,
-                                email: payload.email || 'guest@guest.local',
+                                id: identity.userId,
+                                email: identity.email || 'guest@guest.local',
                                 roles: JSON.stringify(['ROLE_GUEST']),
                             },
                             isGuest: true,
@@ -395,7 +406,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         };
                     }
 
-                    const user = await findUserById(db, userIdFromJwt(payload)!);
+                    const user = await findUserById(db, identity.userId);
                     const impersonation: ImpersonationContext | null =
                         impersonationBase && user
                             ? {
@@ -404,7 +415,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                   impersonatorId: impersonationBase.impersonatorId,
                                   impersonatorEmail: impersonationBase.impersonatorEmail,
                                   impersonatedId: Number(user.id),
-                                  impersonatedEmail: user.email || payload.email || `user-${user.id}`,
+                                  impersonatedEmail: user.email || identity.email || `user-${identity.userId}`,
                               }
                             : null;
 

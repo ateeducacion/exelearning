@@ -12,7 +12,6 @@ import {
     type FileUploadRequest,
     type AssetUploadRequest,
     type LoginRequest,
-    type JwtPayload,
     type FileGatorDirRequest,
     type FileGatorCreateRequest,
     type ExportOptionsRequest,
@@ -76,21 +75,6 @@ describe('Request Payload Types', () => {
                 password: 'secret',
             };
             expect(request.email).toBe('user@test.com');
-        });
-    });
-
-    describe('JwtPayload', () => {
-        it('should have required fields', () => {
-            const payload: JwtPayload = {
-                sub: '1',
-                email: 'user@test.com',
-                roles: ['ROLE_USER'],
-                isGuest: false,
-                exp: Date.now() + 3600000,
-                iat: Date.now(),
-            };
-            expect(payload.sub).toBe('1');
-            expect(payload.roles).toContain('ROLE_USER');
         });
     });
 

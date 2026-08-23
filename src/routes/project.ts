@@ -121,7 +121,7 @@ import { createBlankYjsDocument } from '../services/yjs-initializer';
 import { logActivity } from '../services/activity-logger';
 import type { Kysely } from 'kysely';
 import type { Database, Project, User, Theme } from '../db/types';
-import { userIdFromJwt } from '../utils/guards';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 
 /**
  * Build the `defaultTheme` payload returned to the client when a project is
@@ -452,11 +452,12 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 }
 
                 try {
-                    const payload = (await jwt.verify(token)) as { sub: string } | false;
-                    if (payload === false || !payload.sub) {
+                    const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
+                    const identity = payload ? toAuthenticatedIdentity(payload) : null;
+                    if (!identity) {
                         return { currentUser: null };
                     }
-                    const user = await findUserById(db, userIdFromJwt(payload)!);
+                    const user = await findUserById(db, identity.userId);
                     return { currentUser: user || null };
                 } catch {
                     return { currentUser: null };
@@ -856,11 +857,12 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 }
 
                 try {
-                    const payload = (await jwt.verify(token)) as { sub: string } | false;
-                    if (payload === false || !payload.sub) {
+                    const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
+                    const identity = payload ? toAuthenticatedIdentity(payload) : null;
+                    if (!identity) {
                         return { currentUser: null };
                     }
-                    const user = await findUserById(db, userIdFromJwt(payload)!);
+                    const user = await findUserById(db, identity.userId);
                     return { currentUser: user || null };
                 } catch {
                     return { currentUser: null };

@@ -24,7 +24,7 @@ import { getAuthMethods, getSettingString, getSettingNumber } from '../services/
 import { getPostLoginTarget } from '../services/maintenance';
 import { logActivity } from '../services/activity-logger';
 import { resolveOidcEndpoints, type ResolvedOidcEndpoints } from '../services/oidc-discovery';
-import { userIdFromJwt } from '../utils/guards';
+import { toAuthenticatedIdentity, type AuthenticatedIdentity, type JwtPayload } from '../auth/types';
 
 // Domain for temporary emails (CAS, OIDC, Guest users without real email)
 const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
@@ -97,26 +97,7 @@ const defaultDeps: AuthDependencies = {
     },
 };
 
-// JWT payload type
-export interface JwtPayload {
-    /** Subject: user id, as string per RFC 7519 section 4.1.2 */
-    sub: string;
-    email: string;
-    roles: string[];
-    isGuest?: boolean;
-    authMethod?: 'local' | 'cas' | 'openid' | 'saml' | 'guest';
-    isImpersonated?: boolean;
-    impersonatedBy?: number;
-    impersonationSessionId?: string;
-    iat?: number;
-    exp?: number;
-}
-
-/**
- * A {@link JwtPayload} whose `sub` has been parsed back to the numeric user
- * id. Returned by {@link verifyToken} so consumers can use the id directly.
- */
-export type VerifiedJwtPayload = Omit<JwtPayload, 'sub'> & { sub: number };
+// JWT payload type lives in `src/auth/types.ts` (imported above).
 
 // Get JWT secret from environment
 const getJwtSecret = (): string => {
@@ -172,33 +153,34 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 if (!token) {
                     return {
                         auth: { user: null, isAuthenticated: false, isGuest: false },
-                        jwtPayload: null as JwtPayload | null,
+                        identity: null as AuthenticatedIdentity | null,
                     };
                 }
 
                 try {
                     const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
 
-                    if (payload === false || !payload.sub) {
+                    const identity = payload ? toAuthenticatedIdentity(payload) : null;
+                    if (!identity) {
                         return {
                             auth: { user: null, isAuthenticated: false, isGuest: false },
-                            jwtPayload: null as JwtPayload | null,
+                            identity: null,
                         };
                     }
 
-                    const user = await findUserById(db, userIdFromJwt(payload)!);
+                    const user = await findUserById(db, identity.userId);
                     return {
                         auth: {
                             user: user || null,
                             isAuthenticated: !!user,
-                            isGuest: payload.isGuest || false,
+                            isGuest: identity.isGuest,
                         },
-                        jwtPayload: payload,
+                        identity,
                     };
                 } catch {
                     return {
                         auth: { user: null, isAuthenticated: false, isGuest: false },
-                        jwtPayload: null as JwtPayload | null,
+                        identity: null as AuthenticatedIdentity | null,
                     };
                 }
             })
@@ -301,15 +283,15 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'BAD_REQUEST', message: 'No active impersonation session' };
                 }
 
-                const originalPayload = (await jwt.verify(originalToken as string)) as unknown as JwtPayload | false;
-                if (originalPayload === false || !originalPayload.sub) {
+                const originalIdentity = await verifyToken(originalToken as string);
+                if (!originalIdentity) {
                     cookie.impersonator_auth.remove();
                     cookie.impersonation_session.remove();
                     set.status = 401;
                     return { error: 'UNAUTHORIZED', message: 'Original session is no longer valid' };
                 }
 
-                const originalUser = await findUserById(db, userIdFromJwt(originalPayload)!);
+                const originalUser = await findUserById(db, originalIdentity.userId);
                 if (!originalUser) {
                     cookie.impersonator_auth.remove();
                     cookie.impersonation_session.remove();
@@ -475,8 +457,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /logout - Logout and redirect to login page (SSO-aware)
-            .get('/logout', async ({ cookie, request, jwtPayload }) => {
-                const authMethod = jwtPayload?.authMethod;
+            .get('/logout', async ({ cookie, request, identity }) => {
+                const authMethod = identity?.authMethod;
 
                 // Remove auth cookie first
                 cookie.auth.remove();
@@ -1203,10 +1185,11 @@ function sanitizeUser(user: User): Omit<User, 'password'> {
 export { getJwtSecret };
 
 /**
- * Verify JWT token independently (for WebSocket auth)
- * Returns the payload if valid, null otherwise
+ * Verify a JWT token independently (for WebSocket auth, CLI, API v1).
+ * This is the second allowed JWT boundary: it returns the authenticated
+ * identity with `sub` already parsed to the numeric user id.
  */
-export async function verifyToken(token: string): Promise<VerifiedJwtPayload | null> {
+export async function verifyToken(token: string): Promise<AuthenticatedIdentity | null> {
     try {
         // Use jose for independent token verification
         const { jwtVerify } = await import('jose');
@@ -1214,26 +1197,7 @@ export async function verifyToken(token: string): Promise<VerifiedJwtPayload | n
 
         const { payload } = await jwtVerify(token, secret);
 
-        const userId = userIdFromJwt(payload);
-        if (userId == null) {
-            return null;
-        }
-
-        return {
-            sub: userId,
-            email: payload.email as string,
-            roles: payload.roles as string[],
-            isGuest: payload.isGuest as boolean | undefined,
-            authMethod: payload.authMethod as JwtPayload['authMethod'],
-            isImpersonated: payload.isImpersonated as boolean | undefined,
-            impersonatedBy:
-                typeof payload.impersonatedBy === 'string'
-                    ? parseInt(payload.impersonatedBy, 10)
-                    : (payload.impersonatedBy as number | undefined),
-            impersonationSessionId: payload.impersonationSessionId as string | undefined,
-            iat: payload.iat,
-            exp: payload.exp,
-        };
+        return toAuthenticatedIdentity(payload as unknown as JwtPayload);
     } catch {
         return null;
     }

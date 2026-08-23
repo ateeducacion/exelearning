@@ -46,7 +46,7 @@ import {
 // Import system (ELP → Y.Doc)
 import { ElpxImporter, FileSystemAssetHandler } from '../shared/import';
 import * as Y from 'yjs';
-import { userIdFromJwt } from '../utils/guards';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 
 // =============================================================================
 // Types and Interfaces
@@ -60,13 +60,6 @@ export interface ConvertDependencies {
     publicDir?: string;
     tempDir?: string;
     fs?: typeof fs;
-}
-
-interface JwtPayload {
-    sub: number;
-    email: string;
-    roles: string[];
-    isGuest?: boolean;
 }
 
 // Supported export formats
@@ -307,12 +300,13 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                 }
 
                 try {
-                    const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (payload === false || !payload.sub) {
+                    const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
+                    const identity = payload ? toAuthenticatedIdentity(payload) : null;
+                    if (!identity) {
                         return { currentUser: null };
                     }
 
-                    const user = await findUserById(db, userIdFromJwt(payload)!);
+                    const user = await findUserById(db, identity.userId);
                     return { currentUser: user || null };
                 } catch {
                     return { currentUser: null };

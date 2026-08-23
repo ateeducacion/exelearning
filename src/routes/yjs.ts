@@ -3,7 +3,6 @@
  * Endpoints for saving and loading Yjs document state
  */
 import { Elysia } from 'elysia';
-import { jwt } from '@elysiajs/jwt';
 import {
     findProjectByUuid,
     upsertSnapshot,
@@ -15,8 +14,8 @@ import {
 } from '../db/queries';
 import { fromBinaryData } from '../db/helpers';
 import { db } from '../db/client';
-import { getJwtSecret, type JwtPayload } from './auth';
-import { hasRole, ROLES, userIdFromJwt } from '../utils/guards';
+import { withJwtAuth } from '../utils/route-auth';
+import { hasRole, ROLES } from '../utils/guards';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 
@@ -65,35 +64,11 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
 
     return (
         new Elysia({ prefix: '/api/projects' })
-            .use(
-                jwt({
-                    name: 'jwt',
-                    secret: getJwtSecret(),
-                    exp: '7d',
-                }),
-            )
-            .derive(async ({ jwt: jwtPlugin, cookie, request }) => {
-                let token: string | undefined;
-                const authHeader = request.headers.get('authorization');
-                if (authHeader?.startsWith('Bearer ')) {
-                    token = authHeader.slice(7);
-                } else if (cookie.auth?.value) {
-                    token = cookie.auth.value as string;
-                }
-                if (!token) {
-                    return { jwtPayload: null as JwtPayload | null };
-                }
-                try {
-                    const payload = (await jwtPlugin.verify(token)) as JwtPayload | false;
-                    return { jwtPayload: (payload || null) as JwtPayload | null };
-                } catch {
-                    return { jwtPayload: null as JwtPayload | null };
-                }
-            })
+            .use(withJwtAuth())
 
             // GET - Load Yjs document state
-            .get('/uuid/:uuid/yjs-document', async ({ params, jwtPayload }) => {
-                if (!jwtPayload?.sub) {
+            .get('/uuid/:uuid/yjs-document', async ({ params, identity }) => {
+                if (!identity) {
                     return new Response(JSON.stringify({ error: 'Unauthorized', message: 'Authentication required' }), {
                         status: 401,
                         headers: { 'Content-Type': 'application/json' },
@@ -108,10 +83,9 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                     });
                 }
 
-                const userId = userIdFromJwt(jwtPayload)!;
-                const isAdmin = hasRole(jwtPayload.roles, ROLES.ADMIN);
+                const isAdmin = hasRole(identity.roles, ROLES.ADMIN);
                 if (!isAdmin) {
-                    const access = await queries.checkProjectAccess(database, project, userId);
+                    const access = await queries.checkProjectAccess(database, project, identity.userId);
                     if (!access.hasAccess) {
                         return new Response(JSON.stringify({ error: 'Forbidden', message: 'Access denied' }), {
                             status: 403,
@@ -162,8 +136,8 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
             // POST - Save Yjs document state
             // Use ?markSaved=true to also mark the project as saved (for explicit user save)
             // Without this parameter, only persists data (for auto-save on page unload)
-            .post('/uuid/:uuid/yjs-document', async ({ params, body, set, query, headers, jwtPayload }) => {
-                if (!jwtPayload?.sub) {
+            .post('/uuid/:uuid/yjs-document', async ({ params, body, set, query, headers, identity }) => {
+                if (!identity) {
                     set.status = 401;
                     return { error: 'Unauthorized', message: 'Authentication required' };
                 }
@@ -178,10 +152,9 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 // model: owner, collaborator, or admin always have access; on
                 // projects marked `visibility: 'public'`, any authenticated
                 // user may also edit (wiki-style semantics).
-                const userId = userIdFromJwt(jwtPayload)!;
-                const isAdmin = hasRole(jwtPayload.roles, ROLES.ADMIN);
+                const isAdmin = hasRole(identity.roles, ROLES.ADMIN);
                 if (!isAdmin) {
-                    const access = await queries.checkProjectAccess(database, project, userId);
+                    const access = await queries.checkProjectAccess(database, project, identity.userId);
                     if (!access.hasAccess) {
                         set.status = 403;
                         return { error: 'Forbidden', message: 'Access denied' };

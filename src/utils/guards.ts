@@ -3,7 +3,7 @@
  * Role-based access control utilities for Elysia routes
  */
 
-import type { JwtPayload } from '../routes/auth';
+import type { AuthenticatedIdentity } from '../auth/types';
 
 /**
  * Result type for authorization checks
@@ -12,25 +12,6 @@ export interface AuthorizationError {
     status: 401 | 403;
     error: 'UNAUTHORIZED' | 'FORBIDDEN';
     message: string;
-}
-
-/**
- * Parse JWT `sub` (RFC 7519 string) to the numeric user id.
- * Accepts a number as well so tokens signed before the string-sub change still work.
- * Returns null when the payload is missing, empty, or `sub` is not a positive safe integer.
- */
-export function userIdFromJwt(payload: { sub?: string | number } | null | undefined): number | null {
-    if (payload?.sub == null || payload.sub === '') {
-        return null;
-    }
-    const raw = typeof payload.sub === 'string' ? payload.sub.trim() : payload.sub;
-    if (typeof raw === 'string') {
-        if (!/^\d+$/.test(raw)) {
-            return null;
-        }
-    }
-    const id = typeof raw === 'number' ? raw : Number(raw);
-    return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
 /**
@@ -71,11 +52,11 @@ export function hasAllRoles(roles: string[] | undefined | null, requiredRoles: s
 
 /**
  * Require authentication - returns error if not authenticated
- * @param jwtPayload - JWT payload from route context
+ * @param identity - Authenticated identity derived at the JWT boundary
  * @returns null if OK, AuthorizationError if unauthorized
  */
-export function requireAuth(jwtPayload: { sub?: string | number } | null | undefined): AuthorizationError | null {
-    if (userIdFromJwt(jwtPayload) == null) {
+export function requireAuth(identity: AuthenticatedIdentity | null | undefined): AuthorizationError | null {
+    if (!identity) {
         return {
             status: 401,
             error: 'UNAUTHORIZED',
@@ -87,18 +68,18 @@ export function requireAuth(jwtPayload: { sub?: string | number } | null | undef
 
 /**
  * Require admin role - returns error if not authenticated or not admin
- * @param jwtPayload - JWT payload from route context
+ * @param identity - Authenticated identity derived at the JWT boundary
  * @returns null if OK, AuthorizationError if unauthorized or forbidden
  */
-export function requireAdmin(jwtPayload: JwtPayload | null | undefined): AuthorizationError | null {
+export function requireAdmin(identity: AuthenticatedIdentity | null | undefined): AuthorizationError | null {
     // Check authentication first
-    const authError = requireAuth(jwtPayload);
+    const authError = requireAuth(identity);
     if (authError) {
         return authError;
     }
 
     // Check admin role
-    if (!hasRole(jwtPayload!.roles, 'ROLE_ADMIN')) {
+    if (!hasRole(identity!.roles, 'ROLE_ADMIN')) {
         return {
             status: 403,
             error: 'FORBIDDEN',
@@ -111,22 +92,22 @@ export function requireAdmin(jwtPayload: JwtPayload | null | undefined): Authori
 
 /**
  * Require any of the specified roles
- * @param jwtPayload - JWT payload from route context
+ * @param identity - Authenticated identity derived at the JWT boundary
  * @param requiredRoles - Array of roles (user must have at least one)
  * @returns null if OK, AuthorizationError if unauthorized or forbidden
  */
 export function requireAnyRole(
-    jwtPayload: JwtPayload | null | undefined,
+    identity: AuthenticatedIdentity | null | undefined,
     requiredRoles: string[],
 ): AuthorizationError | null {
     // Check authentication first
-    const authError = requireAuth(jwtPayload);
+    const authError = requireAuth(identity);
     if (authError) {
         return authError;
     }
 
     // Check roles
-    if (!hasAnyRole(jwtPayload!.roles, requiredRoles)) {
+    if (!hasAnyRole(identity!.roles, requiredRoles)) {
         return {
             status: 403,
             error: 'FORBIDDEN',
@@ -139,13 +120,12 @@ export function requireAnyRole(
 
 /**
  * Check if user is the admin being operated on (for self-modification checks)
- * @param jwtPayload - JWT payload from route context
+ * @param identity - Authenticated identity derived at the JWT boundary
  * @param targetUserId - ID of the user being modified
  * @returns true if the current user is modifying themselves
  */
-export function isSelfModification(jwtPayload: JwtPayload | null | undefined, targetUserId: number): boolean {
-    const userId = userIdFromJwt(jwtPayload);
-    return userId != null && userId === targetUserId;
+export function isSelfModification(identity: AuthenticatedIdentity | null | undefined, targetUserId: number): boolean {
+    return identity?.userId === targetUserId;
 }
 
 /**

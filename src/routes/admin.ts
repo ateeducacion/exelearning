@@ -13,7 +13,8 @@ import type { Kysely } from 'kysely';
 import type { Database, User } from '../db/types';
 import { parseRoles } from '../db/types';
 import { getBinarySize } from '../shared/export/interfaces';
-import { getJwtSecret, type JwtPayload } from './auth';
+import { getJwtSecret } from './auth';
+import { toAuthenticatedIdentity, type AuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import {
     findUserById as findUserByIdDefault,
     findUsersByIds as findUsersByIdsDefault,
@@ -41,7 +42,7 @@ import {
     findProjectsByOwnerId as findProjectsByOwnerIdDefault,
 } from '../db/queries/projects';
 import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
-import { userIdFromJwt, requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
+import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
 import { hashPassword, isPasswordAccount, validateNewPassword, EXTERNAL_ACCOUNT_MESSAGE } from '../services/password';
 import { trans } from '../services/translation';
 import { getBasePath } from '../utils/basepath.util';
@@ -699,7 +700,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 }),
             )
 
-            // Derive JWT payload from request
+            // Derive authenticated identity from request
             .derive(async ({ jwt: jwtPlugin, cookie, request }) => {
                 let token: string | undefined;
 
@@ -712,20 +713,20 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 }
 
                 if (!token) {
-                    return { jwtPayload: null as JwtPayload | null };
+                    return { identity: null as AuthenticatedIdentity | null };
                 }
 
                 try {
                     const payload = (await jwtPlugin.verify(token)) as unknown as JwtPayload | false;
-                    return { jwtPayload: payload || null };
+                    return { identity: payload ? toAuthenticatedIdentity(payload) : null };
                 } catch {
-                    return { jwtPayload: null as JwtPayload | null };
+                    return { identity: null as AuthenticatedIdentity | null };
                 }
             })
 
             // Global guard: Require ROLE_ADMIN for all routes in this group
-            .onBeforeHandle(({ set, jwtPayload }) => {
-                const authError = requireAdmin(jwtPayload);
+            .onBeforeHandle(({ set, identity }) => {
+                const authError = requireAdmin(identity);
                 if (authError) {
                     set.status = authError.status;
                     return {
@@ -826,7 +827,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // PUT /api/admin/settings - Update admin settings
             .put(
                 '/api/admin/settings',
-                async ({ body, set, jwtPayload }) => {
+                async ({ body, set, identity }) => {
                     const data = parsedBody<{ settings: Array<{ key: string; value: string; type: string }> }>(body);
                     const sanitizedValues: Record<string, string> = {};
 
@@ -871,7 +872,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                                 setting.key,
                                 setting.value,
                                 setting.type as 'string' | 'number' | 'boolean' | 'json',
-                                userIdFromJwt(jwtPayload) ?? undefined,
+                                identity?.userId ?? undefined,
                             );
                         } catch (error) {
                             set.status = 500;
@@ -900,8 +901,8 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // POST /api/admin/impersonation/start - Start impersonating a user
             .post(
                 '/api/admin/impersonation/start',
-                async ({ body, set, jwtPayload, cookie, request, jwt: jwtPlugin }) => {
-                    const adminUserId = userIdFromJwt(jwtPayload)!;
+                async ({ body, set, identity, cookie, request, jwt: jwtPlugin }) => {
+                    const adminUserId = identity!.userId;
                     const targetUserId = Number(parsedBody<StartImpersonationInput>(body).user_id);
 
                     if (!Number.isInteger(adminUserId) || !Number.isInteger(targetUserId)) {
@@ -966,7 +967,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         email: targetUser.email,
                         roles: targetRoles,
                         isGuest: false,
-                        authMethod: jwtPayload?.authMethod || 'local',
+                        authMethod: identity?.authMethod || 'local',
                         isImpersonated: true,
                         impersonatedBy: adminUserId,
                         impersonationSessionId: sessionId,
@@ -1102,7 +1103,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // PATCH /api/admin/users/:id/roles - Update user roles
             .patch(
                 '/api/admin/users/:id/roles',
-                async ({ params, body, set, jwtPayload }) => {
+                async ({ params, body, set, identity }) => {
                     const parsed = parseAndValidateId(params.id, set);
                     if ('error' in parsed) return parsed;
                     const userId = parsed.id;
@@ -1122,10 +1123,10 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     }
 
                     // Check for self-degradation (removing own admin role)
-                    const currentUserId = userIdFromJwt(jwtPayload)!;
+                    const currentUserId = identity!.userId;
                     const isRemovingOwnAdminRole =
                         currentUserId === userId &&
-                        hasRole(jwtPayload!.roles, ROLES.ADMIN) &&
+                        hasRole(identity!.roles, ROLES.ADMIN) &&
                         !newRoles.includes(ROLES.ADMIN);
 
                     if (isRemovingOwnAdminRole) {
@@ -1154,14 +1155,14 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // PATCH /api/admin/users/:id/status - Activate/deactivate user
             .patch(
                 '/api/admin/users/:id/status',
-                async ({ params, body, set, jwtPayload }) => {
+                async ({ params, body, set, identity }) => {
                     const parsed = parseAndValidateId(params.id, set);
                     if ('error' in parsed) return parsed;
                     const userId = parsed.id;
 
                     // Prevent deactivating yourself
                     const input = parsedBody<UpdateStatusInput>(body);
-                    if (userIdFromJwt(jwtPayload)! === userId && !input.is_active) {
+                    if (identity!.userId === userId && !input.is_active) {
                         set.status = 400;
                         return { error: 'CANNOT_DEACTIVATE_SELF', message: 'Cannot deactivate your own account' };
                     }
@@ -1376,13 +1377,13 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             })
 
             // DELETE /api/admin/users/:id - Delete user
-            .delete('/api/admin/users/:id', async ({ params, set, jwtPayload }) => {
+            .delete('/api/admin/users/:id', async ({ params, set, identity }) => {
                 const parsed = parseAndValidateId(params.id, set);
                 if ('error' in parsed) return parsed;
                 const userId = parsed.id;
 
                 // Prevent deleting yourself
-                if (userIdFromJwt(jwtPayload)! === userId) {
+                if (identity!.userId === userId) {
                     set.status = 400;
                     return { error: 'CANNOT_DELETE_SELF', message: 'Cannot delete your own account' };
                 }
@@ -1454,7 +1455,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // POST /api/admin/customization/favicon — upload custom favicon
             .post(
                 '/api/admin/customization/favicon',
-                async ({ body, set, jwtPayload }) => {
+                async ({ body, set, identity }) => {
                     const FAVICON_ALLOWED_TYPES = [
                         'image/x-icon',
                         'image/png',
@@ -1490,7 +1491,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         'APP_FAVICON_PATH',
                         originalName,
                         'string',
-                        userIdFromJwt(jwtPayload) ?? undefined,
+                        identity?.userId ?? undefined,
                     );
                     return { success: true, filename: originalName };
                 },
@@ -1498,7 +1499,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             )
 
             // DELETE /api/admin/customization/favicon — remove custom favicon
-            .delete('/api/admin/customization/favicon', async ({ jwtPayload }) => {
+            .delete('/api/admin/customization/favicon', async ({ identity }) => {
                 const faviconDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'favicon');
                 for (const f of await fileHelper.listFiles(faviconDir).catch(() => [])) {
                     await fileHelper.remove(pathModule.join(faviconDir, f)).catch(() => {});
@@ -1508,7 +1509,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     'APP_FAVICON_PATH',
                     '',
                     'string',
-                    userIdFromJwt(jwtPayload) ?? undefined,
+                    identity?.userId ?? undefined,
                 );
                 return { success: true };
             })

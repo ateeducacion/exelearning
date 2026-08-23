@@ -387,9 +387,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             // authenticated user on public projects — same semantics as the
             // Yjs WebSocket via checkProjectAccess).
             .use(withJwtAuth())
-            .onBeforeHandle(async ({ jwtPayload, params, set }) => {
+            .onBeforeHandle(async ({ identity, params, set }) => {
                 const projectIdParam = (params as Record<string, string>).projectId;
-                const result = await enforceProjectAccess(jwtPayload, projectIdParam, {
+                const result = await enforceProjectAccess(identity, projectIdParam, {
                     db: database,
                     queries: {
                         findProjectByUuid: queries.findProjectByUuid,

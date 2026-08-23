@@ -400,8 +400,8 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
     })
 
     // POST /api/idevices/upload/file/resources - Upload file resource (base64)
-    .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, request, jwtPayload }) => {
-        const authErr = requireAuth(jwtPayload);
+    .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, request, identity }) => {
+        const authErr = requireAuth(identity);
         if (authErr) {
             set.status = authErr.status;
             return { error: authErr.error, message: authErr.message };
@@ -547,8 +547,8 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
     })
 
     // POST /api/idevices/upload/large/file/resources - Upload large file resource (FormData)
-    .post('/api/idevices/upload/large/file/resources', async ({ body, cookie, set, jwtPayload }) => {
-        const authErr = requireAuth(jwtPayload);
+    .post('/api/idevices/upload/large/file/resources', async ({ body, cookie, set, identity }) => {
+        const authErr = requireAuth(identity);
         if (authErr) {
             set.status = authErr.status;
             return { error: authErr.error, message: authErr.message };

@@ -11,7 +11,7 @@ import { db as defaultDb } from '../db/client';
 import { buildContentDisposition } from '../shared/http/headers';
 import type { Kysely } from 'kysely';
 import type { Database, Template } from '../db/types';
-import type { JwtPayload } from './auth';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import {
     getAllTemplates as getAllTemplatesDefault,
     getTemplatesByLocale as getTemplatesByLocaleDefault,
@@ -32,7 +32,7 @@ import {
     slugify as slugifyDefault,
     SUPPORTED_LOCALES,
 } from '../services/admin-upload-validator';
-import { userIdFromJwt, requireAdmin } from '../utils/guards';
+import { requireAdmin } from '../utils/guards';
 import { getFilesDir as getFilesDirDefault, getJwtSecret, deleteFileIfExists } from '../utils/admin-route-helpers';
 import { parsedBody } from './types/request-payloads';
 
@@ -154,12 +154,13 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                     }
 
                     const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
-                    if (!payload) {
+                    const identity = payload ? toAuthenticatedIdentity(payload) : null;
+                    if (!identity) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Invalid token' };
                     }
 
-                    const authError = requireAdmin(payload);
+                    const authError = requireAdmin(identity);
                     if (authError) {
                         set.status = 403;
                         return { error: authError.error, message: authError.message };
@@ -308,9 +309,14 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                         // Save template (as ELPX file, not extracted)
                         await validator.extractTemplate(fileBuffer, targetPath);
 
-                        // Get current user ID from JWT
                         const token = cookie.auth?.value as string | undefined;
-                        const payload = (await jwt.verify(token!)) as unknown as JwtPayload;
+                        const uploadIdentity = toAuthenticatedIdentity(
+                            (await jwt.verify(token!)) as unknown as JwtPayload,
+                        );
+                        if (!uploadIdentity) {
+                            set.status = 401;
+                            return { error: 'Unauthorized', message: 'Invalid token' };
+                        }
 
                         // Get next sort order
                         const sortOrder = await queries.getNextTemplateSortOrder(database, locale);
@@ -326,7 +332,7 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                             storage_path: storagePath,
                             file_size: fileBuffer.length,
                             preview_image: null,
-                            uploaded_by: userIdFromJwt(payload)!,
+                            uploaded_by: uploadIdentity.userId,
                         });
 
                         set.status = 201;

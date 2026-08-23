@@ -25,8 +25,8 @@ import {
 import { isOfflineMode } from '../utils/offline.util';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
-import { parsedBody, type JwtPayload, type UserPreferencesRequest } from './types/request-payloads';
-import { userIdFromJwt } from '../utils/guards';
+import { parsedBody, type UserPreferencesRequest } from './types/request-payloads';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 
 /**
  * Preference value wrapper type expected by frontend
@@ -210,19 +210,18 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
 
                 try {
                     const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
-                    if (payload === false) return { currentUser: null };
-                    const userId = userIdFromJwt(payload);
-                    if (userId == null) return { currentUser: null };
+                    const identity = payload ? toAuthenticatedIdentity(payload) : null;
+                    if (!identity) return { currentUser: null };
 
                     return {
                         currentUser: {
-                            id: userId,
-                            email: payload.email,
-                            isGuest: payload.isGuest || false,
-                            authMethod: payload.authMethod,
+                            id: identity.userId,
+                            email: identity.email,
+                            isGuest: identity.isGuest,
+                            authMethod: identity.authMethod,
                             // An impersonated token inherits the administrator's
                             // authMethod, so this flag must travel with it.
-                            isImpersonated: payload.isImpersonated || false,
+                            isImpersonated: identity.isImpersonated || false,
                         },
                     };
                 } catch {

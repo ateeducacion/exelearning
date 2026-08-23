@@ -108,21 +108,8 @@ export interface GuestLoginRequest {
 }
 
 /**
- * JWT payload shape used by some route handlers.
- * Canonical definition (with `sub` as string per RFC 7519) lives in `src/routes/auth.ts`.
+ * JWT payload shape: canonical definition lives in `src/auth/types.ts`.
  */
-export interface JwtPayload {
-    sub: string;
-    email: string;
-    roles: string[];
-    isGuest: boolean;
-    authMethod?: 'local' | 'cas' | 'openid' | 'saml' | 'guest';
-    isImpersonated?: boolean;
-    impersonatedBy?: number;
-    impersonationSessionId?: string;
-    exp: number;
-    iat: number;
-}
 
 // ============================================================================
 // Export Types

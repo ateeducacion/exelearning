@@ -5,6 +5,14 @@
  * Replaces `body as any` casts with proper typed interfaces.
  */
 
+/**
+ * Recover the TypeBox-validated request body type after Elysia plugins
+ * collapse handler `body` to `unknown`. Runtime validation has already run.
+ */
+export function parsedBody<T>(body: unknown): T {
+    return body as T;
+}
+
 // ============================================================================
 // File Upload Types
 // ============================================================================
@@ -93,10 +101,11 @@ export interface GuestLoginRequest {
 }
 
 /**
- * JWT payload structure
+ * JWT payload shape used by some route handlers.
+ * Canonical definition (with `sub` as string per RFC 7519) lives in `src/routes/auth.ts`.
  */
 export interface JwtPayload {
-    sub: number;
+    sub: string;
     email: string;
     roles: string[];
     isGuest: boolean;

@@ -759,7 +759,9 @@ export function getComponent(ydoc: Y.Doc, componentId: string): ComponentData | 
  * Create a new component in a block
  */
 export function createComponent(ydoc: Y.Doc, input: CreateComponentInput): OperationResult<ComponentData> {
-    const blockMap = findBlockMapInPage(ydoc, input.pageId, input.blockId);
+    const blockMap = input.pageId
+        ? findBlockMapInPage(ydoc, input.pageId, input.blockId)
+        : findBlockMap(ydoc, input.blockId);
     if (!blockMap) {
         return { success: false, error: `Block ${input.blockId} not found in page ${input.pageId}` };
     }

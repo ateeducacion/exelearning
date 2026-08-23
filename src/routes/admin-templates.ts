@@ -32,8 +32,9 @@ import {
     slugify as slugifyDefault,
     SUPPORTED_LOCALES,
 } from '../services/admin-upload-validator';
-import { requireAdmin } from '../utils/guards';
+import { userIdFromJwt, requireAdmin } from '../utils/guards';
 import { getFilesDir as getFilesDirDefault, getJwtSecret, deleteFileIfExists } from '../utils/admin-route-helpers';
+import { parsedBody } from './types/request-payloads';
 
 // ============================================================================
 // TYPES
@@ -66,6 +67,16 @@ export interface AdminTemplatesDependencies {
     validator: AdminTemplatesValidatorDeps;
     getFilesDir: () => string;
 }
+
+type TemplateUpdateInput = { displayName?: string; description?: string; sortOrder?: number };
+type TemplateToggleInput = { isEnabled: boolean };
+type TemplateUploadInput = {
+    file?: File;
+    locale: string;
+    displayName?: string;
+    description?: string;
+    isEnabled?: boolean;
+};
 
 // ============================================================================
 // DEFAULTS
@@ -136,13 +147,13 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
             // Global guard for admin routes
             .guard({
                 async beforeHandle({ jwt, cookie, set }) {
-                    const token = cookie.auth?.value;
+                    const token = cookie.auth?.value as string | undefined;
                     if (!token) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'No authentication token' };
                     }
 
-                    const payload = (await jwt.verify(token)) as JwtPayload | false;
+                    const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
                     if (!payload) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Invalid token' };
@@ -238,7 +249,8 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                 '/api/admin/templates/upload',
                 async ({ body, set, jwt, cookie }) => {
                     try {
-                        const { file, locale, displayName, description, isEnabled } = body;
+                        const { file, locale, displayName, description, isEnabled } =
+                            parsedBody<TemplateUploadInput>(body);
 
                         if (!file) {
                             set.status = 400;
@@ -297,8 +309,8 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                         await validator.extractTemplate(fileBuffer, targetPath);
 
                         // Get current user ID from JWT
-                        const token = cookie.auth?.value;
-                        const payload = (await jwt.verify(token!)) as JwtPayload;
+                        const token = cookie.auth?.value as string | undefined;
+                        const payload = (await jwt.verify(token!)) as unknown as JwtPayload;
 
                         // Get next sort order
                         const sortOrder = await queries.getNextTemplateSortOrder(database, locale);
@@ -314,7 +326,7 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                             storage_path: storagePath,
                             file_size: fileBuffer.length,
                             preview_image: null,
-                            uploaded_by: payload.sub,
+                            uploaded_by: userIdFromJwt(payload)!,
                         });
 
                         set.status = 201;
@@ -356,14 +368,15 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
 
                     const updates: Parameters<typeof queries.updateTemplate>[2] = {};
 
-                    if (body.displayName !== undefined) {
-                        updates.display_name = body.displayName;
+                    const input = parsedBody<TemplateUpdateInput>(body);
+                    if (input.displayName !== undefined) {
+                        updates.display_name = input.displayName;
                     }
-                    if (body.description !== undefined) {
-                        updates.description = body.description;
+                    if (input.description !== undefined) {
+                        updates.description = input.description;
                     }
-                    if (body.sortOrder !== undefined) {
-                        updates.sort_order = body.sortOrder;
+                    if (input.sortOrder !== undefined) {
+                        updates.sort_order = input.sortOrder;
                     }
 
                     const updatedTemplate = await queries.updateTemplate(database, id, updates);
@@ -401,7 +414,11 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                         return { error: 'Not Found', message: 'Template not found' };
                     }
 
-                    const updatedTemplate = await queries.toggleTemplateEnabled(database, id, body.isEnabled);
+                    const updatedTemplate = await queries.toggleTemplateEnabled(
+                        database,
+                        id,
+                        parsedBody<TemplateToggleInput>(body).isEnabled,
+                    );
                     if (!updatedTemplate) {
                         set.status = 500;
                         return { error: 'Internal Server Error', message: 'Failed to update template' };

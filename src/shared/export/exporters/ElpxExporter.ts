@@ -27,7 +27,7 @@
  *     - odeComponents (iDevices)
  */
 
-import type { ExportOptions, ExportResult, ElpxExportOptions } from '../interfaces';
+import { getBinarySize, type ExportOptions, type ExportResult, type ElpxExportOptions } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { validateXml, formatValidationErrors } from '../../../services/xml/xml-parser';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
@@ -432,7 +432,7 @@ export class ElpxExporter extends Html5Exporter {
                     }
                 ).getLastGenerateStats?.() || null;
             this.logElpxExportDebugPhase('exporter:zip-generate:end', {
-                bytes: buffer.byteLength,
+                bytes: getBinarySize(buffer),
                 deflatedFiles: zipStats?.deflatedFiles ?? null,
                 storedFiles: zipStats?.storedFiles ?? null,
                 deflatedBytes: zipStats?.deflatedBytes ?? null,

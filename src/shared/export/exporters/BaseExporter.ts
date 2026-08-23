@@ -561,7 +561,7 @@ export abstract class BaseExporter {
      */
     isAncestorOf(potentialAncestor: ExportPage, childId: string, allPages: ExportPage[]): boolean {
         const child = allPages.find(p => p.id === childId);
-        if (!child || !child.parentId) return false;
+        if (!child?.parentId) return false;
         if (child.parentId === potentialAncestor.id) return true;
         return this.isAncestorOf(potentialAncestor, child.parentId, allPages);
     }

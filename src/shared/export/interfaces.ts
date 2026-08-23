@@ -90,6 +90,7 @@ export interface ExportPage {
     parentId: string | null;
     order: number;
     blocks: ExportBlock[];
+    children?: ExportPage[];
 
     // Optional page-level properties
     properties?: Record<string, unknown>;
@@ -540,6 +541,11 @@ export interface ExportResult {
     error?: string;
 }
 
+/** Return the byte size of binary export data in browser or Bun runtimes. */
+export function getBinarySize(data: Uint8Array | Blob): number {
+    return data instanceof Blob ? data.size : data.byteLength;
+}
+
 // =============================================================================
 // Asset Resolution Interfaces
 // =============================================================================
@@ -681,6 +687,7 @@ export interface PageRenderOptions {
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
     addMathJax?: boolean;
+    linkToElp?: boolean;
 
     // Custom head content
     extraHeadContent?: string;
@@ -706,7 +713,7 @@ export interface PageRenderOptions {
     navLabels?: {
         previous: string;
         next: string;
-        page: string;
+        page?: string;
         license?: string;
         licenseLabel?: string;
         madeWith?: string;
@@ -888,6 +895,8 @@ export interface LomMetadataOptions {
     keywords?: string;
     category?: string;
     license?: string;
+    catalogName?: string;
+    catalogEntry?: string;
 }
 
 /**

@@ -14,7 +14,7 @@
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import { getJwtSecret, type JwtPayload } from './auth';
-import { hasRole, ROLES, requireAdmin, requireAuth } from '../utils/guards';
+import { userIdFromJwt, hasRole, ROLES, requireAdmin, requireAuth } from '../utils/guards';
 import { getServerInfo, getActiveRooms } from '../websocket/yjs-websocket';
 import * as roomManager from '../websocket/room-manager';
 
@@ -51,7 +51,7 @@ export function createWebSocketInfoRoutes(deps: WebSocketInfoDependencies = defa
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
                 } else if (cookie.auth?.value) {
-                    token = cookie.auth.value;
+                    token = cookie.auth.value as string;
                 }
                 if (!token) {
                     return { jwtPayload: null as JwtPayload | null };
@@ -100,7 +100,7 @@ export function createWebSocketInfoRoutes(deps: WebSocketInfoDependencies = defa
                     set.status = err.status;
                     return { error: err.error, message: err.message };
                 }
-                const userId = Number(jwtPayload!.sub);
+                const userId = userIdFromJwt(jwtPayload)!;
                 const isAdmin = hasRole(jwtPayload!.roles, ROLES.ADMIN);
                 const stats = deps.getRoomStats();
                 const rooms: Array<{ projectUuid: string; myConnections: number }> = [];

@@ -16,7 +16,7 @@ import {
     findSnapshotByProjectId as findSnapshotByProjectIdDefault,
 } from '../db/queries';
 import { enforceProjectAccess, withJwtAuth } from '../utils/route-auth';
-import { hasRole, requireAuth, ROLES } from '../utils/guards';
+import { userIdFromJwt, hasRole, requireAuth, ROLES } from '../utils/guards';
 
 // ============================================================================
 // DEPENDENCY INJECTION
@@ -615,7 +615,7 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
                 const sessionGranted =
                     access.status === 404 &&
                     !callerAuthErr &&
-                    canAccessUnsavedSession(session, Number(jwtPayload?.sub), isAdmin);
+                    canAccessUnsavedSession(session, userIdFromJwt(jwtPayload)!, isAdmin);
 
                 if (!sessionGranted) {
                     set.status = access.status;

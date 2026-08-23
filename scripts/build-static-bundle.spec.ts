@@ -22,7 +22,6 @@ import {
     LOCALE_NAMES,
     PACKAGE_LOCALES,
     LICENSES,
-    type IdeviceConfig,
     type ApiParameters,
 } from './build-static-bundle';
 import { buildConfigParams } from '../src/routes/config-params';
@@ -703,10 +702,7 @@ describe('generatePwaManifestContent', () => {
         expect(Array.isArray(parsed.icons)).toBe(true);
         expect(parsed.icons.length).toBeGreaterThan(0);
 
-        const hasValidIcon = parsed.icons.some(
-            (icon: { src: string; type: string }) =>
-                icon.src && icon.type
-        );
+        const hasValidIcon = parsed.icons.some((icon: { src: string; type: string }) => icon.src && icon.type);
         expect(hasValidIcon).toBe(true);
     });
 
@@ -836,9 +832,7 @@ describe('Configuration exports', () => {
         });
 
         it('should include Creative Commons licenses', () => {
-            const hasCC = Object.keys(LICENSES).some((key) =>
-                key.toLowerCase().includes('creative commons')
-            );
+            const hasCC = Object.keys(LICENSES).some(key => key.toLowerCase().includes('creative commons'));
             expect(hasCC).toBe(true);
         });
 
@@ -848,9 +842,7 @@ describe('Configuration exports', () => {
 
         it('should not include legacy licenses', () => {
             // Legacy licenses have version 3.0 or 2.5
-            const hasLegacy = Object.keys(LICENSES).some(
-                (key) => key.includes('3.0') || key.includes('2.5')
-            );
+            const hasLegacy = Object.keys(LICENSES).some(key => key.includes('3.0') || key.includes('2.5'));
             expect(hasLegacy).toBe(false);
         });
     });
@@ -936,25 +928,25 @@ describe('Config parameter parity between static and server', () => {
 
         // Verify that all config keys from the shared buildConfigParams are used in static buildApiParameters
         expect(Object.keys(staticParams.userPreferencesConfig).sort()).toEqual(
-            Object.keys(serverConfig.USER_PREFERENCES_CONFIG).sort()
+            Object.keys(serverConfig.USER_PREFERENCES_CONFIG).sort(),
         );
         expect(Object.keys(staticParams.ideviceInfoFieldsConfig).sort()).toEqual(
-            Object.keys(serverConfig.IDEVICE_INFO_FIELDS_CONFIG).sort()
+            Object.keys(serverConfig.IDEVICE_INFO_FIELDS_CONFIG).sort(),
         );
         expect(Object.keys(staticParams.themeInfoFieldsConfig).sort()).toEqual(
-            Object.keys(serverConfig.THEME_INFO_FIELDS_CONFIG).sort()
+            Object.keys(serverConfig.THEME_INFO_FIELDS_CONFIG).sort(),
         );
         expect(Object.keys(staticParams.odeProjectSyncPropertiesConfig).sort()).toEqual(
-            Object.keys(serverConfig.ODE_PROJECT_SYNC_PROPERTIES_CONFIG).sort()
+            Object.keys(serverConfig.ODE_PROJECT_SYNC_PROPERTIES_CONFIG).sort(),
         );
         expect(Object.keys(staticParams.odeComponentsSyncPropertiesConfig).sort()).toEqual(
-            Object.keys(serverConfig.ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG).sort()
+            Object.keys(serverConfig.ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG).sort(),
         );
         expect(Object.keys(staticParams.odeNavStructureSyncPropertiesConfig).sort()).toEqual(
-            Object.keys(serverConfig.ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG).sort()
+            Object.keys(serverConfig.ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG).sort(),
         );
         expect(Object.keys(staticParams.odePagStructureSyncPropertiesConfig).sort()).toEqual(
-            Object.keys(serverConfig.ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG).sort()
+            Object.keys(serverConfig.ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG).sort(),
         );
     });
 });
@@ -979,9 +971,7 @@ describe('shouldCompressJson', () => {
 
 describe('gzipBuffer', () => {
     it('produces output that round-trips via gunzip', () => {
-        const original = Buffer.from(
-            JSON.stringify({ a: 1, b: [2, 3, 4], c: 'lorem ipsum dolor sit amet' }),
-        );
+        const original = Buffer.from(JSON.stringify({ a: 1, b: [2, 3, 4], c: 'lorem ipsum dolor sit amet' }));
         const gz = gzipBuffer(original);
         expect(gz.length).toBeGreaterThan(0);
         const restored = zlib.gunzipSync(gz);

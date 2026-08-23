@@ -15,6 +15,19 @@ export interface AuthorizationError {
 }
 
 /**
+ * Parse JWT `sub` (RFC 7519 string) to the numeric user id.
+ * Accepts a number as well so tokens signed before the string-sub change still work.
+ * Returns null when the payload is missing or `sub` is not a finite number.
+ */
+export function userIdFromJwt(payload: { sub?: string | number } | null | undefined): number | null {
+    if (payload?.sub == null || payload.sub === '') {
+        return null;
+    }
+    const id = typeof payload.sub === 'number' ? payload.sub : Number(payload.sub);
+    return Number.isFinite(id) ? id : null;
+}
+
+/**
  * Check if a user has a specific role
  * @param roles - Array of role strings from JWT payload
  * @param role - Role to check for
@@ -55,8 +68,8 @@ export function hasAllRoles(roles: string[] | undefined | null, requiredRoles: s
  * @param jwtPayload - JWT payload from route context
  * @returns null if OK, AuthorizationError if unauthorized
  */
-export function requireAuth(jwtPayload: JwtPayload | null | undefined): AuthorizationError | null {
-    if (!jwtPayload || !jwtPayload.sub) {
+export function requireAuth(jwtPayload: { sub?: string | number } | null | undefined): AuthorizationError | null {
+    if (userIdFromJwt(jwtPayload) == null) {
         return {
             status: 401,
             error: 'UNAUTHORIZED',
@@ -125,7 +138,8 @@ export function requireAnyRole(
  * @returns true if the current user is modifying themselves
  */
 export function isSelfModification(jwtPayload: JwtPayload | null | undefined, targetUserId: number): boolean {
-    return jwtPayload?.sub === targetUserId;
+    const userId = userIdFromJwt(jwtPayload);
+    return userId != null && userId === targetUserId;
 }
 
 /**

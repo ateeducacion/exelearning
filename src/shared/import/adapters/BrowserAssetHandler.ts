@@ -95,7 +95,7 @@ export class BrowserAssetHandler implements AssetHandler {
         await this.ensureInitialized();
 
         // Convert Uint8Array to Blob
-        const blob = new Blob([data], { type: metadata.mimeType });
+        const blob = new Blob([data as unknown as ArrayBufferView<ArrayBuffer>], { type: metadata.mimeType });
 
         // Store blob in IndexedDB
         await this.assetManager.storeBlob(id, blob);

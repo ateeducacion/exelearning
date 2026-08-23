@@ -17,6 +17,7 @@ import {
     deleteBlock,
     moveBlock,
 } from '../../../yjs';
+import { parsedBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -25,6 +26,9 @@ import {
     CreateBlockBody,
     UpdateBlockBody,
     MoveBlockBody,
+    type CreateBlockInput,
+    type UpdateBlockInput,
+    type MoveBlockInput,
     PageIdParam,
     BlockIdParam,
     type AuthenticatedUser,
@@ -38,15 +42,15 @@ import {
 async function checkProjectAccess(
     uuid: string,
     auth: AuthenticatedUser,
-): Promise<{ project: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
+): Promise<{ project?: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
     const project = await findProjectByUuid(db, uuid);
 
     if (!project) {
-        return { project: null, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
+        return { project: undefined, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
     }
 
     if (project.owner_id !== auth.userId && !isAdmin(auth)) {
-        return { project: null, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
+        return { project: undefined, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
     }
 
     return { project };
@@ -62,7 +66,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/pages/:pageId/blocks',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -93,7 +97,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/pages/:pageId/blocks',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -105,15 +109,16 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
+            const input = parsedBody<CreateBlockInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 createBlock(ydoc, {
                     pageId: params.pageId,
-                    name: body.name,
-                    order: body.order,
+                    name: input.name,
+                    order: input.order,
                 }),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = result.error?.includes('not found') ? 404 : 400;
                 return errorResponse('CREATE_FAILED', result.error || 'Failed to create block');
             }
@@ -137,7 +142,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/blocks/:blockId',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -173,7 +178,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/blocks/:blockId',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -185,16 +190,16 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
+            const input = parsedBody<UpdateBlockInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
-                updateBlock(ydoc, {
-                    blockId: params.blockId,
-                    name: body.name,
-                    iconName: body.iconName,
-                    properties: body.properties,
+                updateBlock(ydoc, params.blockId, {
+                    name: input.name,
+                    iconName: input.iconName,
+                    properties: input.properties,
                 }),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = result.error?.includes('not found') ? 404 : 400;
                 return errorResponse('UPDATE_FAILED', result.error || 'Failed to update block');
             }
@@ -217,7 +222,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/blocks/:blockId',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -233,7 +238,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
                 deleteBlock(ydoc, params.blockId),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = result.error?.includes('not found') ? 404 : 400;
                 return errorResponse('DELETE_FAILED', result.error || 'Failed to delete block');
             }
@@ -255,7 +260,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/blocks/:blockId/move',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -267,15 +272,12 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
+            const input = parsedBody<MoveBlockInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
-                moveBlock(ydoc, {
-                    blockId: params.blockId,
-                    targetPageId: body.targetPageId,
-                    position: body.position,
-                }),
+                moveBlock(ydoc, params.blockId, input.targetPageId, input.position),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = result.error?.includes('not found') ? 404 : 400;
                 return errorResponse('MOVE_FAILED', result.error || 'Failed to move block');
             }

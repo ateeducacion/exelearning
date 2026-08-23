@@ -6,23 +6,24 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import type {
-    UploadChunkRequest,
-    FileUploadRequest,
-    AssetUploadRequest,
-    LoginRequest,
-    JwtPayload,
-    FileGatorDirRequest,
-    FileGatorCreateRequest,
-    ExportOptionsRequest,
-    ConvertRequest,
-    IdeviceFileUploadRequest,
-    ProjectOpenRequest,
-    ProjectSaveRequest,
-    UserPreferencesRequest,
-    AddCollaboratorRequest,
-    TransferOwnershipRequest,
-    UpdateVisibilityRequest,
+import {
+    parsedBody,
+    type UploadChunkRequest,
+    type FileUploadRequest,
+    type AssetUploadRequest,
+    type LoginRequest,
+    type JwtPayload,
+    type FileGatorDirRequest,
+    type FileGatorCreateRequest,
+    type ExportOptionsRequest,
+    type ConvertRequest,
+    type IdeviceFileUploadRequest,
+    type ProjectOpenRequest,
+    type ProjectSaveRequest,
+    type UserPreferencesRequest,
+    type AddCollaboratorRequest,
+    type TransferOwnershipRequest,
+    type UpdateVisibilityRequest,
 } from './request-payloads';
 
 describe('Request Payload Types', () => {
@@ -81,14 +82,14 @@ describe('Request Payload Types', () => {
     describe('JwtPayload', () => {
         it('should have required fields', () => {
             const payload: JwtPayload = {
-                sub: 1,
+                sub: '1',
                 email: 'user@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
                 exp: Date.now() + 3600000,
                 iat: Date.now(),
             };
-            expect(payload.sub).toBe(1);
+            expect(payload.sub).toBe('1');
             expect(payload.roles).toContain('ROLE_USER');
         });
     });
@@ -226,6 +227,13 @@ describe('Request Payload Types', () => {
                 visibility: 'private',
             };
             expect(request.visibility).toBe('private');
+        });
+    });
+
+    describe('parsedBody', () => {
+        it('returns the validated body as the requested type', () => {
+            const body: unknown = { email: 'user@test.com' };
+            expect(parsedBody<{ email: string }>(body).email).toBe('user@test.com');
         });
     });
 });

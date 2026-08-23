@@ -16,7 +16,7 @@ import {
 import { fromBinaryData } from '../db/helpers';
 import { db } from '../db/client';
 import { getJwtSecret, type JwtPayload } from './auth';
-import { hasRole, ROLES } from '../utils/guards';
+import { hasRole, ROLES, userIdFromJwt } from '../utils/guards';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 
@@ -78,7 +78,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
                 } else if (cookie.auth?.value) {
-                    token = cookie.auth.value;
+                    token = cookie.auth.value as string;
                 }
                 if (!token) {
                     return { jwtPayload: null as JwtPayload | null };
@@ -108,7 +108,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                     });
                 }
 
-                const userId = Number(jwtPayload.sub);
+                const userId = userIdFromJwt(jwtPayload)!;
                 const isAdmin = hasRole(jwtPayload.roles, ROLES.ADMIN);
                 if (!isAdmin) {
                     const access = await queries.checkProjectAccess(database, project, userId);
@@ -135,7 +135,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 // Fast path: a snapshot with no newer updates is returned as-is
                 // (avoids decoding the Y.Doc on the common browser-save case).
                 if (snapshot && updates.length === 0) {
-                    return new Response(fromBinaryData(snapshot.snapshot_data), {
+                    return new Response(new Uint8Array(fromBinaryData(snapshot.snapshot_data)), {
                         status: 200,
                         headers: { 'Content-Type': 'application/octet-stream' },
                     });
@@ -153,7 +153,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 const mergedState = Y.encodeStateAsUpdate(ydoc);
                 ydoc.destroy();
 
-                return new Response(mergedState, {
+                return new Response(new Uint8Array(mergedState), {
                     status: 200,
                     headers: { 'Content-Type': 'application/octet-stream' },
                 });
@@ -178,7 +178,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 // model: owner, collaborator, or admin always have access; on
                 // projects marked `visibility: 'public'`, any authenticated
                 // user may also edit (wiki-style semantics).
-                const userId = Number(jwtPayload.sub);
+                const userId = userIdFromJwt(jwtPayload)!;
                 const isAdmin = hasRole(jwtPayload.roles, ROLES.ADMIN);
                 if (!isAdmin) {
                     const access = await queries.checkProjectAccess(database, project, userId);

@@ -8,8 +8,8 @@
  * - Cancel cleanup if client reconnects
  * - No memory leaks from orphan timers
  */
-import type { ServerWebSocket } from 'bun';
 import { getConfig, DEBUG } from './config';
+import type { YjsSocket } from './types';
 import * as assetCoordinatorDefault from './asset-coordinator';
 import * as pubSubDefault from '../redis/pubsub-manager';
 
@@ -88,21 +88,11 @@ export function resetDependencies(): void {
 }
 
 /**
- * WebSocket data interface (must match yjs-websocket.ts)
- */
-interface WsData {
-    clientId: string;
-    userId: number;
-    projectUuid: string;
-    docName: string;
-}
-
-/**
  * Room with connections and cleanup state
  */
 interface Room {
     name: string;
-    conns: Set<ServerWebSocket<WsData>>;
+    conns: Set<YjsSocket>;
     projectUuid: string;
     /** Controller to cancel pending cleanup */
     cleanupController?: AbortController;
@@ -161,7 +151,7 @@ export function getRoom(docName: string): Room | undefined {
 /**
  * Add connection to room
  */
-export function addConnection(docName: string, ws: ServerWebSocket<WsData>, projectUuid?: string): Room {
+export function addConnection(docName: string, ws: YjsSocket, projectUuid?: string): Room {
     const room = getOrCreateRoom(docName, projectUuid);
     const wasEmpty = room.conns.size === 0;
     room.conns.add(ws);
@@ -187,7 +177,7 @@ export function addConnection(docName: string, ws: ServerWebSocket<WsData>, proj
  * Remove connection from room
  * Schedules cleanup if room becomes empty
  */
-export function removeConnection(docName: string, ws: ServerWebSocket<WsData>): void {
+export function removeConnection(docName: string, ws: YjsSocket): void {
     const room = rooms.get(docName);
     if (!room) return;
 
@@ -283,7 +273,7 @@ export function cancelCleanup(docName: string): void {
 /**
  * Relay message to all other clients in the room
  */
-export function relayMessage(sender: ServerWebSocket<WsData>, docName: string, message: Buffer | string): void {
+export function relayMessage(sender: YjsSocket, docName: string, message: Buffer | string): void {
     const room = rooms.get(docName);
     if (!room) return;
 
@@ -333,11 +323,11 @@ export function getActiveRooms(): string[] {
  * Get all connections for a specific user in a room
  * A user may have multiple connections (multiple tabs/devices)
  */
-export function getConnectionsByUserId(docName: string, userId: number): ServerWebSocket<WsData>[] {
+export function getConnectionsByUserId(docName: string, userId: number): YjsSocket[] {
     const room = rooms.get(docName);
     if (!room) return [];
 
-    const connections: ServerWebSocket<WsData>[] = [];
+    const connections: YjsSocket[] = [];
     for (const conn of room.conns) {
         if (conn.data?.userId === userId) {
             connections.push(conn);

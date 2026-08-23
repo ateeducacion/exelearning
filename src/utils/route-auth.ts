@@ -21,7 +21,7 @@ import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import type { Kysely } from 'kysely';
 import { getJwtSecret, type JwtPayload } from '../routes/auth';
-import { hasRole, ROLES, requireAuth, type AuthorizationError } from './guards';
+import { hasRole, ROLES, requireAuth, userIdFromJwt, type AuthorizationError } from './guards';
 import { checkProjectAccess, findProjectByUuid, findProjectById } from '../db/queries';
 import type { Database, Project } from '../db/types';
 
@@ -51,7 +51,7 @@ export function withJwtAuth() {
             if (authHeader?.startsWith('Bearer ')) {
                 token = authHeader.slice(7);
             } else if (cookieJar.auth?.value) {
-                token = cookieJar.auth.value;
+                token = cookieJar.auth.value as string;
             }
             if (!token) {
                 return { jwtPayload: null as JwtPayload | null };
@@ -133,7 +133,7 @@ export async function enforceProjectAccess(
     if (hasRole(jwtPayload!.roles, ROLES.ADMIN)) {
         return { project };
     }
-    const access = await queries.checkProjectAccess(opts.db, project, Number(jwtPayload!.sub));
+    const access = await queries.checkProjectAccess(opts.db, project, userIdFromJwt(jwtPayload)!);
     if (!access.hasAccess) {
         return { status: 403, error: 'FORBIDDEN', message: 'Access denied' };
     }

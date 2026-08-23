@@ -125,7 +125,7 @@ class MockZipProvider implements ZipProvider {
         return Array.from(this.files.keys());
     }
 
-    async generate(): Promise<Uint8Array> {
+    async generateAsync(): Promise<Uint8Array> {
         // Simple mock that returns a minimal valid zip
         const { zipSync } = await import('fflate');
         const files: Record<string, Uint8Array> = {};

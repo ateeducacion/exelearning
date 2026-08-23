@@ -34,6 +34,7 @@ import {
 import { buildAssetStoragePath } from '../../../utils/asset-paths';
 import { isSafePathSegment, sanitizeFileExtension } from '../../../utils/safe-path';
 import { withDocument, setAssetMetadata, deleteAssetMetadata, type AssetMetadata } from '../../../yjs';
+import { parsedBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -53,15 +54,15 @@ import {
 async function checkProjectAccess(
     uuid: string,
     auth: AuthenticatedUser,
-): Promise<{ project: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
+): Promise<{ project?: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
     const project = await findProjectByUuid(db, uuid);
 
     if (!project) {
-        return { project: null, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
+        return { project: undefined, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
     }
 
     if (project.owner_id !== auth.userId && !isAdmin(auth)) {
-        return { project: null, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
+        return { project: undefined, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
     }
 
     return { project };
@@ -77,15 +78,15 @@ interface FileWithName extends Blob {
 /**
  * Serialize asset for API response
  */
-interface SerializedAsset {
+export interface SerializedAsset {
     id: number;
     clientId: string | null;
     filename: string;
     mimeType: string | null;
     size: number;
     folderPath: string;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: number | null;
+    updatedAt: number | null;
 }
 
 function serializeAsset(asset: Asset): SerializedAsset {
@@ -137,7 +138,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -168,7 +169,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -181,7 +182,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
             }
 
             // Extract file from multipart body
-            const data = body as { file?: Blob | Buffer; clientId?: string; folderPath?: string };
+            const data = parsedBody<{ file?: Blob | Buffer; clientId?: string; folderPath?: string }>(body);
 
             if (!data.file) {
                 set.status = 400;
@@ -300,7 +301,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets/:assetId',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -354,7 +355,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets/:assetId/metadata',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -396,7 +397,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets/:assetId',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -455,7 +456,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets/bulk-delete',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -467,7 +468,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const { clientIds } = body as { clientIds: string[] };
+            const { clientIds } = parsedBody<{ clientIds: string[] }>(body);
             if (!clientIds || clientIds.length === 0) {
                 return successResponse({ deleted: 0 });
             }

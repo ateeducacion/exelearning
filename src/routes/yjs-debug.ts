@@ -18,7 +18,7 @@ import {
 } from '../db/queries';
 import { db as defaultDb } from '../db/client';
 import { getJwtSecret, type JwtPayload } from './auth';
-import { hasRole, ROLES, requireAuth } from '../utils/guards';
+import { userIdFromJwt, hasRole, ROLES, requireAuth } from '../utils/guards';
 import * as roomManager from '../websocket/room-manager';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
@@ -67,7 +67,7 @@ export function createYjsDebugRoutes(deps: YjsDebugDependencies = defaultDepende
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
                 } else if (cookie.auth?.value) {
-                    token = cookie.auth.value;
+                    token = cookie.auth.value as string;
                 }
                 if (!token) {
                     return { jwtPayload: null as JwtPayload | null };
@@ -94,7 +94,7 @@ export function createYjsDebugRoutes(deps: YjsDebugDependencies = defaultDepende
                     return { error: 'Not Found', message: 'Project not found' };
                 }
 
-                const userId = Number(jwtPayload!.sub);
+                const userId = userIdFromJwt(jwtPayload)!;
                 const isAdmin = hasRole(jwtPayload!.roles, ROLES.ADMIN);
                 if (!isAdmin) {
                     const access = await queries.checkProjectAccess(database, project, userId);
@@ -122,7 +122,7 @@ export function createYjsDebugRoutes(deps: YjsDebugDependencies = defaultDepende
                     connections: room ? room.conns.size : 0,
                     myConnections,
                     snapshotSize,
-                    lastVersion: snapshot?.version ?? null,
+                    lastVersion: snapshot?.snapshot_version ?? null,
                 };
             })
 
@@ -142,7 +142,7 @@ export function createYjsDebugRoutes(deps: YjsDebugDependencies = defaultDepende
                     return { error: 'Not Found', message: 'Project not found' };
                 }
 
-                const userId = Number(jwtPayload!.sub);
+                const userId = userIdFromJwt(jwtPayload)!;
                 const isAdmin = hasRole(jwtPayload!.roles, ROLES.ADMIN);
                 if (!isAdmin) {
                     const access = await queries.checkProjectAccess(database, project, userId);
@@ -155,7 +155,7 @@ export function createYjsDebugRoutes(deps: YjsDebugDependencies = defaultDepende
                 // Sign a short-lived token reusing the application JWT secret.
                 const secret = new TextEncoder().encode(getJwtSecret());
                 const shortToken = await new SignJWT({
-                    sub: userId,
+                    sub: String(userId),
                     email: jwtPayload!.email,
                     roles: jwtPayload!.roles,
                     isGuest: false,

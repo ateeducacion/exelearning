@@ -197,7 +197,7 @@ export async function platformPetitionSet(
         // Note: We read from yjs_documents (snapshots) because that's where the
         // frontend saves via POST /api/projects/uuid/:uuid/yjs-document
         const snapshot = await deps.findSnapshotByProjectId(deps.db, project.id);
-        if (!snapshot || !snapshot.snapshot_data) {
+        if (!snapshot?.snapshot_data) {
             return {
                 success: false,
                 error: 'No document saved for this project. Please save the project first.',
@@ -260,7 +260,10 @@ export async function platformPetitionSet(
         }
 
         // 8. Convert ZIP buffer to base64
-        const zipBase64 = Buffer.from(exportResult.data).toString('base64');
+        const zipBase64 =
+            exportResult.data instanceof Blob
+                ? Buffer.from(await exportResult.data.arrayBuffer()).toString('base64')
+                : Buffer.from(exportResult.data as Uint8Array<ArrayBuffer>).toString('base64');
 
         // 9. Build filename from project title
         const meta = document.getMetadata();
@@ -384,7 +387,9 @@ export async function platformPetitionSetForward(
         // Normalise to a Buffer so toString('base64') works regardless of caller.
         const buffer = Buffer.isBuffer(packageData)
             ? packageData
-            : Buffer.from(packageData as ArrayBufferLike | Uint8Array);
+            : packageData instanceof Uint8Array
+              ? Buffer.from(packageData)
+              : Buffer.from(new Uint8Array(packageData));
         const zipBase64 = buffer.toString('base64');
 
         const safeFilename = filename?.trim() ? filename : 'package.zip';

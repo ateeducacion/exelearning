@@ -38,6 +38,7 @@ export async function findAssetByIdWithProject(
             'projects.license as project_license',
             'projects.last_accessed_at as project_last_accessed_at',
             'projects.saved_once as project_saved_once',
+            'projects.platform_id as project_platform_id',
             'projects.created_at as project_created_at',
             'projects.updated_at as project_updated_at',
         ])
@@ -59,6 +60,7 @@ export async function findAssetByIdWithProject(
         license: result.project_license,
         last_accessed_at: result.project_last_accessed_at,
         saved_once: result.project_saved_once,
+        platform_id: result.project_platform_id,
         created_at: result.project_created_at,
         updated_at: result.project_updated_at,
     };
@@ -73,6 +75,7 @@ export async function findAssetByIdWithProject(
         client_id: result.client_id,
         component_id: result.component_id,
         content_hash: result.content_hash,
+        folder_path: result.folder_path,
         created_at: result.created_at,
         updated_at: result.updated_at,
         project,

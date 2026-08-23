@@ -241,6 +241,10 @@ export async function execute(
             console.log(`[DEBUG] Starting ${format} export...`);
         }
 
+        if (!exporter) {
+            throw new Error(`Unsupported export format: ${format}`);
+        }
+
         // Create pre-render hooks for LaTeX and Mermaid
         // These convert LaTeX/Mermaid to static SVG, avoiding the need to bundle
         // MathJax (~1MB) and Mermaid (~2.7MB) libraries in the export
@@ -289,7 +293,9 @@ export async function execute(
 
         // Write the ZIP buffer
         if (result.data) {
-            await fs.writeFile(outputPath, result.data);
+            const outputData =
+                result.data instanceof Blob ? new Uint8Array(await result.data.arrayBuffer()) : result.data;
+            await fs.writeFile(outputPath, outputData);
         }
 
         // Clean up temp file if created

@@ -10,7 +10,13 @@
  * - Assets referenced by the component
  */
 
-import type { ExportAsset, ExportBlock, ExportComponent, ExportOptions, ExportResult } from '../interfaces';
+import {
+    type ExportAsset,
+    type ExportBlock,
+    type ExportComponent,
+    type ExportOptions,
+    type ExportResult,
+} from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 
 /**
@@ -103,7 +109,7 @@ export class ComponentExporter extends BaseExporter {
             await this.addComponentAssetsToZip(block, component);
 
             // Generate ZIP
-            const data = await this.zip.generate();
+            const data = await this.zip.generateAsync();
 
             console.log(`[ComponentExporter] Export complete: ${filename}`);
             return { success: true, data, filename };
@@ -395,13 +401,16 @@ export class ComponentExporter extends BaseExporter {
      * @param data - ZIP data buffer
      * @param filename - Download filename
      */
-    private downloadBlob(data: Uint8Array, filename: string): void {
+    private downloadBlob(data: Uint8Array | Blob, filename: string): void {
         if (typeof window === 'undefined' || typeof document === 'undefined') {
             console.warn('[ComponentExporter] downloadBlob only works in browser environment');
             return;
         }
 
-        const blob = new Blob([data], { type: 'application/zip' });
+        const blob =
+            data instanceof Blob
+                ? data
+                : new Blob([data as unknown as ArrayBufferView<ArrayBuffer>], { type: 'application/zip' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;

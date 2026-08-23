@@ -14,9 +14,9 @@ import * as pathModule from 'path';
 import { buildContentDisposition } from '../shared/http/headers';
 import { isSafePathSegment } from '../utils/safe-path';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
-import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
+import { parsedBody, type ExportOptionsRequest, type YjsExportStructure } from './types/request-payloads';
 import { withJwtAuth } from '../utils/route-auth';
-import { hasRole, ROLES, requireAuth } from '../utils/guards';
+import { userIdFromJwt, hasRole, ROLES, requireAuth } from '../utils/guards';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -298,7 +298,7 @@ export function populateYDocFromStructure(ydoc: Y.Doc, structure: YjsExportStruc
 /**
  * Create export routes with injected dependencies
  */
-export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
+export function createExportRoutes(deps: ExportDependencies = {}) {
     // Shadow imports with injected dependencies
     const fs = deps.fs ?? fsExtra;
     const path = deps.path ?? pathModule;
@@ -599,7 +599,10 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // Write the ZIP buffer to disk
             const zipPath = path.join(distDir, `${exportType}.zip`);
             if (result.data) {
-                await fs.writeFile(zipPath, result.data);
+                await fs.writeFile(
+                    zipPath,
+                    result.data instanceof Blob ? new Uint8Array(await result.data.arrayBuffer()) : result.data,
+                );
             }
 
             return { ...result, zipPath };
@@ -629,12 +632,12 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
      */
     function authorizeExport(
         session: ProjectSession | undefined,
-        jwtPayload: { sub?: number; roles?: string[] } | null | undefined,
+        jwtPayload: { sub?: string; roles?: string[] } | null | undefined,
     ): { ok: true } | { ok: false; status: 401 | 403; message: string } {
-        const authErr = requireAuth(jwtPayload as any);
+        const authErr = requireAuth(jwtPayload);
         if (authErr) return { ok: false, status: authErr.status, message: authErr.message };
         if (hasRole(jwtPayload!.roles, ROLES.ADMIN)) return { ok: true };
-        if (session && session.userId !== undefined && session.userId !== Number(jwtPayload!.sub)) {
+        if (session && session.userId !== undefined && session.userId !== userIdFromJwt(jwtPayload)!) {
             return { ok: false, status: 403, message: 'Access denied' };
         }
         return { ok: true };
@@ -674,7 +677,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
 
                 const session = getSession(odeSessionId);
                 const authz = authorizeExport(session, jwtPayload);
-                if (!authz.ok) {
+                if (authz.ok === false) {
                     set.status = authz.status;
                     return { success: false, error: authz.message };
                 }
@@ -729,7 +732,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // POST /api/export/:odeSessionId/:exportType/download - Download export with options
             .post('/:odeSessionId/:exportType/download', async ({ params, body, set, jwtPayload }) => {
                 const { odeSessionId, exportType } = params;
-                const options = body as ExportOptionsRequest;
+                const options = parsedBody<ExportOptionsRequest>(body);
 
                 // Reject path-traversal session ids before any filesystem path is built.
                 // Real ids are UUIDs or YYYYMMDDHHmmss + alphanumerics, all of which pass.
@@ -740,7 +743,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
 
                 let session = getSession(odeSessionId);
                 const authz = authorizeExport(session, jwtPayload);
-                if (!authz.ok) {
+                if (authz.ok === false) {
                     set.status = authz.status;
                     return { success: false, error: authz.message };
                 }

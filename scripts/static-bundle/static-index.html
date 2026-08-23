@@ -154,7 +154,7 @@
 
         // MathJax configuration with relative paths for static mode
         // Must be defined BEFORE common.js loads to override version-based path detection
-        var externalExtensions = [
+        const externalExtensions = [
             'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel',
             'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose',
             'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem', 'noerrors',
@@ -171,7 +171,7 @@
             },
             loader: {
                 paths: { mathjax: './app/common/exe_math' },
-                load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
+                load: externalExtensions.map((ext) => '[tex]/' + ext)
             },
             options: {
                 // Exclude navbar dropdown menus from MathJax processing (File, Edit, etc.)
@@ -194,7 +194,7 @@
             <div class="content-info">
                 <div id="exe-title" class="title-not-editing">
                     <h2 class="exe-title content" id="change_title">...</h2>
-                    <button class="btn button-square button-tertiary tertiary-green title-menu-button exe-app-tooltip"
+                    <button type="button" class="btn button-square button-tertiary tertiary-green title-menu-button exe-app-tooltip"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Edit title" data-i18n-title="Edit title" aria-label="Edit title" data-i18n-aria-label="Edit title">
                         <span class="exe-icon small-icon edit-icon-green"></span>
                     </button>
@@ -215,28 +215,28 @@
             <div id="main-content-wrapper" class="main-content-wrapper">
                 <section id="node-content-container" class="exe-content js flex-grow-1 d-flex flex-column">
                     <div id="load-screen-node-content" class="load-screen hide" data-testid="loading-content" data-visible="false"></div>
-                    <div id="node-content" class="content" drop='["idevice","box"]' data-testid="node-content" data-ready="false">
+                    <section id="node-content" class="content" aria-label="Content" drop='["idevice","box"]' data-testid="node-content" data-ready="false">
                         <div>
                             <div id="header-node-content" class="header"></div>
-                            <h1 id="page-title-node-content" class="page-title" data-testid="page-title"></h1>
+                            <h1 id="page-title-node-content" class="page-title" data-testid="page-title" aria-label="Page title"></h1>
                         </div>
-                    </div>
+                    </section>
                     <div id="idevices-bottom" class="idevices-bottom-menu" data-testid="idevices-quickbar"></div>
                 </section>
                 <aside id="preview-pinned-container" class="preview-pinned" aria-label="Preview" data-i18n-aria-label="Preview">
                     <div class="preview-pinned-header">
                         <h2 class="preview-pinned-title" data-i18n="Preview">Preview</h2>
                         <div class="preview-pinned-actions">
-                            <button id="preview-pinned-extract-button" class="btn button-square button-tertiary" title="Open in new tab" data-i18n-title="Open in new tab">
+                            <button type="button" id="preview-pinned-extract-button" class="btn button-square button-tertiary" title="Open in new tab" data-i18n-title="Open in new tab">
                                 <span class="small-icon external-link-icon"></span>
                             </button>
-                            <button id="preview-unpin-button" class="btn button-square button-tertiary" title="Unpin preview" data-i18n-title="Unpin preview">
+                            <button type="button" id="preview-unpin-button" class="btn button-square button-tertiary" title="Unpin preview" data-i18n-title="Unpin preview">
                                 <span class="small-icon unpin-icon"></span>
                             </button>
-                            <button id="preview-pinned-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="Toggle mobile preview" data-i18n-title="Toggle mobile preview" data-i18n-aria-label="Toggle mobile preview" aria-label="Toggle mobile preview">
+                            <button type="button" id="preview-pinned-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="Toggle mobile preview" data-i18n-title="Toggle mobile preview" data-i18n-aria-label="Toggle mobile preview" aria-label="Toggle mobile preview">
                                 <span class="small-icon mobile-icon"></span>
                             </button>
-                            <button id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
+                            <button type="button" id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
                                 <span class="small-icon refresh-icon"></span>
                             </button>
                         </div>
@@ -255,27 +255,27 @@
     <!-- Preview Sidebar -->
     <div id="previewsidenav-content" class="preview-panel-container">
         <div id="preview-sidenav-overlay" class="sidenav-overlay"></div>
-        <aside id="previewsidenav" class="preview-sidenav" role="complementary">
+        <aside id="previewsidenav" class="preview-sidenav" >
             <div class="preview-panel-header">
                 <h1 class="preview-title" data-i18n="Preview">Preview</h1>
                 <div class="preview-header-actions">
-                    <button id="preview-extract-button" class="btn button-square button-tertiary" title="Open in new tab" data-i18n-title="Open in new tab">
+                    <button type="button" id="preview-extract-button" class="btn button-square button-tertiary" title="Open in new tab" data-i18n-title="Open in new tab">
                         <span class="small-icon external-link-icon"></span>
                     </button>
-                    <button id="preview-pin-button" class="btn button-square button-tertiary" title="Pin preview" data-i18n-title="Pin preview">
+                    <button type="button" id="preview-pin-button" class="btn button-square button-tertiary" title="Pin preview" data-i18n-title="Pin preview">
                         <span class="small-icon pin-icon"></span>
                     </button>
-                    <button id="preview-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="Toggle mobile preview" data-i18n-title="Toggle mobile preview" data-i18n-aria-label="Toggle mobile preview" aria-label="Toggle mobile preview">
+                    <button type="button" id="preview-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="Toggle mobile preview" data-i18n-title="Toggle mobile preview" data-i18n-aria-label="Toggle mobile preview" aria-label="Toggle mobile preview">
                         <span class="small-icon mobile-icon"></span>
                     </button>
-                    <button id="preview-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
+                    <button type="button" id="preview-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
                         <span class="small-icon refresh-icon"></span>
                     </button>
-                    <div id="previewsidenavclose" class="navbar-close" role="button" tabindex="0" aria-label="Close" data-i18n-aria-label="Close">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <button type="button" id="previewsidenavclose" class="navbar-close" aria-label="Close" data-i18n-aria-label="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                             <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                    </div>
+                    </button>
                 </div>
             </div>
             <div class="preview-panel-body">
@@ -290,17 +290,17 @@
     <!-- Styles Sidebar -->
     <div id="stylessidenav-content" class="relative z-50 navbar-menu">
         <div id="sidenav-overlay" class="sidenav-overlay"></div>
-        <aside id="stylessidenav" class="sidenav" role="complementary">
+        <aside id="stylessidenav" class="sidenav" >
             <div class="content-styles-header">
                 <h1 class="styles-title" data-i18n="Styles">Styles</h1>
-                <div id="stylessidenavclose" class="navbar-close">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <button type="button" id="stylessidenavclose" class="navbar-close" aria-label="Close" data-i18n-aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                         <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                </div>
+                </button>
             </div>
             <div class="content-tabs">
-                <ul class="nav nav-tabs" id="styleslist" role="tablist">
+                <ul class="nav nav-tabs" id="styleslist" >
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="exestylescontent-tab" data-bs-toggle="tab"
                                 data-bs-target="#exestylescontent" type="button" role="tab"
@@ -447,7 +447,7 @@
         function parseContentDispositionFilename(header) {
             if (!header) return '';
             const star = header.match(/filename\*\s*=\s*(?:[^']*'[^']*')?([^;]+)/i);
-            if (star && star[1]) {
+            if (star?.[1]) {
                 try { return decodeURIComponent(star[1].trim().replace(/^"|"$/g, '')); } catch (e) {}
             }
             const plain = header.match(/filename\s*=\s*("([^"]*)"|([^;]+))/i);
@@ -511,7 +511,7 @@
                 // the console; we surface a hint so users know where to look.
                 const message = (e && e.name === 'TypeError')
                     ? 'Could not download file: the remote server blocked the request (network error or CORS policy). Check the browser console for details.'
-                    : 'Could not download file: ' + (e && e.message ? e.message : e);
+                    : 'Could not download file: ' + (e?.message ? e.message : e);
                 showUrlError(message);
                 return;
             }
@@ -637,7 +637,7 @@
         }
 
         // Create new blank project
-        window.newProject = function() {
+        window.newProject = () => {
             const uuid = generateUUID();
             window.eXeLearning.projectId = uuid;
             // Reload the page to start fresh
@@ -645,14 +645,14 @@
         };
 
         // Open existing project from recent list
-        window.openProject = async function(uuid) {
+        window.openProject = async (uuid) => {
             window.eXeLearning.projectId = uuid;
             // Reload the page with the new project ID
             location.reload();
         };
 
         // Delete project
-        window.deleteProject = async function(uuid) {
+        window.deleteProject = async (uuid) => {
             if (confirm(typeof _ === 'function' ? _('Delete this project?') + ' ' + _('This action cannot be undone.') : 'Delete this project?')) {
                 try {
                     await new Promise((resolve, reject) => {

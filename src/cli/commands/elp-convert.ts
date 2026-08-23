@@ -273,7 +273,8 @@ export async function execute(
 
         // Write the ZIP buffer
         if (result.data) {
-            await fs.writeFile(outputPath, result.data);
+            const outputData = result.data instanceof Blob ? Buffer.from(await result.data.arrayBuffer()) : result.data;
+            await fs.writeFile(outputPath, outputData);
 
             if (debug) {
                 const stats = await fs.stat(outputPath);

@@ -9,7 +9,7 @@ import * as path from 'path';
 import { getFilesDir } from '../services/file-helper';
 import { getAppVersion } from '../utils/version';
 import { getBasePath } from '../utils/basepath.util';
-import type { IdeviceFileUploadRequest } from './types/request-payloads';
+import { parsedBody, type IdeviceFileUploadRequest } from './types/request-payloads';
 import { withJwtAuth } from '../utils/route-auth';
 import { requireAuth } from '../utils/guards';
 import { isSafePathSegment, safeJoin, UnsafePathError } from '../utils/safe-path';
@@ -409,19 +409,19 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
         // Debug: log what we're receiving
         console.log('[idevices/upload] Content-Type:', request.headers.get('content-type'));
         console.log('[idevices/upload] Body type:', typeof body);
-        const bodyObj = body as Record<string, unknown> | null;
+        const bodyObj = parsedBody<Record<string, unknown> | null>(body);
         console.log('[idevices/upload] Body keys:', bodyObj ? Object.keys(bodyObj) : 'null');
 
-        const data = body as IdeviceFileUploadRequest;
+        const data = parsedBody<IdeviceFileUploadRequest>(body);
         const odeIdeviceId = data?.odeIdeviceId;
         // Support both 'file' (legacy) and 'base64String' fields for base64 data
-        const dataRecord = data as Record<string, unknown>;
+        const dataRecord = data as unknown as Record<string, unknown>;
         const fileFieldValue = dataRecord?.file;
         const fileAsString = typeof fileFieldValue === 'string' ? fileFieldValue : undefined;
         const base64String = data?.base64String || fileAsString;
         const filename = data?.filename;
         // Support both boolean and string 'true' for createThumbnail
-        const createThumbnailRaw = data?.createThumbnail;
+        const createThumbnailRaw: unknown = data?.createThumbnail;
         const createThumbnail = createThumbnailRaw === true || createThumbnailRaw === 'true';
 
         // Validate required parameters
@@ -440,7 +440,12 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         // Get session ID from cookie or body
         // In Yjs mode, we use projectId cookie instead of odeSessionId
-        let odeSessionId = data.odeSessionId || cookie.odeSessionId?.value || cookie.projectId?.value;
+        let odeSessionId: string = String(
+            (data as unknown as { odeSessionId?: string }).odeSessionId ||
+                cookie.odeSessionId?.value ||
+                cookie.projectId?.value ||
+                '',
+        );
 
         // If no session ID, use a default based on the idevice ID
         // This allows uploads to work even without a traditional session
@@ -490,7 +495,7 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         // Decode base64 and write file
         const dataParts = base64String.split(',');
-        const base64Data = dataParts.length > 1 ? dataParts[1] : dataParts[0];
+        const base64Data = String(dataParts.length > 1 ? dataParts[1] : dataParts[0]);
         const buffer = Buffer.from(base64Data, 'base64');
 
         await fse.writeFile(outputFile, buffer);
@@ -548,7 +553,7 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
             set.status = authErr.status;
             return { error: authErr.error, message: authErr.message };
         }
-        const data = body as IdeviceFileUploadRequest;
+        const data = parsedBody<IdeviceFileUploadRequest>(body);
         const odeIdeviceId = data.odeIdeviceId;
         const file = data.file;
         const filename = data.filename || (file as FileWithName)?.name;
@@ -561,7 +566,12 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         // Get session ID from cookie or body
         // In Yjs mode, we use projectId cookie instead of odeSessionId
-        let odeSessionId = data.odeSessionId || cookie.odeSessionId?.value || cookie.projectId?.value;
+        let odeSessionId: string = String(
+            (data as unknown as { odeSessionId?: string }).odeSessionId ||
+                cookie.odeSessionId?.value ||
+                cookie.projectId?.value ||
+                '',
+        );
 
         // If no session ID, use a default
         if (!odeSessionId) {

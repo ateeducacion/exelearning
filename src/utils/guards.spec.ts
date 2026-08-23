@@ -11,6 +11,7 @@ import {
     requireAdmin,
     requireAnyRole,
     isSelfModification,
+    userIdFromJwt,
     ROLES,
     PROTECTED_ROLE,
 } from './guards';
@@ -21,7 +22,7 @@ import type { JwtPayload } from '../routes/auth';
 // ============================================================================
 
 const createPayload = (overrides: Partial<JwtPayload> = {}): JwtPayload => ({
-    sub: 1,
+    sub: '1',
     email: 'test@example.com',
     roles: ['ROLE_USER'],
     isGuest: false,
@@ -135,8 +136,14 @@ describe('requireAuth', () => {
     });
 
     it('should return 401 error for payload without sub', () => {
-        const invalidPayload = { ...userPayload, sub: undefined as unknown as number };
+        const invalidPayload = { ...userPayload, sub: undefined as unknown as string };
         const result = requireAuth(invalidPayload);
+        expect(result).not.toBeNull();
+        expect(result?.status).toBe(401);
+    });
+
+    it('should return 401 error for a non-numeric sub', () => {
+        const result = requireAuth(createPayload({ sub: 'not-a-user-id' }));
         expect(result).not.toBeNull();
         expect(result?.status).toBe(401);
     });
@@ -210,14 +217,32 @@ describe('requireAnyRole', () => {
 // isSelfModification TESTS
 // ============================================================================
 
+describe('userIdFromJwt', () => {
+    it('parses a string sub to a number', () => {
+        expect(userIdFromJwt({ sub: '42' })).toBe(42);
+    });
+
+    it('accepts a numeric sub from older tokens', () => {
+        expect(userIdFromJwt({ sub: 42 })).toBe(42);
+    });
+
+    it('returns null for missing, empty, or non-numeric sub', () => {
+        expect(userIdFromJwt(null)).toBeNull();
+        expect(userIdFromJwt(undefined)).toBeNull();
+        expect(userIdFromJwt({})).toBeNull();
+        expect(userIdFromJwt({ sub: '' })).toBeNull();
+        expect(userIdFromJwt({ sub: 'abc' })).toBeNull();
+    });
+});
+
 describe('isSelfModification', () => {
     it('should return true when user ID matches target', () => {
-        const payload = createPayload({ sub: 5 });
+        const payload = createPayload({ sub: '5' });
         expect(isSelfModification(payload, 5)).toBe(true);
     });
 
     it('should return false when user ID does not match target', () => {
-        const payload = createPayload({ sub: 5 });
+        const payload = createPayload({ sub: '5' });
         expect(isSelfModification(payload, 10)).toBe(false);
     });
 
@@ -281,7 +306,7 @@ describe('Integration scenarios', () => {
     });
 
     it('should detect self-modification for admin removing own role', () => {
-        const payload = createPayload({ sub: 10, roles: ['ROLE_USER', 'ROLE_ADMIN'] });
+        const payload = createPayload({ sub: '10', roles: ['ROLE_USER', 'ROLE_ADMIN'] });
         const isself = isSelfModification(payload, 10);
         const isAdmin = hasRole(payload.roles, ROLES.ADMIN);
 

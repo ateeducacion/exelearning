@@ -18,12 +18,13 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { buildContentDisposition } from '../shared/http/headers';
+import { getBinarySize } from '../shared/export/interfaces';
 import type { Kysely } from 'kysely';
 
 import { db as defaultDb } from '../db/client';
 import type { Database } from '../db/types';
 import { findUserById as findUserByIdDefault } from '../db/queries';
-import type { ConvertRequest } from './types/request-payloads';
+import { parsedBody, type ConvertRequest } from './types/request-payloads';
 
 // Centralized export system
 import {
@@ -45,6 +46,7 @@ import {
 // Import system (ELP → Y.Doc)
 import { ElpxImporter, FileSystemAssetHandler } from '../shared/import';
 import * as Y from 'yjs';
+import { userIdFromJwt } from '../utils/guards';
 
 // =============================================================================
 // Types and Interfaces
@@ -89,6 +91,8 @@ const _ALLOWED_MIME_TYPES = ['application/zip', 'application/x-zip-compressed', 
 interface FileWithName extends Blob {
     name?: string;
 }
+
+type UploadedFile = Blob | File | Buffer;
 
 /**
  * Export options type
@@ -141,14 +145,15 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     /**
      * Validate uploaded file
      */
-    function validateFile(file: File | Blob | null | undefined): { valid: boolean; error?: string } {
+    function validateFile(file: UploadedFile | null | undefined): { valid: boolean; error?: string } {
         if (!file) {
             return { valid: false, error: 'No file uploaded' };
         }
 
         // Check file size
         const maxSize = getMaxUploadSize();
-        if (file.size > maxSize) {
+        const fileSize = Buffer.isBuffer(file) ? file.byteLength : file.size;
+        if (fileSize > maxSize) {
             return {
                 valid: false,
                 error: `File too large. Maximum size is ${Math.round(maxSize / 1024 / 1024)}MB`,
@@ -180,8 +185,8 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     /**
      * Write uploaded file to disk
      */
-    async function writeUploadedFile(file: File | Blob, destPath: string): Promise<void> {
-        const buffer = Buffer.from(await file.arrayBuffer());
+    async function writeUploadedFile(file: UploadedFile, destPath: string): Promise<void> {
+        const buffer = Buffer.isBuffer(file) ? file : Buffer.from(await file.arrayBuffer());
         await fs.writeFile(destPath, buffer);
     }
 
@@ -294,7 +299,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
                 } else if (cookie.auth?.value) {
-                    token = cookie.auth.value;
+                    token = cookie.auth.value as string;
                 }
 
                 if (!token) {
@@ -303,11 +308,11 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
 
                 try {
                     const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (!payload || !payload.sub) {
+                    if (payload === false || !payload.sub) {
                         return { currentUser: null };
                     }
 
-                    const user = await findUserById(db, payload.sub);
+                    const user = await findUserById(db, userIdFromJwt(payload)!);
                     return { currentUser: user || null };
                 } catch {
                     return { currentUser: null };
@@ -336,7 +341,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         return { code: 'UNAUTHORIZED', detail: 'Authentication required' };
                     }
 
-                    const data = body as ConvertRequest;
+                    const data = parsedBody<ConvertRequest>(body);
                     const download = query.download === '1';
 
                     // Validate file
@@ -370,14 +375,14 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                             const exportFilename = result.filename || 'converted.elpx';
                             set.headers['content-type'] = 'application/x-exelearning';
                             set.headers['content-disposition'] = buildContentDisposition(exportFilename);
-                            set.headers['content-length'] = String(result.data.length);
+                            set.headers['content-length'] = String(getBinarySize(result.data));
                             return result.data;
                         }
 
                         return {
                             status: 'success',
                             fileName: result.filename || 'converted.elpx',
-                            size: result.data?.length || 0,
+                            size: result.data ? getBinarySize(result.data) : 0,
                             message: 'Conversion completed. Use ?download=1 to download the file directly.',
                         };
                     } catch (error: unknown) {
@@ -427,7 +432,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         };
                     }
 
-                    const data = body as ConvertRequest;
+                    const data = parsedBody<ConvertRequest>(body);
                     const download = query.download === '1';
                     const baseUrl = data.baseUrl || undefined;
                     const theme = data.theme || undefined;
@@ -463,7 +468,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                             const exportFilename = result.filename || `export_${format}.${formatInfo.extension}`;
                             set.headers['content-type'] = formatInfo.mimeType;
                             set.headers['content-disposition'] = buildContentDisposition(exportFilename);
-                            set.headers['content-length'] = String(result.data.length);
+                            set.headers['content-length'] = String(getBinarySize(result.data));
                             return result.data;
                         }
 
@@ -471,7 +476,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                             status: 'success',
                             format: format,
                             fileName: result.filename || `export_${format}.${formatInfo.extension}`,
-                            size: result.data?.length || 0,
+                            size: result.data ? getBinarySize(result.data) : 0,
                             message: 'Export completed. Use ?download=1 to download the file directly.',
                         };
                     } catch (error: unknown) {

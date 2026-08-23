@@ -42,7 +42,7 @@ function makeDeps(): YjsDebugDependencies {
                         id: 1,
                         project_id: 1,
                         snapshot_data: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
-                        version: 'v-123',
+                        snapshot_version: 'v-123',
                     };
                 }
                 return undefined;
@@ -164,7 +164,7 @@ describe('Yjs debug routes', () => {
             const token = data.wsUrl.split('token=')[1];
             const secret = new TextEncoder().encode(TEST_SECRET);
             const { payload } = await jwtVerify(token, secret);
-            expect(payload.sub).toBe(42);
+            expect(payload.sub).toBe('42');
             // Must be a short-lived token (≤ 5 min from now).
             const nowSec = Math.floor(Date.now() / 1000);
             expect((payload.exp as number) - nowSec).toBeLessThanOrEqual(300);

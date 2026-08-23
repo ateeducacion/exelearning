@@ -19,14 +19,16 @@ import * as bcrypt from 'bcryptjs';
 import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validator.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { getPublicCallbackUrl, type ServerContext } from '../utils/proxy-url.util';
-import type { LoginRequest, GuestLoginRequest } from './types/request-payloads';
+import { parsedBody, type LoginRequest, type GuestLoginRequest } from './types/request-payloads';
 import { getAuthMethods, getSettingString, getSettingNumber } from '../services/app-settings';
 import { getPostLoginTarget } from '../services/maintenance';
 import { logActivity } from '../services/activity-logger';
 import { resolveOidcEndpoints, type ResolvedOidcEndpoints } from '../services/oidc-discovery';
+import { userIdFromJwt } from '../utils/guards';
 
 // Domain for temporary emails (CAS, OIDC, Guest users without real email)
 const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
+type LoginBody = { email: string; password: string };
 
 /**
  * Whether SSO (CAS / OIDC) should auto-create unknown users on first login.
@@ -97,7 +99,8 @@ const defaultDeps: AuthDependencies = {
 
 // JWT payload type
 export interface JwtPayload {
-    sub: number;
+    /** Subject: user id, as string per RFC 7519 section 4.1.2 */
+    sub: string;
     email: string;
     roles: string[];
     isGuest?: boolean;
@@ -108,6 +111,12 @@ export interface JwtPayload {
     iat?: number;
     exp?: number;
 }
+
+/**
+ * A {@link JwtPayload} whose `sub` has been parsed back to the numeric user
+ * id. Returned by {@link verifyToken} so consumers can use the id directly.
+ */
+export type VerifiedJwtPayload = Omit<JwtPayload, 'sub'> & { sub: number };
 
 // Get JWT secret from environment
 const getJwtSecret = (): string => {
@@ -157,7 +166,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
                 } else if (cookie.auth?.value) {
-                    token = cookie.auth.value;
+                    token = cookie.auth.value as string;
                 }
 
                 if (!token) {
@@ -168,16 +177,16 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 try {
-                    const payload = (await jwt.verify(token)) as JwtPayload | false;
+                    const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
 
-                    if (!payload || !payload.sub) {
+                    if (payload === false || !payload.sub) {
                         return {
                             auth: { user: null, isAuthenticated: false, isGuest: false },
                             jwtPayload: null as JwtPayload | null,
                         };
                     }
 
-                    const user = await findUserById(db, payload.sub);
+                    const user = await findUserById(db, userIdFromJwt(payload)!);
                     return {
                         auth: {
                             user: user || null,
@@ -202,7 +211,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             .post(
                 '/api/auth/login',
                 async ({ jwt, cookie, body, set }) => {
-                    const { email, password } = body;
+                    const { email, password } = parsedBody<LoginBody>(body);
 
                     const user = await findUserByEmail(db, email);
                     if (!user) {
@@ -222,7 +231,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     }
 
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
-                        sub: user.id,
+                        sub: String(user.id),
                         email: user.email,
                         roles: parseRoles(user.roles),
                         isGuest: false,
@@ -285,22 +294,22 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             // POST /api/auth/impersonation/stop - Restore original admin session
             .post('/api/auth/impersonation/stop', async ({ jwt, cookie, request, set }) => {
                 const originalToken = cookie.impersonator_auth?.value;
-                const sessionId = cookie.impersonation_session?.value || null;
+                const sessionId = (cookie.impersonation_session?.value as string | undefined) || null;
 
                 if (!originalToken) {
                     set.status = 400;
                     return { error: 'BAD_REQUEST', message: 'No active impersonation session' };
                 }
 
-                const originalPayload = (await jwt.verify(originalToken)) as JwtPayload | false;
-                if (!originalPayload || !originalPayload.sub) {
+                const originalPayload = (await jwt.verify(originalToken as string)) as unknown as JwtPayload | false;
+                if (originalPayload === false || !originalPayload.sub) {
                     cookie.impersonator_auth.remove();
                     cookie.impersonation_session.remove();
                     set.status = 401;
                     return { error: 'UNAUTHORIZED', message: 'Original session is no longer valid' };
                 }
 
-                const originalUser = await findUserById(db, Number(originalPayload.sub));
+                const originalUser = await findUserById(db, userIdFromJwt(originalPayload)!);
                 if (!originalUser) {
                     cookie.impersonator_auth.remove();
                     cookie.impersonation_session.remove();
@@ -364,7 +373,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
             // POST /login_check - Symfony-compatible form login
             .post('/login_check', async ({ jwt, cookie, body, request }) => {
-                const typedBody = body as LoginRequest;
+                const typedBody = parsedBody<LoginRequest>(body);
                 const email = typedBody?._username || typedBody?.email;
                 const password = typedBody?._password || typedBody?.password;
 
@@ -435,7 +444,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
-                    sub: user.id,
+                    sub: String(user.id),
                     email: user.email,
                     roles: parseRoles(user.roles),
                     isGuest: false,
@@ -680,15 +689,16 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                             email,
                             user_id: `cas:${casUser}`,
                             password: hashedPassword,
-                            roles: ['ROLE_USER'],
+                            roles: JSON.stringify(['ROLE_USER']),
                             is_lopd_accepted: 1,
                             quota_mb: defaultQuota,
+                            is_active: 1,
                         });
                     }
 
                     // Create JWT token
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
-                        sub: user.id,
+                        sub: String(user.id),
                         email: user.email,
                         roles: parseRoles(user.roles),
                         isGuest: false,
@@ -1017,15 +1027,16 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                             email: userEmail,
                             user_id: `oidc:${subject || userEmail}`,
                             password: hashedPassword,
-                            roles: ['ROLE_USER'],
+                            roles: JSON.stringify(['ROLE_USER']),
                             is_lopd_accepted: 1,
                             quota_mb: defaultQuota,
+                            is_active: 1,
                         });
                     }
 
                     // Create JWT token
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
-                        sub: user.id,
+                        sub: String(user.id),
                         email: user.email,
                         roles: parseRoles(user.roles),
                         isGuest: false,
@@ -1135,14 +1146,15 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         email: guestEmail,
                         // user_id: not set for guest users (null) - they're not SSO
                         password: hashedPassword,
-                        roles: ['ROLE_GUEST'],
+                        roles: JSON.stringify(['ROLE_GUEST']),
                         is_lopd_accepted: 1,
                         quota_mb: defaultQuota,
+                        is_active: 1,
                     });
                 }
 
                 const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
-                    sub: user.id,
+                    sub: String(user.id),
                     email: user.email,
                     roles: parseRoles(user.roles),
                     isGuest: true,
@@ -1166,7 +1178,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 });
 
                 // Redirect to returnUrl if valid, otherwise to workarea
-                const guestBody = body as GuestLoginRequest;
+                const guestBody = parsedBody<GuestLoginRequest>(body);
                 const returnUrl = guestBody?.returnUrl;
                 const targetUrl = getSafeRedirectUrl(returnUrl, '/workarea');
                 return Response.redirect(targetUrl, 302);
@@ -1194,7 +1206,7 @@ export { getJwtSecret };
  * Verify JWT token independently (for WebSocket auth)
  * Returns the payload if valid, null otherwise
  */
-export async function verifyToken(token: string): Promise<JwtPayload | null> {
+export async function verifyToken(token: string): Promise<VerifiedJwtPayload | null> {
     try {
         // Use jose for independent token verification
         const { jwtVerify } = await import('jose');
@@ -1202,12 +1214,13 @@ export async function verifyToken(token: string): Promise<JwtPayload | null> {
 
         const { payload } = await jwtVerify(token, secret);
 
-        if (!payload.sub) {
+        const userId = userIdFromJwt(payload);
+        if (userId == null) {
             return null;
         }
 
         return {
-            sub: typeof payload.sub === 'string' ? parseInt(payload.sub, 10) : Number(payload.sub),
+            sub: userId,
             email: payload.email as string,
             roles: payload.roles as string[],
             isGuest: payload.isGuest as boolean | undefined,

@@ -448,10 +448,10 @@ endif
 # =============================================================================
 
 .PHONY: lint
-lint: check-bun lint-ts lint-js lint-tests architecture-check
+lint: check-bun lint-ts lint-js lint-tests typecheck architecture-check
 
 .PHONY: fix
-fix: check-bun fix-ts fix-js fix-tests
+fix: check-bun fix-ts fix-js fix-tests typecheck
 
 # Print the architecture record index, derived from document frontmatter.
 # Deliberately not a committed file: it would conflict on every concurrent branch.
@@ -463,6 +463,12 @@ architecture-records: check-bun
 .PHONY: architecture-check
 architecture-check: check-bun
 	bun run scripts/architecture-records.mts check
+
+# Typecheck TypeScript (src/) with tsc. Bun/Biome do not do this.
+# Wired into `lint` (CI) and `fix` so a type error fails the same gates as Biome.
+.PHONY: typecheck
+typecheck: check-bun
+	bun run typecheck
 
 # Lint TypeScript source files (src/)
 .PHONY: lint-ts
@@ -931,17 +937,18 @@ help:
 	@echo "  make test-e2e-sqlite    Run E2E tests with SQLite backend"
 	@echo "  make test-e2e-ui        Run E2E tests with Playwright UI"
 	@echo ""
-	@echo "Linting (Biome):"
-	@echo "  make fix             Fix all lint issues"
+	@echo "Linting (Biome + tsc):"
+	@echo "  make fix             Fix all lint issues, then typecheck"
 	@echo "  make fix-js          Fix JavaScript linting issues"
 	@echo "  make fix-tests       Fix test linting issues"
 	@echo "  make fix-ts          Fix TypeScript linting issues"
 	@echo "  make format          Format code with Biome"
 	@echo "  make format-check    Check formatting without fixing"
-	@echo "  make lint            Run lint on all files"
+	@echo "  make lint            Run lint + typecheck on all files"
 	@echo "  make lint-js         Lint JavaScript (public/app/)"
 	@echo "  make lint-tests      Lint test files"
 	@echo "  make lint-ts         Lint TypeScript source (src/)"
+	@echo "  make typecheck       Typecheck TypeScript with tsc --noEmit"
 	@echo ""
 	@echo "Packaging:"
 	@echo "  make package VERSION=1.0.0                    Build release"

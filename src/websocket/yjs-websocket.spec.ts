@@ -32,8 +32,6 @@ import {
     handleWebSocketPong,
     handleWebSocketMessage,
     handleWebSocketClose,
-    socketQueryToken,
-    socketDocName,
     WsData,
     YJS_WS_MAX_PAYLOAD_LENGTH,
     type YjsWebSocketQueries,
@@ -175,17 +173,6 @@ describe('Yjs WebSocket Service', () => {
 
             expect(routes).toBeDefined();
             // Should have the /yjs/:docName route registered
-        });
-
-        it('parses the upgrade token and docName from socket data', () => {
-            expect(socketQueryToken({ token: 'abc' })).toBe('abc');
-            expect(socketQueryToken({ token: undefined })).toBeUndefined();
-            expect(socketQueryToken({ token: 123 as unknown as string })).toBeUndefined();
-            expect(socketQueryToken(undefined)).toBeUndefined();
-            expect(socketDocName({ docName: 'project-uuid' })).toBe('project-uuid');
-            expect(socketDocName({ docName: '' })).toBe('');
-            expect(socketDocName({})).toBe('');
-            expect(socketDocName(undefined)).toBe('');
         });
 
         it('should wire websocket handlers to open/pong/message/close', async () => {

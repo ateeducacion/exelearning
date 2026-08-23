@@ -450,16 +450,6 @@ export function handleWebSocketClose(ws: YjsSocket, data: YjsSocket['data'] | un
     }
 }
 
-/** Read the upgrade query token; ignore non-string values from Elysia. */
-export function socketQueryToken(query: YjsSocket['data']['query']): string | undefined {
-    return typeof query?.token === 'string' ? query.token : undefined;
-}
-
-/** Document name from the upgrade params, or empty string when absent. */
-export function socketDocName(params: YjsSocket['data']['params']): string {
-    return params?.docName || '';
-}
-
 /**
  * Create Elysia WebSocket routes for Yjs
  */
@@ -479,11 +469,10 @@ export function createWebSocketRoutes() {
 
                 // Connection opened - validate token here since beforeHandle doesn't pass data to open
                 async open(ws) {
-                    const result = await handleWebSocketOpen(
-                        ws,
-                        socketDocName(ws.data.params),
-                        socketQueryToken(ws.data.query),
-                    );
+                    // Elysia may hand us non-string query values; only a real
+                    // string token can ever verify.
+                    const token = typeof ws.data.query?.token === 'string' ? ws.data.query.token : undefined;
+                    const result = await handleWebSocketOpen(ws, ws.data.params?.docName || '', token);
                     if (!result.success && result.error) {
                         ws.close(result.error.code, result.error.reason);
                     }

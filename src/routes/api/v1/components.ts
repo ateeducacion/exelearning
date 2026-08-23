@@ -17,7 +17,7 @@ import {
     setComponentHtml,
     deleteComponent,
 } from '../../../yjs';
-import { parsedBody } from '../../types/request-payloads';
+import { assertRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -109,7 +109,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = parsedBody<CreateComponentInput>(body);
+            const input = assertRequestBody<CreateComponentInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 createComponent(ydoc, {
                     blockId: params.blockId,
@@ -191,7 +191,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = parsedBody<UpdateComponentInput>(body);
+            const input = assertRequestBody<UpdateComponentInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 updateComponent(ydoc, params.componentId, {
                     htmlContent: input.htmlContent,
@@ -240,7 +240,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = parsedBody<SetHtmlInput>(body);
+            const input = assertRequestBody<SetHtmlInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 setComponentHtml(ydoc, params.componentId, input.html),
             );

@@ -9,7 +9,7 @@ import * as path from 'path';
 import { getFilesDir } from '../services/file-helper';
 import { getAppVersion } from '../utils/version';
 import { getBasePath } from '../utils/basepath.util';
-import { parsedBody, type IdeviceFileUploadRequest } from './types/request-payloads';
+import { assertRequestBody, type IdeviceFileUploadRequest } from './types/request-payloads';
 import { withJwtAuth } from '../utils/route-auth';
 import { requireAuth } from '../utils/guards';
 import { isSafePathSegment, safeJoin, UnsafePathError } from '../utils/safe-path';
@@ -399,7 +399,7 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
             set.status = authErr.status;
             return { error: authErr.error, message: authErr.message };
         }
-        const data = parsedBody<IdeviceFileUploadRequest>(body);
+        const data = assertRequestBody<IdeviceFileUploadRequest>(body);
         const odeIdeviceId = data?.odeIdeviceId;
         // Support both 'file' (legacy) and 'base64String' fields for base64 data
         const fileAsString = typeof data?.file === 'string' ? data.file : undefined;
@@ -538,7 +538,7 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
             set.status = authErr.status;
             return { error: authErr.error, message: authErr.message };
         }
-        const data = parsedBody<IdeviceFileUploadRequest>(body);
+        const data = assertRequestBody<IdeviceFileUploadRequest>(body);
         const odeIdeviceId = data.odeIdeviceId;
         const file = data.file;
         const filename =

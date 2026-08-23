@@ -8,7 +8,7 @@ import { Elysia } from 'elysia';
 import { db } from '../../../db/client';
 import { findProjectByUuid } from '../../../db/queries';
 import { withDocument, readDocument, getPages, getPage, addPage, updatePage, deletePage, movePage } from '../../../yjs';
-import { parsedBody } from '../../types/request-payloads';
+import { assertRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -100,7 +100,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = parsedBody<CreatePageInput>(body);
+            const input = assertRequestBody<CreatePageInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 addPage(ydoc, {
                     name: input.name,
@@ -181,7 +181,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = parsedBody<UpdatePageInput>(body);
+            const input = assertRequestBody<UpdatePageInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 updatePage(ydoc, params.pageId, {
                     name: input.name,
@@ -262,7 +262,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = parsedBody<MovePageInput>(body);
+            const input = assertRequestBody<MovePageInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 movePage(ydoc, params.pageId, input.newParentId, input.position),
             );

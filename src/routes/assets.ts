@@ -43,7 +43,7 @@ import {
 
 import { getSession as getSessionDefault } from '../services/session-manager';
 import { serverPriorityQueue as serverPriorityQueueDefault } from '../services/asset-priority-queue';
-import { parsedBody, type AssetUploadRequest } from './types/request-payloads';
+import { assertRequestBody, type AssetUploadRequest } from './types/request-payloads';
 import { isSafePathSegment, safeJoin, sanitizeFileExtension } from '../utils/safe-path';
 import { buildAssetStoragePath } from '../utils/asset-paths';
 
@@ -411,7 +411,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .post('/', async ({ params, body, query, set }) => {
                 try {
                     const { projectId } = params;
-                    const data = parsedBody<AssetUploadRequest>(body);
+                    const data = assertRequestBody<AssetUploadRequest>(body);
 
                     // Resolve the project row (handles both UUID and numeric strings)
                     const project = await resolveProject(projectId);
@@ -547,7 +547,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .post('/upload-chunk', async ({ params, body, set }) => {
                 try {
                     const { projectId } = params;
-                    const data = parsedBody<AssetUploadRequest>(body);
+                    const data = assertRequestBody<AssetUploadRequest>(body);
 
                     const identifier = String(data.resumableIdentifier || '');
                     const chunkNumber = parseInt(String(data.resumableChunkNumber || ''), 10);
@@ -644,7 +644,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .post('/upload-chunk/finalize', async ({ params, body, set }) => {
                 try {
                     const { projectId } = params;
-                    const data = parsedBody<AssetUploadRequest>(body);
+                    const data = assertRequestBody<AssetUploadRequest>(body);
                     const identifier = data.resumableIdentifier || data.identifier;
                     const componentId = data.componentId;
                     const clientId = data.clientId || uuidv4();
@@ -1063,7 +1063,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .post('/sync', async ({ params, body, set }) => {
                 try {
                     const { projectId } = params;
-                    const data = parsedBody<AssetUploadRequest>(body);
+                    const data = assertRequestBody<AssetUploadRequest>(body);
 
                     // Resolve the project row (handles both UUID and numeric strings)
                     const project = await resolveProject(projectId);

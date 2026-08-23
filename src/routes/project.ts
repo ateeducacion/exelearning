@@ -50,7 +50,7 @@ import { getSettingString } from '../services/app-settings';
 import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 import { getPreferenceValue } from '../db/queries/preferences';
 import {
-    parsedBody,
+    assertRequestBody,
     type ProjectUploadChunkRequest,
     type ProjectPropertiesRequest,
     type UsedFilesRequest,
@@ -528,7 +528,8 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     return { responseMessage: 'error: authentication required', success: false };
                 }
                 try {
-                    const { odeFilePart, odeFileName, odeSessionId } = parsedBody<ProjectUploadChunkRequest>(body);
+                    const { odeFilePart, odeFileName, odeSessionId } =
+                        assertRequestBody<ProjectUploadChunkRequest>(body);
 
                     if (!odeFilePart || !odeFileName || !odeSessionId) {
                         set.status = 400;
@@ -640,7 +641,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     return { error: 'Unauthorized', message: 'Authentication required to create projects' };
                 }
 
-                const data = parsedBody<ProjectPropertiesRequest>(body);
+                const data = assertRequestBody<ProjectPropertiesRequest>(body);
                 const title = data.title || 'New Project';
 
                 // Create project in database with authenticated user as owner
@@ -992,7 +993,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // PATCH /api/projects/:projectId/visibility - Update project visibility
             .patch('/api/projects/:projectId/visibility', async ({ params, body, set, currentUser }) => {
                 const projectId = parseInt(params.projectId, 10);
-                const { visibility } = parsedBody<{ visibility: 'public' | 'private' }>(body);
+                const { visibility } = assertRequestBody<{ visibility: 'public' | 'private' }>(body);
 
                 if (isNaN(projectId)) {
                     set.status = 400;
@@ -1037,7 +1038,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // POST /api/projects/:projectId/collaborators - Add collaborator
             .post('/api/projects/:projectId/collaborators', async ({ params, body, set, currentUser }) => {
                 const projectId = parseInt(params.projectId, 10);
-                const { email } = parsedBody<{ email: string }>(body);
+                const { email } = assertRequestBody<{ email: string }>(body);
 
                 if (isNaN(projectId)) {
                     set.status = 400;
@@ -1127,7 +1128,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // PATCH /api/projects/:projectId/owner - Transfer ownership
             .patch('/api/projects/:projectId/owner', async ({ params, body, set, currentUser }) => {
                 const projectId = parseInt(params.projectId, 10);
-                const { newOwnerId } = parsedBody<{ newOwnerId: number }>(body);
+                const { newOwnerId } = assertRequestBody<{ newOwnerId: number }>(body);
 
                 if (isNaN(projectId)) {
                     set.status = 400;
@@ -1224,7 +1225,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     }
                 }
 
-                const data = parsedBody<StructureSaveRequest>(body);
+                const data = assertRequestBody<StructureSaveRequest>(body);
                 const session = getSession(sessionId);
 
                 if (session && data.properties) {
@@ -1294,7 +1295,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // PATCH /api/projects/uuid/:uuid/visibility - Update project visibility by UUID
             .patch('/api/projects/uuid/:uuid/visibility', async ({ params, body, set, currentUser }) => {
                 const uuid = params.uuid;
-                const { visibility } = parsedBody<{ visibility: 'public' | 'private' }>(body);
+                const { visibility } = assertRequestBody<{ visibility: 'public' | 'private' }>(body);
 
                 if (!visibility || !['public', 'private'].includes(visibility)) {
                     set.status = 400;
@@ -1334,7 +1335,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // POST /api/projects/uuid/:uuid/collaborators - Add collaborator by UUID
             .post('/api/projects/uuid/:uuid/collaborators', async ({ params, body, set, currentUser }) => {
                 const uuid = params.uuid;
-                const { email } = parsedBody<{ email: string }>(body);
+                const { email } = assertRequestBody<{ email: string }>(body);
 
                 if (!email) {
                     set.status = 400;
@@ -1418,7 +1419,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // PATCH /api/projects/uuid/:uuid/owner - Transfer ownership by UUID
             .patch('/api/projects/uuid/:uuid/owner', async ({ params, body, set, currentUser }) => {
                 const uuid = params.uuid;
-                const { newOwnerId } = parsedBody<{ newOwnerId: number }>(body);
+                const { newOwnerId } = assertRequestBody<{ newOwnerId: number }>(body);
 
                 if (!newOwnerId || isNaN(newOwnerId)) {
                     set.status = 400;
@@ -1753,7 +1754,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // PATCH /api/projects/uuid/:uuid/metadata - Update project metadata (title sync)
             .patch('/api/projects/uuid/:uuid/metadata', async ({ params, body }) => {
                 const { uuid } = params;
-                const data = parsedBody<ProjectMetadataRequest>(body);
+                const data = assertRequestBody<ProjectMetadataRequest>(body);
                 const title = data.title;
 
                 // Update session if exists
@@ -1818,7 +1819,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     set.status = 401;
                     return { success: false, error: 'Authentication required' };
                 }
-                const data = parsedBody<OdeCurrentUserRequest>(body);
+                const data = assertRequestBody<OdeCurrentUserRequest>(body);
                 // In stateless mode, just acknowledge
                 return {
                     success: true,
@@ -1846,7 +1847,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     set.status = 401;
                     return { success: false, error: 'Authentication required' };
                 }
-                const data = parsedBody<CheckBeforeLeaveRequest>(body);
+                const data = assertRequestBody<CheckBeforeLeaveRequest>(body);
                 const odeSessionId = data.odeSessionId;
 
                 // In single-user mode, always safe to leave
@@ -1870,7 +1871,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     set.status = 401;
                     return { success: false, error: 'Authentication required' };
                 }
-                const data = parsedBody<CloseSessionRequest>(body);
+                const data = assertRequestBody<CloseSessionRequest>(body);
                 const odeSessionId = data.odeSessionId;
 
                 // Clean up session resources if needed
@@ -1898,7 +1899,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
                 }
 
-                const data = parsedBody<UsedFilesRequest>(body);
+                const data = assertRequestBody<UsedFilesRequest>(body);
                 const idevices: IdeviceContent[] = (data.idevices || []).map(idevice => ({
                     ...idevice,
                     html: idevice.htmlView ?? (idevice as unknown as { html?: string }).html ?? '',
@@ -1948,7 +1949,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
                 }
 
-                const data = parsedBody<UsedFilesRequest>(body);
+                const data = assertRequestBody<UsedFilesRequest>(body);
                 const idevices: IdeviceContent[] = (data.idevices || []).map(idevice => ({
                     ...idevice,
                     html: idevice.htmlView ?? (idevice as unknown as { html?: string }).html ?? '',
@@ -1972,7 +1973,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                         return;
                     }
 
-                    const data = parsedBody<{ links: ExtractedLink[] }>(body);
+                    const data = assertRequestBody<{ links: ExtractedLink[] }>(body);
                     const links = data.links || [];
                     const filesDir = getFilesDir();
 
@@ -2002,7 +2003,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // POST /api/ode-management/odes/session/usedfiles - Get used files report
             .post('/api/ode-management/odes/session/usedfiles', async ({ body }) => {
-                const data = parsedBody<UsedFilesRequest>(body);
+                const data = assertRequestBody<UsedFilesRequest>(body);
                 const idevices = (data.idevices || []).map(idevice => ({
                     ...idevice,
                     html: idevice.htmlView ?? (idevice as unknown as { html?: string }).html ?? '',
@@ -2162,7 +2163,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // POST /api/nav-structure-management/nav-structures/duplicate - Clone a page (nav-structure)
             .post('/api/nav-structure-management/nav-structures/duplicate', async ({ body }) => {
-                const data = parsedBody<NavStructureDuplicateRequest>(body);
+                const data = assertRequestBody<NavStructureDuplicateRequest>(body);
                 const { odeSessionId, navStructureId, parentId } = data;
 
                 // In stateless Yjs mode, cloning is handled client-side
@@ -2188,7 +2189,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // PUT /api/nav-structure-management/nav-structures/reorder/save - Reorder pages
             .put('/api/nav-structure-management/nav-structures/reorder/save', async ({ body }) => {
-                const data = parsedBody<StructureSaveRequest>(body);
+                const data = assertRequestBody<StructureSaveRequest>(body);
                 const { odeSessionId, order: _order } = data;
 
                 // In stateless Yjs mode, reordering is handled client-side
@@ -2204,7 +2205,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // PUT /api/pag-structure-management/pag-structures/reorder/save - Reorder blocks
             .put('/api/pag-structure-management/pag-structures/reorder/save', async ({ body }) => {
-                const data = parsedBody<StructureSaveRequest>(body);
+                const data = assertRequestBody<StructureSaveRequest>(body);
                 const { odeSessionId, pageId, order: _order } = data;
 
                 // In stateless Yjs mode, reordering is handled client-side
@@ -2221,7 +2222,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // PUT /api/idevice-management/idevices/reorder/save - Reorder iDevices
             .put('/api/idevice-management/idevices/reorder/save', async ({ body }) => {
-                const data = parsedBody<StructureSaveRequest>(body);
+                const data = assertRequestBody<StructureSaveRequest>(body);
                 const { odeSessionId, blockId, order: _order } = data;
 
                 // In stateless Yjs mode, reordering is handled client-side

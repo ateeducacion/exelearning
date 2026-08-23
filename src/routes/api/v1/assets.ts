@@ -34,7 +34,7 @@ import {
 import { buildAssetStoragePath } from '../../../utils/asset-paths';
 import { isSafePathSegment, sanitizeFileExtension } from '../../../utils/safe-path';
 import { withDocument, setAssetMetadata, deleteAssetMetadata, type AssetMetadata } from '../../../yjs';
-import { parsedBody } from '../../types/request-payloads';
+import { assertRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -182,7 +182,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
             }
 
             // Extract file from multipart body
-            const data = parsedBody<{ file?: Blob | Buffer; clientId?: string; folderPath?: string }>(body);
+            const data = assertRequestBody<{ file?: Blob | Buffer; clientId?: string; folderPath?: string }>(body);
 
             if (!data.file) {
                 set.status = 400;
@@ -468,7 +468,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const { clientIds } = parsedBody<{ clientIds: string[] }>(body);
+            const { clientIds } = assertRequestBody<{ clientIds: string[] }>(body);
             if (!clientIds || clientIds.length === 0) {
                 return successResponse({ deleted: 0 });
             }

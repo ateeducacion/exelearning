@@ -13,7 +13,7 @@ import { platformPetitionGet, platformPetitionSet, platformPetitionSetForward } 
 import { db as defaultDb } from '../db/client';
 import { findProjectByUuid as findProjectByUuidDefault } from '../db/queries';
 import type { Database } from '../db/types';
-import { parsedBody } from './types/request-payloads';
+import { assertRequestBody } from './types/request-payloads';
 
 /**
  * Route-level dependencies for platform integration.
@@ -179,7 +179,7 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
     .post(
         '/api/platform/integration/openPlatformElp',
         async ({ body, set }) => {
-            const { jwt_token } = parsedBody<{ jwt_token: string }>(body);
+            const { jwt_token } = assertRequestBody<{ jwt_token: string }>(body);
 
             // Get integration parameters with validation
             const params = await getPlatformIntegrationParams(jwt_token, 'get');
@@ -233,7 +233,7 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
     .post(
         '/api/platform/integration/set_platform_new_ode',
         async ({ body, set }) => {
-            const { projectUuid, jwt_token } = parsedBody<{ projectUuid: string; jwt_token: string }>(body);
+            const { projectUuid, jwt_token } = assertRequestBody<{ projectUuid: string; jwt_token: string }>(body);
 
             // Get integration parameters with validation
             const params = await getPlatformIntegrationParams(jwt_token, 'set');
@@ -316,7 +316,7 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
                 jwt_token,
                 projectUuid,
                 package: packageFile,
-            } = parsedBody<{ jwt_token: string; projectUuid?: string; package: File }>(body);
+            } = assertRequestBody<{ jwt_token: string; projectUuid?: string; package: File }>(body);
 
             const params = await getPlatformIntegrationParams(jwt_token, 'set');
             if (!params) {

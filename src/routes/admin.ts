@@ -67,7 +67,7 @@ import {
     ServerYjsDocumentWrapper,
 } from '../shared/export';
 import { reconstructDocument } from '../websocket/yjs-persistence';
-import { parsedBody } from './types/request-payloads';
+import { assertRequestBody } from './types/request-payloads';
 
 type AppSettingsTable = {
     key: string;
@@ -828,7 +828,9 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             .put(
                 '/api/admin/settings',
                 async ({ body, set, identity }) => {
-                    const data = parsedBody<{ settings: Array<{ key: string; value: string; type: string }> }>(body);
+                    const data = assertRequestBody<{ settings: Array<{ key: string; value: string; type: string }> }>(
+                        body,
+                    );
                     const sanitizedValues: Record<string, string> = {};
 
                     for (const setting of data.settings) {
@@ -903,7 +905,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 '/api/admin/impersonation/start',
                 async ({ body, set, identity, cookie, request, jwt: jwtPlugin }) => {
                     const adminUserId = identity!.userId;
-                    const targetUserId = Number(parsedBody<StartImpersonationInput>(body).user_id);
+                    const targetUserId = Number(assertRequestBody<StartImpersonationInput>(body).user_id);
 
                     if (!Number.isInteger(adminUserId) || !Number.isInteger(targetUserId)) {
                         set.status = 400;
@@ -1073,7 +1075,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 '/api/admin/users',
                 async ({ body, set }) => {
                     // Check if email already exists
-                    const input = parsedBody<CreateUserInput>(body);
+                    const input = assertRequestBody<CreateUserInput>(body);
                     const existing = await queries.findUserByEmail(db, input.email);
                     if (existing) {
                         set.status = 409;
@@ -1115,7 +1117,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         return { error: 'NOT_FOUND', message: 'User not found' };
                     }
 
-                    let newRoles = parsedBody<UpdateRolesInput>(body).roles;
+                    let newRoles = assertRequestBody<UpdateRolesInput>(body).roles;
 
                     // Ensure ROLE_USER is always present
                     if (!newRoles.includes(PROTECTED_ROLE)) {
@@ -1161,7 +1163,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     const userId = parsed.id;
 
                     // Prevent deactivating yourself
-                    const input = parsedBody<UpdateStatusInput>(body);
+                    const input = assertRequestBody<UpdateStatusInput>(body);
                     if (identity!.userId === userId && !input.is_active) {
                         set.status = 400;
                         return { error: 'CANNOT_DEACTIVATE_SELF', message: 'Cannot deactivate your own account' };
@@ -1188,7 +1190,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     const updatedUser = await queries.updateUserQuota(
                         db,
                         parsed.id,
-                        parsedBody<UpdateQuotaInput>(body).quota_mb,
+                        assertRequestBody<UpdateQuotaInput>(body).quota_mb,
                     );
                     if (!updatedUser) {
                         set.status = 404;
@@ -1222,7 +1224,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         return { error: 'FORBIDDEN', message: EXTERNAL_ACCOUNT_MESSAGE };
                     }
 
-                    const input = parsedBody<ResetPasswordInput>(body);
+                    const input = assertRequestBody<ResetPasswordInput>(body);
                     const validation = validateNewPassword(input.newPassword);
                     if (!validation.valid) {
                         set.status = 422;
@@ -1294,7 +1296,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     if ('error' in parsed) return parsed;
 
                     const updated = await queries.updateProject(db, parsed.id, {
-                        status: parsedBody<UpdateProjectStatusInput>(body).status,
+                        status: assertRequestBody<UpdateProjectStatusInput>(body).status,
                     });
 
                     if (!updated) {
@@ -1464,7 +1466,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         'image/jpeg',
                         'image/webp',
                     ];
-                    const file = parsedBody<{ file: File }>(body).file;
+                    const file = assertRequestBody<{ file: File }>(body).file;
                     if (!file || !FAVICON_ALLOWED_TYPES.includes(file.type)) {
                         set.status = 400;
                         return {
@@ -1540,7 +1542,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             .post(
                 '/api/admin/customization/assets',
                 async ({ body, set }) => {
-                    const file = parsedBody<{ file: File }>(body).file;
+                    const file = assertRequestBody<{ file: File }>(body).file;
                     if (!file) {
                         set.status = 400;
                         return { error: 'Bad Request', message: 'No file uploaded' };

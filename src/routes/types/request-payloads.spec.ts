@@ -7,7 +7,6 @@
 
 import { describe, it, expect } from 'bun:test';
 import {
-    parsedBody,
     type UploadChunkRequest,
     type FileUploadRequest,
     type AssetUploadRequest,
@@ -211,13 +210,6 @@ describe('Request Payload Types', () => {
                 visibility: 'private',
             };
             expect(request.visibility).toBe('private');
-        });
-    });
-
-    describe('parsedBody', () => {
-        it('returns the validated body as the requested type', () => {
-            const body: unknown = { email: 'user@test.com' };
-            expect(parsedBody<{ email: string }>(body).email).toBe('user@test.com');
         });
     });
 });

@@ -24,7 +24,7 @@ import type { Kysely } from 'kysely';
 import { db as defaultDb } from '../db/client';
 import type { Database } from '../db/types';
 import { findUserById as findUserByIdDefault } from '../db/queries';
-import { parsedBody, type ConvertRequest } from './types/request-payloads';
+import { assertRequestBody, type ConvertRequest } from './types/request-payloads';
 
 // Centralized export system
 import {
@@ -335,7 +335,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         return { code: 'UNAUTHORIZED', detail: 'Authentication required' };
                     }
 
-                    const data = parsedBody<ConvertRequest>(body);
+                    const data = assertRequestBody<ConvertRequest>(body);
                     const download = query.download === '1';
 
                     // Validate file
@@ -426,7 +426,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         };
                     }
 
-                    const data = parsedBody<ConvertRequest>(body);
+                    const data = assertRequestBody<ConvertRequest>(body);
                     const download = query.download === '1';
                     const baseUrl = data.baseUrl || undefined;
                     const theme = data.theme || undefined;

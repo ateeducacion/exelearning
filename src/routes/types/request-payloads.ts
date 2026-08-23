@@ -13,12 +13,9 @@
  * schema validation on unvalidated routes. For strict runtime validation, ensure a TypeBox
  * schema is registered in the route's `{ body: t.Object(...) }` definition.
  */
-export function parsedBody<T>(body: unknown): T {
+export function assertRequestBody<T>(body: unknown): T {
     return body as T;
 }
-
-/** Alias for parsedBody making the type assertion explicit. */
-export const assertRequestBody = parsedBody;
 
 // ============================================================================
 // File Upload Types

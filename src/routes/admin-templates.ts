@@ -34,7 +34,7 @@ import {
 } from '../services/admin-upload-validator';
 import { requireAdmin } from '../utils/guards';
 import { getFilesDir as getFilesDirDefault, getJwtSecret, deleteFileIfExists } from '../utils/admin-route-helpers';
-import { parsedBody } from './types/request-payloads';
+import { assertRequestBody } from './types/request-payloads';
 
 // ============================================================================
 // TYPES
@@ -251,7 +251,7 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                 async ({ body, set, jwt, cookie }) => {
                     try {
                         const { file, locale, displayName, description, isEnabled } =
-                            parsedBody<TemplateUploadInput>(body);
+                            assertRequestBody<TemplateUploadInput>(body);
 
                         if (!file) {
                             set.status = 400;
@@ -374,7 +374,7 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
 
                     const updates: Parameters<typeof queries.updateTemplate>[2] = {};
 
-                    const input = parsedBody<TemplateUpdateInput>(body);
+                    const input = assertRequestBody<TemplateUpdateInput>(body);
                     if (input.displayName !== undefined) {
                         updates.display_name = input.displayName;
                     }
@@ -423,7 +423,7 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                     const updatedTemplate = await queries.toggleTemplateEnabled(
                         database,
                         id,
-                        parsedBody<TemplateToggleInput>(body).isEnabled,
+                        assertRequestBody<TemplateToggleInput>(body).isEnabled,
                     );
                     if (!updatedTemplate) {
                         set.status = 500;

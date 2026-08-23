@@ -25,7 +25,7 @@ import {
 import { isOfflineMode } from '../utils/offline.util';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
-import { parsedBody, type UserPreferencesRequest } from './types/request-payloads';
+import { assertRequestBody, type UserPreferencesRequest } from './types/request-payloads';
 import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 
 /**
@@ -179,7 +179,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
         const ownerId = currentUser.id;
 
         try {
-            const preferences = parsedBody<UserPreferencesRequest>(body);
+            const preferences = assertRequestBody<UserPreferencesRequest>(body);
 
             for (const [key, value] of Object.entries(preferences)) {
                 await saveFn(ownerId, key, value);
@@ -277,7 +277,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
             // POST /api/user/preferences - Save user preferences
             .post('/api/user/preferences', async ({ body, set, currentUser }) => {
                 return handleSavePreferences(
-                    parsedBody<UserPreferencesRequest>(body),
+                    assertRequestBody<UserPreferencesRequest>(body),
                     set,
                     currentUser,
                     saveUserPreference,
@@ -287,7 +287,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
             // PUT /api/user/preferences - Save user preferences (Symfony compatibility)
             .put('/api/user/preferences', async ({ body, set, currentUser }) => {
                 return handleSavePreferences(
-                    parsedBody<UserPreferencesRequest>(body),
+                    assertRequestBody<UserPreferencesRequest>(body),
                     set,
                     currentUser,
                     saveUserPreference,
@@ -362,7 +362,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                         return { error: 'Forbidden', message: PASSWORD_CHANGE_UNAVAILABLE_MESSAGE };
                     }
 
-                    const input = parsedBody<ChangePasswordBody>(body);
+                    const input = assertRequestBody<ChangePasswordBody>(body);
                     const currentPasswordMatches = await verifyPassword(input.currentPassword, user.password);
                     if (!currentPasswordMatches) {
                         set.status = 401;

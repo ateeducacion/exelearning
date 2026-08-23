@@ -17,7 +17,7 @@ import {
     deleteBlock,
     moveBlock,
 } from '../../../yjs';
-import { parsedBody } from '../../types/request-payloads';
+import { assertRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -109,7 +109,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = parsedBody<CreateBlockInput>(body);
+            const input = assertRequestBody<CreateBlockInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 createBlock(ydoc, {
                     pageId: params.pageId,
@@ -190,7 +190,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = parsedBody<UpdateBlockInput>(body);
+            const input = assertRequestBody<UpdateBlockInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 updateBlock(ydoc, params.blockId, {
                     name: input.name,
@@ -272,7 +272,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = parsedBody<MoveBlockInput>(body);
+            const input = assertRequestBody<MoveBlockInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 moveBlock(ydoc, params.blockId, input.targetPageId, input.position),
             );

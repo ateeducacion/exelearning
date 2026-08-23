@@ -8,7 +8,7 @@ import { Elysia } from 'elysia';
 import { db } from '../../../db/client';
 import { findProjectByUuid } from '../../../db/queries';
 import { withDocument, readDocument, getMetadataData, updateMetadataData } from '../../../yjs';
-import { parsedBody } from '../../types/request-payloads';
+import { assertRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -96,7 +96,7 @@ export const metadataRoutes = new Elysia({ prefix: '/projects' })
             }
 
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
-                updateMetadataData(ydoc, parsedBody<UpdateMetadataInput>(body)),
+                updateMetadataData(ydoc, assertRequestBody<UpdateMetadataInput>(body)),
             );
 
             if (result.success === false) {

@@ -13,13 +13,22 @@ afterAll(() => {
 });
 
 describe('packaging/synology/build-spk.sh', () => {
-    it('should fail with exit code 1 if version is omitted', () => {
-        const result = spawnSync('bash', [buildScript], {
+    it('should default to latest docker tag and package version when version is omitted or latest', () => {
+        const result = spawnSync('bash', [buildScript, 'latest', testOutputDir], {
             cwd: projectRoot,
             encoding: 'utf8',
         });
-        expect(result.status).toBe(1);
-        expect(result.stderr).toContain('Error: Version is required');
+        expect(result.status).toBe(0);
+
+        const spkFiles = fs.readdirSync(testOutputDir).filter((f) => f.endsWith('.spk'));
+        expect(spkFiles.length).toBeGreaterThan(0);
+        const spkFile = path.join(testOutputDir, spkFiles[0]);
+
+        const composeContent = execSync(
+            `tar -xOf "${spkFile}" package.tgz | tar -xzO docker/docker-compose.yml`,
+            { encoding: 'utf8' }
+        );
+        expect(composeContent).toContain('exelearning/exelearning:latest');
     });
 
     it('should generate a valid SPK archive with version substituted', () => {

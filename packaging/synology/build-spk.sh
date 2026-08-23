@@ -1,28 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Ensure macOS does not include ._* metadata files or extended attributes
+# Ensure macOS bsdtar does not include ._* metadata files or extended attributes
 export COPYFILE_DISABLE=1
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-VERSION_INPUT="${1:-}"
-
-if [ -z "$VERSION_INPUT" ]; then
-    echo "Error: Version is required." >&2
-    echo "Usage: $0 <version> [output-dir]" >&2
-    echo "Example: $0 v4.0.4" >&2
-    exit 1
-fi
+VERSION_INPUT="${1:-latest}"
 
 # Strip leading 'v' for SPK metadata version
-BASE_VERSION="${VERSION_INPUT#v}"
+CLEAN_VERSION="${VERSION_INPUT#v}"
 
-if [[ "$BASE_VERSION" =~ - ]]; then
+if [ "$CLEAN_VERSION" = "latest" ] || [ -z "$CLEAN_VERSION" ]; then
+    # Extract version from package.json or fallback
+    PKG_VER="$(node -p "try { require('${PROJECT_ROOT}/package.json').version } catch(e) { '4.0.4' }" 2>/dev/null || echo "4.0.4")"
+    BASE_VERSION="${PKG_VER#v}"
+    SPK_VERSION="${BASE_VERSION}-0001"
+    DOCKER_TAG="latest"
+elif [[ "$CLEAN_VERSION" =~ - ]]; then
+    BASE_VERSION="$CLEAN_VERSION"
     SPK_VERSION="$BASE_VERSION"
     DOCKER_TAG="${DOCKER_TAG:-$VERSION_INPUT}"
 else
+    BASE_VERSION="$CLEAN_VERSION"
     SPK_VERSION="${BASE_VERSION}-0001"
     DOCKER_TAG="${DOCKER_TAG:-$VERSION_INPUT}"
 fi
@@ -79,14 +80,23 @@ if [ -f "${SCRIPT_DIR}/PACKAGE_ICON_256.PNG" ]; then
     cp "${SCRIPT_DIR}/PACKAGE_ICON_256.PNG" "${STAGE_DIR}/package/ui/images/icon_256.png"
 fi
 
-# Create package.tgz in standard ustar format
+# Check individual tar support for cross-platform Linux (GNU tar) and macOS (bsdtar)
+TAR_EXTRA_OPTS=()
+if tar --help 2>&1 | grep -q -- '--no-xattrs'; then
+    TAR_EXTRA_OPTS+=( "--no-xattrs" )
+fi
+if tar --help 2>&1 | grep -q -- '--no-mac-metadata'; then
+    TAR_EXTRA_OPTS+=( "--no-mac-metadata" )
+fi
+
+# Create package.tgz in standard format
 (
     cd "${STAGE_DIR}/package"
-    TAR_OPTS=( "-czf" "${STAGE_DIR}/package.tgz" )
-    if tar --help 2>&1 | grep -q -- '--no-xattrs'; then
-        TAR_OPTS+=( "--no-xattrs" "--no-mac-metadata" )
+    TAR_CMD=( "tar" "-czf" "${STAGE_DIR}/package.tgz" )
+    if [ ${#TAR_EXTRA_OPTS[@]} -gt 0 ]; then
+        TAR_CMD+=( "${TAR_EXTRA_OPTS[@]}" )
     fi
-    tar "${TAR_OPTS[@]}" *
+    "${TAR_CMD[@]}" *
 )
 rm -rf "${STAGE_DIR}/package"
 
@@ -114,14 +124,14 @@ fi
 
 (
     cd "${STAGE_DIR}"
-    TAR_FLAGS=( "-cf" "${SPK_PATH}" )
+    SPK_CMD=( "tar" "-cf" "${SPK_PATH}" )
     if tar --help 2>&1 | grep -q -- '--format'; then
-        TAR_FLAGS+=( "--format" "ustar" )
+        SPK_CMD+=( "--format" "ustar" )
     fi
-    if tar --help 2>&1 | grep -q -- '--no-xattrs'; then
-        TAR_FLAGS+=( "--no-xattrs" "--no-mac-metadata" )
+    if [ ${#TAR_EXTRA_OPTS[@]} -gt 0 ]; then
+        SPK_CMD+=( "${TAR_EXTRA_OPTS[@]}" )
     fi
-    tar "${TAR_FLAGS[@]}" "${TAR_ITEMS[@]}"
+    "${SPK_CMD[@]}" "${TAR_ITEMS[@]}"
 )
 
 echo "==> Synology SPK created successfully: ${SPK_PATH}"

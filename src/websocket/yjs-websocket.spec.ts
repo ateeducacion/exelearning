@@ -1815,6 +1815,21 @@ describe('Yjs WebSocket Service', () => {
             await new Promise(resolve => setTimeout(resolve, 20));
         });
 
+        it('should ignore messages when connection metadata is incomplete', () => {
+            const ws = createMockWebSocket();
+
+            expect(() =>
+                handleWebSocketMessage(ws as any, { userId: 1 } as WsData, Buffer.from([1, 2, 3])),
+            ).not.toThrow();
+            expect(() =>
+                handleWebSocketMessage(
+                    ws as any,
+                    { clientId: 'c1', userId: 1, projectUuid: 'uuid' } as WsData,
+                    Buffer.from([1, 2, 3]),
+                ),
+            ).not.toThrow();
+        });
+
         it('should ignore messages when room not found', () => {
             const ws = createMockWebSocket();
 

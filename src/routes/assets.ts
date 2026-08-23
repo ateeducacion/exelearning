@@ -203,6 +203,24 @@ const chunkUploads = new Map<string, ChunkUploadEntry>();
 export const MAX_CHUNK_BYTES = 20 * 1024 * 1024;
 
 /**
+ * Normalise an uploaded chunk to a Buffer.
+ * Multipart uploads arrive as Blob; tests and some clients send Buffer,
+ * ArrayBuffer, or Uint8Array.
+ */
+export async function resolveChunkBuffer(chunk: unknown): Promise<Buffer> {
+    if (chunk instanceof Blob) {
+        return Buffer.from(await chunk.arrayBuffer());
+    }
+    if (Buffer.isBuffer(chunk)) {
+        return chunk;
+    }
+    if (chunk instanceof ArrayBuffer) {
+        return Buffer.from(new Uint8Array(chunk));
+    }
+    return Buffer.from(chunk as Uint8Array);
+}
+
+/**
  * Maximum number of chunks a single upload may declare (10000).
  * Prevents an attacker from declaring an enormous chunk count that would
  * never complete while keeping the Map entry and on-disk directory alive.
@@ -558,16 +576,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
                     // Resolve the chunk buffer early so we can enforce the per-chunk size cap
                     // BEFORE creating any tracking state or touching disk.
-                    let chunkBuffer: Buffer;
-                    if (chunk instanceof Blob) {
-                        chunkBuffer = Buffer.from(await chunk.arrayBuffer());
-                    } else if (Buffer.isBuffer(chunk)) {
-                        chunkBuffer = chunk;
-                    } else if ((chunk as unknown) instanceof ArrayBuffer) {
-                        chunkBuffer = Buffer.from(new Uint8Array(chunk));
-                    } else {
-                        chunkBuffer = Buffer.from(chunk as Uint8Array);
-                    }
+                    const chunkBuffer = await resolveChunkBuffer(chunk);
 
                     // Cap the size of an individual chunk to bound disk/memory usage.
                     if (chunkBuffer.length > MAX_CHUNK_BYTES) {

@@ -109,6 +109,17 @@ describe('Yjs debug routes', () => {
             expect(res.status).toBe(404);
         });
 
+        it('accepts the auth token from a cookie', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/yjs/debug/uuid-owned', {
+                    headers: { Cookie: `auth=${ownerToken}` },
+                }),
+            );
+            expect(res.status).toBe(200);
+            const data = (await res.json()) as Record<string, unknown>;
+            expect(data.projectUuid).toBe('uuid-owned');
+        });
+
         it('returns debug info for the owner', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/yjs/debug/uuid-owned', {

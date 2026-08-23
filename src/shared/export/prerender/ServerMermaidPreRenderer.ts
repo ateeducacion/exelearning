@@ -45,6 +45,43 @@ function decodeHtmlEntities(text: string): string {
 // Import mermaid dynamically to handle the ESM module
 let mermaidModule: MermaidAPI | null = null;
 
+type SvgMeasurementWindow = {
+    SVGElement: { prototype: { getBBox?: unknown; textContent?: string | null } };
+    SVGTextElement?: { prototype: Record<string, unknown> };
+};
+
+/**
+ * Polyfill SVG measurement APIs that mermaid needs and jsdom may omit.
+ * Extracted so the fallback implementations can be unit-tested without jsdom.
+ */
+export function installSvgMeasurementPolyfills(window: SvgMeasurementWindow): void {
+    const svgProto = window.SVGElement.prototype as unknown as {
+        getBBox?: () => { x: number; y: number; width: number; height: number };
+        textContent?: string | null;
+    };
+    if (!svgProto.getBBox) {
+        svgProto.getBBox = function () {
+            // Return reasonable default dimensions for server-side rendering
+            const text = String(this.textContent || '');
+            return {
+                x: 0,
+                y: 0,
+                width: text.length * 8, // Approximate 8px per character
+                height: 16, // Approximate line height
+            };
+        };
+    }
+
+    if (!window.SVGTextElement?.prototype?.getComputedTextLength) {
+        if (window.SVGTextElement) {
+            window.SVGTextElement.prototype.getComputedTextLength = function () {
+                const text = String(this.textContent || '');
+                return text.length * 8;
+            };
+        }
+    }
+}
+
 /**
  * Server-side Mermaid Pre-renderer using mermaid npm package
  */
@@ -81,35 +118,7 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
 
         const { window } = this.dom;
 
-        // Polyfill SVG methods that mermaid needs but jsdom doesn't implement
-        // getBBox returns bounding box dimensions for text measurement
-        const svgProto = window.SVGElement.prototype as unknown as {
-            getBBox?: () => { x: number; y: number; width: number; height: number };
-            textContent?: string | null;
-        };
-        if (!svgProto.getBBox) {
-            svgProto.getBBox = function () {
-                // Return reasonable default dimensions for server-side rendering
-                const text = String(this.textContent || '');
-                return {
-                    x: 0,
-                    y: 0,
-                    width: text.length * 8, // Approximate 8px per character
-                    height: 16, // Approximate line height
-                };
-            };
-        }
-
-        // getComputedTextLength for text elements
-        if (!window.SVGTextElement?.prototype?.getComputedTextLength) {
-            if (window.SVGTextElement) {
-                (window.SVGTextElement.prototype as unknown as Record<string, unknown>).getComputedTextLength =
-                    function () {
-                        const text = String(this.textContent || '');
-                        return text.length * 8;
-                    };
-            }
-        }
+        installSvgMeasurementPolyfills(window);
 
         // Set up minimal browser globals that Mermaid expects.
         // jsdom's DOMWindow is not assignable to lib.dom Window; install them by name.

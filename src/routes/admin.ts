@@ -120,6 +120,7 @@ export interface AdminDependencies {
     queries: AdminQueries;
     fileHelper?: FileHelper;
     getConnectedClientsDetail?: typeof getConnectedClientsDetail;
+    reconstructDocument?: typeof reconstructDocument;
 }
 
 // ============================================================================
@@ -686,6 +687,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
 export function createAdminRoutes(deps: AdminDependencies = defaultDependencies) {
     const { db, queries, fileHelper = createFileHelper() } = deps;
     const connectedClientsDetail = deps.getConnectedClientsDetail ?? getConnectedClientsDetail;
+    const reconstructProjectDocument = deps.reconstructDocument ?? reconstructDocument;
 
     return (
         new Elysia({ name: 'admin-routes' })
@@ -1335,7 +1337,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     return { error: 'FORBIDDEN', message: 'Only public projects can be downloaded' };
                 }
 
-                const yjsDoc = await reconstructDocument(project.id);
+                const yjsDoc = await reconstructProjectDocument(project.id);
                 const publicDir = pathModule.resolve(__dirname, '../../public');
                 // Sharded directory first, legacy unsharded directory second, so
                 // filename-addressed files without database rows still export

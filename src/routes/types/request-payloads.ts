@@ -6,12 +6,19 @@
  */
 
 /**
- * Recover the TypeBox-validated request body type after Elysia plugins
- * collapse handler `body` to `unknown`. Runtime validation has already run.
+ * Type assertion helper for route handler request bodies where Elysia plugin chaining
+ * collapses handler `body` to `unknown`.
+ *
+ * IMPORTANT: This is a compile-time type assertion helper and does not perform runtime
+ * schema validation on unvalidated routes. For strict runtime validation, ensure a TypeBox
+ * schema is registered in the route's `{ body: t.Object(...) }` definition.
  */
 export function parsedBody<T>(body: unknown): T {
     return body as T;
 }
+
+/** Alias for parsedBody making the type assertion explicit. */
+export const assertRequestBody = parsedBody;
 
 // ============================================================================
 // File Upload Types

@@ -17,14 +17,20 @@ export interface AuthorizationError {
 /**
  * Parse JWT `sub` (RFC 7519 string) to the numeric user id.
  * Accepts a number as well so tokens signed before the string-sub change still work.
- * Returns null when the payload is missing or `sub` is not a finite number.
+ * Returns null when the payload is missing, empty, or `sub` is not a positive safe integer.
  */
 export function userIdFromJwt(payload: { sub?: string | number } | null | undefined): number | null {
     if (payload?.sub == null || payload.sub === '') {
         return null;
     }
-    const id = typeof payload.sub === 'number' ? payload.sub : Number(payload.sub);
-    return Number.isFinite(id) ? id : null;
+    const raw = typeof payload.sub === 'string' ? payload.sub.trim() : payload.sub;
+    if (typeof raw === 'string') {
+        if (!/^\d+$/.test(raw)) {
+            return null;
+        }
+    }
+    const id = typeof raw === 'number' ? raw : Number(raw);
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
 /**

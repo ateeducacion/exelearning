@@ -1577,4 +1577,75 @@ describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathM
             expect(assetPaths.length).toBe(0);
         });
     });
+
+    describe('downloadBlob', () => {
+        it('should trigger browser download using a link element', () => {
+            let clicked = false;
+            let appended = false;
+            let removed = false;
+            let revoked = false;
+
+            const fakeLink = {
+                href: '',
+                download: '',
+                click: () => {
+                    clicked = true;
+                },
+            };
+
+            const fakeDocument = {
+                createElement: (tag: string) => (tag === 'a' ? fakeLink : {}),
+                body: {
+                    appendChild: (node: unknown) => {
+                        if (node === fakeLink) appended = true;
+                    },
+                    removeChild: (node: unknown) => {
+                        if (node === fakeLink) removed = true;
+                    },
+                },
+            };
+
+            const globalScope = globalThis as unknown as Record<string, unknown>;
+            const origWindow = globalScope.window;
+            const origDocument = globalScope.document;
+            const origURL = globalScope.URL;
+
+            try {
+                globalScope.window = {};
+                globalScope.document = fakeDocument;
+                globalScope.URL = {
+                    createObjectURL: () => 'blob:test-url',
+                    revokeObjectURL: () => {
+                        revoked = true;
+                    },
+                };
+
+                const compExporter = new ComponentExporter(document, resources, assets, zip);
+                // Call private downloadBlob via reflection
+                (compExporter as unknown as { downloadBlob: (data: unknown, filename: string) => void }).downloadBlob(
+                    new Uint8Array([1, 2, 3]),
+                    'test.zip',
+                );
+
+                expect(clicked).toBe(true);
+                expect(appended).toBe(true);
+                expect(removed).toBe(true);
+                expect(revoked).toBe(true);
+                expect(fakeLink.download).toBe('test.zip');
+                expect(fakeLink.href).toBe('blob:test-url');
+
+                // Test with Blob instance
+                clicked = false;
+                (compExporter as unknown as { downloadBlob: (data: unknown, filename: string) => void }).downloadBlob(
+                    new Blob(['hello']),
+                    'blob.zip',
+                );
+                expect(clicked).toBe(true);
+            } finally {
+                globalScope.window = origWindow;
+                globalScope.document = origDocument;
+                globalScope.URL = origURL;
+            }
+        });
+    });
 });

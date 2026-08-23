@@ -26,9 +26,14 @@ let cachedDialect: DbDialect | null = null;
 /** Row type returned for rows of an arbitrary table of the database. */
 type TableRow<T extends keyof Database> = Selectable<Database[T]>;
 
-/** Schema erased so generic table names type-check; values stay bound parameters. */
-// biome-ignore lint/suspicious/noExplicitAny: generic-table fluent API is uncallable under TS 7
-function genericDb(db: Kysely<Database>): any {
+/**
+ * Executes a dynamic table operation against Kysely.
+ * Kysely's query builders are distributive over union types (keyof Database), causing call signature
+ * incompatibility in TypeScript strict mode when chaining methods like .where() or .set() on generic tables.
+ * This helper isolates dynamic query execution to internal helpers while all public helpers maintain strongly-typed signatures.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: internal dynamic query builder for generic table operations
+function dynamicDb(db: Kysely<Database>): any {
     return db;
 }
 
@@ -247,7 +252,7 @@ export async function insertIgnore<T extends keyof Database>(
         return;
     }
 
-    await genericDb(db)
+    await dynamicDb(db)
         .insertInto(table)
         .values(values)
         .onConflict((oc: { doNothing: () => unknown }) => oc.doNothing())
@@ -263,7 +268,7 @@ export async function insertAndReturn<T extends keyof Database>(
     table: T,
     values: Insertable<Database[T]>,
 ): Promise<TableRow<T>> {
-    const qdb = genericDb(db);
+    const qdb = dynamicDb(db);
 
     if (supportsReturning()) {
         return qdb.insertInto(table).values(values).returningAll().executeTakeFirstOrThrow() as Promise<TableRow<T>>;
@@ -290,7 +295,7 @@ export async function insertManyAndReturn<T extends keyof Database>(
         return [];
     }
 
-    const qdb = genericDb(db);
+    const qdb = dynamicDb(db);
 
     if (supportsReturning()) {
         return qdb.insertInto(table).values(values).returningAll().execute() as Promise<TableRow<T>[]>;
@@ -347,7 +352,7 @@ async function updateWhereAndReturn<T extends keyof Database>(
     whereValue: unknown,
     values: Updateable<Database[T]>,
 ): Promise<TableRow<T> | undefined> {
-    const qdb = genericDb(db);
+    const qdb = dynamicDb(db);
 
     if (supportsReturning()) {
         return qdb
@@ -382,7 +387,7 @@ export async function deleteByColumnAndReturn<T extends keyof Database, C extend
     column: C,
     columnValue: Database[T][C],
 ): Promise<TableRow<T>[]> {
-    const qdb = genericDb(db);
+    const qdb = dynamicDb(db);
 
     if (supportsReturning()) {
         return qdb.deleteFrom(table).where(column, '=', columnValue).returningAll().execute() as Promise<TableRow<T>[]>;

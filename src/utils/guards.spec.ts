@@ -218,12 +218,29 @@ describe('requireAnyRole', () => {
 // ============================================================================
 
 describe('userIdFromJwt', () => {
-    it('parses a string sub to a number', () => {
+    it('parses a string sub to a positive number', () => {
         expect(userIdFromJwt({ sub: '42' })).toBe(42);
+        expect(userIdFromJwt({ sub: ' 42 ' })).toBe(42);
+        expect(userIdFromJwt({ sub: '1' })).toBe(1);
     });
 
     it('accepts a numeric sub from older tokens', () => {
         expect(userIdFromJwt({ sub: 42 })).toBe(42);
+        expect(userIdFromJwt({ sub: 1 })).toBe(1);
+    });
+
+    it('rejects zero and negative numbers', () => {
+        expect(userIdFromJwt({ sub: 0 })).toBeNull();
+        expect(userIdFromJwt({ sub: '0' })).toBeNull();
+        expect(userIdFromJwt({ sub: -5 })).toBeNull();
+        expect(userIdFromJwt({ sub: '-5' })).toBeNull();
+    });
+
+    it('rejects floats, exponents, and hex strings', () => {
+        expect(userIdFromJwt({ sub: '1.5' })).toBeNull();
+        expect(userIdFromJwt({ sub: 1.5 })).toBeNull();
+        expect(userIdFromJwt({ sub: '1e3' })).toBeNull();
+        expect(userIdFromJwt({ sub: '0x10' })).toBeNull();
     });
 
     it('returns null for missing, empty, or non-numeric sub', () => {
@@ -231,7 +248,11 @@ describe('userIdFromJwt', () => {
         expect(userIdFromJwt(undefined)).toBeNull();
         expect(userIdFromJwt({})).toBeNull();
         expect(userIdFromJwt({ sub: '' })).toBeNull();
+        expect(userIdFromJwt({ sub: '   ' })).toBeNull();
         expect(userIdFromJwt({ sub: 'abc' })).toBeNull();
+        expect(userIdFromJwt({ sub: '42abc' })).toBeNull();
+        expect(userIdFromJwt({ sub: NaN })).toBeNull();
+        expect(userIdFromJwt({ sub: Infinity })).toBeNull();
     });
 });
 

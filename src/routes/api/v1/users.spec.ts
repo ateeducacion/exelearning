@@ -56,6 +56,7 @@ describe('Users API v1', () => {
 
         await resetClientCacheForTesting();
         await up(db);
+        await db.deleteFrom('users').execute();
 
         app = createTestApp();
 

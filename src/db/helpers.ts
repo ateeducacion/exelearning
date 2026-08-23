@@ -378,6 +378,33 @@ async function updateWhereAndReturn<T extends keyof Database>(
 // DELETE HELPERS
 // ============================================================================
 
+async function deleteWhereAndReturn<T extends keyof Database>(
+    db: Kysely<Database>,
+    table: T,
+    whereColumn: string,
+    whereValue: unknown,
+): Promise<TableRow<T>[]> {
+    const qdb = dynamicDb(db);
+
+    if (supportsReturning()) {
+        return qdb.deleteFrom(table).where(whereColumn, '=', whereValue).returningAll().execute() as Promise<
+            TableRow<T>[]
+        >;
+    }
+
+    const rows = (await qdb
+        .selectFrom(table)
+        .selectAll()
+        .where(whereColumn, '=', whereValue)
+        .execute()) as TableRow<T>[];
+
+    if (rows.length > 0) {
+        await qdb.deleteFrom(table).where(whereColumn, '=', whereValue).execute();
+    }
+
+    return rows;
+}
+
 /**
  * Delete rows matching a column value and return the deleted rows
  */
@@ -387,19 +414,7 @@ export async function deleteByColumnAndReturn<T extends keyof Database, C extend
     column: C,
     columnValue: Database[T][C],
 ): Promise<TableRow<T>[]> {
-    const qdb = dynamicDb(db);
-
-    if (supportsReturning()) {
-        return qdb.deleteFrom(table).where(column, '=', columnValue).returningAll().execute() as Promise<TableRow<T>[]>;
-    }
-
-    const rows = (await qdb.selectFrom(table).selectAll().where(column, '=', columnValue).execute()) as TableRow<T>[];
-
-    if (rows.length > 0) {
-        await qdb.deleteFrom(table).where(column, '=', columnValue).execute();
-    }
-
-    return rows;
+    return deleteWhereAndReturn(db, table, column, columnValue);
 }
 
 /**
@@ -410,6 +425,6 @@ export async function deleteByIdAndReturn<T extends keyof Database>(
     table: T,
     id: number,
 ): Promise<TableRow<T> | undefined> {
-    const rows = await deleteByColumnAndReturn(db, table, 'id' as keyof Database[T] & string, id as never);
+    const rows = await deleteWhereAndReturn(db, table, 'id', id);
     return rows[0];
 }

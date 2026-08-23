@@ -1,0 +1,65 @@
+name: Build Synology SPK Release
+
+on:
+  release:
+    types: [prereleased, released]
+  pull_request:
+    paths:
+      - 'packaging/synology/**'
+      - '.github/workflows/synology-release.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g., 4.0.4 or v4.0.4)'
+        required: true
+
+jobs:
+  build-spk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+            echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INPUT_VER="${{ github.event.inputs.version }}"
+            echo "version=${INPUT_VER#v}" >> $GITHUB_OUTPUT
+            echo "tag=v${INPUT_VER#v}" >> $GITHUB_OUTPUT
+          else
+            echo "version=0.0.0-test" >> $GITHUB_OUTPUT
+            echo "tag=v0.0.0-test" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Synology SPK
+        run: |
+          make package-synology VERSION=${{ steps.version.outputs.version }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: exelearning-${{ steps.version.outputs.version }}-spk
+          path: release/exelearning-*.spk
+
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release'
+        run: |
+          gh release upload ${{ steps.version.outputs.tag }} \
+            release/exelearning-${{ steps.version.outputs.version }}.spk \
+            --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -17,6 +17,7 @@ import type {
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { blobFromBytes } from '../../utils/blob';
+import { resolveMaterialIconDataUris } from './BaseExporter';
 
 /**
  * Options for print preview generation
@@ -125,6 +126,10 @@ export class PrintPreviewExporter {
             }
 
             const usedIdevices = this.getUsedIdevices(processedPages);
+            const { dataUris: materialIconDataUris } = await resolveMaterialIconDataUris(
+                this.resources,
+                processedPages,
+            );
 
             // Access version safely from window object
             const windowConfig =
@@ -146,6 +151,8 @@ export class PrintPreviewExporter {
                 addExeLink: meta.addExeLink ?? true,
                 userFooterContent: meta.footer || '',
                 version, // From browser context
+                assetExportPathMap: this.assetExportPathMap || undefined,
+                materialIconDataUris,
             });
 
             // Post-process HTML:
@@ -154,6 +161,11 @@ export class PrintPreviewExporter {
 
             // 2. Patch relative paths (libs/, theme/) to server absolute paths
             html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options);
+
+            // 2b. Resolve any remaining content/resources or asset:// URLs to blob URLs.
+            // Block header custom icons are generated at render time, so they are not covered
+            // by the page/component preprocess step above.
+            html = await this.resolveAssetUrls(html);
 
             // 3. Make hidden feedback elements visible (remove display: none)
             html = this.revealFeedback(html);

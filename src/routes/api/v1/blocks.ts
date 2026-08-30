@@ -195,6 +195,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
                 updateBlock(ydoc, params.blockId, {
                     name: input.name,
                     iconName: input.iconName,
+                    icon: input.icon,
                     properties: input.properties,
                 }),
             );

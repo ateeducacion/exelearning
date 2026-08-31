@@ -125,13 +125,22 @@ describe('createViewerRuntime', () => {
         expect(runtime.registry.wrappers()).toEqual([]);
     });
 
-    it('binds a single beforeunload teardown', () => {
+    it('binds a single pagehide teardown that respects bfcache', () => {
         const addEventListener = vi.spyOn(globalThis, 'addEventListener');
         const runtime = createViewerRuntime();
-        runtime.init(createWrapper('one'), readWrapperOptions(createWrapper('one-opts')));
+        const first = runtime.init(createWrapper('one'), readWrapperOptions(createWrapper('one-opts')));
         runtime.init(createWrapper('two'), readWrapperOptions(createWrapper('two-opts')));
-        const unloadBindings = addEventListener.mock.calls.filter(call => call[0] === 'beforeunload');
-        expect(unloadBindings).toHaveLength(1);
+        const pageHideBindings = addEventListener.mock.calls.filter(call => call[0] === 'pagehide');
+        expect(pageHideBindings).toHaveLength(1);
+        const handler = pageHideBindings[0][1] as (event: { persisted?: boolean }) => void;
+
+        handler({ persisted: true });
+        expect(first?.stopped).toBeFalsy();
+        expect(runtime.registry.wrappers()).toHaveLength(2);
+
+        handler({ persisted: false });
+        expect(first?.stopped).toBe(true);
+        expect(runtime.registry.wrappers()).toEqual([]);
     });
 
     it('creates an interaction layer through the shared controller', () => {

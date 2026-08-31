@@ -8,7 +8,12 @@
  */
 
 import { createInteractionController } from '../interactions/controller';
-import type { InteractionController, InteractionHandle, InteractionHooks, InteractionMode } from '../interactions/types';
+import type {
+    InteractionController,
+    InteractionHandle,
+    InteractionHooks,
+    InteractionMode,
+} from '../interactions/types';
 import { DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR, normalizeColor } from '../shared/colors';
 import { detectModelType, normalizeModelSource } from '../shared/model-source';
 import type { InteractionSettings } from '../shared/types';
@@ -61,14 +66,29 @@ export interface ViewerRuntime {
 /** Build a runtime with its own registry. */
 export function createViewerRuntime(): ViewerRuntime {
     const registry = createRegistry();
-    let unloadBound = false;
+    let pageHideBound = false;
 
-    const bindUnloadOnce = (): void => {
-        if (unloadBound || typeof globalThis.addEventListener !== 'function') {
+    /**
+     * `pagehide` replaces the former `beforeunload` binding: an unload-family
+     * listener makes the page ineligible for the back/forward cache, and the
+     * viewer ships inside SCORM packages whose runtime relies on bfcache
+     * staying available.
+     *
+     * `event.persisted === true` means the page is being frozen into the
+     * back/forward cache and may be restored intact, so the WebGL contexts
+     * and object URLs must survive; only a real teardown disposes them.
+     */
+    const bindPageHideOnce = (): void => {
+        if (pageHideBound || typeof globalThis.addEventListener !== 'function') {
             return;
         }
-        unloadBound = true;
-        globalThis.addEventListener('beforeunload', () => registry.destroyAll());
+        pageHideBound = true;
+        globalThis.addEventListener('pagehide', (event: PageTransitionEvent) => {
+            if (event.persisted) {
+                return;
+            }
+            registry.destroyAll();
+        });
     };
 
     return {
@@ -84,7 +104,7 @@ export function createViewerRuntime(): ViewerRuntime {
             // Register before any async boot work so `destroy()` always finds
             // the instance, even mid-fetch.
             registry.set(wrapper, instance);
-            bindUnloadOnce();
+            bindPageHideOnce();
             if (instance.type === 'stl' && instance.options.src) {
                 void bootStl(instance).catch((error: unknown) => {
                     console.error('[3D Viewer] STL boot failed:', error);

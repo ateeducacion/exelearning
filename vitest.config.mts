@@ -39,7 +39,7 @@ export default defineConfig({
             'public/app/**/*.test.js',
             'public/libs/**/*.test.js',
             'public/files/perm/idevices/**/*.test.js',
-            // TypeScript iDevices (ADR-0006): any iDevice with a src/ tree
+            // TypeScript iDevices (ADR-2147-01): any iDevice with a src/ tree
             // keeps colocated .spec.ts files — discovered by convention so a
             // new TypeScript iDevice needs no config edit.
             'public/files/perm/idevices/**/src/**/*.spec.ts',
@@ -89,7 +89,7 @@ export default defineConfig({
             reportsDirectory: './coverage/vitest',
             include: [
                 'public/app/**/*.js',
-                // TypeScript iDevices (ADR-0006) are unit-tested through real
+                // TypeScript iDevices (ADR-2147-01) are unit-tested through real
                 // imports, so v8 can instrument their sources. The rest of
                 // public/files/perm is eval-loaded by the shared iDevice
                 // harness, which v8 cannot see, so including it would only

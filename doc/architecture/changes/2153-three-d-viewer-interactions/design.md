@@ -1,17 +1,14 @@
 ---
-id: SDD-0002
+tracking_issue: 2153
 title: "3D Viewer interactions: hotspots, guided navigation and questions"
-status: Draft
+status: implemented
 date: 2026-07-10
 authors:
   - "@erseco"
 reviewers:
   - "@erseco"
-related:
-  issues: [2153]
-  prs: [2157]
-  adrs: [ADR-0006, ADR-0007]
-  sdds: []
+implementation_prs: [2157, 40]
+related_adrs: [ADR-2147-01, ADR-2153-01]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,11 +17,7 @@ ai_assistance:
   notes: "TypeScript implementation section revised with claude-opus-5"
 ---
 
-# SDD-0002: 3D Viewer interactions: hotspots, guided navigation and questions
-
-## Status
-
-Draft
+# 3D Viewer interactions: hotspots, guided navigation and questions — design
 
 ## Summary
 
@@ -198,7 +191,7 @@ Files changed (no new registered lib; all new code lives in already-loaded files
 registration edits are required** — confirmed by directory-recursion packaging in
 `src/shared/export/providers/FileSystemResourceProvider.ts:93`):
 
-The iDevice is a **TypeScript iDevice** ([ADR-0006](../adr/ADR-0006-typescript-idevices-build-convention.md)):
+The iDevice is a **TypeScript iDevice** ([ADR-2147-01](../adr/ADR-2147-01-typescript-idevices-build-convention.md)):
 all maintained source lives under `src/`, and `edition/three-d-viewer.js` /
 `export/three-d-viewer.js` are generated, gitignored bundles built by
 `scripts/build-idevices.ts`. `config.xml` keeps loading those two filenames, so nothing about the
@@ -253,7 +246,7 @@ service worker serves the stale bundle from `public/bundles/idevices.zip`.
 | `window.ThreeDViewerExportObject` | export | the engine's serialization helper |
 | `window.eXe3DViewer` | both (idempotent, first wins) | STL scene lifecycle + interaction factory |
 
-**Renderer adapter contract** (see [ADR-0007](../adr/ADR-0007-three-d-viewer-interaction-layer.md)):
+**Renderer adapter contract** (see [ADR-2153-01](../adr/ADR-2153-01-three-d-viewer-interaction-layer.md)):
 
 ```ts
 interface MarkerAdapter {
@@ -472,9 +465,9 @@ until an author enables it.
 
 | Decision | ADR | Status |
 |---|---|---|
-| Renderer-adapter abstraction + shared-runtime interaction layer vs per-path duplication | ADR-0007 | Proposed |
-| Mirror `normalize*` in edition/export (follow 360 convention) rather than a new shared lib | ADR-0007 | Proposed |
-| Serialize interaction state as a JSON `<script>` block, not flat `data-*` | ADR-0007 | Proposed |
+| Renderer-adapter abstraction + shared-runtime interaction layer vs per-path duplication | ADR-2153-01 | Proposed |
+| Mirror `normalize*` in edition/export (follow 360 convention) rather than a new shared lib | ADR-2153-01 | Proposed |
+| Serialize interaction state as a JSON `<script>` block, not flat `data-*` | ADR-2153-01 | Proposed |
 
 ## Evidence
 
@@ -510,17 +503,17 @@ until an author enables it.
 - [x] Editor UI (enable, add/edit/reorder, placement, marker editor, live preview) + tests.
 - [x] Export markup (JSON block, fallback list, nav controls) + tests.
 - [x] CSS (edition + export).
-- [x] TypeScript build convention ([ADR-0006](../adr/ADR-0006-typescript-idevices-build-convention.md)):
+- [x] TypeScript build convention ([ADR-2147-01](../adr/ADR-2147-01-typescript-idevices-build-convention.md)):
       `src/` sources, generated bundles gitignored, bundle-contract tests.
 - [x] Playwright spec + `make test-e2e` / `make test-e2e-static`.
-- [x] ADR-0007; records index updates. `config.xml` unchanged — the generated bundles keep the
+- [x] ADR-2153-01; records index updates. `config.xml` unchanged — the generated bundles keep the
       existing filenames.
 
 ## References
 
 - Issue: https://github.com/exelearning/exelearning/issues/2153
-- [ADR-0007](../adr/ADR-0007-three-d-viewer-interaction-layer.md) (this feature's durable decisions).
-- [ADR-0006](../adr/ADR-0006-typescript-idevices-build-convention.md) and
+- [ADR-2153-01](../adr/ADR-2153-01-three-d-viewer-interaction-layer.md) (this feature's durable decisions).
+- [ADR-2147-01](../adr/ADR-2147-01-typescript-idevices-build-convention.md) and
   [doc/development/idevices-typescript.md](../../development/idevices-typescript.md) (the build
   convention this iDevice follows).
 - `doc/elpx-format/idevices/patterns.md` (Pattern 1: JSON iDevice), `config-xml.md`.

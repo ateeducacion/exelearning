@@ -1,17 +1,19 @@
 ---
-id: ADR-0007
+id: ADR-2153-01
 title: "3D Viewer interaction layer: renderer adapters over a shared runtime controller"
 status: Proposed
 date: 2026-07-10
+tracking_issue: 2153
 deciders:
   - "@erseco"
 reviewers:
   - "@erseco"
 related:
-  issues: [2153]
-  prs: []
-  sdds: [1]
-  adrs: []
+  prs: [2157]
+  changes:
+    - "2153-three-d-viewer-interactions"
+  adrs:
+    - ADR-2147-01
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,18 +22,14 @@ ai_assistance:
   notes: "Decision revised for the TypeScript implementation with claude-opus-5"
 ---
 
-# ADR-0007: 3D Viewer interaction layer: renderer adapters over a shared runtime controller
-
-## Status
-
-Proposed
+# ADR-2153-01: 3D Viewer interaction layer: renderer adapters over a shared runtime controller
 
 ## Context
 
 The `three-d-viewer` iDevice supports two independent render paths: GLB/GLTF via the
 `<model-viewer>` web component and STL via a bespoke Three.js scene in the shared
 `window.eXe3DViewer` runtime (`public/files/perm/idevices/base/three-d-viewer/export/three-d-viewer-runtime.js`
-@ f3a32e774). SDD-0002 adds hotspots, guided navigation and single-choice questions to this
+@ f3a32e774). the 3D Viewer change design adds hotspots, guided navigation and single-choice questions to this
 iDevice (issue #2153). The two render paths expose completely different placement, projection and
 occlusion mechanics: `<model-viewer>` offers a declarative hotspot API with native projection and
 occlusion (`slot="hotspot-*"`, `positionAndNormalFromPoint()`), while the STL path exposes raw
@@ -41,7 +39,7 @@ and must be projected to a DOM overlay by hand each frame.
 
 (That runtime was a hand-written classic script at the time of this decision. It is now
 `src/runtime/` inside the iDevice's TypeScript source tree, compiled into both generated bundles —
-see [ADR-0006](ADR-0006-typescript-idevices-build-convention.md). The render-path analysis above is
+see [ADR-2147-01](ADR-2147-01-typescript-idevices-build-convention.md). The render-path analysis above is
 unchanged by that move.)
 
 The sibling `three-sixty-viewer` already implements a hotspot system, but because it has **no shared
@@ -114,7 +112,7 @@ Adapter contract:
 Two supporting decisions ride with this ADR:
 
 - **Schema `normalize*`/migration have exactly one maintained source.** The iDevice follows the
-  TypeScript iDevice convention ([ADR-0006](ADR-0006-typescript-idevices-build-convention.md)): all
+  TypeScript iDevice convention ([ADR-2147-01](ADR-2147-01-typescript-idevices-build-convention.md)): all
   source lives under `src/`, and the edition and export bundles are generated IIFEs that each
   compile in a copy of `src/shared/schema.ts`. This replaces the alternative that a classic-script
   implementation would have forced — mirroring the pure schema layer byte-for-byte in `edition/`
@@ -198,15 +196,15 @@ no additional script has to be injected, registered or packaged.
 
 ## Follow-up work
 
-- Implemented per the SDD-0002 checklist.
+- Implemented per the the 3D Viewer change design checklist.
 - Consider promoting the shared schema layer into a cross-iDevice package if a second iDevice ever
   needs the same document primitives.
 - Revisit animated-surface anchoring once a reliable `model-viewer` surface API is validated.
 
 ## References
 
-- [SDD-0002](../sdd/SDD-0002-three-d-viewer-interactions.md).
-- [ADR-0006](ADR-0006-typescript-idevices-build-convention.md) — the TypeScript iDevice build
+- [the 3D Viewer change design](../sdd/the 3D Viewer change design-three-d-viewer-interactions.md).
+- [ADR-2147-01](ADR-2147-01-typescript-idevices-build-convention.md) — the TypeScript iDevice build
   convention this iDevice follows.
 - Issue: https://github.com/exelearning/exelearning/issues/2153
 - `three-d-viewer` and `three-sixty-viewer` sources @ f3a32e774 (paths cited above).

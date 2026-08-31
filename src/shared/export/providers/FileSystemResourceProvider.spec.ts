@@ -225,7 +225,7 @@ describe('FileSystemResourceProvider', () => {
             await fs.writeFile(path.join(exportDir, 'text.test.js'), 'test();');
             await fs.writeFile(path.join(exportDir, 'text.spec.js'), 'spec();');
             // A TypeScript iDevice ships its generated bundle with a linked
-            // source map (ADR-0006); that map is a development aid only.
+            // source map (ADR-2147-01); that map is a development aid only.
             await fs.writeFile(path.join(exportDir, 'text.js.map'), '{"version":3}');
 
             const files = await provider.fetchIdeviceResources('text');

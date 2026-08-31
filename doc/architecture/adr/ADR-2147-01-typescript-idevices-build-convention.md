@@ -1,18 +1,19 @@
 ---
-id: ADR-0006
+id: ADR-2147-01
 title: "TypeScript iDevices: src/ sources compiled by one convention-based build"
 status: Proposed
 date: 2026-07-30
+tracking_issue: 2147
 deciders:
   - "@erseco"
 reviewers:
   - "@mnunezcedec"
   - "@cristinavaldera"
 related:
-  issues: []
   prs: [2147]
-  sdds: [SDD-0001]
-  adrs: [ADR-0005]
+  changes:
+    - "2153-three-d-viewer-interactions"
+  adrs: []
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,11 +21,7 @@ ai_assistance:
   model: "claude-fable-5"
 ---
 
-# ADR-0006: TypeScript iDevices — `src/` sources compiled by one convention-based build
-
-## Status
-
-Proposed
+# ADR-2147-01: TypeScript iDevices: src/ sources compiled by one convention-based build
 
 ## Context
 
@@ -45,8 +42,8 @@ maintained source is TypeScript, without a new build pipeline per iDevice?
 ## Decision drivers
 
 - One obvious convention for the next TypeScript iDevice (zero new scripts).
-- The shipped output must remain plain classic-script IIFEs (ADR-0005: the
-  language and compile step are not a framework).
+- The shipped output must remain plain classic-script IIFEs; the language and
+  compile step are not a framework.
 - Generated artifacts must never be committed; a clean checkout must
   regenerate them through the existing pipeline (`build:all` / `make bundle`).
 - Existing iDevices with special needs (Slide) must fit without renaming their
@@ -121,5 +118,4 @@ runner header and `doc/development/idevices-typescript.md`).
 
 - `scripts/build-idevices.ts` (runner; manifest schema in its header).
 - `doc/development/idevices-typescript.md` (developer guide).
-- ADR-0005 — framework-free stance for Interactive Video.
 - PR [#2147](https://github.com/exelearning/exelearning/pull/2147).

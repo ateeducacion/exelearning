@@ -104,7 +104,7 @@ export class FileSystemResourceProvider implements ResourceProvider {
             const files = await this.readDirectoryRecursive(idevicePath, '');
             // Filter out development-only files. Tests never belong in an
             // export, and neither do the source maps that sit next to a
-            // TypeScript iDevice's generated bundle (see ADR-0006) — the
+            // TypeScript iDevice's generated bundle (see ADR-2147-01) — the
             // browser export path already drops them when building the
             // resource ZIP, so this keeps the server path consistent.
             for (const filePath of files.keys()) {

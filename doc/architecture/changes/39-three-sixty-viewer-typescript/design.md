@@ -1,17 +1,13 @@
 ---
-id: SDD-0002
+tracking_issue: 39
 title: "360° Viewer iDevice: TypeScript refactor on the centralized build convention"
-status: Implemented
+status: implemented
 date: 2026-07-30
 authors:
   - "@erseco"
 reviewers: []
-related:
-  issues: []
-  prs: []
-  adrs:
-    - ADR-0006
-  sdds: []
+implementation_prs: [39]
+related_adrs: [ADR-2147-01]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,11 +15,7 @@ ai_assistance:
   model: "Claude"
 ---
 
-# SDD-0002: 360° Viewer iDevice — TypeScript refactor
-
-## Status
-
-Implemented.
+# 360° Viewer iDevice: TypeScript refactor on the centralized build convention — design
 
 ## Summary
 
@@ -31,11 +23,11 @@ The 360° Viewer (`public/files/perm/idevices/base/three-sixty-viewer/`) moves
 its maintained source from two hand-written classic scripts
 (`edition/three-sixty-viewer.js`, `export/three-sixty-viewer.js`) to a typed,
 modular `src/` tree compiled by the centralized TypeScript-iDevice build
-([ADR-0006](../adr/ADR-0006-typescript-idevices-build-convention.md)). The
-generic conventions — discovery, bundling, typecheck, testing, gitignored
+([ADR-2147-01](../../adr/ADR-2147-01-typescript-idevices-build-convention.md)).
+The generic conventions — discovery, bundling, typecheck, testing, gitignored
 bundles — are documented in
-[doc/development/idevices-typescript.md](../../development/idevices-typescript.md);
-this SDD records only what is specific to the 360° Viewer.
+[doc/development/idevices-typescript.md](../../../development/idevices-typescript.md);
+this record covers only what is specific to the 360° Viewer.
 
 ## Source architecture
 
@@ -115,6 +107,10 @@ disposer bag) and re-rendering a node disposes its predecessor first.
 Multiple viewers per page never share state. The editor mirrors the same
 pattern: one Editor per `init()`, destroyed on re-init.
 
+The export bundle binds `pagehide` (not `beforeunload`) so SCORM 1.2 packages
+stay eligible for the back/forward cache. A persisted `pagehide` leaves
+WebGL contexts intact; a real teardown calls `destroyAll()`.
+
 ## Hotspot placement
 
 Direct placement is an additional authoring path next to list-based creation:
@@ -144,6 +140,6 @@ retargeted).
 
 ## ADRs required or referenced
 
-- [ADR-0006](../adr/ADR-0006-typescript-idevices-build-convention.md) —
+- [ADR-2147-01](../../adr/ADR-2147-01-typescript-idevices-build-convention.md) —
   TypeScript iDevices build convention (reused, no new durable decision
   introduced by this refactor).

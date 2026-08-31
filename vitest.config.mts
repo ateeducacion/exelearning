@@ -86,7 +86,7 @@ export default defineConfig({
             reportsDirectory: './coverage/vitest',
             include: [
                 'public/app/**/*.js',
-                // TypeScript iDevices (ADR-0006) keep their maintained source
+                // TypeScript iDevices (ADR-2147-01) keep their maintained source
                 // under src/ and are unit-tested through real imports, so v8
                 // can instrument them. The rest of public/files/perm is
                 // eval-loaded by the shared iDevice harness, which v8 cannot

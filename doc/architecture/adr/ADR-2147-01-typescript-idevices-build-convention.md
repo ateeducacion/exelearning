@@ -1,18 +1,19 @@
 ---
-id: ADR-0006
+id: ADR-2147-01
 title: "TypeScript iDevices: src/ sources compiled by one convention-based build"
 status: Proposed
 date: 2026-07-30
+tracking_issue: 2147
 deciders:
   - "@erseco"
 reviewers:
   - "@mnunezcedec"
   - "@cristinavaldera"
 related:
-  issues: []
-  prs: [2147]
-  sdds: [SDD-0001]
-  adrs: [ADR-0005]
+  prs: [2147, 39]
+  changes:
+    - "39-three-sixty-viewer-typescript"
+  adrs: []
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,11 +21,7 @@ ai_assistance:
   model: "claude-fable-5"
 ---
 
-# ADR-0006: TypeScript iDevices — `src/` sources compiled by one convention-based build
-
-## Status
-
-Proposed
+# ADR-2147-01: TypeScript iDevices: src/ sources compiled by one convention-based build
 
 ## Context
 
@@ -32,9 +29,10 @@ iDevices are classic-script objects loaded by the workarea and the exporters.
 Historically each one is hand-written vanilla JavaScript committed directly
 under `edition/` and `export/`. Two iDevices now keep their maintained source
 in TypeScript instead — Slide (`src/` + a bespoke `scripts/build-slide-editor.ts`)
-and, with this refactor, the 360° Viewer. Per-iDevice build scripts duplicate
-Bun plumbing and diverge in flags and behaviour, and every future TypeScript
-iDevice would have added another copy plus more package.json entries.
+and Interactive Video (`src/` + a bespoke `scripts/build-interactive-video.ts`).
+Two per-iDevice build scripts with duplicated Bun plumbing were already
+diverging in flags and behaviour, and every future TypeScript iDevice would
+have added another copy plus more package.json entries.
 
 ## Problem
 
@@ -44,8 +42,8 @@ maintained source is TypeScript, without a new build pipeline per iDevice?
 ## Decision drivers
 
 - One obvious convention for the next TypeScript iDevice (zero new scripts).
-- The shipped output must remain plain classic-script IIFEs (ADR-0005: the
-  language and compile step are not a framework).
+- The shipped output must remain plain classic-script IIFEs; the language and
+  compile step are not a framework.
 - Generated artifacts must never be committed; a clean checkout must
   regenerate them through the existing pipeline (`build:all` / `make bundle`).
 - Existing iDevices with special needs (Slide) must fit without renaming their
@@ -97,7 +95,7 @@ runner header and `doc/development/idevices-typescript.md`).
 
 - Adding a TypeScript iDevice = create `src/edition|export/index.ts` (+ a
   strict `tsconfig.json`); building, type-checking and watching come for free.
-- Slide and the 360° Viewer share one build path; Slide's output stayed
+- Slide and Interactive Video share one build path; Slide's output stayed
   byte-identical apart from the generic externals shim's message strings.
 
 ### Negative
@@ -120,5 +118,4 @@ runner header and `doc/development/idevices-typescript.md`).
 
 - `scripts/build-idevices.ts` (runner; manifest schema in its header).
 - `doc/development/idevices-typescript.md` (developer guide).
-- PR [#2147](https://github.com/exelearning/exelearning/pull/2147), which
-  introduced this convention upstream alongside the Interactive Video refactor.
+- PR [#2147](https://github.com/exelearning/exelearning/pull/2147).

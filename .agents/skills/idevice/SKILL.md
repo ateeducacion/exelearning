@@ -39,7 +39,7 @@ An iDevice with a `src/` directory is a **TypeScript iDevice**: its
   plus bundle-contract smoke tests over the compiled IIFEs.
 - Deviations (custom bundle name, externals, minify) go in an optional
   `build.config.json` — see `doc/development/idevices-typescript.md` and
-  ADR-0006. Reference implementations: `three-sixty-viewer` (full convention),
+  ADR-2147-01. Reference implementations: `three-sixty-viewer` (full convention),
   `slide` (manifest).
 
 ## Structure

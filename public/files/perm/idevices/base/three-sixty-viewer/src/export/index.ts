@@ -26,10 +26,29 @@ declare global {
 const runtime = createThreeSixtyRuntime();
 globalThis.$threesixtyviewer = runtime;
 
-// Release every viewer's WebGL resources when the page goes away.
-if (typeof window !== 'undefined' && !window.__threesixtyCleanupBound) {
-    window.__threesixtyCleanupBound = true;
-    window.addEventListener('beforeunload', () => {
-        runtime.destroyAll();
+/**
+ * `pagehide` replaces the former `beforeunload` binding: an unload-family
+ * listener makes the page ineligible for the back/forward cache, and this
+ * runtime ships inside SCORM packages whose SCORM runtime relies on bfcache
+ * staying available. `event.persisted === true` means the page is being frozen
+ * and may be restored intact, so its WebGL contexts must survive.
+ */
+export function bindPageHideCleanup(
+    targetRuntime: { destroyAll: () => void },
+    target: Window & { __threesixtyCleanupBound?: boolean },
+): void {
+    if (target.__threesixtyCleanupBound) {
+        return;
+    }
+    target.__threesixtyCleanupBound = true;
+    target.addEventListener('pagehide', (event: PageTransitionEvent) => {
+        if (event.persisted) {
+            return;
+        }
+        targetRuntime.destroyAll();
     });
+}
+
+if (typeof window !== 'undefined') {
+    bindPageHideCleanup(runtime, window);
 }

@@ -20,15 +20,16 @@ describe('bindPageHideCleanup', () => {
         const bindings = addEventListener.mock.calls.filter(call => call[0] === 'pagehide');
         expect(bindings).toHaveLength(1);
 
-        const handler = bindings[0][1] as (event: Event) => void;
+        const handler = bindings[0]?.[1];
+        expect(typeof handler).toBe('function');
         const freeze = new Event('pagehide');
         Object.defineProperty(freeze, 'persisted', { value: true });
-        handler(freeze);
+        (handler as (event: Event) => void)(freeze);
         expect(destroyAll).not.toHaveBeenCalled();
 
         const teardown = new Event('pagehide');
         Object.defineProperty(teardown, 'persisted', { value: false });
-        handler(teardown);
+        (handler as (event: Event) => void)(teardown);
         expect(destroyAll).toHaveBeenCalledTimes(1);
     });
 });

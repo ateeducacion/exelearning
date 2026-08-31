@@ -132,13 +132,14 @@ describe('createViewerRuntime', () => {
         runtime.init(createWrapper('two'), readWrapperOptions(createWrapper('two-opts')));
         const pageHideBindings = addEventListener.mock.calls.filter(call => call[0] === 'pagehide');
         expect(pageHideBindings).toHaveLength(1);
-        const handler = pageHideBindings[0][1] as (event: { persisted?: boolean }) => void;
+        const handler = pageHideBindings[0]?.[1];
+        expect(typeof handler).toBe('function');
 
-        handler({ persisted: true });
+        (handler as (event: { persisted?: boolean }) => void)({ persisted: true });
         expect(first?.stopped).toBeFalsy();
         expect(runtime.registry.wrappers()).toHaveLength(2);
 
-        handler({ persisted: false });
+        (handler as (event: { persisted?: boolean }) => void)({ persisted: false });
         expect(first?.stopped).toBe(true);
         expect(runtime.registry.wrappers()).toEqual([]);
     });

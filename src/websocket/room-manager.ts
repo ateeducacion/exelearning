@@ -89,10 +89,21 @@ export function resetDependencies(): void {
 
 /**
  * Room with connections and cleanup state
+ *
+ * `conns` is keyed by `ws.data.clientId`, not by the `ws` object itself.
+ * Elysia's Bun adapter constructs a brand-new `ElysiaWS` wrapper around the
+ * underlying Bun socket for every single event (open/message/close/drain) —
+ * see node_modules/elysia/dist/adapter/bun/index.js — so the object passed
+ * to our `open` handler is never reference-equal to the one passed to
+ * `close` for the same connection. A `Set<ServerWebSocket<WsData>>` keyed by
+ * object identity therefore never removes anything on close (`.delete(ws)`
+ * silently no-ops), leaking every connection forever. `clientId` is read
+ * from `ws.data`, which Elysia copies from Bun's own per-connection `data`
+ * and is stable across all of a connection's events.
  */
 interface Room {
     name: string;
-    conns: Set<YjsSocket>;
+    conns: Map<string, YjsSocket>;
     projectUuid: string;
     /** Controller to cancel pending cleanup */
     cleanupController?: AbortController;
@@ -125,7 +136,7 @@ export function getOrCreateRoom(docName: string, projectUuid?: string): Room {
         const uuid = projectUuid || extractProjectUuid(docName) || docName;
         room = {
             name: docName,
-            conns: new Set(),
+            conns: new Map(),
             projectUuid: uuid,
         };
         rooms.set(docName, room);
@@ -152,9 +163,13 @@ export function getRoom(docName: string): Room | undefined {
  * Add connection to room
  */
 export function addConnection(docName: string, ws: YjsSocket, projectUuid?: string): Room {
+    const clientId = ws.data.clientId;
+    if (!clientId) {
+        throw new Error('[RoomManager] Cannot add a connection without clientId');
+    }
     const room = getOrCreateRoom(docName, projectUuid);
     const wasEmpty = room.conns.size === 0;
-    room.conns.add(ws);
+    room.conns.set(clientId, ws);
 
     // Cancel any pending cleanup
     cancelCleanup(docName);
@@ -181,7 +196,9 @@ export function removeConnection(docName: string, ws: YjsSocket): void {
     const room = rooms.get(docName);
     if (!room) return;
 
-    room.conns.delete(ws);
+    const clientId = ws.data.clientId;
+    if (!clientId) return;
+    room.conns.delete(clientId);
 
     if (DEBUG) {
         console.log(`[RoomManager] Removed connection from ${docName} (${room.conns.size} remaining)`);
@@ -277,8 +294,12 @@ export function relayMessage(sender: YjsSocket, docName: string, message: Buffer
     const room = rooms.get(docName);
     if (!room) return;
 
-    for (const conn of room.conns) {
-        if (conn !== sender && conn.readyState === 1) {
+    // Compare by clientId, not object identity: `sender` is a fresh
+    // ElysiaWS wrapper for this message event and would never be
+    // reference-equal to the wrapper stored at connection-open time (see
+    // the Room.conns doc comment above).
+    for (const conn of room.conns.values()) {
+        if (conn.data.clientId !== sender.data.clientId && conn.readyState === 1) {
             // 1 = OPEN
             try {
                 conn.send(message);
@@ -298,7 +319,7 @@ export function broadcastToRoom(docName: string, message: Buffer | string): void
     const room = rooms.get(docName);
     if (!room) return;
 
-    for (const conn of room.conns) {
+    for (const conn of room.conns.values()) {
         if (conn.readyState === 1) {
             // 1 = OPEN
             try {
@@ -328,7 +349,7 @@ export function getConnectionsByUserId(docName: string, userId: number): YjsSock
     if (!room) return [];
 
     const connections: YjsSocket[] = [];
-    for (const conn of room.conns) {
+    for (const conn of room.conns.values()) {
         if (conn.data?.userId === userId) {
             connections.push(conn);
         }
@@ -344,7 +365,7 @@ export function getConnectedUserIds(docName: string): number[] {
     if (!room) return [];
 
     const userIds = new Set<number>();
-    for (const conn of room.conns) {
+    for (const conn of room.conns.values()) {
         if (conn.data?.userId !== undefined) {
             userIds.add(conn.data.userId);
         }
@@ -396,7 +417,7 @@ export function closeAllRooms(): void {
         room.cleanupController?.abort();
 
         // Close all connections
-        for (const conn of room.conns) {
+        for (const conn of room.conns.values()) {
             try {
                 conn.close(1001, 'Server shutting down');
             } catch {

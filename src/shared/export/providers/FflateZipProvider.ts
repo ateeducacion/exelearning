@@ -9,6 +9,9 @@
  */
 
 import * as fflate from 'fflate';
+
+/** Compression level accepted by fflate (0 = store, 9 = max). */
+type ZipCompressionLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 import type { ZipProvider, ZipArchive } from '../interfaces';
 
 type ZipGenerateStats = {
@@ -52,18 +55,14 @@ function shouldDeflatePath(filePath: string): boolean {
 }
 
 /**
- * Convert various content types to Uint8Array
+ * Convert content to Uint8Array
  */
-function toUint8Array(content: string | Uint8Array | Buffer | Blob): Uint8Array {
+function toUint8Array(content: string | Uint8Array | Buffer): Uint8Array {
     if (content instanceof Uint8Array) {
         // Already a Uint8Array (includes Buffer in Node.js)
         return content;
     }
-    if (typeof content === 'string') {
-        return new TextEncoder().encode(content);
-    }
-    // Blob - this shouldn't happen in sync context, but handle it
-    throw new Error('Blob content must be converted to Uint8Array before adding to ZIP');
+    return new TextEncoder().encode(content);
 }
 
 /**
@@ -95,15 +94,15 @@ export class FflateZipProvider implements ZipProvider, ZipArchive {
     /**
      * Add a file to the archive
      */
-    addFile(path: string, content: string | Uint8Array | Blob): void {
-        const data = toUint8Array(content as string | Uint8Array | Buffer);
+    addFile(path: string, content: string | Uint8Array): void {
+        const data = toUint8Array(content);
         this.files.set(path, data);
     }
 
     /**
      * Add multiple files from a Map
      */
-    addFiles(files: Map<string, string | Uint8Array | Blob>): void {
+    addFiles(files: Map<string, string | Uint8Array>): void {
         for (const [path, content] of files) {
             this.addFile(path, content);
         }
@@ -251,7 +250,10 @@ export function unzipSync(zipData: Buffer | Uint8Array): Record<string, Uint8Arr
  * @param options - Compression options
  * @returns ZIP content as Uint8Array
  */
-export function zipSync(files: Record<string, Uint8Array | string>, options: { level?: number } = {}): Uint8Array {
+export function zipSync(
+    files: Record<string, Uint8Array | string>,
+    options: { level?: ZipCompressionLevel } = {},
+): Uint8Array {
     const level = options.level ?? 6;
     const zippable: fflate.Zippable = {};
 
@@ -287,7 +289,10 @@ export function unzip(zipData: Buffer | Uint8Array): Promise<Record<string, Uint
  * @param options - Compression options
  * @returns Promise with ZIP content as Uint8Array
  */
-export function zip(files: Record<string, Uint8Array | string>, options: { level?: number } = {}): Promise<Uint8Array> {
+export function zip(
+    files: Record<string, Uint8Array | string>,
+    options: { level?: ZipCompressionLevel } = {},
+): Promise<Uint8Array> {
     return new Promise((resolve, reject) => {
         const level = options.level ?? 6;
         const zippable: fflate.Zippable = {};

@@ -90,6 +90,7 @@ export interface ExportPage {
     parentId: string | null;
     order: number;
     blocks: ExportBlock[];
+    children?: ExportPage[];
 
     // Optional page-level properties
     properties?: Record<string, unknown>;
@@ -304,7 +305,8 @@ export interface ExportAsset {
     /** Folder path for export structure (empty string = root) */
     folderPath?: string;
     mime: string;
-    data: Uint8Array | Blob;
+    /** Binary content. Blobs are converted to Uint8Array at the provider boundary. */
+    data: Uint8Array;
 }
 
 /**
@@ -345,10 +347,10 @@ export interface ZipProvider {
     createZip(): ZipArchive;
 
     // Methods for direct usage if the provider acts as the archive (BaseExporter usage compatibility)
-    addFile(path: string, content: string | Uint8Array | Blob): void;
+    addFile(path: string, content: string | Uint8Array): void;
     hasFile(path: string): boolean;
     getFilePaths(): string[];
-    generateAsync(options?: ZipGenerateOptions): Promise<Uint8Array | Blob>;
+    generateAsync(options?: ZipGenerateOptions): Promise<Uint8Array>;
 }
 
 /**
@@ -386,13 +388,13 @@ export interface ZipArchive {
      * @param path - Path within the ZIP
      * @param content - File content
      */
-    addFile(path: string, content: string | Uint8Array | Blob): void;
+    addFile(path: string, content: string | Uint8Array): void;
 
     /**
      * Add multiple files from a Map
      * @param files - Map of path -> content
      */
-    addFiles(files: Map<string, string | Uint8Array | Blob>): void;
+    addFiles(files: Map<string, string | Uint8Array>): void;
 
     /**
      * Check if a file exists in the archive
@@ -557,8 +559,13 @@ export interface ElpxExportOptions extends ExportOptions {
 export interface ExportResult {
     success: boolean;
     filename?: string;
-    data?: Uint8Array | Blob;
+    data?: Uint8Array;
     error?: string;
+}
+
+/** Return the byte size of binary export data. */
+export function getBinarySize(data: Uint8Array): number {
+    return data.byteLength;
 }
 
 // =============================================================================
@@ -651,6 +658,7 @@ export interface PageRenderOptions {
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
     addMathJax?: boolean;
+    linkToElp?: boolean;
 
     // Custom head content
     extraHeadContent?: string;
@@ -676,7 +684,7 @@ export interface PageRenderOptions {
     navLabels?: {
         previous: string;
         next: string;
-        page: string;
+        page?: string;
         license?: string;
         licenseLabel?: string;
         madeWith?: string;
@@ -863,6 +871,8 @@ export interface LomMetadataOptions {
     keywords?: string;
     category?: string;
     license?: string;
+    catalogName?: string;
+    catalogEntry?: string;
 }
 
 /**

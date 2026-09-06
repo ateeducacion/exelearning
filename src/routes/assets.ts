@@ -44,7 +44,7 @@ import {
 
 import { getSession as getSessionDefault } from '../services/session-manager';
 import { serverPriorityQueue as serverPriorityQueueDefault } from '../services/asset-priority-queue';
-import type { AssetUploadRequest } from './types/request-payloads';
+import { assertRequestBody, type AssetUploadRequest } from './types/request-payloads';
 import { isSafePathSegment, safeJoin, sanitizeFileExtension } from '../utils/safe-path';
 import { buildAssetStoragePath } from '../utils/asset-paths';
 
@@ -145,7 +145,14 @@ const defaultSessionManager: AssetsSessionManagerDeps = {
  */
 const defaultPriorityQueue: AssetsPriorityQueueDeps = {
     shouldPreempt: serverPriorityQueueDefault.shouldPreempt.bind(serverPriorityQueueDefault),
-    getStats: serverPriorityQueueDefault.getStats.bind(serverPriorityQueueDefault),
+    getStats: projectId => {
+        const stats = serverPriorityQueueDefault.getStats(projectId);
+        return {
+            queueLength: stats.queueLength,
+            processingCount: stats.activeSlots,
+            completedCount: 0,
+        };
+    },
 };
 
 /**
@@ -197,6 +204,24 @@ const chunkUploads = new Map<string, ChunkUploadEntry>();
  * Prevents an attacker from writing arbitrarily large files via one chunk.
  */
 export const MAX_CHUNK_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Normalise an uploaded chunk to a Buffer.
+ * Multipart uploads arrive as Blob; tests and some clients send Buffer,
+ * ArrayBuffer, or Uint8Array.
+ */
+export async function resolveChunkBuffer(chunk: unknown): Promise<Buffer> {
+    if (chunk instanceof Blob) {
+        return Buffer.from(await chunk.arrayBuffer());
+    }
+    if (Buffer.isBuffer(chunk)) {
+        return chunk;
+    }
+    if (chunk instanceof ArrayBuffer) {
+        return Buffer.from(new Uint8Array(chunk));
+    }
+    return Buffer.from(chunk as Uint8Array);
+}
 
 /**
  * Maximum number of chunks a single upload may declare (10000).
@@ -366,9 +391,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             // authenticated user on public projects — same semantics as the
             // Yjs WebSocket via checkProjectAccess).
             .use(withJwtAuth())
-            .onBeforeHandle(async ({ jwtPayload, params, set }) => {
+            .onBeforeHandle(async ({ identity, params, set }) => {
                 const projectIdParam = (params as Record<string, string>).projectId;
-                const result = await enforceProjectAccess(jwtPayload, projectIdParam, {
+                const result = await enforceProjectAccess(identity, projectIdParam, {
                     db: database,
                     queries: {
                         findProjectByUuid: queries.findProjectByUuid,
@@ -390,7 +415,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .post('/', async ({ params, body, query, set }) => {
                 try {
                     const { projectId } = params;
-                    const data = body as AssetUploadRequest;
+                    const data = assertRequestBody<AssetUploadRequest>(body);
 
                     // Resolve the project row (handles both UUID and numeric strings)
                     const project = await resolveProject(projectId);
@@ -526,12 +551,12 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .post('/upload-chunk', async ({ params, body, set }) => {
                 try {
                     const { projectId } = params;
-                    const data = body as AssetUploadRequest;
+                    const data = assertRequestBody<AssetUploadRequest>(body);
 
-                    const identifier = data.resumableIdentifier;
-                    const chunkNumber = parseInt(data.resumableChunkNumber, 10);
-                    const totalChunks = parseInt(data.resumableTotalChunks, 10);
-                    const filename = data.resumableFilename;
+                    const identifier = String(data.resumableIdentifier || '');
+                    const chunkNumber = parseInt(String(data.resumableChunkNumber || ''), 10);
+                    const totalChunks = parseInt(String(data.resumableTotalChunks || ''), 10);
+                    const filename = String(data.resumableFilename || '');
                     const chunk = data.file;
 
                     if (!identifier || !chunkNumber || !chunk) {
@@ -555,14 +580,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
                     // Resolve the chunk buffer early so we can enforce the per-chunk size cap
                     // BEFORE creating any tracking state or touching disk.
-                    let chunkBuffer: Buffer;
-                    if (chunk instanceof Blob) {
-                        chunkBuffer = Buffer.from(await chunk.arrayBuffer());
-                    } else if (Buffer.isBuffer(chunk)) {
-                        chunkBuffer = chunk;
-                    } else {
-                        chunkBuffer = Buffer.from(chunk as ArrayBuffer | Uint8Array);
-                    }
+                    const chunkBuffer = await resolveChunkBuffer(chunk);
 
                     // Cap the size of an individual chunk to bound disk/memory usage.
                     if (chunkBuffer.length > MAX_CHUNK_BYTES) {
@@ -632,7 +650,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .post('/upload-chunk/finalize', async ({ params, body, set }) => {
                 try {
                     const { projectId } = params;
-                    const data = body as AssetUploadRequest;
+                    const data = assertRequestBody<AssetUploadRequest>(body);
                     const identifier = data.resumableIdentifier || data.identifier;
                     const componentId = data.componentId;
                     const clientId = data.clientId || uuidv4();
@@ -747,6 +765,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                             file_size: String(stats?.size || 0),
                             component_id: componentId || null,
                             client_id: clientId,
+                            folder_path: sanitizeFolderPath(data.folderPath),
                         });
                     }
 
@@ -1050,7 +1069,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             .post('/sync', async ({ params, body, set }) => {
                 try {
                     const { projectId } = params;
-                    const data = body as AssetUploadRequest;
+                    const data = assertRequestBody<AssetUploadRequest>(body);
 
                     // Resolve the project row (handles both UUID and numeric strings)
                     const project = await resolveProject(projectId);
@@ -1101,12 +1120,15 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         const fileMeta = metadata[i] || { clientId: `file-${i}`, filename: 'unknown' };
                         let fileBuffer: Buffer;
                         let filename = fileMeta.filename || 'uploaded_file';
-                        let mimeType = fileMeta.mimeType || 'application/octet-stream';
-                        const folderPath = sanitizeFolderPath(fileMeta.folderPath);
+                        let mimeType =
+                            ('mimeType' in fileMeta ? fileMeta.mimeType : undefined) || 'application/octet-stream';
+                        const folderPath = sanitizeFolderPath(
+                            'folderPath' in fileMeta ? fileMeta.folderPath : undefined,
+                        );
 
                         if (file instanceof Blob) {
                             fileBuffer = Buffer.from(await file.arrayBuffer());
-                            if ((file as FileWithName).name) filename = (file as FileWithName).name;
+                            if ((file as FileWithName).name) filename = String((file as FileWithName).name);
                             if (file.type) mimeType = file.type;
                         } else if (Buffer.isBuffer(file)) {
                             fileBuffer = file;
@@ -1340,7 +1362,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
                     // Use Bun's native streaming for optimal performance
                     if (typeof Bun !== 'undefined' && Bun.write) {
-                        await Bun.write(filePath, body);
+                        await Bun.write(filePath, new Response(body));
                     } else {
                         // Fallback for non-Bun environments
                         const chunks: Buffer[] = [];
@@ -1418,8 +1440,8 @@ interface SerializedAsset {
     componentId: string | null;
     clientId: string | null;
     folderPath: string;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: number | null;
+    updatedAt: number | null;
 }
 
 /**

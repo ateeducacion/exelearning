@@ -35,7 +35,16 @@ export default defineConfig({
         setupFiles: ['./public/vitest.setup.js'],
 
         // Only include frontend tests
-        include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js', 'public/files/perm/idevices/**/*.test.js', 'public/preview-sw.test.js'],
+        include: [
+            'public/app/**/*.test.js',
+            'public/libs/**/*.test.js',
+            'public/files/perm/idevices/**/*.test.js',
+            // TypeScript iDevices (ADR-2147-01): any iDevice with a src/ tree
+            // keeps colocated .spec.ts files — discovered by convention so a
+            // new TypeScript iDevice needs no config edit.
+            'public/files/perm/idevices/**/src/**/*.spec.ts',
+            'public/preview-sw.test.js',
+        ],
 
         // Exclude legacy code
         exclude: [
@@ -78,11 +87,21 @@ export default defineConfig({
             provider: 'v8',
             reporter: ['text', 'lcov'],
             reportsDirectory: './coverage/vitest',
-            include: ['public/app/**/*.js'],
+            include: [
+                'public/app/**/*.js',
+                // TypeScript iDevices (ADR-2147-01) are unit-tested through real
+                // imports, so v8 can instrument their sources. The rest of
+                // public/files/perm is eval-loaded by the shared iDevice
+                // harness, which v8 cannot see, so including it would only
+                // report zeros for code that IS tested.
+                'public/files/perm/idevices/base/*/src/**/*.ts',
+            ],
             exclude: [
                 '**/node_modules/**',
                 '**/*.test.js',
                 '**/*.test-util.js',
+                '**/*.spec.ts',
+                '**/*.d.ts',
                 '**/vitest.setup.js',
                 '**/libs/**',
                 '**/*.min.js',
@@ -104,7 +123,17 @@ export default defineConfig({
                 'public/app/common/edicuatex/**/*.css',
                 'public/app/common/edicuatex/**/*.html',
                 'public/app/common/edicuatex/**/*.json',
-                'public/files/perm/**',
+                // Generated TypeScript-iDevice bundles (built from src/ by
+                // scripts/build-idevices.ts); coverage is measured on the
+                // TypeScript sources, not on their compiled output.
+                'public/files/perm/idevices/**/edition/*.js',
+                'public/files/perm/idevices/**/export/*.js',
+                // Test doubles and fixtures live beside the sources they serve.
+                'public/files/perm/idevices/base/*/src/test/**',
+                // Bundle entry points: a few lines of global assignment,
+                // exercised through the compiled IIFEs by the bundle-contract
+                // tests — which v8 cannot attribute back to the source.
+                'public/files/perm/idevices/base/*/src/*/index.ts',
             ],
         },
     },

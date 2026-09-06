@@ -35,7 +35,13 @@ export default defineConfig({
         setupFiles: ['./public/vitest.setup.js'],
 
         // Only include frontend tests
-        include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js', 'public/files/perm/idevices/**/*.test.js', 'public/preview-sw.test.js'],
+        include: [
+            'public/app/**/*.test.js',
+            'public/libs/**/*.test.js',
+            'public/files/perm/idevices/**/*.test.js',
+            'public/files/perm/idevices/base/*/src/**/*.spec.ts',
+            'public/preview-sw.test.js',
+        ],
 
         // Exclude legacy code
         exclude: [
@@ -78,11 +84,22 @@ export default defineConfig({
             provider: 'v8',
             reporter: ['text', 'lcov'],
             reportsDirectory: './coverage/vitest',
-            include: ['public/app/**/*.js'],
+            include: [
+                'public/app/**/*.js',
+                // TypeScript iDevices (ADR-2147-01) keep their maintained source
+                // under src/ and are unit-tested through real imports, so v8
+                // can instrument them. The rest of public/files/perm is
+                // eval-loaded by the shared iDevice harness, which v8 cannot
+                // see, so including it would only report zeros for code that
+                // IS tested.
+                'public/files/perm/idevices/base/*/src/**/*.ts',
+            ],
             exclude: [
                 '**/node_modules/**',
                 '**/*.test.js',
                 '**/*.test-util.js',
+                '**/*.spec.ts',
+                '**/*.d.ts',
                 '**/vitest.setup.js',
                 '**/libs/**',
                 '**/*.min.js',
@@ -104,7 +121,19 @@ export default defineConfig({
                 'public/app/common/edicuatex/**/*.css',
                 'public/app/common/edicuatex/**/*.html',
                 'public/app/common/edicuatex/**/*.json',
-                'public/files/perm/**',
+                // Generated TypeScript-iDevice bundles (built from each src/ by
+                // scripts/build-idevices.ts); coverage is measured on the
+                // TypeScript sources, not on their compiled output. Test
+                // fixtures and browser-only entry points are exercised through
+                // bundle-contract and E2E tests instead.
+                'public/files/perm/idevices/base/*/edition/*.js',
+                'public/files/perm/idevices/base/*/export/*.js',
+                'public/files/perm/idevices/base/*/src/test/fixtures/**',
+                // Bundle entry points only assign the window globals; v8 can't
+                // see them through imports (they run as compiled IIFEs) — the
+                // bundle-contract specs exercise them instead.
+                'public/files/perm/idevices/base/*/src/edition/index.ts',
+                'public/files/perm/idevices/base/*/src/export/index.ts',
             ],
         },
     },

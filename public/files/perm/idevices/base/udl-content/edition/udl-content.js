@@ -238,7 +238,7 @@ var $exeDevice = {
         // Delete block
         e.unbind('click').click(function () {
             var msg = _("Delete block $? This can't be undone.");
-            msg = msg.replace('$', i + 1);
+            msg = msg.replace(/\$/g, i + 1);
             eXe.app.confirm(_('Attention'), msg, function () {
                 // Update the data
                 var data = $exeDevice.formToJSON();
@@ -334,9 +334,12 @@ var $exeDevice = {
         fid = fid.replace('Options-', 'Explanation-');
         optionsBlock = $('#' + fid);
         if (e.value != '' && e.value.indexOf('|') != -1) {
-            var tmp = e.value;
-            tmp = tmp.replace('|', '~~');
-            var parts = tmp.split('~~');
+            // Split on the first "|" only: hidden screen-reader text | visible label
+            var pipeIdx = e.value.indexOf('|');
+            var parts = [
+                e.value.slice(0, pipeIdx),
+                e.value.slice(pipeIdx + 1),
+            ];
             if (parts.length == 2) {
                 if (parts[0] != '' && parts[1] != '') {
                     var spans = $('span', optionsBlock);
@@ -559,9 +562,9 @@ var $exeDevice = {
         var txtA = '';
         var txtB = '';
         if (btnTxt.indexOf('|') != -1) {
-            var tmp = btnTxt;
-            tmp = tmp.replace('|', '~~');
-            var parts = tmp.split('~~');
+            // Split on the first "|" only: hidden screen-reader text | visible label
+            var pipeIdx = btnTxt.indexOf('|');
+            var parts = [btnTxt.slice(0, pipeIdx), btnTxt.slice(pipeIdx + 1)];
             if (parts.length == 2) {
                 if (parts[0] != '' && parts[1] != '') {
                     btnTextPartsStyle = '';
@@ -862,8 +865,12 @@ var $exeDevice = {
                 btnTxt = $.trim(btnTxt);
                 // Check if the button text has accessible hidden content
                 if (btnTxt.indexOf('|') != -1) {
-                    var tmp = btnTxt.replace('|', '~~');
-                    var parts = tmp.split('~~');
+                    // Split on the first "|" only: hidden screen-reader text | visible label
+                    var pipeIdx = btnTxt.indexOf('|');
+                    var parts = [
+                        btnTxt.slice(0, pipeIdx),
+                        btnTxt.slice(pipeIdx + 1),
+                    ];
                     if (parts.length == 2) {
                         if (parts[0] != '' && parts[1] != '') {
                             btnTxt =

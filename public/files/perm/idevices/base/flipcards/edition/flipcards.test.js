@@ -358,6 +358,85 @@ describe('flipcards iDevice', () => {
     });
   });
 
+  describe('encodeURIComponentSafe / decodeURIComponentSafe', () => {
+    it('encodes every percent sign, not just the first', () => {
+      // Both literal percent signs must be turned into the &percnt; sentinel
+      // (URL-encoded as %26percnt%3B). A first-only replace would leave the
+      // second "%" to be encoded as a bare "%25".
+      const encoded = $exeDevice.encodeURIComponentSafe('50% 60%');
+      // No raw encoded "%" ("%25") should remain.
+      expect(encoded).not.toContain('%25');
+      // Both percents became the &percnt; sentinel.
+      expect((encoded.match(/%26percnt%3B/g) || []).length).toBe(2);
+    });
+
+    it('round-trips a string containing multiple percent signs', () => {
+      const original = '100% sure & 50% done';
+      const restored = $exeDevice.decodeURIComponentSafe(
+        $exeDevice.encodeURIComponentSafe(original),
+      );
+      expect(restored).toBe(original);
+    });
+
+    it('decodes every &percnt; occurrence, not just the first', () => {
+      const decoded = $exeDevice.decodeURIComponentSafe(
+        '&percnt;A&percnt;B&percnt;',
+      );
+      expect(decoded).toBe('%A%B%');
+    });
+
+    it('returns falsy input unchanged', () => {
+      expect($exeDevice.encodeURIComponentSafe('')).toBe('');
+      expect($exeDevice.decodeURIComponentSafe('')).toBe('');
+    });
+  });
+
+  describe('importGlosary tag stripping', () => {
+    const buildGlosaryXml = (concept, definition) =>
+      `<?xml version="1.0"?><GLOSSARY><INFO></INFO><ENTRIES><ENTRY><CONCEPT>${concept}</CONCEPT><DEFINITION>${definition}</DEFINITION></ENTRY></ENTRIES></GLOSSARY>`;
+
+    let captured;
+
+    beforeEach(() => {
+      captured = [];
+      // Stub addCards so we can inspect the parsed cards without pulling in
+      // postImportProcessing / DOM-heavy side effects.
+      $exeDevice.addCards = (cards) => {
+        captured = cards;
+      };
+    });
+
+    it('strips a nested/obfuscated tag payload, leaving no opening tag', () => {
+      // Glossary markup arrives entity-escaped; .text() decodes it back to
+      // real tags, e.g. "<scr<script>ipt>alert(1)</script>safe". The strip
+      // (looped to a fixed point) must remove every "<...>" tag so no
+      // "<script" opening tag survives.
+      const xml = buildGlosaryXml(
+        'Term',
+        '&lt;scr&lt;script&gt;ipt&gt;alert(1)&lt;/script&gt;safe',
+      );
+      $exeDevice.importGlosary(xml);
+      expect(captured.length).toBe(1);
+      const definition = captured[0].eTextBk;
+      // No opening tag (the dangerous part) is left behind.
+      expect(definition.toLowerCase()).not.toContain('<script');
+      expect(definition).not.toContain('<');
+      expect(definition).toContain('safe');
+    });
+
+    it('preserves plain-text definitions unchanged', () => {
+      const xml = buildGlosaryXml('Term', 'A plain definition');
+      $exeDevice.importGlosary(xml);
+      expect(captured.length).toBe(1);
+      expect(captured[0].eText).toBe('Term');
+      expect(captured[0].eTextBk).toBe('A plain definition');
+    });
+
+    it('returns false for malformed XML', () => {
+      expect($exeDevice.importGlosary('not xml at all <<')).toBe(false);
+    });
+  });
+
   describe('addEvents', () => {
     let originalExeDevicesEdition;
 

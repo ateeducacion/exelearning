@@ -383,12 +383,39 @@ class ResourceFetcher {
   }
 
   /**
+   * Validate that a bundle URL is safe to fetch.
+   * Accepts same-origin/relative paths, protocol-relative URLs (which inherit
+   * the page's protocol — https on any served page), and explicit https:// URLs.
+   * Rejects plain http:// and any other scheme (data:, file:, javascript:, etc.)
+   * so executable resources are never downloaded over an insecure channel.
+   * @param {string} bundleUrl
+   * @returns {boolean}
+   */
+  static isSafeBundleUrl(bundleUrl) {
+    if (typeof bundleUrl !== 'string' || bundleUrl.length === 0) return false;
+    // Protocol-relative URLs (//host/path) inherit the document protocol.
+    if (bundleUrl.startsWith('//')) return true;
+    // Any URL that does not start with a scheme is a relative/same-origin path.
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(bundleUrl)) return true;
+    // Absolute URL with an explicit scheme: only https is allowed.
+    return /^https:/i.test(bundleUrl);
+  }
+
+  /**
    * Fetch ZIP bundle from server
    * @param {string} bundleUrl - URL to the ZIP bundle
    * @returns {Promise<Map<string, Blob>|null>} Extracted files or null on failure
    */
   async fetchBundle(bundleUrl) {
     try {
+      // Security: only fetch bundles over a safe transport. Relative/same-origin
+      // URLs and explicit https:// (or protocol-relative // that inherits the
+      // page protocol) are allowed; plain http:// and other schemes are rejected
+      // to avoid downloading executable resources over an insecure channel.
+      if (!ResourceFetcher.isSafeBundleUrl(bundleUrl)) {
+        console.warn(`[ResourceFetcher] Refusing to fetch bundle over insecure URL: ${bundleUrl}`);
+        return null;
+      }
       Logger.log(`[ResourceFetcher] Fetching bundle: ${bundleUrl}`);
       const response = await fetch(bundleUrl);
 

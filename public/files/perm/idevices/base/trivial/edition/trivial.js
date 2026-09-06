@@ -3113,6 +3113,24 @@ var $exeDevice = {
         return valids > 0 ? $exeDevice.selectsGame : false;
     },
 
+    /**
+     * Strip HTML tags from a string.
+     * Applies the tag-removal regex repeatedly until the string stops
+     * changing, so that obfuscated/nested payloads (e.g. "<scr<b>ipt>")
+     * cannot reconstitute a tag after a single pass.
+     * @param {string} text
+     * @returns {string}
+     */
+    stripHtmlTags: function (text) {
+        let result = String(text == null ? '' : text);
+        let previous;
+        do {
+            previous = result;
+            result = result.replace(/<[^>]*>/g, '');
+        } while (result !== previous);
+        return result;
+    },
+
     importGlosary: function (xmlText) {
         const parser = new DOMParser(),
             xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
@@ -3128,10 +3146,9 @@ var $exeDevice = {
         $entries.find('ENTRY').each(function () {
             var $this = $(this),
                 concept = $this.find('CONCEPT').text(),
-                definition = $this
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, ''); // Elimina HTML
+                definition = $exeDevice.stripHtmlTags(
+                    $this.find('DEFINITION').text()
+                ); // Elimina HTML
             if (concept && definition) {
                 questionsJson.push({
                     solution: concept,

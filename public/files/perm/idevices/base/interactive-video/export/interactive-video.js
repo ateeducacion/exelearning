@@ -760,6 +760,35 @@ var $interactivevideo = {
         }
     },
 
+    /**
+     * Returns the hostname of a URL using strict parsing.
+     *
+     * Protocol-relative URLs (e.g. "//youtu.be/x") are supported by
+     * prefixing "https:" before parsing. Invalid URLs return an empty
+     * string so substring look-alikes (e.g.
+     * "https://www.youtube.com.evil.com/" or
+     * "https://evil.com/?x=//www.youtube.com") never match a real host.
+     */
+    parseHostname: function (url) {
+        if (typeof url !== 'string') return '';
+        var candidate = url.indexOf('//') === 0 ? 'https:' + url : url;
+        try {
+            return new URL(candidate).hostname.toLowerCase();
+        } catch (e) {
+            return '';
+        }
+    },
+
+    /**
+     * Exact host match: hostname must equal `host` or be a subdomain of it
+     * (".host"). Avoids the incomplete-substring sanitization where
+     * "host.evil.com" or "evil.com/?x=host" would incorrectly match.
+     */
+    hostMatches: function (url, host) {
+        var hostname = this.parseHostname(url);
+        return hostname === host || hostname.endsWith('.' + host);
+    },
+
     getTypeAndId: function () {
         var w = $('#exe-interactive-video-file');
 
@@ -768,7 +797,10 @@ var $interactivevideo = {
         if (as.length == 1) {
             var ref = as.eq(0).attr('href');
             // Mediateca (EducaMadrid)
-            if (ref.indexOf('https://mediateca.educa.madrid.org/video/') == 0) {
+            if (
+                this.hostMatches(ref, 'mediateca.educa.madrid.org') &&
+                ref.indexOf('https://mediateca.educa.madrid.org/video/') == 0
+            ) {
                 this.type = 'mediateca';
                 this.id = ref
                     .split('https://mediateca.educa.madrid.org/video/')[1]
@@ -777,8 +809,8 @@ var $interactivevideo = {
             }
             // Youtube
             else if (
-                ref.indexOf('//youtu.be/') > -1 ||
-                ref.indexOf('//www.youtube.com') > -1
+                this.hostMatches(ref, 'youtu.be') ||
+                this.hostMatches(ref, 'youtube.com')
             ) {
                 function youtube_parser(url) {
                     var match = url.match(regExp);

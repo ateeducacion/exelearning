@@ -75,4 +75,26 @@ describe('interactive-video iDevice edition', () => {
     expect(helpIcon.getAttribute('src')).toBe(`${path}quextIEHelp.png`);
     expect(existsSync(join(__dirname, 'quextIEHelp.png'))).toBe(true);
   });
+
+  describe('isYoutubeURL', () => {
+    it('accepts legitimate YouTube watch URLs', () => {
+      expect($exeDevice.isYoutubeURL('https://www.youtube.com/watch?v=g9gPKSGGkEk')).toBe(true);
+      expect($exeDevice.isYoutubeURL('https://youtube.com/watch?v=g9gPKSGGkEk')).toBe(true);
+      expect($exeDevice.isYoutubeURL('https://m.youtube.com/watch?v=g9gPKSGGkEk')).toBe(true);
+    });
+
+    it('rejects look-alike hostnames', () => {
+      // Subdomain attack: host endsWith but is not youtube.com
+      expect($exeDevice.isYoutubeURL('https://www.youtube.com.evil.com/watch?v=x')).toBe(false);
+      // Substring-only attack that the old indexOf(...) > -1 check accepted
+      expect($exeDevice.isYoutubeURL('https://evil.com/?x=www.youtube.com')).toBe(false);
+      expect($exeDevice.isYoutubeURL('https://notyoutube.com/watch?v=x')).toBe(false);
+    });
+
+    it('returns false for invalid or empty input', () => {
+      expect($exeDevice.isYoutubeURL('')).toBe(false);
+      expect($exeDevice.isYoutubeURL(undefined)).toBe(false);
+      expect($exeDevice.isYoutubeURL('not a url')).toBe(false);
+    });
+  });
 });

@@ -2169,7 +2169,7 @@ describe('Project Routes', () => {
             expect(body.brokenLinks[0].brokenLinks).toBe('No broken links found');
         });
 
-        it('should skip javascript and data URLs', async () => {
+        it('should skip javascript, vbscript and data URLs (case-insensitive, padded)', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
                     method: 'POST',
@@ -2177,7 +2177,14 @@ describe('Project Routes', () => {
                     body: JSON.stringify({
                         idevices: [
                             {
-                                html: '<a href="javascript:void(0)">JS Link</a><img src="data:image/png;base64,abc">',
+                                html:
+                                    '<a href="javascript:void(0)">JS Link</a>' +
+                                    '<a href="JavaScript:void(0)">Mixed JS</a>' +
+                                    '<a href=" javascript:void(0)">Padded JS</a>' +
+                                    '<a href="vbscript:msgbox(1)">VBScript</a>' +
+                                    '<a href="VBScript:msgbox(1)">Mixed VBScript</a>' +
+                                    '<img src="data:image/png;base64,abc">' +
+                                    '<img src="DATA:text/html,<script>alert(1)</script>">',
                             },
                         ],
                     }),
@@ -2186,6 +2193,7 @@ describe('Project Routes', () => {
 
             expect(res.status).toBe(200);
             const body = await res.json();
+            // Every dangerous-scheme link is filtered out, so nothing is reported.
             expect(body.brokenLinks[0].brokenLinks).toBe('No broken links found');
         });
     });

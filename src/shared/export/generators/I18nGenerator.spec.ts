@@ -80,6 +80,20 @@ describe('parseXlfTranslations', () => {
         expect(map.get('Entities & test')).toBe('Entidades & prueba');
     });
 
+    it('should not double-decode escaped entities (&amp;lt; stays &lt;, &amp;amp; stays &amp;)', () => {
+        // Security: decoding &amp; -> & must happen LAST so that the literal text
+        // "&lt;" (written in XML as "&amp;lt;") does not wrongly collapse to "<".
+        const xlf = `<xliff>
+  <body>
+    <trans-unit id="1"><source>literal lt</source><target>&amp;lt;</target></trans-unit>
+    <trans-unit id="2"><source>literal amp</source><target>&amp;amp;</target></trans-unit>
+  </body>
+</xliff>`;
+        const map = parseXlfTranslations(xlf);
+        expect(map.get('literal lt')).toBe('&lt;');
+        expect(map.get('literal amp')).toBe('&amp;');
+    });
+
     it('should return an empty Map for an empty XLF string', () => {
         const map = parseXlfTranslations('');
         expect(map.size).toBe(0);

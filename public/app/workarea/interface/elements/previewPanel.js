@@ -1156,7 +1156,7 @@ export default class PreviewPanelManager {
 
         // Inline JS: <script src="path"> </script> (note: space inside tag is common)
         html = html.replace(
-            /<script\s+[^>]*src=["']([^"']+)["'][^>]*>[^<]*<\/script>/gi,
+            /<script\s+[^>]*src=["']([^"']+)["'][^>]*>[^<]*<\/script\s*>/gi,
             (match, src) => {
                 const content = this._decodeFileContent(this._findFileContent(files, src));
                 if (content) {

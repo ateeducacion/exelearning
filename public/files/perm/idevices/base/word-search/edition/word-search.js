@@ -196,11 +196,17 @@ var $exeDevice = {
 
         const words = [];
         $entries.find('ENTRY').each(function () {
-            const concept = $(this).find('CONCEPT').text(),
-                definition = $(this)
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, '');
+            const concept = $(this).find('CONCEPT').text();
+            // Strip HTML tags. Apply the replacement repeatedly until the
+            // string stops changing so nested/obfuscated payloads such as
+            // "<scr<script>ipt>" cannot reassemble into a new tag after a
+            // single pass.
+            let definition = $(this).find('DEFINITION').text();
+            let previousDefinition;
+            do {
+                previousDefinition = definition;
+                definition = definition.replace(/<[^>]*>/g, '');
+            } while (definition !== previousDefinition);
             if (
                 concept &&
                 definition &&

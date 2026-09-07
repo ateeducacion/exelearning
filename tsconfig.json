@@ -3,7 +3,7 @@
         "module": "Preserve",
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
-        "target": "ES2021",
+        "target": "ES2022",
         "types": ["bun"],
         "skipLibCheck": true,
         "strict": true,

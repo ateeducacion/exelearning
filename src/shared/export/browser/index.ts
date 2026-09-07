@@ -588,7 +588,6 @@ export async function exportAndDownload(
     const fullFilename = filename.endsWith(extension) ? filename : `${filename}${extension}`;
 
     // Create download
-    // biome-ignore lint/suspicious/noExplicitAny: legacy blob data compatibility
     const blob = blobFromBytes(result.data, 'application/zip');
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

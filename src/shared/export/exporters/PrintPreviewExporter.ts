@@ -16,6 +16,7 @@ import type {
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
+import { blobFromBytes } from '../../utils/blob';
 import { resolveMaterialIconDataUris } from './BaseExporter';
 
 /**
@@ -480,11 +481,7 @@ ${logoCss}
                 let blobUrl = '';
                 if (asset.data) {
                     try {
-                        const blob =
-                            asset.data instanceof Blob
-                                ? asset.data
-                                : // biome-ignore lint/suspicious/noExplicitAny: legacy data type compatibility
-                                  new Blob([asset.data as any], { type: asset.mime });
+                        const blob = blobFromBytes(asset.data, asset.mime);
                         blobUrl = URL.createObjectURL(blob);
                     } catch (err) {
                         console.error('[PrintPreview] Failed to create Blob URL for asset:', asset.id, err);
@@ -839,13 +836,16 @@ $(function() {
             if (classes.includes('feedback') && classes.includes('js-hidden')) {
                 // It's a feedback div. Remove display properties from inline style
                 // Replace style="..." completely if it checks out, or just modify content
-                const newAttributes = attributes.replace(/style=(["'])(.*?)\1/i, (styleMatch, quote, styleContent) => {
-                    // Remove display: none (case insensitive, optional space, optional semicolon)
-                    // Also robust against 'display:none' without space
-                    const newStyle = styleContent.replace(/display:\s*none;?/gi, '').trim();
-                    // If style is empty after removal, we can return empty string or style=""
-                    return newStyle ? `style=${quote}${newStyle}${quote}` : '';
-                });
+                const newAttributes = attributes.replace(
+                    /style=(["'])(.*?)\1/i,
+                    (_styleMatch: string, quote: string, styleContent: string) => {
+                        // Remove display: none (case insensitive, optional space, optional semicolon)
+                        // Also robust against 'display:none' without space
+                        const newStyle = styleContent.replace(/display:\s*none;?/gi, '').trim();
+                        // If style is empty after removal, we can return empty string or style=""
+                        return newStyle ? `style=${quote}${newStyle}${quote}` : '';
+                    },
+                );
                 return `<div${newAttributes}>`;
             }
 

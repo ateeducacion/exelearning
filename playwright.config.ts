@@ -14,12 +14,12 @@ import os from 'os';
  * - --project=chromium/firefox → only dynamic server (port 3001)
  * - No --project (run all) → both servers start
  */
-const projectArgs = process.argv.filter((arg) => arg.startsWith('--project='));
-const requestedProjects = projectArgs.map((arg) => arg.replace('--project=', ''));
+const projectArgs = process.argv.filter(arg => arg.startsWith('--project='));
+const requestedProjects = projectArgs.map(arg => arg.replace('--project=', ''));
 
-const isRunningOnlyStatic = requestedProjects.length > 0 && requestedProjects.every((p) => p === 'static');
+const isRunningOnlyStatic = requestedProjects.length > 0 && requestedProjects.every(p => p === 'static');
 const isRunningOnlyDynamic =
-    requestedProjects.length > 0 && requestedProjects.every((p) => p === 'chromium' || p === 'firefox');
+    requestedProjects.length > 0 && requestedProjects.every(p => p === 'chromium' || p === 'firefox');
 const isRunningMixed = !isRunningOnlyStatic && !isRunningOnlyDynamic;
 
 // Set STATIC_MODE env var for test helpers when running static-only tests
@@ -82,7 +82,9 @@ function getWebServerConfig() {
         return dynamicWebServer;
     }
     // Mixed or all projects - start both servers
-    return [dynamicWebServer, staticWebServer].filter(Boolean);
+    return [dynamicWebServer, staticWebServer].filter((server): server is NonNullable<typeof server> =>
+        Boolean(server),
+    );
 }
 
 export default defineConfig({

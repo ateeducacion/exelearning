@@ -257,6 +257,65 @@ describe('guess iDevice', () => {
     });
   });
 
+  describe('importGlosary', () => {
+    // Build a Moodle GLOSSARY XML document. Definitions are entity-encoded so
+    // that DOMParser yields valid XML while .text() decodes them back into raw
+    // angle-bracket markup that must be stripped by importGlosary.
+    const buildGlosaryXml = (entries) => {
+      const body = entries
+        .map(
+          (e) =>
+            `<ENTRY><CONCEPT>${e.concept}</CONCEPT><DEFINITION>${e.definition}</DEFINITION></ENTRY>`
+        )
+        .join('');
+      return `<GLOSSARY><ENTRIES>${body}</ENTRIES></GLOSSARY>`;
+    };
+
+    it('strips HTML tags from legitimate definitions', () => {
+      let captured;
+      $exeDevice.addWords = (words) => {
+        captured = words;
+      };
+      const xml = buildGlosaryXml([
+        { concept: 'term', definition: '&lt;p&gt;hello&lt;/p&gt; world' },
+      ]);
+      $exeDevice.importGlosary(xml);
+      expect(captured).toHaveLength(1);
+      expect(captured[0].word).toBe('term');
+      expect(captured[0].definition).toBe('hello world');
+    });
+
+    it('removes nested/obfuscated tags to a fixed point (no <script left)', () => {
+      let captured;
+      $exeDevice.addWords = (words) => {
+        captured = words;
+      };
+      // Decodes to: <scr<script>ipt>alert(1)</script>safe
+      const xml = buildGlosaryXml([
+        {
+          concept: 'attack',
+          definition:
+            '&lt;scr&lt;script&gt;ipt&gt;alert(1)&lt;/script&gt;safe',
+        },
+      ]);
+      $exeDevice.importGlosary(xml);
+      expect(captured).toHaveLength(1);
+      // No residual opening-tag markup must remain after the fixed-point loop.
+      expect(captured[0].definition.indexOf('<')).toBe(-1);
+      expect(/<script/i.test(captured[0].definition)).toBe(false);
+      // Legitimate trailing text survives.
+      expect(captured[0].definition).toContain('safe');
+    });
+
+    it('returns false when there is no ENTRIES element', () => {
+      $exeDevice.addWords = () => {
+        throw new Error('addWords should not be called');
+      };
+      const result = $exeDevice.importGlosary('<GLOSSARY></GLOSSARY>');
+      expect(result).toBe(false);
+    });
+  });
+
   describe('i18n', () => {
     it('is defined', () => {
       expect($exeDevice.i18n).toBeDefined();

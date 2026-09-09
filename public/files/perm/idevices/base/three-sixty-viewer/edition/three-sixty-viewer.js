@@ -1042,9 +1042,13 @@ var $exeDevice = {
         var parts = path.split('.');
         var t = target;
         for (var i = 0; i < parts.length - 1; i++) {
-            t = t[parts[i]];
+            var key = parts[i];
+            if (key === '__proto__' || key === 'prototype' || key === 'constructor') return;
+            t = t[key];
         }
-        t[parts[parts.length - 1]] = value;
+        var lastKey = parts[parts.length - 1];
+        if (lastKey === '__proto__' || lastKey === 'prototype' || lastKey === 'constructor') return;
+        t[lastKey] = value;
     },
 
     escapeHtml: str =>

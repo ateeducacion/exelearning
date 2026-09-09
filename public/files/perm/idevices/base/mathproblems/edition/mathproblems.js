@@ -667,7 +667,7 @@ var $exeDevice = {
         } else if (p.wording.trim().length == 0) {
             message = _('Please write the question text');
         } else {
-            let expresion = /\{[a-zA-z]\}/g,
+            let expresion = /\{[a-zA-Z]\}/g,
                 vfs = p.formula.split('|'),
                 vw = p.wording.match(expresion);
             for (let i = 0; i < vfs.length; i++) {

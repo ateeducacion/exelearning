@@ -3812,4 +3812,68 @@ describe('ElpxImporter - remapInternalPageLinks prefix-collision safety', () => 
             ydoc.destroy();
         });
     });
+
+    describe('HTML entity decoding (double-escaping)', () => {
+        let importer: ElpxImporter;
+        let decodeDir: string;
+
+        beforeEach(() => {
+            decodeDir = path.join('/tmp', `elp-decode-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+            if (!existsSync(decodeDir)) {
+                mkdirSync(decodeDir, { recursive: true });
+            }
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(decodeDir);
+            importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+        });
+
+        afterEach(() => {
+            if (existsSync(decodeDir)) {
+                rmSync(decodeDir, { recursive: true, force: true });
+            }
+        });
+
+        describe('decodeHtmlContent', () => {
+            const decode = (text: string): string => (importer as any).decodeHtmlContent(text);
+
+            it('does not double-decode pre-escaped entities (&amp;lt; stays literal &lt;)', () => {
+                // Security: "&amp;lt;" is the escaped form of the literal text "&lt;".
+                // It must NOT collapse into "<", which would re-enable smuggled markup.
+                expect(decode('&amp;lt;')).toBe('&lt;');
+                expect(decode('&amp;amp;')).toBe('&amp;');
+                expect(decode('&amp;gt;')).toBe('&gt;');
+                expect(decode('&amp;#39;')).toBe('&#39;');
+                expect(decode('&amp;#x3C;')).toBe('&#x3C;');
+            });
+
+            it('still decodes legitimate single-level entities', () => {
+                expect(decode('&lt;b&gt;hi&lt;/b&gt;')).toBe('<b>hi</b>');
+                expect(decode('a &amp; b')).toBe('a & b');
+                expect(decode('&quot;q&quot;')).toBe('"q"');
+                expect(decode('&#39;x&#39;')).toBe("'x'");
+                expect(decode('&apos;y&apos;')).toBe("'y'");
+                expect(decode('&#x41;&#66;')).toBe('AB');
+                expect(decode('')).toBe('');
+            });
+        });
+
+        describe('decodeHtmlContentForJson', () => {
+            const decode = (text: string): string => (importer as any).decodeHtmlContentForJson(text);
+
+            it('does not double-decode pre-escaped entities (&amp;lt; stays literal &lt;)', () => {
+                expect(decode('&amp;lt;')).toBe('&lt;');
+                expect(decode('&amp;amp;')).toBe('&amp;');
+                expect(decode('&amp;gt;')).toBe('&gt;');
+            });
+
+            it('decodes single-level entities while keeping &quot; intact for JSON safety', () => {
+                expect(decode('&lt;a&gt;')).toBe('<a>');
+                expect(decode('x &amp; y')).toBe('x & y');
+                expect(decode('&quot;keep&quot;')).toBe('&quot;keep&quot;');
+                expect(decode('&#39;z&#39;')).toBe("'z'");
+                expect(decode('&#x41;&#66;')).toBe('AB');
+                expect(decode('')).toBe('');
+            });
+        });
+    });
 });

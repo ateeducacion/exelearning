@@ -338,7 +338,7 @@ var $eXeMathProblems = {
     },
 
     loadProblems: function (options) {
-        const expresion = /\{[a-zA-z]\}/g;
+        const expresion = /\{[a-zA-Z]\}/g;
         for (let i = 0; i < options.questions.length; i++) {
             let text = options.questions[i].wordingseg,
                 fms = options.questions[i].formula.split('|'),

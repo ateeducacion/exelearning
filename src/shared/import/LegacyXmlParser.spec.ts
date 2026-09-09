@@ -104,6 +104,35 @@ describe('LegacyXmlParser', () => {
         });
     });
 
+    describe('decodeHtmlContent', () => {
+        // decodeHtmlContent is private; access via cast for direct unit testing.
+        const decode = (text: string): string =>
+            (parser as unknown as { decodeHtmlContent: (t: string) => string }).decodeHtmlContent(text);
+
+        it('should return empty string for empty input', () => {
+            expect(decode('')).toBe('');
+        });
+
+        it('should decode named and numeric entities', () => {
+            expect(decode('&lt;b&gt;hi&lt;/b&gt;')).toBe('<b>hi</b>');
+            expect(decode('&quot;x&quot;')).toBe('"x"');
+            expect(decode('&#39;a&apos;b')).toBe("'a'b");
+            expect(decode('&#x41;&#66;')).toBe('AB');
+        });
+
+        it('should decode a bare ampersand entity', () => {
+            expect(decode('Tom &amp; Jerry')).toBe('Tom & Jerry');
+        });
+
+        // Security: decoding &amp; must happen LAST so the literal text "&lt;"
+        // (encoded as "&amp;lt;") is not double-decoded into a real "<".
+        it('should not double-decode escaped entities', () => {
+            expect(decode('&amp;lt;')).toBe('&lt;');
+            expect(decode('&amp;amp;')).toBe('&amp;');
+            expect(decode('&amp;lt;script&amp;gt;')).toBe('&lt;script&gt;');
+        });
+    });
+
     describe('getLocalizedCaseStudyTitle', () => {
         it('should return Spanish title for es language', () => {
             const result = parser.getLocalizedCaseStudyTitle('es');

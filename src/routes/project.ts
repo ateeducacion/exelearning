@@ -98,6 +98,7 @@ export async function resolveDefaultThemeForNewProject(
     }
     return themeDirName;
 }
+
 import { getAppVersion } from '../utils/version';
 import { buildSiteThemeUrl } from '../utils/site-theme-url';
 import { isSafePathSegment, isWithinBase } from '../utils/safe-path';

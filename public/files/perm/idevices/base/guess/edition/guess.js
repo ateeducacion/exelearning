@@ -2547,11 +2547,15 @@ var $exeDevice = {
 
         const words = [];
         $entries.find('ENTRY').each(function () {
-            const concept = $(this).find('CONCEPT').text(),
-                definition = $(this)
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, '');
+            const concept = $(this).find('CONCEPT').text();
+            // Strip HTML tags repeatedly until stable: a single pass can splice
+            // two remaining halves into a new tag (e.g. <<a>script> -> <script>).
+            let definition = $(this).find('DEFINITION').text(),
+                prevDefinition;
+            do {
+                prevDefinition = definition;
+                definition = definition.replace(/<[^>]*>/g, '');
+            } while (definition !== prevDefinition);
             if (concept && definition) {
                 let wd = {
                     word: concept,

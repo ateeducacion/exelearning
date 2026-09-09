@@ -82,9 +82,15 @@ const $exeDevice = {
     removeTags: function (str) {
         const wrapper = { 
             html: function(content) { this.content = content; },
-            text: function() { 
+            text: function() {
                 if (!this.content) return '';
-                return this.content.replace(/<[^>]*>/g, '');
+                let result = this.content;
+                let prev;
+                do {
+                    prev = result;
+                    result = result.replace(/<[^>]*>/g, '');
+                } while (result !== prev);
+                return result;
             }
         };
         wrapper.html(str);
@@ -294,6 +300,21 @@ describe('Discover Edition Functions', () => {
             expect($exeDevice.removeTags('<div class="test" id="myDiv">Content</div>')).toBe('Content');
             expect($exeDevice.removeTags('<a href="http://example.com" target="_blank">Link</a>')).toBe('Link');
         });
+
+        it('should leave no <script residue for nested/obfuscated payloads', () => {
+            const result = $exeDevice.removeTags('<scr<script>ipt>alert(1)</script>');
+            expect(result.toLowerCase()).not.toContain('<script');
+            expect(result).not.toContain('<');
+        });
+
+        it('should strip tags repeatedly to a fixed point (idempotent)', () => {
+            // Re-sanitizing the output must not change it further, and no
+            // residual tag-opening "<" may survive a spliced payload.
+            const once = $exeDevice.removeTags('<a<b>>c<d>e');
+            const twice = $exeDevice.removeTags(once);
+            expect(twice).toBe(once);
+            expect(once).not.toContain('<');
+        });
     });
 
     describe('escapeQuotes', () => {
@@ -491,6 +512,67 @@ describe('Discover Edition Functions', () => {
 
             expect(showQuestionSpy).toHaveBeenCalledTimes(1);
             expect(showQuestionSpy).toHaveBeenCalledWith(0);
+        });
+    });
+
+    describe('importGlosary sanitization', () => {
+        // importGlosary parses real XML and uses jQuery DOM traversal, so it
+        // needs the genuine jQuery/DOMParser. The file-level mock above replaces
+        // global.$ (and, since window === globalThis here, window.$) with a
+        // vi.fn stub, but the real jQuery is still reachable via global.jQuery
+        // and the real DOMParser via global.DOMParser (both set by the setup).
+        const xmlEscape = (s) =>
+            s
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        // The payload is XML-escaped so that .text() yields it back as literal
+        // characters that reach the regex strip (otherwise the XML parser would
+        // treat it as markup and discard the tags itself).
+        const buildGlosaryXml = (definitionInner) =>
+            `<GLOSSARY><ENTRIES><ENTRY><CONCEPT>Term</CONCEPT>` +
+            `<DEFINITION>${xmlEscape(definitionInner)}</DEFINITION></ENTRY></ENTRIES></GLOSSARY>`;
+
+        const importWithRealJQuery = (xml) => {
+            const savedDollar = global.$;
+            global.$ = global.jQuery;
+            try {
+                const realExeDevice = global.loadIdevice(
+                    join(__dirname, 'discover.js')
+                );
+                let captured = null;
+                realExeDevice.insertCards = (cards) => {
+                    captured = cards;
+                };
+                realExeDevice.importGlosary(xml);
+                return captured;
+            } finally {
+                global.$ = savedDollar;
+            }
+        };
+
+        it('strips legitimate inline markup from definitions', () => {
+            const cards = importWithRealJQuery(
+                buildGlosaryXml('A <b>bold</b> definition')
+            );
+            expect(cards).toEqual([
+                { eText: 'Term', eTextBk: 'A bold definition' },
+            ]);
+        });
+
+        it('fully removes nested/obfuscated tag payloads (no <script left behind)', () => {
+            // Nested/overlapping tag fragments must not survive the strip.
+            // The fixed-point loop in importGlosary re-applies the same regex
+            // until the string stabilises, so no residual "<...>" or "<script"
+            // can leak through and the surrounding text is preserved.
+            const cards = importWithRealJQuery(
+                buildGlosaryXml('<scr<script>ipt>alert(1)</script>safe')
+            );
+            expect(cards).toHaveLength(1);
+            const definition = cards[0].eTextBk;
+            expect(definition.toLowerCase()).not.toContain('<script');
+            expect(definition).not.toContain('<');
+            expect(definition).toContain('safe');
         });
     });
 

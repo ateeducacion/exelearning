@@ -551,6 +551,19 @@ var $exeDevice = {
             .replace(/'/g, '&#39;');
     },
 
+    stripTags: function (string) {
+        let result = String(string),
+            prev;
+        // Apply the strip repeatedly until it reaches a fixed point so that
+        // removing one tag cannot splice two halves into a new tag (e.g.
+        // "<<div>div>" -> "<div>"). See incomplete-multi-character-sanitization.
+        do {
+            prev = result;
+            result = result.replace(/<[^>]*>/g, '');
+        } while (result !== prev);
+        return result;
+    },
+
     save: function () {
         if (!$exeDevice.validateQuestion()) return;
 
@@ -1522,10 +1535,9 @@ var $exeDevice = {
         const words = [];
         $entries.find('ENTRY').each(function () {
             const concept = $(this).find('CONCEPT').text(),
-                definition = $(this)
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, '');
+                definition = $exeDevice.stripTags(
+                    $(this).find('DEFINITION').text()
+                );
             if (concept && definition) {
                 let wd = {
                     word: concept,

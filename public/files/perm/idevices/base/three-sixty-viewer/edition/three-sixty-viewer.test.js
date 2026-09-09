@@ -1063,4 +1063,32 @@ describe('three-sixty-viewer iDevice (edition)', () => {
             });
         });
     });
+
+    describe('setNestedPath (prototype pollution safety)', () => {
+        it('assigns a nested value for a legitimate dotted path', () => {
+            const target = { initialView: { yaw: 0, pitch: 0, fov: 75 } };
+            $exeDevice.setNestedPath(target, 'initialView.yaw', 90);
+            expect(target.initialView.yaw).toBe(90);
+        });
+
+        it('assigns a top-level key for a single-segment path', () => {
+            const target = { src: '' };
+            $exeDevice.setNestedPath(target, 'src', 'asset://pano.jpg');
+            expect(target.src).toBe('asset://pano.jpg');
+        });
+
+        it('does not pollute Object.prototype via a __proto__ payload', () => {
+            const payload = JSON.parse('{"__proto__":{"polluted":1}}');
+            $exeDevice.setNestedPath({}, '__proto__.polluted', payload.__proto__.polluted);
+            expect({}.polluted).toBeUndefined();
+            expect(Object.prototype.polluted).toBeUndefined();
+        });
+
+        it('ignores assignments through constructor / prototype keys', () => {
+            $exeDevice.setNestedPath({}, 'constructor.prototype.polluted', 1);
+            $exeDevice.setNestedPath({}, 'prototype.polluted', 1);
+            expect({}.polluted).toBeUndefined();
+            expect(Object.prototype.polluted).toBeUndefined();
+        });
+    });
 });

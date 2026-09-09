@@ -235,4 +235,65 @@ describe('Locale translations', () => {
       expect(locale.getGUITranslation('text "quoted"')).toBe('text "quoted"');
     });
   });
+
+  describe('catalogue key escaping (incomplete-sanitization fix)', () => {
+    // Real XLF <source> keys are stored verbatim (unescaped). The first lookup
+    // branch handles those, so quoted source strings keep resolving exactly as
+    // before. These cases lock in that legitimate-input behaviour.
+    it('getGUITranslation still resolves a real quoted source key', () => {
+      locale.strings = { translations: { 'Click the "Reply" button.': '~Pulsa el botón "Responder".' } };
+      expect(locale.getGUITranslation('Click the "Reply" button.')).toBe('Pulsa el botón "Responder".');
+    });
+
+    it('getContentTranslation still resolves a real quoted source key', () => {
+      locale.c_strings = { translations: { 'Open "{name}".': 'Abrir "{name}".' } };
+      expect(locale.getContentTranslation('Open "{name}".')).toBe('Abrir "{name}".');
+    });
+
+    // Security property (incomplete-sanitization): backslashes in the input
+    // must be escaped BEFORE quotes, so a literal backslash in the lookup key
+    // is doubled. The naive `replace(/"/g, '\\"')` left backslashes untouched,
+    // letting `\"` collapse ambiguously. Inputs WITHOUT backslashes (every real
+    // translation source string) escape identically, preserving lookups.
+
+    it('getGUITranslation doubles backslashes when building the fallback key', () => {
+      // Plain quote (no backslash) must still escape to `\"` and resolve the
+      // legacy escaped key exactly as before — behaviour preserved.
+      // Key `\\"` in JS source = backslash + quote.
+      locale.strings = { translations: { '\\"': 'plain-quote-value' } };
+      expect(locale.getGUITranslation('"')).toBe('plain-quote-value');
+
+      // Backslash-bearing input `\y` is NOT a direct key, so it goes through the
+      // escaping fallback. Backslash-first escaping builds key `\\y` (doubled
+      // backslash + y). The catalogue exposes only that correctly-escaped key
+      // plus the naive single-backslash form; the fix must resolve the former.
+      locale.strings = {
+        translations: { '\\\\y': 'correct', z: 'unused' },
+      };
+      expect(locale.getGUITranslation('\\y')).toBe('correct');
+    });
+
+    it('getContentTranslation doubles backslashes when building the fallback key', () => {
+      locale.c_strings = { translations: { '\\"': 'plain-quote-value' } };
+      expect(locale.getContentTranslation('"')).toBe('plain-quote-value');
+
+      locale.c_strings = {
+        translations: { '\\\\y': 'correct', z: 'unused' },
+      };
+      expect(locale.getContentTranslation('\\y')).toBe('correct');
+    });
+
+    it('getTranslation doubles backslashes when building the lookup key', () => {
+      // Plain quote still escapes to `\"` and resolves the legacy escaped key.
+      locale.strings = { translations: { '\\"': 'plain-quote-value' } };
+      expect(locale.getTranslation('"')).toBe('plain-quote-value');
+
+      // getTranslation escapes the input unconditionally; with backslash-first
+      // escaping `\y` becomes `\\y` (doubled), matching the correctly-escaped key.
+      locale.strings = {
+        translations: { '\\\\y': 'correct', z: 'unused' },
+      };
+      expect(locale.getTranslation('\\y')).toBe('correct');
+    });
+  });
 });

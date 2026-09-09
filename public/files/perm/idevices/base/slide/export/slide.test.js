@@ -120,6 +120,44 @@ describe('$slide._scrubSvg', () => {
         expect(_scrubSvg(42)).toBe('');
         expect(_scrubSvg('')).toBe('');
     });
+
+    it('defeats nested/spliced <script> payloads (loops to a fixed point)', () => {
+        const out = _scrubSvg('<svg><scr<script>alert(1)</script>ipt>x</scr<script>y</script>ipt></svg>');
+        expect(out.toLowerCase()).not.toContain('<script');
+        expect(out).not.toContain('alert(1)');
+    });
+
+    it('removes <script> end tags with whitespace before the angle bracket', () => {
+        const out = _scrubSvg('<svg><script>alert(1)</script >\n<rect/></svg>');
+        expect(out.toLowerCase()).not.toContain('<script');
+        expect(out).not.toContain('alert(1)');
+        expect(out).toContain('<rect');
+    });
+
+    it('strips vbscript: URLs (case-insensitive)', () => {
+        expect(_scrubSvg('<svg><a href="vbscript:msgbox(1)"></a></svg>')).not.toContain('vbscript:');
+        expect(_scrubSvg('<svg><a href="VBScript:msgbox(1)"></a></svg>').toLowerCase()).not.toContain('vbscript:');
+    });
+
+    it('defeats spliced javascript: schemes (loops to a fixed point)', () => {
+        const out = _scrubSvg('<svg><a href="javasjavascript:cript:alert(1)"></a></svg>');
+        expect(out.toLowerCase()).not.toContain('javascript:');
+    });
+
+    it('strips script-executing data:text/html URLs', () => {
+        const out = _scrubSvg('<svg><a href="data:text/html,<script>alert(1)</script>"></a></svg>');
+        expect(out.toLowerCase()).not.toContain('data:text/html');
+    });
+
+    it('keeps legitimate embedded data:image URLs intact', () => {
+        const svg = '<svg><image href="data:image/png;base64,AAAA"/></svg>';
+        expect(_scrubSvg(svg)).toContain('data:image/png;base64,AAAA');
+    });
+
+    it('strips <foreignObject> (which can embed arbitrary HTML), matching the src twin', () => {
+        const out = _scrubSvg('<svg><foreignObject><div onclick="x">hi</div></foreignObject></svg>');
+        expect(out.toLowerCase()).not.toContain('foreignobject');
+    });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

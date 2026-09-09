@@ -41,6 +41,35 @@ describe('dragdrop iDevice export helpers', () => {
         expect(downloadBlob.mock.calls[0][1]).toBe('Activity-DragDrop.json');
         expect(downloadBlob.mock.calls[0][2]).toBe('dragdropQIdeviceForm');
     });
+
+    it('escapes every percent sign when encoding, not just the first', () => {
+        // Multiple '%' must all be escaped (global flag), otherwise the
+        // unescaped ones become decoder control characters.
+        const encoded = $exeDevice.encodeURIComponentSafe('100% off 50% sale');
+        expect(encoded).not.toContain('%25');
+        expect(encoded).toBe(encodeURIComponent('100&percnt; off 50&percnt; sale'));
+    });
+
+    it('round-trips strings containing multiple percent signs', () => {
+        const original = 'a%b%c%d';
+        const restored = $exeDevice.decodeURIComponentSafe(
+            $exeDevice.encodeURIComponentSafe(original)
+        );
+        expect(restored).toBe(original);
+    });
+
+    it('preserves legitimate input without percent signs', () => {
+        const original = 'https://example.com/image (1).png';
+        const restored = $exeDevice.decodeURIComponentSafe(
+            $exeDevice.encodeURIComponentSafe(original)
+        );
+        expect(restored).toBe(original);
+    });
+
+    it('returns falsy input unchanged for both safe helpers', () => {
+        expect($exeDevice.encodeURIComponentSafe('')).toBe('');
+        expect($exeDevice.decodeURIComponentSafe('')).toBe('');
+    });
 });
 
 // Handlers whose callback is a single guarded call: [selector, event, method]

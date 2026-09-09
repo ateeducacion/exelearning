@@ -560,4 +560,130 @@ describe('interactive-video iDevice export', () => {
       expect(typeof $interactivevideo.controls.seek).toBe('function');
     });
   });
+
+  describe('parseHostname', () => {
+    it('returns the lowercased hostname for an absolute URL', () => {
+      expect($interactivevideo.parseHostname('https://WWW.YouTube.com/watch?v=abc')).toBe('www.youtube.com');
+    });
+
+    it('supports protocol-relative URLs', () => {
+      expect($interactivevideo.parseHostname('//youtu.be/dQw4w9WgXcQ')).toBe('youtu.be');
+    });
+
+    it('returns empty string for invalid URLs', () => {
+      expect($interactivevideo.parseHostname('not a url')).toBe('');
+      expect($interactivevideo.parseHostname('resources/video.mp4')).toBe('');
+    });
+
+    it('returns empty string for non-string input', () => {
+      expect($interactivevideo.parseHostname(undefined)).toBe('');
+      expect($interactivevideo.parseHostname(null)).toBe('');
+      expect($interactivevideo.parseHostname(42)).toBe('');
+    });
+  });
+
+  describe('hostMatches', () => {
+    it('matches an exact host', () => {
+      expect($interactivevideo.hostMatches('https://youtu.be/abc', 'youtu.be')).toBe(true);
+    });
+
+    it('matches a subdomain of the host', () => {
+      expect($interactivevideo.hostMatches('https://www.youtube.com/watch', 'youtube.com')).toBe(true);
+      expect($interactivevideo.hostMatches('https://m.youtube.com/watch', 'youtube.com')).toBe(true);
+    });
+
+    it('rejects look-alike hosts (suffix attack)', () => {
+      expect($interactivevideo.hostMatches('https://www.youtube.com.evil.com/watch', 'youtube.com')).toBe(false);
+      expect($interactivevideo.hostMatches('https://youtu.be.evil.com/abc', 'youtu.be')).toBe(false);
+    });
+
+    it('rejects hosts embedded in the path or query (substring attack)', () => {
+      expect($interactivevideo.hostMatches('https://evil.com/?x=//www.youtube.com', 'youtube.com')).toBe(false);
+      expect($interactivevideo.hostMatches('https://evil.com/youtu.be/abc', 'youtu.be')).toBe(false);
+    });
+  });
+
+  describe('getTypeAndId host detection', () => {
+    let originalAlert;
+
+    function withHref(href, length) {
+      const linkCount = length === undefined ? 1 : length;
+      global.$ = (selector) => {
+        // $('a', w) returns the anchor collection; $('#...') returns the wrapper.
+        if (selector === 'a') {
+          return {
+            length: linkCount,
+            eq: () => ({ attr: () => href }),
+          };
+        }
+        return { length: linkCount, eq: () => ({ attr: () => href }) };
+      };
+      global.$.fn = {};
+    }
+
+    beforeEach(() => {
+      originalAlert = global.alert;
+      global.alert = vi.fn();
+      global.InteractiveVideo = {
+        i18n: { error: 'Error', dataError: 'Data error' },
+      };
+      // Reset detection state
+      $interactivevideo.type = undefined;
+      $interactivevideo.id = undefined;
+      $interactivevideo.file = undefined;
+      $interactivevideo.extension = undefined;
+    });
+
+    afterEach(() => {
+      global.alert = originalAlert;
+    });
+
+    it('detects a legitimate YouTube URL', () => {
+      withHref('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+      $interactivevideo.getTypeAndId();
+      expect($interactivevideo.type).toBe('youtube');
+      expect($interactivevideo.id).toBe('dQw4w9WgXcQ');
+    });
+
+    it('detects a legitimate youtu.be short URL', () => {
+      withHref('https://youtu.be/dQw4w9WgXcQ');
+      $interactivevideo.getTypeAndId();
+      expect($interactivevideo.type).toBe('youtube');
+      expect($interactivevideo.id).toBe('dQw4w9WgXcQ');
+    });
+
+    it('detects a legitimate Mediateca URL', () => {
+      withHref('https://mediateca.educa.madrid.org/video/abc123?foo=bar');
+      $interactivevideo.getTypeAndId();
+      expect($interactivevideo.type).toBe('mediateca');
+      expect($interactivevideo.id).toBe('abc123');
+    });
+
+    it('detects a local resource', () => {
+      withHref('resources/myvideo.mp4');
+      $interactivevideo.getTypeAndId();
+      expect($interactivevideo.type).toBe('local');
+      expect($interactivevideo.file).toBe('resources/myvideo.mp4');
+      expect($interactivevideo.extension).toBe('mp4');
+    });
+
+    it('rejects a YouTube look-alike host and does not classify as youtube', () => {
+      withHref('https://www.youtube.com.evil.com/watch?v=dQw4w9WgXcQ');
+      $interactivevideo.getTypeAndId();
+      expect($interactivevideo.type).not.toBe('youtube');
+      expect(global.alert).toHaveBeenCalled();
+    });
+
+    it('rejects a Mediateca look-alike host', () => {
+      withHref('https://mediateca.educa.madrid.org.evil.com/video/abc123');
+      $interactivevideo.getTypeAndId();
+      expect($interactivevideo.type).not.toBe('mediateca');
+    });
+
+    it('does nothing when there is not exactly one anchor', () => {
+      withHref('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 0);
+      $interactivevideo.getTypeAndId();
+      expect($interactivevideo.type).toBeUndefined();
+    });
+  });
 });

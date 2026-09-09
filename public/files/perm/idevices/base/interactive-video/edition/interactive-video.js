@@ -309,6 +309,23 @@ var $exeDevice = {
         // To do now this.addExtjsScript();
     },
 
+    // Check if a URL points to YouTube.
+    // Parses the URL and matches the hostname exactly so look-alike hosts
+    // such as https://www.youtube.com.evil.com/ are rejected.
+    isYoutubeURL: function (videoURL) {
+        if (!videoURL) {
+            return false;
+        }
+        var hostname;
+        try {
+            hostname = new URL(videoURL).hostname.toLowerCase();
+        } catch (e) {
+            // Invalid URL: keep the original no-match behavior.
+            return false;
+        }
+        return hostname === 'youtube.com' || hostname.endsWith('.youtube.com');
+    },
+
     // Load the saved values in the form fields
     loadPreviousValues: function () {
         var originalHTML = this.idevicePreviousData;
@@ -336,7 +353,7 @@ var $exeDevice = {
                     n = 'MediatecaURL';
                     disabled = false;
                     type = 'mediateca';
-                } else if (videoURL.indexOf('www.youtube.com') > -1) {
+                } else if ($exeDevice.isYoutubeURL(videoURL)) {
                     n = 'YoutubeURL';
                     disabled = false;
                     type = 'youtube';

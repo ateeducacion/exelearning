@@ -255,10 +255,19 @@ export function extractCopyrightFromLicense(content: string): string | null {
             // Get first line only
             let author = match[1].split('\n')[0];
             // Clean up the result - remove "All rights reserved", email, etc.
-            author = author
-                .replace(/all rights reserved\.?/gi, '')
-                .replace(/^[-*•]+\s*/, '') // Drop a list bullet: `yjs` lists its holders
-                .replace(/,?\s*as listed in:.*$/i, ''); // Drop pointers to a contributors page
+            // Apply the strip passes repeatedly to a fixed point: removing one
+            // <...> or (...) match can splice two halves into a brand-new match
+            // (e.g. "<a<b>c>"), so a single pass is insufficient.
+            let prev: string;
+            do {
+                prev = author;
+                author = author
+                    .replace(/all rights reserved\.?/gi, '')
+                    .replace(/^[-*•]+\s*/, '') // Drop a list bullet: `yjs` lists its holders
+                    .replace(/,?\s*as listed in:.*$/i, '') // Drop pointers to a contributors page
+                    .replace(/<[^>]+>/g, '') // Remove emails in <brackets>
+                    .replace(/\s*\([^)]*\)/g, ''); // Remove parenthetical notes
+            } while (author !== prev);
 
             // Drop trailing URLs, and with them the preposition that introduced one:
             // `fast-uri` writes `Gary Court until <commit url>`, which otherwise ends as
@@ -278,8 +287,6 @@ export function extractCopyrightFromLicense(content: string): string | null {
             ).replace(/[\s,]+(?:and|&)$/i, '');
 
             author = author
-                .replace(/<[^>]+>/g, '') // Remove emails in <brackets>
-                .replace(/\s*\([^)]*\)/g, '') // Remove parenthetical notes
                 .replace(/\s+/g, ' ') // Normalize whitespace
                 .trim();
             // Remove trailing punctuation

@@ -1,10 +1,13 @@
 /**
  * Unit tests for word-search iDevice (edition)
  *
- * Focused on importGlosary HTML-tag sanitization of the DEFINITION field.
- * The strip must be applied to a fixed point so nested/obfuscated payloads
- * such as "<scr<script>ipt>" cannot reassemble into a tag after one pass
- * (CodeQL: incomplete-multi-character-sanitization).
+ * Covers:
+ * - importGlosary HTML-tag sanitization of the DEFINITION field. The strip
+ *   must be applied to a fixed point so nested/obfuscated payloads such as
+ *   "<scr<script>ipt>" cannot reassemble into a tag after one pass
+ *   (CodeQL: incomplete-multi-character-sanitization).
+ * - Numeric field limits: the time field truncates on keyup; capping it at
+ *   one digit made ordinary values impossible to enter.
  */
 
 /* eslint-disable no-undef */
@@ -113,4 +116,48 @@ describe('word-search iDevice (edition)', () => {
         expect(captured).toHaveLength(1);
         expect(captured[0].definition).toBe('just plain text');
     });
+});
+
+describe('word-search iDevice edition', () => {
+  let $exeDevice;
+  let previousItinerary;
+
+  beforeEach(() => {
+    global.$exeDevice = undefined;
+    previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+    // addEvents wires the whole editor. The itinerary component lives outside
+    // this iDevice's source, so it is stubbed rather than exercised here.
+    $exeDevicesEdition.iDevice.gamification.itinerary = {
+      addEvents: () => {},
+      getTab: () => '',
+      init: () => {},
+      setValues: () => {},
+    };
+    document.body.innerHTML = `
+      <script></script>
+      <form id="gameQEIdeviceForm">
+            <input id="sopaETime" />
+      </form>`;
+    $exeDevice = global.loadIdevice(join(__dirname, 'word-search.js'));
+    $exeDevice.addEvents();
+  });
+
+  afterEach(() => {
+    $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+    document.body.innerHTML = '';
+  });
+
+  describe('numeric field limits', () => {
+    it('keeps a 2-digit time', () => {
+      $('#sopaETime').val('45').trigger('keyup');
+
+      expect($('#sopaETime').val()).toBe('45');
+    });
+
+    it('truncates the time beyond 2 digits and drops non-digits', () => {
+      $('#sopaETime').val('1a234').trigger('keyup');
+
+      expect($('#sopaETime').val()).toBe('12');
+    });
+  });
 });

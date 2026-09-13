@@ -1,38 +1,27 @@
 /**
- * Unit tests for trivial iDevice (edition code)
+ * Unit tests for trivial iDevice (edition)
  *
- * Focused on stripHtmlTags, the HTML-tag sanitizer used when importing
- * glossary entries. It must remove tags even from obfuscated/nested
- * payloads that would survive a single-pass strip.
+ * Covers:
+ * - stripHtmlTags: HTML-tag sanitizer used when importing glossary entries.
+ *   It must remove tags even from obfuscated/nested payloads that would
+ *   survive a single-pass strip.
+ * - Numeric field limits: the silence-time field truncates on keyup; capping
+ *   it at one digit made ordinary values impossible to enter.
  */
 
 /* eslint-disable no-undef */
-import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-/**
- * Helper to load iDevice file and expose $exeDevice globally.
- * Replaces 'var $exeDevice' with 'global.$exeDevice' to make it accessible.
- */
-function loadIdevice(code) {
-  const modifiedCode = code.replace(/var\s+\$exeDevice\s*=/, 'global.$exeDevice =');
-  // eslint-disable-next-line no-eval
-  (0, eval)(modifiedCode);
-  return global.$exeDevice;
-}
-
 describe('trivial iDevice (edition)', () => {
   let $exeDevice;
 
   beforeEach(() => {
     global.$exeDevice = undefined;
-    const filePath = join(__dirname, 'trivial.js');
-    const code = readFileSync(filePath, 'utf-8');
-    $exeDevice = loadIdevice(code);
+    $exeDevice = global.loadIdevice(join(__dirname, 'trivial.js'));
   });
 
   describe('stripHtmlTags', () => {
@@ -69,6 +58,50 @@ describe('trivial iDevice (edition)', () => {
     it('handles null/undefined by returning an empty string', () => {
       expect($exeDevice.stripHtmlTags(null)).toBe('');
       expect($exeDevice.stripHtmlTags(undefined)).toBe('');
+    });
+  });
+});
+
+describe('trivial iDevice edition', () => {
+  let $exeDevice;
+  let previousItinerary;
+
+  beforeEach(() => {
+    global.$exeDevice = undefined;
+    previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+    // addEvents wires the whole editor. The itinerary component lives outside
+    // this iDevice's source, so it is stubbed rather than exercised here.
+    $exeDevicesEdition.iDevice.gamification.itinerary = {
+      addEvents: () => {},
+      getTab: () => '',
+      init: () => {},
+      setValues: () => {},
+    };
+    document.body.innerHTML = `
+      <script></script>
+      <form id="gameQEIdeviceForm">
+            <input id="trivialETimeSilence" />
+      </form>`;
+    $exeDevice = global.loadIdevice(join(__dirname, 'trivial.js'));
+    $exeDevice.addEvents();
+  });
+
+  afterEach(() => {
+    $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+    document.body.innerHTML = '';
+  });
+
+  describe('numeric field limits', () => {
+    it('keeps a 3-digit silence time', () => {
+      $('#trivialETimeSilence').val('120').trigger('keyup');
+
+      expect($('#trivialETimeSilence').val()).toBe('120');
+    });
+
+    it('truncates the silence time beyond 3 digits and drops non-digits', () => {
+      $('#trivialETimeSilence').val('1a2345').trigger('keyup');
+
+      expect($('#trivialETimeSilence').val()).toBe('123');
     });
   });
 });

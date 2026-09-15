@@ -592,12 +592,12 @@ var $exeDevice = {
 
     decodeURIComponentSafe: function (s) {
         if (!s) return s;
-        return decodeURIComponent(s).replace('&percnt;', '%');
+        return decodeURIComponent(s).replace(/&percnt;/g, '%');
     },
 
     encodeURIComponentSafe: function (s) {
         if (!s) return s;
-        return encodeURIComponent(s.replace('%', '&percnt;'));
+        return encodeURIComponent(s.replace(/%/g, '&percnt;'));
     },
 
     validateCard: function () {
@@ -1702,11 +1702,16 @@ var $exeDevice = {
         const cardsJson = $entries
             .find('ENTRY')
             .map((_, entry) => {
-                const concept = $(entry).find('CONCEPT').text(),
-                    definition = $(entry)
-                        .find('DEFINITION')
-                        .text()
-                        .replace(/<[^>]*>/g, '');
+                const concept = $(entry).find('CONCEPT').text();
+                let definition = $(entry).find('DEFINITION').text();
+                // Strip tags repeatedly until stable so that removing one
+                // match cannot splice two halves into a new tag
+                // (e.g. "<scr<script>ipt>" -> "<script>").
+                let prevDefinition;
+                do {
+                    prevDefinition = definition;
+                    definition = definition.replace(/<[^>]*>/g, '');
+                } while (definition !== prevDefinition);
                 return concept && definition
                     ? { eText: concept, eTextBk: definition }
                     : null;

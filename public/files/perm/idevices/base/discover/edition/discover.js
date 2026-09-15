@@ -1723,11 +1723,15 @@ var $exeDevice = {
         const cardsJson = $entries
             .find('ENTRY')
             .map((_, entry) => {
-                const concept = $(entry).find('CONCEPT').text(),
-                    definition = $(entry)
-                        .find('DEFINITION')
-                        .text()
-                        .replace(/<[^>]*>/g, '');
+                const concept = $(entry).find('CONCEPT').text();
+                let definition = $(entry).find('DEFINITION').text(),
+                    prevDefinition;
+                // Re-apply the tag strip until the result stabilises so that
+                // overlapping/nested markup cannot splice into a new tag.
+                do {
+                    prevDefinition = definition;
+                    definition = definition.replace(/<[^>]*>/g, '');
+                } while (definition !== prevDefinition);
                 return concept && definition
                     ? { eText: concept, eTextBk: definition }
                     : null;

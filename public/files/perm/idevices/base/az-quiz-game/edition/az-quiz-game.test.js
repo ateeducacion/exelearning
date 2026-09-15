@@ -32,7 +32,13 @@ function loadIdevice(code) {
   // Helper to strip HTML tags
   const stripTags = (html) => {
     if (!html) return '';
-    return String(html).replace(/<[^>]*>/g, '');
+    let result = String(html);
+    let prev;
+    do {
+      prev = result;
+      result = result.replace(/<[^>]*>/g, '');
+    } while (result !== prev);
+    return result;
   };
 
   // Mock jQuery with chaining support
@@ -523,6 +529,59 @@ describe('az-quiz-game iDevice', () => {
   describe('validateData', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.validateData).toBe('function');
+    });
+  });
+
+  describe('mock $ text() stripTags helper', () => {
+    it('strips a simple HTML tag from selector text', () => {
+      expect(global.$('<p>Hello</p>').text()).toBe('Hello');
+    });
+
+    it('strips nested/obfuscated tags, leaving no complete tag behind', () => {
+      // The fixed-point loop keeps stripping until the string stops
+      // changing, so a nested/obfuscated payload cannot leave a complete
+      // `<...>` tag (in particular, no `<script>`) behind.
+      const payload = '<scr<script>ipt>alert(1)</script>';
+      const result = global.$(payload).text();
+      // No surviving complete HTML tag, and no `<script` token.
+      expect(result.toLowerCase()).not.toContain('<script>');
+      expect(result).not.toMatch(/<[^>]*>/);
+    });
+
+    it('leaves plain text without tags unchanged', () => {
+      expect(global.$('Plain text').text()).toBe('Plain text');
+    });
+  });
+
+  describe('importGlosary definition sanitization', () => {
+    // importGlosary strips HTML tags from each DEFINITION using a
+    // fixed-point loop so that removing one tag cannot splice surrounding
+    // characters into a new tag. This mirrors the source logic and asserts
+    // the security property on an obfuscated payload while preserving
+    // legitimate text.
+    const stripDefinition = (text) => {
+      let definition = text;
+      let prevDefinition;
+      do {
+        prevDefinition = definition;
+        definition = definition.replace(/<[^>]*>/g, '');
+      } while (definition !== prevDefinition);
+      return definition;
+    };
+
+    it('leaves no complete tag behind for an obfuscated payload', () => {
+      const payload = '<scr<script>ipt>The Sun</script>';
+      const result = stripDefinition(payload);
+      expect(result.toLowerCase()).not.toContain('<script>');
+      expect(result).not.toMatch(/<[^>]*>/);
+    });
+
+    it('removes simple tags while keeping legitimate definition text', () => {
+      expect(stripDefinition('<p>A star</p>')).toBe('A star');
+    });
+
+    it('leaves plain definition text unchanged', () => {
+      expect(stripDefinition('A celestial body')).toBe('A celestial body');
     });
   });
 });

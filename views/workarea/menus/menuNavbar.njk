@@ -116,7 +116,6 @@
                 <ul class="dropdown-menu" aria-labelledby="dropdownHelp">
                     <li><a class="dropdown-item" id="navbar-button-assistant" href="#">{{ t.assistant or 'Assistant' }}</a></li>
                     <li><a class="dropdown-item" id="navbar-button-exe-tutorial" href="#">{{ t.user_manual or 'User manual' }}</a></li>
-                    <li class="d-none"><a class="dropdown-item" id="navbar-button-api-docs" href="#">{{ t.api_reference or 'API Reference (Swagger)' }}</a></li>
                     <li class="dropdown-divider"></li>
                     <li><a class="dropdown-item" id="navbar-button-about-exe" href="#">{{ t.about_exelearning or 'About eXeLearning' }}</a></li>
                     <li><a class="dropdown-item" id="navbar-button-release-notes" href="#">{{ t.release_notes or 'Release notes' }}</a></li>
@@ -126,6 +125,19 @@
                     <li><a class="dropdown-item" id="navbar-button-report-bug" href="#">{{ t.report_bug or 'Report a bug' }}</a></li>
                 </ul>
             </li>
+            {% if config.isDev %}
+            <li class="nav-item btn button-tertiary button-dropdown dropdown" id="dropdownDeveloperItem" data-testid="developer-menu">
+                <a class="nav-link dropdown-toggle" href="#" id="dropdownDeveloper" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    {{ t.developer or 'Developer' }}
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="dropdownDeveloper">
+                    <li><a class="dropdown-item" id="navbar-button-style-lab" data-testid="developer-menu-style-lab" href="{{ basePath }}/developer/style-lab" target="_blank" rel="noopener">{{ t.style_lab or 'Style Lab' }}</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-idevice-lab" data-testid="developer-menu-idevice-lab" href="{{ basePath }}/developer/idevice-lab" target="_blank" rel="noopener">{{ t.idevice_lab or 'iDevice Lab' }}</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-rest-api" data-testid="developer-menu-rest-api" href="{{ basePath }}/api/v1/docs" target="_blank" rel="noopener">{{ t.rest_api or 'REST API' }}</a></li>
+                </ul>
+            </li>
+            {% endif %}
         </ul>
     </div>
 </nav>

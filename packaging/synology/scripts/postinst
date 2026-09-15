@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+ENV_FILE="${SYNOPKG_PKGDEST}/docker/.env"
+if [ ! -f "$ENV_FILE" ]; then
+cat <<EOF > "$ENV_FILE"
+PORT=8085
+APP_AUTH_METHODS=password,guest
+AUTH_CREATE_USERS=true
+EOF
+fi
+
+exit 0

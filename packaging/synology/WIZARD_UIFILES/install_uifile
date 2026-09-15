@@ -1,0 +1,60 @@
+[
+  {
+    "step_title": "Network and Storage Settings",
+    "items": [
+      {
+        "type": "textfield",
+        "desc": "Web port to access eXeLearning:",
+        "subitems": [
+          {
+            "key": "wizard_port",
+            "desc": "Port",
+            "defaultValue": "8080",
+            "validator": {
+              "regex": {
+                "expr": "^[0-9]+$",
+                "errorText": "Port must be an integer between 1024 and 65535"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "type": "textfield",
+        "desc": "Storage folder on NAS for projects and data:",
+        "subitems": [
+          {
+            "key": "wizard_data_path",
+            "desc": "Data path",
+            "defaultValue": "/volume1/docker/exelearning"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "step_title": "Authentication Mode",
+    "items": [
+      {
+        "type": "combobox",
+        "desc": "Select default authentication mode:",
+        "subitems": [
+          {
+            "key": "wizard_auth_methods",
+            "defaultValue": "password,guest",
+            "displayField": "display",
+            "valueField": "value",
+            "mode": "local",
+            "editable": false,
+            "store": [
+              ["password,guest", "Local password and Guest access"],
+              ["password", "Local password only"],
+              ["openid,password", "OpenID Connect (SSO) and Local password"],
+              ["none", "Open / Offline mode (No login)"]
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

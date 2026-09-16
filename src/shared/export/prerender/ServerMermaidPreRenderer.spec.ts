@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import { ServerMermaidPreRenderer } from './ServerMermaidPreRenderer';
+import { installSvgMeasurementPolyfills, ServerMermaidPreRenderer } from './ServerMermaidPreRenderer';
 
 describe('ServerMermaidPreRenderer', () => {
     let renderer: ServerMermaidPreRenderer;
@@ -125,6 +125,64 @@ describe('ServerMermaidPreRenderer', () => {
             expect(result.hasMermaid).toBe(true);
             // Count may be 0 if rendering fails, or 2 if it succeeds
             expect(result.count).toBeGreaterThanOrEqual(0);
+        });
+    });
+
+    describe('installSvgMeasurementPolyfills', () => {
+        function makeWindow(options?: { hasGetBBox?: boolean; hasTextLength?: boolean; omitTextElement?: boolean }) {
+            const svgProto: { getBBox?: () => unknown; textContent?: string | null } = {};
+            if (options?.hasGetBBox) {
+                svgProto.getBBox = () => ({ x: 1, y: 2, width: 3, height: 4 });
+            }
+            const textProto: Record<string, unknown> = { textContent: 'abc' };
+            if (options?.hasTextLength) {
+                textProto.getComputedTextLength = () => 99;
+            }
+            return {
+                SVGElement: { prototype: svgProto },
+                SVGTextElement: options?.omitTextElement ? undefined : { prototype: textProto },
+            };
+        }
+
+        it('installs getBBox and getComputedTextLength when missing', () => {
+            const window = makeWindow();
+            installSvgMeasurementPolyfills(window);
+
+            const emptyBox = (
+                window.SVGElement.prototype.getBBox as (this: { textContent?: string | null }) => {
+                    width: number;
+                    height: number;
+                }
+            ).call({ textContent: null });
+            expect(emptyBox.width).toBe(0);
+            expect(emptyBox.height).toBe(16);
+
+            const textBox = (
+                window.SVGElement.prototype.getBBox as (this: { textContent?: string | null }) => {
+                    width: number;
+                }
+            ).call({ textContent: 'abcd' });
+            expect(textBox.width).toBe(32);
+
+            type TextLengthFn = (this: { textContent?: string | null }) => number;
+            const textLength = window.SVGTextElement!.prototype.getComputedTextLength as TextLengthFn;
+            expect(textLength.call({ textContent: 'ab' })).toBe(16);
+            expect(textLength.call({ textContent: '' })).toBe(0);
+        });
+
+        it('does not overwrite existing measurement methods', () => {
+            const window = makeWindow({ hasGetBBox: true, hasTextLength: true });
+            const originalBox = window.SVGElement.prototype.getBBox;
+            const originalLength = window.SVGTextElement!.prototype.getComputedTextLength;
+            installSvgMeasurementPolyfills(window);
+            expect(window.SVGElement.prototype.getBBox).toBe(originalBox);
+            expect(window.SVGTextElement!.prototype.getComputedTextLength).toBe(originalLength);
+        });
+
+        it('skips text-length polyfill when SVGTextElement is absent', () => {
+            const window = makeWindow({ omitTextElement: true });
+            expect(() => installSvgMeasurementPolyfills(window)).not.toThrow();
+            expect(window.SVGTextElement).toBeUndefined();
         });
     });
 

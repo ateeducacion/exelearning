@@ -1,0 +1,33 @@
+/** Auto-kept in sync with the sibling .json for humans/tools that prefer JSON. */
+export default [
+  {
+    "idevice": "rubric",
+    "samples": [
+      {
+        "id": "basic-score",
+        "label": "Basic scored rubric",
+        "path": "test/fixtures/idevices/rubric/basic-score.json"
+      }
+    ]
+  },
+  {
+    "idevice": "checklist",
+    "samples": [
+      {
+        "id": "completion-checklist",
+        "label": "Completion checklist",
+        "path": "test/fixtures/idevices/checklist/completion.json"
+      }
+    ]
+  },
+  {
+    "idevice": "text",
+    "samples": [
+      {
+        "id": "rich-text",
+        "label": "Rich text block",
+        "path": "test/fixtures/idevices/text/rich.json"
+      }
+    ]
+  }
+];

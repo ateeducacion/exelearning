@@ -4271,6 +4271,57 @@ describe('GameHandler', () => {
             expect(props.typeGame).toBe('FlipCards');
         });
     });
+
+    describe('regex class-name escaping (incomplete-sanitization fix)', () => {
+        // The DataGame class names contain hyphens (e.g. "flipcards-DataGame").
+        // GameHandler escapes those class names before interpolating them into a
+        // RegExp. The escaping must remain complete (backslash-first, then hyphen)
+        // so the generated regex stays valid and correctly anchored for every
+        // legitimate, hyphenated class name.
+        function makeDict(divClass: string, jsonContent: string): Element {
+            const encoded = jsonContent
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+            const value = `&lt;div class=&quot;${divClass}&quot;&gt;${encoded}&lt;/div&gt;`;
+            return createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="${value}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+        }
+
+        it('extracts data from a hyphenated DataGame class name', () => {
+            // Exercises extractGameDataFromHtml's escaping seam: the hyphen-bearing
+            // class name must still match. word-search-DataGame has two hyphens.
+            const dict = makeDict('word-search-DataGame', '{"typeGame":"WordSearch","words":["x"]}');
+            const props = handler.extractProperties(dict);
+            expect(props.typeGame).toBe('WordSearch');
+            expect(props.words).toEqual(['x']);
+        });
+
+        it('rewrites the DataGame div for a non-encrypted game', () => {
+            // Exercises updateDataGameDivInHtml's escaping seam (line 314 path).
+            // flipcards is non-encrypted, so the div content is re-serialized.
+            const dict = makeDict('flipcards-DataGame', '{"typeGame":"FlipCards","cards":[1]}');
+            const html = handler.extractHtmlView(dict);
+            expect(html).toContain('flipcards-DataGame');
+            // The escaped regex must still anchor on the hyphenated class and the
+            // rewritten JSON must be present (HTML-escaped via escapeHtml) inside
+            // the div. escapeHtml turns the JSON quotes into &quot;.
+            expect(html).toContain('FlipCards');
+            expect(html).toContain('{&quot;typeGame&quot;:&quot;FlipCards&quot;');
+        });
+    });
 });
 
 describe('FpdSolvedExerciseHandler', () => {

@@ -618,11 +618,11 @@ var $exeDevice = {
     },
 
     decodeURIComponentSafe: function (s) {
-        return s ? decodeURIComponent(s).replace('&percnt;', '%') : s;
+        return s ? decodeURIComponent(s).replace(/&percnt;/g, '%') : s;
     },
 
     encodeURIComponentSafe: function (s) {
-        return s ? encodeURIComponent(s.replace('%', '&percnt;')) : s;
+        return s ? encodeURIComponent(s.replace(/%/g, '&percnt;')) : s;
     },
 
     validateCard: function () {
@@ -1592,11 +1592,16 @@ var $exeDevice = {
         const cardsJson = [];
         $entries.find('ENTRY').each(function () {
             const $this = $(this),
-                concept = $this.find('CONCEPT').text(),
-                definition = $this
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, ''); // Elimina HTML
+                concept = $this.find('CONCEPT').text();
+            // Elimina HTML. Se repite hasta que el resultado deja de cambiar
+            // para evitar que etiquetas anidadas (p.ej. "<scr<script>ipt>")
+            // se recompongan tras una sola pasada.
+            let definition = $this.find('DEFINITION').text(),
+                prevDefinition;
+            do {
+                prevDefinition = definition;
+                definition = definition.replace(/<[^>]*>/g, '');
+            } while (definition !== prevDefinition);
             if (concept && definition) {
                 cardsJson.push({
                     eText: concept,
@@ -1742,11 +1747,16 @@ var $exeDevice = {
         const cardsJson = $entries
             .find('ENTRY')
             .map((_, entry) => {
-                const concept = $(entry).find('CONCEPT').text(),
-                    definition = $(entry)
-                        .find('DEFINITION')
-                        .text()
-                        .replace(/<[^>]*>/g, '');
+                const concept = $(entry).find('CONCEPT').text();
+                // Elimina HTML. Se repite hasta que el resultado deja de
+                // cambiar para evitar que etiquetas anidadas
+                // (p.ej. "<scr<script>ipt>") se recompongan tras una sola pasada.
+                let definition = $(entry).find('DEFINITION').text(),
+                    prevDefinition;
+                do {
+                    prevDefinition = definition;
+                    definition = definition.replace(/<[^>]*>/g, '');
+                } while (definition !== prevDefinition);
                 return concept && definition
                     ? { eText: concept, eTextBk: definition }
                     : null;

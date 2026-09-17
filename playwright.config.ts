@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
 import os from 'os';
+import { randomBytes } from 'node:crypto';
 
 /**
  * Playwright E2E Test Configuration for eXeLearning
@@ -29,6 +30,7 @@ if (isRunningOnlyStatic) {
 }
 
 // Shared environment for dynamic server (chromium/firefox)
+process.env.E2E_SYNOLOGY_SECRET ||= randomBytes(48).toString('hex');
 const dynamicServerEnv = {
     DB_PATH: ':memory:',
     // FIX: '/tmp/' usually does not exist on Windows.
@@ -36,7 +38,8 @@ const dynamicServerEnv = {
     FILES_DIR: path.join(os.tmpdir(), 'exelearning-e2e'),
     PORT: '3001',
     APP_PORT: '3001',
-    APP_AUTH_METHODS: 'password,guest,openid',
+    APP_AUTH_METHODS: 'password,guest,openid,synology',
+    SYNOLOGY_SSO_SECRET: process.env.E2E_SYNOLOGY_SECRET,
     OIDC_ISSUER: '',
     OIDC_AUTHORIZATION_ENDPOINT: 'https://oidc.example.test/authorize',
     OIDC_CLIENT_ID: 'e2e-client',

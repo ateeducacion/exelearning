@@ -5,9 +5,7 @@
       "desc": "eXeLearning authoring tool",
       "icon": "images/icon_64.png",
       "type": "url",
-      "protocol": "http",
-      "port": "8085",
-      "url": "/",
+      "url": "/exelearning/login/synology",
       "allUsers": true
     }
   }

@@ -1,10 +1,15 @@
 {
-  "docker-project": {
-    "projects": [
-      {
-        "name": "exelearning",
-        "path": "docker"
-      }
-    ]
+  "web-config": {
+    "nginx-static-config": {
+      "enable": [
+        {
+          "type": "dsm",
+          "relpath": "app/synology/nginx.conf",
+          "alias": [
+            "exelearning"
+          ]
+        }
+      ]
+    }
   }
 }

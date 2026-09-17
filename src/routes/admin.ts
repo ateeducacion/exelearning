@@ -834,7 +834,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                                 .split(',')
                                 .map(m => m.trim())
                                 .filter(Boolean);
-                            const allowedMethods = new Set(['password', 'cas', 'openid', 'guest']);
+                            const allowedMethods = new Set(['password', 'cas', 'openid', 'synology', 'guest']);
                             const invalid = methods.filter(method => !allowedMethods.has(method));
                             if (methods.length === 0) {
                                 set.status = 400;

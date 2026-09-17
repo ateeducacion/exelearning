@@ -1,112 +1,116 @@
-import { describe, it, expect, afterAll } from 'bun:test';
-import { execSync, spawnSync } from 'child_process';
+import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test';
+import { execFileSync, spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
 const projectRoot = path.resolve(__dirname, '../..');
 const buildScript = path.join(projectRoot, 'packaging/synology/build-spk.sh');
-const testOutputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'synology-spk-test-'));
+const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'synology-spk-test-'));
+const binary = path.join(testDir, 'exelearning-server-linux');
+setDefaultTimeout(30_000);
 
-afterAll(() => {
-    fs.rmSync(testOutputDir, { recursive: true, force: true });
+const env = { ...process.env, STANDALONE_BINARY: binary, PACKAGE_REVISION: '2', SOURCE_DATE_EPOCH: '1700000000' };
+
+beforeAll(() => {
+    // Archive tests use an ELF header fixture; smoke-test.sh executes the real build on Linux.
+    fs.writeFileSync(binary, Buffer.from('7f454c4602010100000000000000000002003e00', 'hex'));
+    fs.chmodSync(binary, 0o755);
 });
+afterAll(() => fs.rmSync(testDir, { recursive: true, force: true }));
 
-describe('packaging/synology/build-spk.sh', () => {
-    it('should default to latest docker tag and package version when version is omitted or latest', () => {
-        const result = spawnSync('bash', [buildScript, 'latest', testOutputDir], {
-            cwd: projectRoot,
-            encoding: 'utf8',
-        });
-        expect(result.status).toBe(0);
+function build(version = '4.1.0-beta.1') {
+    const result = spawnSync('bash', [buildScript, version, testDir], { cwd: projectRoot, env, encoding: 'utf8' });
+    expect(result.status, result.stderr).toBe(0);
+    return path.join(testDir, `exelearning-${version.replace(/^v/, '')}-2-x86_64.spk`);
+}
 
-        const spkFiles = fs.readdirSync(testOutputDir).filter((f) => f.endsWith('.spk'));
-        expect(spkFiles.length).toBeGreaterThan(0);
-        const spkFile = path.join(testOutputDir, spkFiles[0]);
+function tar(...args: string[]): string {
+    return execFileSync('tar', args, { encoding: 'utf8' });
+}
 
-        const composeContent = execSync(
-            `tar -xOf "${spkFile}" package.tgz | tar -xzO docker/docker-compose.yml`,
-            { encoding: 'utf8' }
-        );
-        expect(composeContent).toContain('exelearning/exelearning:latest');
+describe('native Synology SPK builder', () => {
+    it('requires an explicit valid release version and revision', () => {
+        expect(spawnSync('bash', [buildScript, '', testDir], { env }).status).not.toBe(0);
+        expect(spawnSync('bash', [buildScript, 'latest', testDir], { env }).status).not.toBe(0);
+        expect(
+            spawnSync('bash', [buildScript, '4.0.6', testDir], { env: { ...env, PACKAGE_REVISION: '0' } }).status,
+        ).not.toBe(0);
+        const invalidBinary = path.join(testDir, 'script');
+        fs.writeFileSync(invalidBinary, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+        expect(
+            spawnSync('bash', [buildScript, '4.0.6', testDir], { env: { ...env, STANDALONE_BINARY: invalidBinary } })
+                .status,
+        ).not.toBe(0);
     });
 
-    it('should generate a valid SPK archive with version substituted', () => {
-        const version = '4.0.4';
-        const result = spawnSync('bash', [buildScript, version, testOutputDir], {
-            cwd: projectRoot,
-            encoding: 'utf8',
-        });
-
-        expect(result.status).toBe(0);
-        const spkFile = path.join(testOutputDir, `exelearning-${version}.spk`);
-        expect(fs.existsSync(spkFile)).toBe(true);
-
-        // Verify tar table of contents and ensure INFO is the first entry
-        const tocOutput = execSync(`tar -tf "${spkFile}"`, { encoding: 'utf8' });
-        const entries = tocOutput.trim().split('\n');
+    it('builds a versioned x86_64 archive and checksum with native runtime assets', () => {
+        const spk = build();
+        expect(fs.existsSync(spk)).toBe(true);
+        expect(execFileSync('sha256sum', ['--check', `${spk}.sha256`], { cwd: testDir, encoding: 'utf8' })).toContain(
+            'OK',
+        );
+        const entries = tar('-tf', spk).trim().split('\n');
         expect(entries[0]).toBe('INFO');
-        expect(tocOutput).toContain('PACKAGE_ICON.PNG');
-        expect(tocOutput).toContain('PACKAGE_ICON_256.PNG');
-        expect(tocOutput).toContain('conf/privilege');
-        expect(tocOutput).toContain('conf/resource');
-        expect(tocOutput).toContain('package.tgz');
-        expect(tocOutput).toContain('scripts/start-stop-status');
-        expect(tocOutput).toContain('scripts/preinst');
-        expect(tocOutput).toContain('scripts/postinst');
-
-        // Verify INFO file contents inside the SPK
-        const infoContent = execSync(`tar -xOf "${spkFile}" INFO`, { encoding: 'utf8' });
-        expect(infoContent).toContain('package="exelearning"');
-        expect(infoContent).toContain('version="4.0.4-0001"');
-        expect(infoContent).toContain('os_min_ver="7.0-40000"');
-        expect(infoContent).toContain('install_type="system"');
-        expect(infoContent).toContain('dsmuidir="ui"');
-        expect(infoContent).toContain('dsmappname="SYNO.SDS.eXeLearning"');
-        expect(infoContent).toContain('adminport="8085"');
-
-        // Verify docker/docker-compose.yml contents inside package.tgz inside the SPK
-        const composeContent = execSync(
-            `tar -xOf "${spkFile}" package.tgz | tar -xzO docker/docker-compose.yml`,
-            { encoding: 'utf8' }
-        );
-        expect(composeContent).toContain(`exelearning/exelearning:${version}`);
-        expect(composeContent).toContain('exelearning_data:/mnt/data');
-
-        // Verify ui/config inside package.tgz
-        const uiConfigContent = execSync(
-            `tar -xOf "${spkFile}" package.tgz | tar -xzO ui/config`,
-            { encoding: 'utf8' }
-        );
-        expect(uiConfigContent).toContain('"SYNO.SDS.eXeLearning"');
-        expect(uiConfigContent).toContain('"port": "8085"');
-
-        // Verify resource file uses projects schema
-        const resourceContent = execSync(`tar -xOf "${spkFile}" conf/resource`, { encoding: 'utf8' });
-        expect(resourceContent).toContain('"docker-project"');
-        expect(resourceContent).toContain('"projects"');
-        expect(resourceContent).toContain('"path": "docker"');
-    });
-
-    it('should handle version with leading v prefix (e.g. v4.0.2)', () => {
-        const versionInput = 'v4.0.2';
-        const expectedVersion = '4.0.2';
-        const result = spawnSync('bash', [buildScript, versionInput, testOutputDir], {
-            cwd: projectRoot,
+        for (const entry of [
+            'package.tgz',
+            'conf/resource',
+            'conf/nginx.conf',
+            'scripts/start-stop-status',
+            'scripts/preupgrade',
+            'scripts/postupgrade',
+            'scripts/preuninst',
+            'scripts/postuninst',
+            'WIZARD_UIFILES/install_uifile',
+        ]) {
+            expect(entries).toContain(entry);
+        }
+        const info = tar('-xOf', spk, 'INFO');
+        expect(info).toContain('version="4.1.0.1.1-2"');
+        expect(info).toContain('app_version="4.1.0-beta.1"');
+        expect(info).toContain('install_type="volume"');
+        expect(info).toContain('arch="x86_64"');
+        expect(info).toMatch(/extractsize="[1-9][0-9]*"/);
+        const payload = execFileSync('bash', ['-c', `tar -xOf "${spk}" package.tgz | tar -tzf -`], {
             encoding: 'utf8',
         });
-
-        expect(result.status).toBe(0);
-        const spkFile = path.join(testOutputDir, `exelearning-${expectedVersion}.spk`);
-        expect(fs.existsSync(spkFile)).toBe(true);
-
-        const infoContent = execSync(`tar -xOf "${spkFile}" INFO`, { encoding: 'utf8' });
-        expect(infoContent).toContain('version="4.0.2-0001"');
-
-        const composeContent = execSync(
-            `tar -xOf "${spkFile}" package.tgz | tar -xzO docker/docker-compose.yml`,
-            { encoding: 'utf8' }
+        expect(payload).toContain('./app/exelearning-server');
+        expect(payload).toContain('./ui/auth.cgi');
+        expect(payload).toContain('./ui/auth.js');
+        expect(payload).toContain('./app/public/');
+        expect(payload).toContain('./app/views/');
+        expect(payload).toContain('./app/translations/');
+        expect(payload).toContain('./app/synology/nginx.conf');
+        expect(payload).toContain('./app/node_modules/jsdom/lib/jsdom/browser/default-stylesheet.css');
+        const resource = JSON.parse(tar('-xOf', spk, 'conf/resource'));
+        expect(resource['port-config']).toBeUndefined();
+        expect(resource['usr-local-linker']).toBeUndefined();
+        for (const config of resource['web-config']['nginx-static-config'].enable) {
+            expect(payload.split('\n')).toContain(`./${config.relpath}`);
+        }
+        expect(`${entries.join('\n')}\n${payload}`).not.toMatch(/docker-compose|docker-project|container.manager/i);
+        expect(payload).not.toMatch(/\.(test|spec)\.js$|\.map$/m);
+        const mode = execFileSync(
+            'bash',
+            ['-c', `tar -xOf "${spk}" package.tgz | tar -tvzf - ./app/exelearning-server`],
+            { encoding: 'utf8' },
         );
-        expect(composeContent).toContain('exelearning/exelearning:v4.0.2');
+        expect(mode).toMatch(/^-rwxr-xr-x/);
+    });
+
+    it('packages loopback configuration, websocket proxying, persistent paths, and a real service status check', () => {
+        const spk = path.join(testDir, 'exelearning-4.1.0-beta.1-2-x86_64.spk');
+        const nginx = tar('-xOf', spk, 'conf/nginx.conf');
+        expect(nginx).toContain('127.0.0.1:8085');
+        expect(nginx).toContain('location ^~ /exelearning/');
+        expect(nginx).toContain('proxy_set_header Upgrade $http_upgrade');
+        expect(nginx).toContain('client_max_body_size 2g');
+        const postinst = tar('-xOf', spk, 'scripts/postinst');
+        expect(postinst).toContain('SYNOPKG_PKGVAR/data/exelearning.db');
+        expect(postinst).toContain('APP_AUTH_METHODS=synology');
+        expect(postinst).toContain('APP_HOST=127.0.0.1');
+        const service = tar('-xOf', spk, 'scripts/start-stop-status');
+        expect(service).toContain('kill -0');
+        expect(service).toContain('kill -TERM');
     });
 });

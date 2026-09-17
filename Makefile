@@ -833,11 +833,15 @@ package-windows-local-sign: fail-on-windows check-release-env eb-inject-config
 ## --------- END WINDOWS LOCAL SIGN ---------
 
 # Build Synology SPK package
-# Usage: make package-synology VERSION=4.0.4
+# Usage: make package-synology VERSION=4.0.6 PACKAGE_REVISION=1
 .PHONY: package-synology
+PACKAGE_REVISION ?= 1
+ARCH ?= x86_64
 package-synology:
-	@$(if $(VERSION),,$(error VERSION is required. Usage: make package-synology VERSION=x.y.z [DOCKER_TAG=latest]))
-	@DOCKER_TAG="$(DOCKER_TAG)" bash packaging/synology/build-spk.sh $(VERSION)
+	@$(if $(VERSION),,$(error VERSION is required. Usage: make package-synology VERSION=x.y.z [PACKAGE_REVISION=1]))
+	bun run build:all
+	bun scripts/build-standalone.js linux-x64 --synology
+	@PACKAGE_REVISION="$(PACKAGE_REVISION)" ARCH="$(ARCH)" bash packaging/synology/build-spk.sh "$(VERSION)"
 
 
 

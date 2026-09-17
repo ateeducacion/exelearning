@@ -1765,6 +1765,10 @@
                                         <span>openid</span>
                                     </div>
                                     <div class="form-check-custom">
+                                        <input id="auth-method-synology" type="checkbox" data-setting-key="APP_AUTH_METHODS" data-setting-type="csv" data-setting-option="synology" {% if 'synology' in adminSettings.general.app_auth_methods %}checked{% endif %}>
+                                        <label for="auth-method-synology">Synology DSM</label>
+                                    </div>
+                                    <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="APP_AUTH_METHODS" data-setting-type="csv" data-setting-option="guest" {% if 'guest' in adminSettings.general.app_auth_methods %}checked{% endif %}>
                                         <span>guest</span>
                                     </div>

@@ -37,6 +37,7 @@ nav:
   - Deployment: deployment.md
   - High Availability: high-availability.md
   - "Deploy: Sample Configs": deploy/README.md
+  - "Deploy: Synology NAS": deploy/synology.md
   - Architecture:
       - Overview: architecture.md
   - Conventions: conventions.md

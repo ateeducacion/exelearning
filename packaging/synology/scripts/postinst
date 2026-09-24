@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+umask 077
+: "${SYNOPKG_PKGVAR:?DSM did not provide SYNOPKG_PKGVAR}"
+mkdir -p "$SYNOPKG_PKGVAR/data" "$SYNOPKG_PKGVAR/files" "$SYNOPKG_PKGVAR/config" "$SYNOPKG_PKGVAR/logs" "$SYNOPKG_PKGVAR/run"
+ENV_FILE="$SYNOPKG_PKGVAR/config/runtime.env"
+if [ ! -f "$ENV_FILE" ]; then
+    secret="$(od -An -N48 -tx1 /dev/urandom | tr -d ' \n')"
+    sso_secret="$(od -An -N48 -tx1 /dev/urandom | tr -d ' \n')"
+    cat > "$ENV_FILE" <<ENV
+APP_ONLINE_MODE=1
+APP_HOST=127.0.0.1
+APP_PORT=8085
+DB_DRIVER=pdo_sqlite
+DB_PATH=$SYNOPKG_PKGVAR/data/exelearning.db
+FILES_DIR=$SYNOPKG_PKGVAR/files
+BASE_PATH=/exelearning
+STRICT_BASE_PATH_ROUTES=true
+TRUSTED_PROXIES=127.0.0.1
+TRUSTED_HEADERS=x-forwarded-for,x-forwarded-host,x-forwarded-proto
+APP_AUTH_METHODS=synology
+AUTH_CREATE_USERS=true
+NODE_ENV=production
+JWT_SECRET=$secret
+SYNOLOGY_SSO_SECRET=$sso_secret
+ENV
+fi
+chmod 600 "$ENV_FILE"
+exit 0

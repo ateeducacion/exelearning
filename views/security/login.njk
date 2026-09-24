@@ -52,7 +52,7 @@
                     </form>
                     {% endif %}
 
-                    {% if auth_methods and ('cas' in auth_methods or 'openid' in auth_methods or 'guest' in auth_methods) %}
+                    {% if auth_methods and ('cas' in auth_methods or 'openid' in auth_methods or 'synology' in auth_methods or 'guest' in auth_methods) %}
                     {# Additional login method buttons #}
                     <div class="other-methods">
                         {% if 'password' in auth_methods %}
@@ -66,6 +66,9 @@
                         {% endif %}
                         {% if 'openid' in auth_methods %}
                             <a href="{{ basePath }}/login/openid{% if returnUrl %}?returnUrl={{ returnUrl | urlencode }}{% endif %}" id="login-link-openid" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center me-2" data-turbo="false" data-no-prefetch>OpenID</a>
+                        {% endif %}
+                        {% if 'synology' in auth_methods %}
+                            <a href="{{ basePath }}/login/synology{% if returnUrl %}?returnUrl={{ returnUrl | urlencode }}{% endif %}" id="login-link-synology" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center me-2" data-turbo="false" data-no-prefetch>Synology DSM</a>
                         {% endif %}
                         {% if 'guest' in auth_methods %}
                             <form method="post" action="{{ basePath }}/login/guest" id="login-form-guest" class="d-inline" data-turbo="false" data-no-prefetch>

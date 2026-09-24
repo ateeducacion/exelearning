@@ -823,7 +823,7 @@ async function bootstrap() {
     }
 
     // 6. Start server
-    app.listen(PORT);
+    app.listen({ port: PORT, hostname: process.env.APP_HOST || '0.0.0.0' });
     initWebSocket();
 
     // 7. Start cleanup scheduler (for unsaved and guest projects)

@@ -75,8 +75,9 @@ make up                         # Docker dev environment
 | **Test** | `make test-e2e` | E2E tests (Playwright) |
 | **Test** | `make test-e2e-static` | E2E tests against static build |
 | **Test** | `make test-coverage` | Tests with coverage report |
-| **Lint** | `make fix` | Autofix lint + check — **always run after changes** |
-| **Lint** | `make lint` | Lint without fixing |
+| **Lint** | `make fix` | Autofix lint + typecheck — **always run after changes** |
+| **Lint** | `make lint` | Lint + typecheck without fixing |
+| **Lint** | `make typecheck` | TypeScript `tsc --noEmit` (also part of `make lint` / `make fix`) |
 | **i18n** | `make translations` | Extract new translation keys — **never run by agents; managed by a separate process** |
 | **CLI** | `make create-user` | Create a user account |
 | **CLI** | `make export-*` | Export via CLI (html5, scorm12, scorm2004, epub3, ims) |
@@ -139,7 +140,7 @@ See [backend-service](.agents/skills/backend-service/SKILL.md) and [backend-rout
 
 ## 6. Lint & Fix
 
-**Always run `make fix` after any code changes.** This runs Biome for both TypeScript and JavaScript.
+**Always run `make fix` after any code changes.** This runs Biome for both TypeScript and JavaScript, then `tsc --noEmit`.
 
 Config: `biome.json` — 120 char line width, 4-space indent, single quotes, trailing commas, semicolons always.
 

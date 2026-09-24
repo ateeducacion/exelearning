@@ -35,7 +35,12 @@ export default defineConfig({
         setupFiles: ['./public/vitest.setup.js'],
 
         // Only include frontend tests
-        include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js', 'public/files/perm/idevices/**/*.test.js', 'public/preview-sw.test.js'],
+        include: [
+            'public/app/**/*.test.js',
+            'public/libs/**/*.test.js',
+            'public/files/perm/idevices/**/*.test.js',
+            'public/preview-sw.test.js',
+        ],
 
         // Exclude legacy code
         exclude: [
@@ -61,7 +66,6 @@ export default defineConfig({
 
         // Worker isolation - critical for memory management
         pool: 'threads',
-        singleFork: false,
         isolate: true,
 
         // Limit concurrent tests to prevent memory explosion

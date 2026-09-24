@@ -15,6 +15,16 @@ import * as path from 'path';
 
 const DEFAULT_MAX_AGE_SECONDS = 86400; // 24 hours
 
+export interface TmpCleanupDependencies {
+    fileHelper: {
+        getFilesDir: () => string;
+    };
+}
+
+const defaultDependencies: TmpCleanupDependencies = {
+    fileHelper: { getFilesDir: getTempPath },
+};
+
 export interface TmpCleanupResult {
     success: boolean;
     message: string;
@@ -106,6 +116,7 @@ async function cleanupDirectory(dirPath: string, thresholdMs: number, dryRun: bo
 export async function execute(
     positional: string[],
     flags: Record<string, string | boolean | string[]>,
+    deps: TmpCleanupDependencies = defaultDependencies,
 ): Promise<TmpCleanupResult> {
     // Parse options
     const maxAge = getNumber(flags, 'max-age', DEFAULT_MAX_AGE_SECONDS)!;
@@ -120,7 +131,7 @@ export async function execute(
     }
 
     // Get temp directory
-    const tmpDir = getTempPath();
+    const tmpDir = deps.fileHelper.getFilesDir();
 
     if (!fs.existsSync(tmpDir)) {
         return {

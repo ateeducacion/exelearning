@@ -1936,4 +1936,33 @@ describe('adaptative-quiz edition', () => {
             expect(validateCalls).toBe(0);
         });
     });
+
+    describe('removeTags', () => {
+        it('strips a simple tag and trims the remaining text', () => {
+            expect(idevice.removeTags('<p>  Hello  </p>')).toBe('Hello');
+        });
+
+        it('returns an empty string for nullish input', () => {
+            expect(idevice.removeTags(null)).toBe('');
+            expect(idevice.removeTags(undefined)).toBe('');
+        });
+
+        it('leaves no live <script tag behind for nested/obfuscated payloads', () => {
+            // Security property: regardless of how the tags are nested or split,
+            // the fixed-point sanitizer must not leave a usable `<script` token.
+            const payloads = [
+                '<scr<script>ipt>alert(1)</script>',
+                '<<script>script>alert(1)<</script>/script>',
+                '<scr<i>ipt>alert(1)',
+            ];
+            for (const payload of payloads) {
+                expect(idevice.removeTags(payload).toLowerCase()).not.toContain('<script');
+            }
+        });
+
+        it('preserves tag-free text content unchanged', () => {
+            expect(idevice.removeTags('  Plain question text  ')).toBe('Plain question text');
+            expect(idevice.removeTags('2 plus 3 equals 5')).toBe('2 plus 3 equals 5');
+        });
+    });
 });

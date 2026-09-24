@@ -460,11 +460,11 @@ var $exeDevice = {
     },
 
     decodeURIComponentSafe: function (s) {
-        return s ? decodeURIComponent(s).replace('&percnt;', '%') : s;
+        return s ? decodeURIComponent(s).replace(/&percnt;/g, '%') : s;
     },
 
     encodeURIComponentSafe: function (s) {
-        return s ? encodeURIComponent(s.replace('%', '&percnt;')) : s;
+        return s ? encodeURIComponent(s.replace(/%/g, '&percnt;')) : s;
     },
 
     validateCard: function () {

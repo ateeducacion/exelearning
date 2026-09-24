@@ -76,6 +76,28 @@ describe('interactive-video iDevice edition', () => {
     expect(existsSync(join(__dirname, 'quextIEHelp.png'))).toBe(true);
   });
 
+  describe('isYoutubeURL', () => {
+    it('accepts legitimate YouTube watch URLs', () => {
+      expect($exeDevice.isYoutubeURL('https://www.youtube.com/watch?v=g9gPKSGGkEk')).toBe(true);
+      expect($exeDevice.isYoutubeURL('https://youtube.com/watch?v=g9gPKSGGkEk')).toBe(true);
+      expect($exeDevice.isYoutubeURL('https://m.youtube.com/watch?v=g9gPKSGGkEk')).toBe(true);
+    });
+
+    it('rejects look-alike hostnames', () => {
+      // Subdomain attack: host endsWith but is not youtube.com
+      expect($exeDevice.isYoutubeURL('https://www.youtube.com.evil.com/watch?v=x')).toBe(false);
+      // Substring-only attack that the old indexOf(...) > -1 check accepted
+      expect($exeDevice.isYoutubeURL('https://evil.com/?x=www.youtube.com')).toBe(false);
+      expect($exeDevice.isYoutubeURL('https://notyoutube.com/watch?v=x')).toBe(false);
+    });
+
+    it('returns false for invalid or empty input', () => {
+      expect($exeDevice.isYoutubeURL('')).toBe(false);
+      expect($exeDevice.isYoutubeURL(undefined)).toBe(false);
+      expect($exeDevice.isYoutubeURL('not a url')).toBe(false);
+    });
+  });
+
   // The defect: loadPreviousValues called scorm.setValues with three
   // arguments, so the helper's own default (100) filled the weight field
   // instead of the stored value — and the next save read that 100 back out of

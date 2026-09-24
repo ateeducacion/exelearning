@@ -125,6 +125,35 @@ describe('crossword iDevice', () => {
     });
   });
 
+  describe('stripTags', () => {
+    it('removes simple HTML tags', () => {
+      expect($exeDevice.stripTags('<b>hello</b>')).toBe('hello');
+      expect($exeDevice.stripTags('a <span class="x">word</span> here')).toBe('a word here');
+    });
+
+    it('leaves plain text untouched', () => {
+      expect($exeDevice.stripTags('Plain definition text')).toBe('Plain definition text');
+      expect($exeDevice.stripTags('')).toBe('');
+    });
+
+    it('strips obfuscated/nested tags so no tag can survive', () => {
+      const payload = '<scr<script>ipt>alert(1)</script>';
+      const cleaned = $exeDevice.stripTags(payload);
+      // The dangerous "<script" opener must not survive reassembly.
+      expect(cleaned.toLowerCase()).not.toContain('<script');
+      // No residual tag (anything matching <...>) is left behind.
+      expect(cleaned).not.toMatch(/<[^>]*>/);
+    });
+
+    it('reaches a fixed point: re-stripping the output is a no-op', () => {
+      const payload = '<<div>script<script>>alert(1)</script>';
+      const once = $exeDevice.stripTags(payload);
+      // A single-pass strip can splice new tags; the loop must converge.
+      expect(once).not.toMatch(/<[^>]*>/);
+      expect(once.replace(/<[^>]*>/g, '')).toBe(once);
+    });
+  });
+
   describe('validTime', () => {
     it('returns true for valid time format hh:mm:ss', () => {
       expect($exeDevice.validTime('00:00:00')).toBe(true);

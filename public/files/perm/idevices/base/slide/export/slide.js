@@ -42,13 +42,33 @@ var $slide = (() => {
         if (!svg || typeof svg !== 'string') {
             return '';
         }
-        return svg
-            .replace(/<script[\s\S]*?<\/script>/gi, '')
-            .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
-            .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
-            // Unquoted handler values: stop at whitespace or '>' (also '/>').
-            .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
-            .replace(/javascript:/gi, '');
+        // Apply every removal repeatedly until the string stops changing.
+        // A single pass can be defeated because deleting one match can splice
+        // two halves into a brand-new match (e.g. `<scr<script>ipt>` ->
+        // `<script>`, or `javasjavascript:cript:` -> `javascript:`). Looping
+        // to a fixed point closes that hole. The end-tag pattern tolerates
+        // optional whitespace before the closing angle bracket (`</script >`)
+        // and is case-insensitive.
+        var prev;
+        var out = svg;
+        do {
+            prev = out;
+            out = out
+                .replace(/<script[\s\S]*?<\/\s*script\s*>/gi, '')
+                .replace(/<\/?\s*foreignObject[^>]*>/gi, '')
+                .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
+                .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
+                // Unquoted handler values: stop at whitespace or '>' (also '/>').
+                .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
+                // Dangerous URL schemes. `javascript:` and `vbscript:` are
+                // always unsafe and are removed outright. For `data:` we only
+                // strip the script-executing `data:text/html` form so
+                // legitimate embedded images (`data:image/...`) keep working.
+                .replace(/javascript:/gi, '')
+                .replace(/vbscript:/gi, '')
+                .replace(/data:\s*text\/html/gi, '');
+        } while (out !== prev);
+        return out;
     }
 
     /**

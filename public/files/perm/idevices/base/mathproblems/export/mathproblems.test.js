@@ -1,11 +1,13 @@
 /**
- * Unit tests for the mathproblems iDevice (export/runtime).
+ * Unit tests for mathproblems iDevice (export/runtime).
  *
- * common.js derives completion from `gameOver === true || auto !== true`, and
- * updateScore reports automatically, so without the flag a page carrying a
- * mathproblems stayed `incomplete` in the LMS however well the learner did:
- * the gameOver() that runs after the reveal delay comes too late for the
- * report that carries the final score.
+ * Covers:
+ * - Placeholder-matching regex: `{X}` used to use `[a-zA-z]`, an overly-large
+ *   range (CodeQL js/overly-large-range). The fix narrows it to `[a-zA-Z]`.
+ * - SCORM completion: common.js derives completion from
+ *   `gameOver === true || auto !== true`, so without the flag a page stayed
+ *   `incomplete` in the LMS. gameOver() after the reveal delay comes too late
+ *   for the report that carries the final score.
  */
 
 /* eslint-disable no-undef */
@@ -17,6 +19,11 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const TWINS = {
+    export: join(__dirname, 'mathproblems.js'),
+    edition: join(__dirname, '..', 'edition', 'mathproblems.js'),
+};
 
 function loadExportIdevice(code) {
     const modifiedCode = code
@@ -30,6 +37,39 @@ function loadExportIdevice(code) {
     (0, eval)(modifiedCode);
     return global.$eXeMathProblems;
 }
+
+describe('mathproblems placeholder regex', () => {
+    describe('regression guard — no overly-large range in either twin', () => {
+        for (const [name, path] of Object.entries(TWINS)) {
+            it(`${name} runtime uses [a-zA-Z], never [a-zA-z]`, () => {
+                const code = readFileSync(path, 'utf-8');
+                expect(code).not.toMatch(/\[a-zA-z\]/);
+                expect(code).toContain('/\\{[a-zA-Z]\\}/g');
+            });
+        }
+    });
+
+    describe('matching semantics of /\\{[a-zA-Z]\\}/g', () => {
+        const placeholder = () => /\{[a-zA-Z]\}/g;
+
+        it('matches single-letter placeholders', () => {
+            for (const token of ['{x}', '{A}', '{Z}', '{a}', '{m}']) {
+                expect(token.match(placeholder())).toEqual([token]);
+            }
+        });
+
+        it('does NOT match the punctuation chars that [a-zA-z] wrongly included', () => {
+            for (const token of ['{[}', '{\\}', '{]}', '{^}', '{_}', '{`}']) {
+                expect(token.match(placeholder())).toBeNull();
+            }
+        });
+
+        it('finds every placeholder in a wording string', () => {
+            const wording = 'Solve {a} plus {B} for the value {z}.';
+            expect(wording.match(placeholder())).toEqual(['{a}', '{B}', '{z}']);
+        });
+    });
+});
 
 describe('mathproblems iDevice export', () => {
     let $eXeMathProblems;

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'bun:test';
-import { ServerLatexPreRenderer } from './ServerLatexPreRenderer';
+import { ServerLatexPreRenderer, cleanLatexFromHtml } from './ServerLatexPreRenderer';
 
 describe('ServerLatexPreRenderer', () => {
     let renderer: ServerLatexPreRenderer;
@@ -299,6 +299,44 @@ describe('ServerLatexPreRenderer', () => {
 
             expect(result.latexRendered).toBe(true);
             expect(result.html).toContain('exe-math-rendered');
+        });
+    });
+
+    describe('cleanLatexFromHtml', () => {
+        it('should strip nested/obfuscated tags without leaving a reassembled tag', () => {
+            // A naive single pass on this payload removes the inner tag and splices
+            // the halves into a NEW "<script>" tag. The fixed-point loop must keep
+            // stripping until no "<tag>" remains.
+            const clean = cleanLatexFromHtml('<scr<script>ipt>alert(1)</scr<script>ipt>');
+            expect(clean.toLowerCase()).not.toContain('<script');
+            // No opening tag "<...>" may survive anywhere in the output.
+            expect(/<[^>]+>/.test(clean)).toBe(false);
+            expect(clean).toContain('alert(1)');
+        });
+
+        it('should strip plain HTML tags but keep LaTeX content', () => {
+            expect(cleanLatexFromHtml('<b>\\(x^2\\)</b>')).toBe('\\(x^2\\)');
+        });
+
+        it('should convert <br> tags to newlines', () => {
+            expect(cleanLatexFromHtml('a<br>b<br/>c')).toBe('a\nb\nc');
+        });
+
+        it('should decode double-escaped entity text literally (no over-decoding)', () => {
+            // "&amp;lt;" is the literal text "&lt;" and must stay "&lt;",
+            // not be over-decoded into "<".
+            expect(cleanLatexFromHtml('&amp;lt;')).toBe('&lt;');
+            expect(cleanLatexFromHtml('&amp;amp;')).toBe('&amp;');
+        });
+
+        it('should still decode genuine entities', () => {
+            expect(cleanLatexFromHtml('&lt;')).toBe('<');
+            expect(cleanLatexFromHtml('&gt;')).toBe('>');
+            expect(cleanLatexFromHtml('&amp;')).toBe('&');
+            expect(cleanLatexFromHtml('&quot;')).toBe('"');
+            expect(cleanLatexFromHtml('a&nbsp;b')).toBe('a b');
+            expect(cleanLatexFromHtml('&#65;')).toBe('A');
+            expect(cleanLatexFromHtml('&#x41;')).toBe('A');
         });
     });
 

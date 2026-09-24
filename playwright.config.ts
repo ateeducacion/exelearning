@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
 import os from 'os';
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 /**
  * Playwright E2E Test Configuration for eXeLearning
@@ -29,8 +30,27 @@ if (isRunningOnlyStatic) {
     process.env.STATIC_MODE = 'true';
 }
 
+// The database matrix boots Docker before Playwright, so the DSM assertion
+// secret has to be the one already in the container (doc/deploy/.env.e2e).
+// The in-process server can keep generating a fresh secret per run.
+function synologySecretForExternalServer(): string | undefined {
+    if (!process.env.E2E_BASE_URL) return undefined;
+    try {
+        const text = readFileSync(path.resolve('doc/deploy/.env.e2e'), 'utf8');
+        for (const line of text.split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('E2E_SYNOLOGY_SECRET=')) continue;
+            const value = trimmed.slice('E2E_SYNOLOGY_SECRET='.length).trim();
+            return value || undefined;
+        }
+    } catch {
+        return undefined;
+    }
+    return undefined;
+}
+
 // Shared environment for dynamic server (chromium/firefox)
-process.env.E2E_SYNOLOGY_SECRET ||= randomBytes(48).toString('hex');
+process.env.E2E_SYNOLOGY_SECRET ||= synologySecretForExternalServer() || randomBytes(48).toString('hex');
 const dynamicServerEnv = {
     DB_PATH: ':memory:',
     // FIX: '/tmp/' usually does not exist on Windows.

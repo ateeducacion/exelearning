@@ -181,7 +181,7 @@ describe('NavbarHelp', () => {
   });
 
   describe('setApiDocsEvent', () => {
-    it('should add click event listener to API docs button', () => {
+    it('should add click event listener to API docs button when present', () => {
       navbarHelp.setApiDocsEvent();
 
       expect(mockButtons.apiDocs.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
@@ -195,6 +195,12 @@ describe('NavbarHelp', () => {
       clickHandler();
 
       expect(spy).toHaveBeenCalled();
+    });
+
+    it('should no-op when the API docs button is missing (moved to Developer menu)', () => {
+      // Simulate a navbar that no longer includes the hidden Help > API docs entry
+      navbarHelp.apiDocsButton = null;
+      expect(() => navbarHelp.setApiDocsEvent()).not.toThrow();
     });
   });
 

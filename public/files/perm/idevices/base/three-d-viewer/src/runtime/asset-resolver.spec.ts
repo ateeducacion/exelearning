@@ -155,4 +155,16 @@ describe('waitForAssetManager', () => {
         installAssetManager(null);
         await expect(waitForAssetManager(5, 1)).resolves.toBeNull();
     });
+
+    it('stops with null when the injected delay aborts', async () => {
+        installAssetManager(null);
+        const aborted = Object.assign(new Error('closed'), { name: 'AbortError' });
+        await expect(waitForAssetManager(5000, 1, () => Promise.reject(aborted))).resolves.toBeNull();
+    });
+
+    it('rethrows any other delay failure', async () => {
+        installAssetManager(null);
+        const failure = new Error('boom');
+        await expect(waitForAssetManager(5000, 1, () => Promise.reject(failure))).rejects.toBe(failure);
+    });
 });

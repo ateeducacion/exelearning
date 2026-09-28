@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { publishViewerRuntime } from '../runtime/viewer-runtime';
-import { createStubInstance, createWrapper, makeDocument, resetDom, sequentialIds } from '../test/helpers';
+import {
+    attachEditionLifecycle,
+    createStubInstance,
+    createWrapper,
+    makeDocument,
+    resetDom,
+    sequentialIds,
+} from '../test/helpers';
 import { createThreeStub, installThreeStub, StubVector3 } from '../test/three-stub';
 import { createEditorPreview } from './preview';
 
@@ -326,5 +333,141 @@ describe('destroy', () => {
             };
         }
         expect(() => preview.destroy()).not.toThrow();
+    });
+});
+
+/**
+ * Every await in the preview can outlive the editor. Once the edition's
+ * lifecycle is destroyed nothing may be created, loaded or booted, and the
+ * AssetManager poll must settle instead of running to its deadline.
+ */
+describe('edition lifecycle teardown', () => {
+    it('does not create a <model-viewer> for an edition closed while the library loaded', async () => {
+        const container = createWrapper();
+        const lifecycle = attachEditionLifecycle();
+        const preview = createEditorPreview(container, CALLBACKS, lifecycle);
+
+        const pending = preview.mount();
+        lifecycle.destroy();
+        await pending;
+
+        expect(preview.getModelViewer()).toBeNull();
+        expect(container.querySelector('model-viewer')).toBeNull();
+    });
+
+    it('stops forwarding model-viewer load and error events once closed', async () => {
+        const onModelLoaded = vi.fn();
+        const onModelError = vi.fn();
+        const lifecycle = attachEditionLifecycle();
+        const preview = createEditorPreview(createWrapper(), { onModelLoaded, onModelError }, lifecycle);
+        await preview.mount();
+
+        lifecycle.destroy();
+        preview.getModelViewer()?.dispatchEvent(new Event('load'));
+        preview.getModelViewer()?.dispatchEvent(new Event('error'));
+
+        expect(onModelLoaded).not.toHaveBeenCalled();
+        expect(onModelError).not.toHaveBeenCalled();
+    });
+
+    it('stops polling for the AssetManager once the edition closes', async () => {
+        const lifecycle = attachEditionLifecycle();
+        const preview = createEditorPreview(createWrapper(), CALLBACKS, lifecycle);
+        await preview.mount();
+        lifecycle.destroy();
+
+        const started = Date.now();
+        await preview.update(document_({ src: 'asset://a.glb' }));
+
+        // A closed edition must not sit through the whole 5s timeout.
+        expect(Date.now() - started).toBeLessThan(1000);
+        expect(preview.getModelViewer()?.hasAttribute('src')).toBe(false);
+    });
+
+    it('settles a poll that the edition closes mid-wait', async () => {
+        vi.useFakeTimers();
+        try {
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            const lifecycle = attachEditionLifecycle();
+            const preview = createEditorPreview(createWrapper(), CALLBACKS, lifecycle);
+            await preview.mount();
+            const settled = vi.fn();
+            void preview.update(document_({ src: 'asset://a.glb' })).then(settled, settled);
+
+            await vi.advanceTimersByTimeAsync(250);
+            lifecycle.destroy();
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(settled).toHaveBeenCalled();
+            // It bailed out as closed, not as "AssetManager never appeared".
+            expect(warn).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('ignores an asset resolved after the edition closed', async () => {
+        const lifecycle = attachEditionLifecycle();
+        globalThis.eXeLearning = {
+            app: {
+                project: {
+                    assetManager: {
+                        resolveAssetURLSync: () => null,
+                        resolveAssetURL: async () => {
+                            lifecycle.destroy();
+                            return 'blob:late';
+                        },
+                    },
+                },
+            },
+        };
+        const preview = createEditorPreview(createWrapper(), CALLBACKS, lifecycle);
+        await preview.mount();
+        await preview.update(document_({ src: 'asset://a.glb' }));
+
+        expect(preview.getModelViewer()?.hasAttribute('src')).toBe(false);
+        expect(preview.resolveMediaUrl('')).toBe('');
+    });
+
+    it('never boots an STL scene for an edition that closed while it loaded', async () => {
+        const init = vi.spyOn(publishViewerRuntime(), 'init');
+        const lifecycle = attachEditionLifecycle();
+        const preview = createEditorPreview(createWrapper(), CALLBACKS, lifecycle);
+
+        const pending = preview.update(document_({ src: 'content/resources/a.stl' }));
+        lifecycle.destroy();
+        await pending;
+
+        expect(init).not.toHaveBeenCalled();
+    });
+
+    it('attaches no interaction layer once the edition closed', async () => {
+        const lifecycle = attachEditionLifecycle();
+        const preview = createEditorPreview(createWrapper(), CALLBACKS, lifecycle);
+        await preview.mount();
+        lifecycle.destroy();
+
+        const layer = await preview.attachInteractions(
+            document_({ interaction: { enabled: true, markers: [{ id: 'm1' }] } }),
+            { t: text => text, onPlaced: () => {}, resolveMediaUrl: url => url },
+        );
+
+        expect(layer).toBeNull();
+        expect(preview.getInteractions()).toBeNull();
+    });
+
+    it('gives up waiting for an STL instance once the edition closes', async () => {
+        const lifecycle = attachEditionLifecycle();
+        const preview = createEditorPreview(createWrapper(), CALLBACKS, lifecycle);
+        const started = Date.now();
+        const pending = preview.attachInteractions(
+            document_({ src: 'content/resources/a.stl', interaction: { enabled: true, markers: [{ id: 'm1' }] } }),
+            { t: text => text, onPlaced: () => {}, resolveMediaUrl: url => url },
+        );
+        lifecycle.destroy();
+
+        await expect(pending).resolves.toBeNull();
+        // Not the 20s STL-ready deadline.
+        expect(Date.now() - started).toBeLessThan(1000);
     });
 });

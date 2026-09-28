@@ -128,15 +128,35 @@ export function recoverAssetRefFromBlob(blobUrl: unknown, assetManager?: ExeAsse
     return extension ? `${assetId}.${extension}` : String(assetId);
 }
 
-/** Wait for an AssetManager to appear, e.g. while the workarea is still booting. */
-export async function waitForAssetManager(timeoutMs = 5000, pollIntervalMs = 100): Promise<ExeAssetManager | null> {
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Wait for an AssetManager to appear, e.g. while the workarea is still booting.
+ *
+ * `delay` lets an edition poll on its own lifecycle timer: when that wait
+ * rejects with an `AbortError` (the editor closed), polling stops with `null`.
+ */
+export async function waitForAssetManager(
+    timeoutMs = 5000,
+    pollIntervalMs = 100,
+    delay: (ms: number) => Promise<void> = sleep,
+): Promise<ExeAssetManager | null> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         const manager = getAssetManager();
         if (manager) {
             return manager;
         }
-        await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+        try {
+            await delay(pollIntervalMs);
+        } catch (error) {
+            if ((error as { name?: unknown } | null)?.name === 'AbortError') {
+                return null;
+            }
+            throw error;
+        }
     }
     return null;
 }

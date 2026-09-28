@@ -103,3 +103,16 @@ export function makeDocument(partial: unknown, createId: IdFactory = sequentialI
 export function flush(): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, 0));
 }
+
+/** The real workarea lifecycle, as `IdeviceNode` publishes it (plus `destroy()`). */
+export type TestEditionLifecycle = ExeEditionLifecycle & { destroy(): void };
+
+/**
+ * Give `owner` the real `EditionLifecycle` from `public/vitest.setup.js`, so a
+ * test can close the edition with `destroy()` and observe what actually happens.
+ */
+export function attachEditionLifecycle(owner: object = {}): TestEditionLifecycle {
+    const attach = (globalThis as unknown as { attachEditionLifecycle: (device: object) => TestEditionLifecycle })
+        .attachEditionLifecycle;
+    return attach(owner);
+}

@@ -16,6 +16,7 @@ import { defaultIdFactory, normalizeMarker } from '../shared/schema';
 import type { HydrationResult, IdFactory, Marker, ThreeDViewerDocumentV2 } from '../shared/types';
 import { collectElements, renderEditorMarkup, renderUnsupportedVersionMarkup } from './editor';
 import type { EditorElements, Translate } from './editor';
+import { resolveEditionLifecycle } from './edition-lifecycle';
 import {
     applyDocumentToForm,
     readDisplaySettings,
@@ -71,6 +72,8 @@ export const defaultDependencies: DeviceDependencies = {
 export interface ThreeDViewerDevice {
     readonly name: string;
     readonly i18n: { name: string };
+    /** Published by `IdeviceNode` before `init()`; destroyed when the editor closes. */
+    $lifecycle?: ExeEditionLifecycle;
     init(element: HTMLElement, previousData?: unknown, path?: string): Promise<void>;
     save(): ThreeDViewerDocumentV2 | unknown | false;
     /** Load persisted data into the device (the export-object contract). */
@@ -218,7 +221,7 @@ export function createThreeDViewerDevice(overrides: Partial<DeviceDependencies> 
         });
     };
 
-    const registerBehaviours = (): void => {
+    const registerBehaviours = (lifecycle: ExeEditionLifecycle): void => {
         if (!elements) {
             return;
         }
@@ -297,7 +300,8 @@ export function createThreeDViewerDevice(overrides: Partial<DeviceDependencies> 
                     void target.requestFullscreen?.();
                 }
             });
-            document.addEventListener('fullscreenchange', () => {
+            // `document` outlives the form, so this listener must be owned.
+            lifecycle.addEventListener(document, 'fullscreenchange', () => {
                 const label = t(isFullscreen() ? 'Exit fullscreen' : 'Fullscreen');
                 fullscreen.setAttribute('aria-label', label);
                 fullscreen.setAttribute('title', label);
@@ -356,6 +360,7 @@ export function createThreeDViewerDevice(overrides: Partial<DeviceDependencies> 
         i18n: { name: t('3D Viewer') },
 
         async init(element, previousData) {
+            const lifecycle = resolveEditionLifecycle(device.$lifecycle);
             // Re-opening the same iDevice replaces the form markup; without this
             // teardown the previous WebGL context and animation loop would leak.
             preview?.destroy();
@@ -388,31 +393,42 @@ export function createThreeDViewerDevice(overrides: Partial<DeviceDependencies> 
             refreshInteractionVisibility();
             refreshMarkerList();
 
-            preview = deps.createPreview(elements.preview, {
-                translate: t,
-                announce,
-                onModelLoaded: available => {
-                    if (!elements) {
-                        return;
-                    }
-                    previewRetries = 0;
-                    documentState.animation = updateAnimationOptions(elements, available, documentState.animation);
-                    // The picker now reflects what this model actually offers,
-                    // so playback can follow it.
-                    preview?.applyAnimation(documentState.animation);
-                    updateEmptyState(elements, documentState.src);
-                    void preview?.attachInteractions(documentState, interactionHooks());
+            const ownPreview = deps.createPreview(
+                elements.preview,
+                {
+                    translate: t,
+                    announce,
+                    onModelLoaded: available => {
+                        if (!elements) {
+                            return;
+                        }
+                        previewRetries = 0;
+                        documentState.animation = updateAnimationOptions(elements, available, documentState.animation);
+                        // The picker now reflects what this model actually offers,
+                        // so playback can follow it.
+                        preview?.applyAnimation(documentState.animation);
+                        updateEmptyState(elements, documentState.src);
+                        void preview?.attachInteractions(documentState, interactionHooks());
+                    },
+                    onModelError: () => {
+                        if (!documentState.src || previewRetries >= MAX_PREVIEW_RETRIES) {
+                            return;
+                        }
+                        previewRetries += 1;
+                        lifecycle.setTimeout(() => refreshPreview(true), 150 * previewRetries);
+                    },
                 },
-                onModelError: () => {
-                    if (!documentState.src || previewRetries >= MAX_PREVIEW_RETRIES) {
-                        return;
-                    }
-                    previewRetries += 1;
-                    setTimeout(() => refreshPreview(true), 150 * previewRetries);
-                },
-            });
-            await preview.mount();
-            registerBehaviours();
+                lifecycle,
+            );
+            preview = ownPreview;
+            // Closing the editor must release the WebGL context and RAF loop
+            // exactly as a re-open does above.
+            lifecycle.own(() => ownPreview.destroy());
+            await ownPreview.mount();
+            if (!lifecycle.isActive()) {
+                return;
+            }
+            registerBehaviours(lifecycle);
             refreshPreview(true);
         },
 

@@ -17,6 +17,7 @@ import { publishViewerRuntime } from '../runtime/viewer-runtime';
 import { DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR } from '../shared/colors';
 import { detectModelType, isStlSource } from '../shared/model-source';
 import type { AnimationSettings, InteractionSettings, ThreeDViewerDocumentV2 } from '../shared/types';
+import { resolveEditionLifecycle } from './edition-lifecycle';
 
 /** How long to wait for a booted STL mesh before giving up on markers. */
 const STL_READY_TIMEOUT_MS = 20000;
@@ -64,7 +65,17 @@ function clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
 }
 
-export function createEditorPreview(container: HTMLElement, callbacks: PreviewCallbacks): EditorPreview {
+/**
+ * Every await below can outlive the editor, so each one is followed by an
+ * `isActive()` check on the edition's lifecycle: a closed edition must not
+ * create a `<model-viewer>`, set a source or boot a WebGL scene.
+ */
+export function createEditorPreview(
+    container: HTMLElement,
+    callbacks: PreviewCallbacks,
+    editionLifecycle?: ExeEditionLifecycle,
+): EditorPreview {
+    const lifecycle = resolveEditionLifecycle(editionLifecycle);
     const runtime = publishViewerRuntime();
     const t = callbacks.translate ?? ((text: string) => text);
     let modelViewer: ModelViewerElement | null = null;
@@ -109,13 +120,17 @@ export function createEditorPreview(container: HTMLElement, callbacks: PreviewCa
             previewBlobUrl = cached;
             return cached;
         }
-        const manager = await waitForAssetManager(5000);
+        // The poll runs on the edition's timer, so closing the editor ends it.
+        const manager = await waitForAssetManager(5000, 100, ms => lifecycle.delay(ms));
+        if (!lifecycle.isActive()) {
+            return '';
+        }
         if (!manager) {
             console.warn('[3D Viewer] AssetManager not available; cannot preview', src);
             return '';
         }
         const resolved = await resolveModelSource(src, manager);
-        if (resolved) {
+        if (resolved && lifecycle.isActive()) {
             previewBlobUrl = resolved;
         }
         return resolved;
@@ -125,6 +140,10 @@ export function createEditorPreview(container: HTMLElement, callbacks: PreviewCa
         const deadline = Date.now() + timeoutMs;
         return new Promise(resolve => {
             const poll = (): void => {
+                if (!lifecycle.isActive()) {
+                    resolve(null);
+                    return;
+                }
                 const instance = runtime.getInstance(container);
                 if (instance?.mesh || Date.now() >= deadline) {
                     resolve(instance);
@@ -144,16 +163,21 @@ export function createEditorPreview(container: HTMLElement, callbacks: PreviewCa
     const preview: EditorPreview = {
         async mount() {
             await ensureModelViewerLoaded([getEditionModelViewerUrl()], 'edition');
+            // The loader is shared and may outlive this edition; the element must not.
+            if (!lifecycle.isActive()) {
+                return;
+            }
             const element = document.createElement('model-viewer') as ModelViewerElement;
             element.setAttribute('shadow-intensity', '1');
             element.setAttribute('tone-mapping', 'pbr-neutral');
             element.setAttribute('reveal', 'auto');
             element.style.width = '100%';
             element.style.height = '100%';
-            element.addEventListener('load', () => {
+            // Model loading can finish long after the form is gone.
+            lifecycle.addEventListener(element, 'load', () => {
                 callbacks.onModelLoaded(Array.from(element.availableAnimations ?? []));
             });
-            element.addEventListener('error', () => callbacks.onModelError());
+            lifecycle.addEventListener(element, 'error', () => callbacks.onModelError());
             container.prepend(element);
             modelViewer = element;
         },
@@ -173,6 +197,9 @@ export function createEditorPreview(container: HTMLElement, callbacks: PreviewCa
             runtime.destroy(container);
 
             const url = await resolvePreviewUrl(documentState.src);
+            if (!lifecycle.isActive()) {
+                return;
+            }
             if (url && (force || url !== lastPreviewKey || !modelViewer.src)) {
                 lastPreviewKey = url;
                 modelViewer.src = url;
@@ -227,13 +254,13 @@ export function createEditorPreview(container: HTMLElement, callbacks: PreviewCa
         async attachInteractions(documentState, hooks) {
             destroyInteractions();
             const interaction = documentState.interaction;
-            if (!interaction.enabled || !documentState.src) {
+            if (!interaction.enabled || !documentState.src || !lifecycle.isActive()) {
                 return null;
             }
             const type = detectModelType(documentState.src);
             if (type === 'stl') {
                 const instance = await waitForStlInstance(STL_READY_TIMEOUT_MS);
-                if (!instance) {
+                if (!instance || !lifecycle.isActive()) {
                     return null;
                 }
                 interactions = runtime.createInteractionLayer(
@@ -307,6 +334,9 @@ export function createEditorPreview(container: HTMLElement, callbacks: PreviewCa
     /** Boot (or re-boot) the STL scene through the shared runtime. */
     async function renderStl(documentState: ThreeDViewerDocumentV2, force: boolean): Promise<void> {
         const url = await resolvePreviewUrl(documentState.src);
+        if (!lifecycle.isActive()) {
+            return;
+        }
         if (!url) {
             console.warn('[3D Viewer] STL: no URL available for', documentState.src);
             return;
@@ -332,6 +362,11 @@ export function createEditorPreview(container: HTMLElement, callbacks: PreviewCa
             modelViewer.style.display = 'none';
         }
         await ensureThreeJsLoaded(getEditionLibBaseUrl());
+        // A scene booted for a closed edition would hold a WebGL context
+        // on a detached container that nothing tears down.
+        if (!lifecycle.isActive()) {
+            return;
+        }
         runtime.destroy(container);
         runtime.init(container, {
             src: url,

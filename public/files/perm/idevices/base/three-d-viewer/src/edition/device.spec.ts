@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InteractionController, InteractionHooks } from '../interactions/types';
 import type { AnimationSettings, ThreeDViewerDocumentV2 } from '../shared/types';
-import { readFixture, resetDom, sequentialIds } from '../test/helpers';
+import { attachEditionLifecycle, readFixture, resetDom, sequentialIds } from '../test/helpers';
 import { createThreeDViewerDevice, type DeviceDependencies } from './device';
 import type { EditorPreview } from './preview';
 
@@ -515,5 +515,101 @@ describe('device identity', () => {
         const { device } = build({ translate: text => `~${text}` });
         expect(device.name).toBe('~3D Viewer');
         expect(device.i18n.name).toBe('~3D Viewer');
+    });
+});
+
+/**
+ * Closing the editor has to release what the preview owns: the viewer (WebGL
+ * context and RAF loop), the document-level fullscreen listener and the
+ * preview retry timer. Before the edition lifecycle only a re-open destroyed
+ * the viewer, so cancelling the form leaked it (ADR-2293-01).
+ */
+describe('edition lifecycle teardown', () => {
+    it('destroys the preview when the edition closes', async () => {
+        const { device, host, preview } = build();
+        const lifecycle = attachEditionLifecycle(device);
+        await device.init(host, { src: 'asset://a.glb' });
+
+        expect(preview().destroy).not.toHaveBeenCalled();
+        lifecycle.destroy();
+        expect(preview().destroy).toHaveBeenCalledTimes(1);
+    });
+
+    it('removes the document fullscreen listener when the edition closes', async () => {
+        const { device, host } = build();
+        const lifecycle = attachEditionLifecycle(device);
+        await device.init(host, { src: 'asset://a.glb' });
+        const button = host.querySelector<HTMLElement>('[data-fullscreen]');
+
+        document.dispatchEvent(new Event('fullscreenchange'));
+        expect(button?.getAttribute('aria-label')).toBe('Fullscreen');
+
+        button?.setAttribute('aria-label', 'untouched');
+        lifecycle.destroy();
+        document.dispatchEvent(new Event('fullscreenchange'));
+        expect(button?.getAttribute('aria-label')).toBe('untouched');
+    });
+
+    it('keeps unrelated document listeners working after teardown', async () => {
+        const { device, host } = build();
+        const lifecycle = attachEditionLifecycle(device);
+        await device.init(host, { src: 'asset://a.glb' });
+        const other = vi.fn();
+        document.addEventListener('fullscreenchange', other);
+        try {
+            lifecycle.destroy();
+            document.dispatchEvent(new Event('fullscreenchange'));
+            expect(other).toHaveBeenCalledTimes(1);
+        } finally {
+            document.removeEventListener('fullscreenchange', other);
+        }
+    });
+
+    it('does not retry the preview after the edition closes', async () => {
+        vi.useFakeTimers();
+        try {
+            const { device, host, preview } = build();
+            const lifecycle = attachEditionLifecycle(device);
+            await device.init(host, { src: 'asset://a.glb' });
+            const before = preview().updates.length;
+
+            preview().fireError();
+            lifecycle.destroy();
+            vi.advanceTimersByTime(5000);
+
+            expect(preview().updates.length).toBe(before);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('stops init() once the edition closes while the preview mounts', async () => {
+        const previewSpy = createPreviewSpy();
+        let lifecycle: ReturnType<typeof attachEditionLifecycle> | null = null;
+        const { device, host } = build({
+            createPreview: (container, callbacks, editionLifecycle) => {
+                const created = previewSpy.factory(container, callbacks, editionLifecycle);
+                created.mount = async () => lifecycle?.destroy();
+                return created;
+            },
+        });
+        lifecycle = attachEditionLifecycle(device);
+
+        await device.init(host, { src: 'asset://a.glb' });
+
+        expect(previewSpy.get().updates).toEqual([]);
+        // registerBehaviours() never ran, so the controls are inert.
+        const button = host.querySelector<HTMLElement>('[data-fullscreen]');
+        document.dispatchEvent(new Event('fullscreenchange'));
+        expect(button?.getAttribute('aria-label')).toBe('Fullscreen');
+        host.querySelector<HTMLButtonElement>('[data-nav="right"]')?.click();
+        expect(previewSpy.get().nudgeCamera).not.toHaveBeenCalled();
+    });
+
+    it('runs under the platform when no lifecycle was published', async () => {
+        const { device, host, preview } = build();
+        await device.init(host, { src: 'asset://a.glb' });
+        expect(device.$lifecycle).toBeUndefined();
+        expect(preview().updates.length).toBeGreaterThan(0);
     });
 });

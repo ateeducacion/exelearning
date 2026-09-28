@@ -57,6 +57,20 @@ interface ExeLearningGlobal {
 
 declare var eXeLearning: ExeLearningGlobal | undefined;
 
+/**
+ * The slice of the workarea's `EditionLifecycle` (ADR-2293-01) this iDevice
+ * uses. `IdeviceNode` publishes one on `$exeDevice.$lifecycle` before `init()`
+ * and destroys it when the editor closes: owned listeners, timers and
+ * disposers are released, and `delay()` rejects with an `AbortError`.
+ */
+interface ExeEditionLifecycle {
+    isActive(): boolean;
+    own(disposer: () => void): () => void;
+    addEventListener(target: EventTarget, type: string, handler: (event: Event) => void): void;
+    setTimeout(callback: () => void, delay: number): unknown;
+    delay(ms: number): Promise<void>;
+}
+
 /** The shared gamification SCORM helper available in exported packages. */
 interface ExeScormRuntime {
     registerActivity?: (game: Record<string, unknown>) => void;

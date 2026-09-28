@@ -1,38 +1,145 @@
 /**
- * Unit tests for udl-content iDevice (edition code).
+ * Unit tests for the udl-content iDevice (edition code).
  *
- * Focus: the "accessible hidden text | visible label" parsing that splits the
- * button text on the FIRST "|" only. These tests pin the security-relevant
- * behavior of the split (CodeQL incomplete-sanitization fixes) and guard
- * against regressions for legitimate inputs whose visible label contains
- * additional "|" characters.
+ * Covers:
+ * - The "accessible hidden text | visible label" parsing that splits the
+ *   button text on the FIRST "|" only. These tests pin the security-relevant
+ *   behavior of the split (CodeQL incomplete-sanitization fixes) and guard
+ *   against regressions for legitimate inputs whose visible label contains
+ *   additional "|" characters.
+ * - The edition lifecycle. `loadPreviousValues()` listens on the node chrome
+ *   around the form (`#activeIdevice`) and on the icon image the style panel
+ *   swaps in (`#iconiDevice`). Neither lives inside the edition form, so
+ *   emptying the form never removed them: every re-open stacked another pair,
+ *   and the icon `load` event — which fires asynchronously — drove whichever
+ *   iDevice happened to be in the `$exeDevice` global at that moment.
  */
 
 /* eslint-disable no-undef */
-import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { beforeEach, describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-/**
- * Helper to load the iDevice file and expose $exeDevice globally.
- * Replaces 'var $exeDevice' with 'global.$exeDevice' to make it accessible.
- */
-function loadIdevice(code) {
-    const modifiedCode = code.replace(/var\s+\$exeDevice\s*=/, 'global.$exeDevice =');
-    // eslint-disable-next-line no-eval
-    (0, eval)(modifiedCode);
-    return global.$exeDevice;
-}
+describe('udl-content iDevice edition lifecycle', () => {
+    let $exeDevice;
+
+    /** Build the node chrome the handlers target, outside any edition form. */
+    const buildNodeChrome = () => {
+        document.body.innerHTML = `
+      <div id="activeIdevice">
+        <button class="js-show-icon-panel-button" type="button"></button>
+        <input type="text" />
+      </div>
+      <img id="iconiDevice" />
+      <div id="udlContentTypeOptions"></div>
+      <input type="radio" id="udlContentType-engagement" />
+      <input type="radio" id="udlContentType-representation" />
+      <input type="radio" id="udlContentType-expression" />`;
+    };
+
+    /** Run loadPreviousValues far enough to wire the chrome handlers. */
+    const openEdition = device => {
+        device.idevicePreviousData = '';
+        device.jsonToForm = () => {};
+        device.loadPreviousValues();
+    };
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        $exeDevice = global.loadIdevice(join(__dirname, 'udl-content.js'));
+        buildNodeChrome();
+    });
+
+    afterEach(() => {
+        if ($exeDevice && $exeDevice.$lifecycle) $exeDevice.$lifecycle.destroy();
+    });
+
+    const selectIcon = filename => {
+        document.querySelector('#activeIdevice .js-show-icon-panel-button').click();
+        const icon = document.getElementById('iconiDevice');
+        icon.src = `http://localhost/style/icon_${filename}`;
+        $(icon).trigger('load');
+    };
+
+    it('switches the content type when an icon is picked while the edition is open', () => {
+        const setActiveType = vi.spyOn($exeDevice, 'setActiveType').mockImplementation(() => {});
+        openEdition($exeDevice);
+
+        selectIcon('udl_eng_star.png');
+
+        expect(setActiveType).toHaveBeenCalledWith('engagement');
+        expect(document.getElementById('udlContentType-engagement').checked).toBe(true);
+        setActiveType.mockRestore();
+    });
+
+    it('recognises representation and expression icons too', () => {
+        const setActiveType = vi.spyOn($exeDevice, 'setActiveType').mockImplementation(() => {});
+        openEdition($exeDevice);
+
+        selectIcon('udl_rep_book.png');
+        expect(setActiveType).toHaveBeenLastCalledWith('representation');
+
+        selectIcon('udl_exp_pen.png');
+        expect(setActiveType).toHaveBeenLastCalledWith('expression');
+        setActiveType.mockRestore();
+    });
+
+    it('stops reacting to the icon panel once the edition closes', () => {
+        const setActiveType = vi.spyOn($exeDevice, 'setActiveType').mockImplementation(() => {});
+        openEdition($exeDevice);
+        selectIcon('udl_eng_star.png');
+        expect(setActiveType).toHaveBeenCalledTimes(1);
+
+        $exeDevice.$lifecycle.destroy();
+        selectIcon('udl_rep_book.png');
+
+        expect(setActiveType).toHaveBeenCalledTimes(1);
+        setActiveType.mockRestore();
+    });
+
+    it('never drives the iDevice that replaced this one', () => {
+        const first = $exeDevice;
+        openEdition(first);
+        // Arm the icon handler, then close the editor before the image loads.
+        document.querySelector('#activeIdevice .js-show-icon-panel-button').click();
+        first.$lifecycle.destroy();
+
+        const second = { setActiveType: vi.fn() };
+        global.$exeDevice = second;
+        const icon = document.getElementById('iconiDevice');
+        icon.src = 'http://localhost/style/icon_udl_exp_pen.png';
+        $(icon).trigger('load');
+
+        expect(second.setActiveType).not.toHaveBeenCalled();
+        global.$exeDevice = first;
+    });
+
+    it('leaves unrelated handlers on the same chrome elements alone', () => {
+        openEdition($exeDevice);
+        const onButton = vi.fn();
+        const onIcon = vi.fn();
+        $('#activeIdevice .js-show-icon-panel-button').on('click', onButton);
+        $('#iconiDevice').on('load', onIcon);
+
+        $exeDevice.$lifecycle.destroy();
+        document.querySelector('#activeIdevice .js-show-icon-panel-button').click();
+        $(document.getElementById('iconiDevice')).trigger('load');
+
+        expect(onButton).toHaveBeenCalledTimes(1);
+        expect(onIcon).toHaveBeenCalledTimes(1);
+    });
+});
 
 describe('udl-content iDevice (edition)', () => {
     let $exeDevice;
     let appended;
+    let saved;
 
     beforeEach(() => {
+        saved = { $: global.$, _: global._, c_: global.c_ };
+
         // i18n helpers are invoked eagerly while building the object literal.
         global._ = (s) => s;
         global.c_ = (s) => s;
@@ -56,10 +163,17 @@ describe('udl-content iDevice (edition)', () => {
 
         global.$exeDevice = undefined;
 
-        const filePath = join(__dirname, 'udl-content.js');
-        const code = readFileSync(filePath, 'utf-8');
-        $exeDevice = loadIdevice(code);
+        $exeDevice = global.loadIdevice(join(__dirname, 'udl-content.js'));
         $exeDevice.idevicePath = '/idevice/';
+    });
+
+    afterEach(() => {
+        if ($exeDevice && $exeDevice.$lifecycle) $exeDevice.$lifecycle.destroy();
+        // Restore the real jQuery and i18n helpers the stubs above replaced,
+        // so the lifecycle suite below runs against the real ones.
+        global.$ = saved.$;
+        global._ = saved._;
+        global.c_ = saved.c_;
     });
 
     /** Build the block HTML and return what createBlockForm appended. */

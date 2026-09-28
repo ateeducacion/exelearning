@@ -230,6 +230,43 @@ describe('createEditor — assets and selection', () => {
         editor.destroy();
     });
 
+    it('destroy() aborts an in-flight fallback read and ignores its late callback', () => {
+        const readers: FakeReader[] = [];
+        class FakeReader {
+            readyState = 0;
+            result: string | null = 'data:image/png;base64,AAA';
+            onload: (() => void) | null = null;
+            abort = vi.fn(() => {
+                this.readyState = 2;
+            });
+            constructor() {
+                readers.push(this);
+            }
+            readAsDataURL(): void {
+                this.readyState = 1;
+            }
+        }
+        vi.stubGlobal('FileReader', FakeReader);
+        try {
+            const { body, editor } = makeEditor();
+            const input = body.querySelector<HTMLInputElement>('#threeSixtyImageFile');
+            if (!input) throw new Error('missing file input');
+            const file = new File(['x'], 'p.png', { type: 'image/png' });
+            Object.defineProperty(input, 'files', { value: [file], configurable: true });
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            const reader = readers[0];
+            if (!reader) throw new Error('no reader');
+
+            editor.destroy();
+            expect(reader.abort).toHaveBeenCalledTimes(1);
+
+            reader.onload?.();
+            expect(editor.state.activeScene().src).toBe('');
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
     it('picks hotspot media through the file manager', () => {
         const { body, editor } = makeEditor();
         click(body, '#threeSixtyAddHotspot');

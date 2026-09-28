@@ -16,7 +16,19 @@ import { createEditor } from './editor';
 import type { Editor, EditorDeps } from './editor';
 import { tr } from './i18n';
 
+/**
+ * The slice of the workarea's `EditionLifecycle` (editionLifecycle.js) this
+ * iDevice uses. The workarea attaches it as `$exeDevice.$lifecycle` before
+ * `init()` and destroys it when the editor closes, saved or not.
+ */
+export interface EditionLifecycleLike {
+    /** Register a teardown; returns a function that runs it early. */
+    own: (disposer: () => void) => () => void;
+}
+
 export interface ThreeSixtyEditionDevice {
+    /** Attached by the workarea per edition; absent in standalone use. */
+    $lifecycle?: EditionLifecycleLike;
     readonly i18n: { readonly name: string };
     init: (element: HTMLElement, previousData: unknown, idevicePath?: string) => void;
     save: () => Record<string, unknown> | false;
@@ -39,6 +51,11 @@ export function createThreeSixtyEditionDevice(deps: EditorDeps = {}): ThreeSixty
 
         init(element, previousData, idevicePath) {
             this.destroy();
+            // Closing the editor without saving must release the WebGL
+            // preview, its render loop and any drag or file read in flight.
+            // The editor already owns all of that; the lifecycle only has to
+            // trigger its teardown.
+            this.$lifecycle?.own(() => this.destroy());
             const result = hydrateDocument(previousData);
             if (result.status === 'unsupported-version') {
                 passthrough = result.original;

@@ -211,6 +211,29 @@ describe('createPreviewController — placement and drag', () => {
         harness.controller.destroy();
     });
 
+    it('destroy() mid-drag removes the window drag listeners', () => {
+        const state = makeState({ projection: 'flat' });
+        const harness = makeHarness(state);
+        harness.controller.refresh();
+        const image = harness.stage.querySelector('img');
+        if (image) {
+            Object.defineProperty(image, 'naturalWidth', { value: 400, configurable: true });
+            Object.defineProperty(image, 'naturalHeight', { value: 400, configurable: true });
+        }
+        const handle = harness.stage.querySelector<HTMLButtonElement>('.three-sixty-viewer-hotspot');
+        if (!handle) throw new Error('missing handle');
+        const before = { x: state.hotspotAt(0)?.x, y: state.hotspotAt(0)?.y };
+        handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1 }));
+
+        // The drag never ends: the editor closes mid-gesture.
+        harness.controller.destroy();
+        window.dispatchEvent(new PointerEvent('pointermove', { clientX: 100, clientY: 300, pointerId: 1 }));
+        window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1 }));
+
+        expect({ x: state.hotspotAt(0)?.x, y: state.hotspotAt(0)?.y }).toEqual(before);
+        expect(harness.onHotspotMoved).not.toHaveBeenCalled();
+    });
+
     it('a click on a handle without dragging selects the hotspot', () => {
         const state = makeState({ projection: 'flat' });
         const harness = makeHarness(state);

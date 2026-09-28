@@ -47,11 +47,21 @@ export function createAssetPicker(fallbackInput: () => HTMLInputElement | null):
     };
 }
 
-/** Read a picked file as a data URL (the no-file-manager fallback). */
-export function readFileAsDataUrl(file: Blob, onDone: (dataUrl: string) => void): void {
+/**
+ * Read a picked file as a data URL (the no-file-manager fallback).
+ * Returns a cancel function: it aborts an in-flight read and drops the
+ * callback, so a read that outlives its editor never reaches it.
+ */
+export function readFileAsDataUrl(file: Blob, onDone: (dataUrl: string) => void): () => void {
     const reader = new FileReader();
+    let cancelled = false;
     reader.onload = () => {
-        onDone(String(reader.result ?? ''));
+        if (!cancelled) onDone(String(reader.result ?? ''));
     };
     reader.readAsDataURL(file);
+    return () => {
+        cancelled = true;
+        // FileReader.LOADING; the static is missing in some test DOMs.
+        if (reader.readyState === 1) reader.abort();
+    };
 }

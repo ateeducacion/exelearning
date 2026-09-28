@@ -56,6 +56,8 @@ export function createEditor(
     const disposers = createDisposerBag();
     let placement: PlacementController;
     let preview: PreviewController;
+    /** Cancels the fallback file read in flight, if any. */
+    let cancelRead: (() => void) | null = null;
 
     const query = <T extends HTMLElement>(selector: string): T | null => body.querySelector<T>(selector);
 
@@ -177,12 +179,16 @@ export function createEditor(
                     refreshImageLabel(body, state, tr);
                     preview.refresh();
                 }),
-            onImageFile: file =>
-                readFileAsDataUrl(file, dataUrl => {
+            onImageFile: file => {
+                // A newer pick supersedes a read still in flight.
+                cancelRead?.();
+                cancelRead = readFileAsDataUrl(file, dataUrl => {
+                    cancelRead = null;
                     state.activeScene().src = dataUrl;
                     refreshImageLabel(body, state, tr);
                     preview.refresh();
-                }),
+                });
+            },
         });
 
         wireBehaviourFields(body, state, () => preview.refresh());
@@ -260,6 +266,7 @@ export function createEditor(
 
     disposers.add(() => placement.dispose());
     disposers.add(() => preview.destroy());
+    disposers.add(() => cancelRead?.());
 
     return {
         state,

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSequentialIdGenerator } from '../shared/ids';
-import { createManualScheduler } from '../test/helpers';
+import { createManualScheduler, createThreeMock, installThreeGlobal } from '../test/helpers';
 import { createThreeSixtyEditionDevice } from './device';
-import type { ThreeSixtyEditionDevice } from './device';
+import type { EditionLifecycleLike, ThreeSixtyEditionDevice } from './device';
 
 const identity = (text: string): string => text;
 
@@ -10,19 +10,39 @@ afterEach(() => {
     document.body.innerHTML = '';
 });
 
-function makeDevice(): { device: ThreeSixtyEditionDevice; body: HTMLElement } {
+type LoadThree = (idevicePath: string, callback: () => void) => void;
+
+function makeDevice(loadThree: LoadThree = vi.fn()) {
     const body = document.createElement('div');
     body.setAttribute('idevice-id', 'idev-device-test');
     document.body.appendChild(body);
-    const device = createThreeSixtyEditionDevice({
+    const manual = createManualScheduler();
+    const device: ThreeSixtyEditionDevice = createThreeSixtyEditionDevice({
         translate: identity,
         ids: createSequentialIdGenerator(),
         confirm: () => true,
-        scheduler: createManualScheduler().scheduler,
-        loadThree: vi.fn(),
+        scheduler: manual.scheduler,
+        loadThree,
         reducedMotion: false,
     });
-    return { device, body };
+    return { device, body, manual };
+}
+
+/**
+ * Stand-in for the workarea's EditionLifecycle: own() collects disposers and
+ * destroy() runs them LIFO, as editionLifecycle.js does.
+ */
+function makeLifecycle(): EditionLifecycleLike & { destroy: () => void } {
+    const disposers: Array<() => void> = [];
+    return {
+        own(disposer) {
+            disposers.push(disposer);
+            return () => undefined;
+        },
+        destroy() {
+            while (disposers.length) disposers.pop()?.();
+        },
+    };
 }
 
 const V1_DATA = {
@@ -139,5 +159,85 @@ describe('createThreeSixtyEditionDevice', () => {
         expect(fresh.version).toBe(2);
         device.destroy();
         expect(device.save()).toBe(false);
+    });
+});
+
+/**
+ * Closing the editor must release the WebGL context, the render loop and the
+ * window-level drag listeners even when the author never saves: the workarea
+ * destroys the edition lifecycle, not the device.
+ */
+describe('edition lifecycle teardown', () => {
+    let uninstallThree: (() => void) | null = null;
+
+    afterEach(() => {
+        uninstallThree?.();
+        uninstallThree = null;
+    });
+
+    const PANORAMA = { version: 2, scenes: [{ id: 'a', src: 'asset://pano.jpg' }] };
+
+    it('releases the three.js preview and its render loop when the edition closes without saving', () => {
+        const { three, state: threeState } = createThreeMock();
+        uninstallThree = installThreeGlobal(three);
+        const { device, body, manual } = makeDevice();
+        const lifecycle = makeLifecycle();
+        device.$lifecycle = lifecycle;
+        device.init(body, PANORAMA);
+        expect(threeState.renderers).toHaveLength(1);
+        expect(manual.pendingCount()).toBeGreaterThan(0);
+
+        lifecycle.destroy();
+
+        expect(threeState.renderers[0]?.dispose).toHaveBeenCalledTimes(1);
+        expect(manual.pendingCount()).toBe(0);
+        expect(device.save()).toBe(false);
+    });
+
+    it('disposes each three.js resource exactly once when the device was already destroyed', () => {
+        const { three, state: threeState } = createThreeMock();
+        uninstallThree = installThreeGlobal(three);
+        const { device, body } = makeDevice();
+        const lifecycle = makeLifecycle();
+        device.$lifecycle = lifecycle;
+        device.init(body, PANORAMA);
+
+        device.destroy();
+        lifecycle.destroy();
+
+        expect(threeState.renderers[0]?.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not build the preview when three.js arrives after the edition closed', () => {
+        const loadThree = vi.fn<LoadThree>();
+        const { device, body } = makeDevice(loadThree);
+        const lifecycle = makeLifecycle();
+        device.$lifecycle = lifecycle;
+        device.init(body, PANORAMA);
+        const onLoaded = loadThree.mock.calls[0]?.[1];
+        expect(typeof onLoaded).toBe('function');
+
+        lifecycle.destroy();
+        const { three, state: threeState } = createThreeMock();
+        uninstallThree = installThreeGlobal(three);
+        onLoaded?.();
+
+        expect(threeState.renderers).toHaveLength(0);
+    });
+
+    it('leaves unrelated window listeners untouched on teardown', () => {
+        const { device, body } = makeDevice();
+        const lifecycle = makeLifecycle();
+        device.$lifecycle = lifecycle;
+        device.init(body, null);
+        const other = vi.fn();
+        window.addEventListener('pointermove', other);
+        try {
+            lifecycle.destroy();
+            window.dispatchEvent(new PointerEvent('pointermove'));
+            expect(other).toHaveBeenCalledTimes(1);
+        } finally {
+            window.removeEventListener('pointermove', other);
+        }
     });
 });

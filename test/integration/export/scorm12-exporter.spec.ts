@@ -612,7 +612,10 @@ describe('Scorm12Exporter Integration', () => {
                     ),
             );
             expect(withoutJavaScript).toEqual([]);
-            expect(Object.keys(unzipped)).toContain('idevices/three-d-viewer/three-d-viewer-runtime.js');
+            // The 3D Viewer TypeScript refactor ships one generated IIFE
+            // (`three-d-viewer.js`) instead of the former
+            // `three-d-viewer-runtime.js` companion file.
+            expect(Object.keys(unzipped)).toContain('idevices/three-d-viewer/three-d-viewer.js');
             expect(Object.keys(unzipped)).toContain('idevices/three-sixty-viewer/three-sixty-viewer.js');
 
             expect(formatUnloadFindings(scanPackageForUnloadHandlers(unzipped))).toBe('');

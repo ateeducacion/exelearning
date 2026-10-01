@@ -1,0 +1,11 @@
+{
+  "title": "Basic scored rubric",
+  "criteria": [
+    { "label": "Argument clarity", "levels": ["weak", "fair", "strong"], "score": 2 },
+    { "label": "Evidence", "levels": ["weak", "fair", "strong"], "score": 3 }
+  ],
+  "feedback": {
+    "correct": "Great work — your reasoning is clearly presented.",
+    "improvement": "Reinforce your evidence with at least one citation."
+  }
+}

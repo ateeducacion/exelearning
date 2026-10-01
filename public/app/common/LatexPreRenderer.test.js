@@ -252,6 +252,44 @@ describe('LatexPreRenderer', () => {
             expect(result).toContain('\\begin{aligned}');
             expect(result).toContain('x &= 1');
         });
+
+        // Security: incomplete-multi-character-sanitization (CodeQL).
+        // A single-pass tag strip can be defeated because removing one match
+        // can splice two halves into a NEW tag. The strip must run to a fixed
+        // point so no <script (case-insensitive) survives.
+        test('strips nested/obfuscated tags to a fixed point (no <script remains)', () => {
+            const input = 'a<scr<script>ipt>alert(1)</script>b';
+            const result = LatexPreRenderer._cleanLatexFromHtml(input);
+
+            // The security property: removing one tag must not splice halves into
+            // a surviving "<tag" sequence. No opening "<" of any tag may remain.
+            expect(result.toLowerCase()).not.toContain('<script');
+            expect(result).not.toContain('<');
+        });
+
+        test('strips doubly-nested broken tags without leaving an opening tag', () => {
+            const input = '<<a>b>x = 1<<img>src>';
+            const result = LatexPreRenderer._cleanLatexFromHtml(input);
+
+            // After fixed-point removal no opening "<" (start of a tag) may remain.
+            expect(result).not.toContain('<');
+            expect(result).toContain('x = 1');
+        });
+
+        // Security: double-escaping (CodeQL). Decoding &amp; must happen LAST so
+        // an already-escaped sequence like "&amp;lt;" (the literal text "&lt;")
+        // is not double-decoded into "<".
+        test('does not double-decode &amp;lt; into <', () => {
+            expect(LatexPreRenderer._cleanLatexFromHtml('&amp;lt;')).toBe('&lt;');
+        });
+
+        test('does not double-decode &amp;amp; into &amp;', () => {
+            expect(LatexPreRenderer._cleanLatexFromHtml('&amp;amp;')).toBe('&amp;');
+        });
+
+        test('still decodes a single &amp; to & (legitimate input preserved)', () => {
+            expect(LatexPreRenderer._cleanLatexFromHtml('a &amp;&amp; b')).toBe('a && b');
+        });
     });
 
     describe('preRender', () => {
@@ -419,6 +457,40 @@ describe('LatexPreRenderer', () => {
             expect(result.html).toContain('data-latex');
             // It should not contain raw <br> or &nbsp;
             expect(result.html).not.toContain('data-latex="\\[<br>');
+        });
+
+        // Security: stored-xss (CodeQL) on the DOMParser round-trip.
+        // The only NEW HTML preRender injects is the MathJax library-rendered
+        // wrapper, with its data-latex attribute escaped via escapeHtmlAttribute().
+        // LaTeX that contains a quote/angle-bracket payload must be neutralised in
+        // the attribute (escaped), never emitted as a live attribute/tag.
+        test('escapes quote/angle payloads inside the injected math wrapper attribute', async () => {
+            const html = '<p>\\(x" onmouseover="alert(1)\\)</p>';
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            // The injected wrapper is present and library-rendered.
+            expect(result.html).toContain('exe-math-rendered');
+            // The wrapper's own data-latex attribute (built by THIS file via
+            // escapeHtmlAttribute) must entity-escape the double quote so the
+            // payload cannot break out into a live onmouseover handler.
+            const dataLatexMatch = result.html.match(/data-latex="([^"]*)"/);
+            expect(dataLatexMatch).not.toBeNull();
+            expect(dataLatexMatch[1]).toContain('&quot; onmouseover=&quot;alert(1)');
+            expect(dataLatexMatch[1]).not.toContain('"');
+        });
+
+        test('does not introduce a new live <script> when rendering math (round-trip is inert)', async () => {
+            // Author text that merely *contains* an angle bracket near math; the
+            // serialized output must only add the escaped library-rendered wrapper,
+            // not synthesize an executable script element from the LaTeX payload.
+            const html = '<p>\\(a < b\\) end</p>';
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.html).toContain('exe-math-rendered');
+            // No script element fabricated from the math payload.
+            expect(result.html.toLowerCase()).not.toContain('<script');
         });
 
         test('does NOT process LaTeX inside HTML attributes', async () => {

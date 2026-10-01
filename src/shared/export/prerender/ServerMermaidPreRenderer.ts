@@ -30,16 +30,22 @@ function escapeHtmlAttribute(text: string): string {
 }
 
 /**
- * Decode HTML entities in mermaid code
+ * Decode HTML entities in mermaid code.
+ *
+ * The ampersand entity (&amp; -> &) MUST be decoded LAST. Decoding it first
+ * would let the literal text "&lt;" (stored as "&amp;lt;") wrongly collapse to
+ * "<", double-decoding attacker-controlled content.
+ *
+ * Exported for unit testing of the decode-order security property.
  */
-function decodeHtmlEntities(text: string): string {
+export function decodeHtmlEntities(text: string): string {
     return text
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, ' ');
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&');
 }
 
 // Import mermaid dynamically to handle the ESM module

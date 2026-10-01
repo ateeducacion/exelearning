@@ -1212,11 +1212,16 @@ var $exeDevice = {
 
         const words = [];
         $entries.find('ENTRY').each(function () {
-            const concept = $(this).find('CONCEPT').text(),
-                definition = $(this)
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, '');
+            const concept = $(this).find('CONCEPT').text();
+            let definition = $(this).find('DEFINITION').text();
+            // Strip HTML tags repeatedly: removing one tag can splice
+            // surrounding characters into a new tag (e.g. "<<a>script>"),
+            // so loop until the string stops changing.
+            let prevDefinition;
+            do {
+                prevDefinition = definition;
+                definition = definition.replace(/<[^>]*>/g, '');
+            } while (definition !== prevDefinition);
             if (concept && definition) {
                 words.push(`${concept}#${definition}`);
             }

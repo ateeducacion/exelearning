@@ -1,0 +1,92 @@
+{
+    "version": 2,
+    "ideviceId": "idev-v2-tour",
+    "startSceneId": "scene-hall",
+    "scenes": [
+        {
+            "id": "scene-hall",
+            "title": "Hall",
+            "src": "asset://panoramas/hall.jpg",
+            "alt": "Entrance hall",
+            "description": "The entrance hall.",
+            "projection": "equirectangular",
+            "initialView": { "yaw": 15, "pitch": -5, "fov": 70 },
+            "hotspots": [
+                {
+                    "id": "hs-to-patio",
+                    "label": "Go to the patio",
+                    "icon": "circle",
+                    "yaw": 40,
+                    "pitch": 0,
+                    "x": 50,
+                    "y": 50,
+                    "action": { "type": "goToScene", "payload": { "sceneId": "scene-patio" } }
+                },
+                {
+                    "id": "hs-info",
+                    "label": "About this building",
+                    "icon": "circle",
+                    "yaw": -30,
+                    "pitch": 10,
+                    "x": 50,
+                    "y": 50,
+                    "action": { "type": "text", "payload": { "html": "<p>Built in 1901.</p>" } }
+                }
+            ]
+        },
+        {
+            "id": "scene-patio",
+            "title": "Patio",
+            "src": "asset://images/patio.jpg",
+            "alt": "The patio, flat photo",
+            "description": "",
+            "projection": "flat",
+            "initialView": { "yaw": 0, "pitch": 0, "fov": 75 },
+            "hotspots": [
+                {
+                    "id": "hs-fountain",
+                    "label": "The fountain",
+                    "icon": "circle",
+                    "yaw": 0,
+                    "pitch": 0,
+                    "x": 25,
+                    "y": 70,
+                    "action": {
+                        "type": "image",
+                        "payload": { "src": "asset://images/fountain.jpg", "alt": "Fountain detail", "caption": "The old fountain" }
+                    }
+                },
+                {
+                    "id": "hs-video",
+                    "label": "Watch the tour video",
+                    "icon": "circle",
+                    "yaw": 0,
+                    "pitch": 0,
+                    "x": 80,
+                    "y": 30,
+                    "action": { "type": "video", "payload": { "src": "https://youtu.be/abc123", "poster": "" } }
+                },
+                {
+                    "id": "hs-web",
+                    "label": "Official website",
+                    "icon": "circle",
+                    "yaw": 0,
+                    "pitch": 0,
+                    "x": 10,
+                    "y": 10,
+                    "action": { "type": "link", "payload": { "url": "https://example.com", "newTab": false } }
+                }
+            ]
+        }
+    ],
+    "behaviour": {
+        "autorotate": { "enabled": false, "speed": 1.5 },
+        "zoomEnabled": true,
+        "fullscreenEnabled": false,
+        "showNavControls": true,
+        "renderQuality": "medium",
+        "showLabels": true,
+        "labelPosition": "left",
+        "imageAdjustments": { "brightness": 1.2, "contrast": 0.9, "saturation": 1.1 }
+    }
+}

@@ -566,7 +566,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      */
     isAncestorOf(ancestorId: string, childId: string, allPages: ExportPage[]): boolean {
         const child = allPages.find(p => p.id === childId);
-        if (!child || !child.parentId) return false;
+        if (!child?.parentId) return false;
         if (child.parentId === ancestorId) return true;
         return this.isAncestorOf(ancestorId, child.parentId, allPages);
     }
@@ -882,7 +882,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      * @returns Content with exe-package:elp replaced with onclick handler
      */
     replaceElpxProtocol(content: string, projectTitle: string): string {
-        if (!content || !content.includes('exe-package:elp')) {
+        if (!content?.includes('exe-package:elp')) {
             return content;
         }
 
@@ -920,7 +920,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         pageFilenameMap?: Map<string, string>,
     ): string {
-        if (!content || !content.includes('exe-node:')) {
+        if (!content?.includes('exe-node:')) {
             return content;
         }
 
@@ -969,7 +969,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      * @returns HTML with exe-node: links replaced by in-page anchors
      */
     replaceSinglePageInternalLinks(content: string, allPages: ExportPage[]): string {
-        if (!content || !content.includes('exe-node:')) {
+        if (!content?.includes('exe-node:')) {
             return content;
         }
 
@@ -1245,11 +1245,20 @@ ${userFooterHtml}</div></footer>`;
             faviconType?: string;
             detectedLibraries?: string[];
             addMathJax?: boolean;
+            linkToElp?: boolean;
             addAccessibilityToolbar?: boolean;
             version?: string;
             addExeLink?: boolean;
             userFooterContent?: string;
-            navLabels?: { previous?: string; next?: string; page?: string; license?: string };
+            navLabels?: {
+                previous?: string;
+                next?: string;
+                page?: string;
+                license?: string;
+                madeWith?: string;
+                newWindow?: string;
+            };
+            assetExportPathMap?: Map<string, string>;
             materialIconDataUris?: Map<string, string>;
         } = {},
     ): string {
@@ -1271,6 +1280,7 @@ ${userFooterHtml}</div></footer>`;
             addMathJax = false,
             addAccessibilityToolbar = false,
             navLabels,
+            assetExportPathMap,
             materialIconDataUris,
         } = options;
 
@@ -1293,7 +1303,7 @@ ${userFooterHtml}</div></footer>`;
                 page,
                 '',
                 projectTitle,
-                undefined,
+                assetExportPathMap,
                 {
                     author: options.author,
                     description: options.description,
@@ -1372,7 +1382,7 @@ ${contentHtml}
 </main>
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent, language, navLabels })}
 </div>
-${addExeLink ? this.renderMadeWithEXe(language, navLabels) : ''}
+${addExeLink ? this.renderMadeWithEXe(language, { madeWith: navLabels?.madeWith, newWindow: navLabels?.newWindow }) : ''}
 </body>
 </html>`;
     }

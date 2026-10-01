@@ -1020,20 +1020,20 @@ export class SlideCanvasAdapter {
 
     setFontFamily(font: string): void {
         this.applyToSelection(o => {
-            if (this.isTextLike(o)) (o as unknown as AnyObj).set?.({ fontFamily: font });
+            if (this.isTextLike(o)) (o as unknown as { set?: (props: AnyObj) => void }).set?.({ fontFamily: font });
         });
     }
 
     setFontSize(size: number): void {
         const s = Math.max(6, Math.min(240, Math.round(size)));
         this.applyToSelection(o => {
-            if (this.isTextLike(o)) (o as unknown as AnyObj).set?.({ fontSize: s });
+            if (this.isTextLike(o)) (o as unknown as { set?: (props: AnyObj) => void }).set?.({ fontSize: s });
         });
     }
 
     setTextColor(color: string): void {
         this.applyToSelection(o => {
-            if (this.isTextLike(o)) (o as unknown as AnyObj).set?.({ fill: color });
+            if (this.isTextLike(o)) (o as unknown as { set?: (props: AnyObj) => void }).set?.({ fill: color });
         });
     }
 
@@ -1041,7 +1041,7 @@ export class SlideCanvasAdapter {
         this.applyToSelection(o => {
             if (!this.isTextLike(o)) return;
             const cur = String((o as unknown as AnyObj).fontWeight ?? 'normal');
-            (o as unknown as AnyObj).set?.({ fontWeight: cur === 'bold' ? 'normal' : 'bold' });
+            (o as unknown as { set?: (props: AnyObj) => void }).set?.({ fontWeight: cur === 'bold' ? 'normal' : 'bold' });
         });
     }
 
@@ -1049,7 +1049,7 @@ export class SlideCanvasAdapter {
         this.applyToSelection(o => {
             if (!this.isTextLike(o)) return;
             const cur = String((o as unknown as AnyObj).fontStyle ?? 'normal');
-            (o as unknown as AnyObj).set?.({ fontStyle: cur === 'italic' ? 'normal' : 'italic' });
+            (o as unknown as { set?: (props: AnyObj) => void }).set?.({ fontStyle: cur === 'italic' ? 'normal' : 'italic' });
         });
     }
 
@@ -1057,13 +1057,13 @@ export class SlideCanvasAdapter {
         this.applyToSelection(o => {
             if (!this.isTextLike(o)) return;
             const cur = Boolean((o as unknown as AnyObj).underline);
-            (o as unknown as AnyObj).set?.({ underline: !cur });
+            (o as unknown as { set?: (props: AnyObj) => void }).set?.({ underline: !cur });
         });
     }
 
     setTextAlign(align: 'left' | 'center' | 'right' | 'justify'): void {
         this.applyToSelection(o => {
-            if (this.isTextLike(o)) (o as unknown as AnyObj).set?.({ textAlign: align });
+            if (this.isTextLike(o)) (o as unknown as { set?: (props: AnyObj) => void }).set?.({ textAlign: align });
         });
     }
 
@@ -1326,7 +1326,7 @@ export class SlideCanvasAdapter {
     // ── Serialization ──────────────────────────────────────────────────────
 
     serialize(): AnyObj {
-        const json = this.canvas.toJSON([
+        const json = (this.canvas as unknown as { toJSON: (properties?: string[]) => AnyObj }).toJSON([
             META_KEY,
             'slideAssetUrl',
             'slideAssetName',

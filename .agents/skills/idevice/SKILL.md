@@ -111,6 +111,15 @@ Edit the source under the device's `src/` and run its registered build (slide: `
 Review source, tests and generated output together. Do not hand-edit the generated editor bundle or
 force legacy devices into a TypeScript scaffold as part of an unrelated fix.
 
+A device with `src/edition/index.ts` / `src/export/index.ts` follows the TypeScript iDevice convention
+([ADR-2147-01](../../../doc/architecture/adr/ADR-2147-01-typescript-idevices-build-convention.md),
+[guide](../../../doc/development/idevices-typescript.md)): `edition/<name>.js` and `export/<name>.js` are generated,
+gitignored bundles. Build with `bun run bundle:idevices` (`--only <name>`, `--watch`), typecheck with
+`bun run typecheck:idevices`, and run `make bundle` before E2E or the preview serves the stale
+`public/bundles/idevices.zip`. Tests are colocated `*.spec.ts` (Vitest; `bun test` ignores `public/**`).
+Deviations (bundle name, externals, minify) go in an optional `build.config.json`.
+Reference implementations: `three-d-viewer` (full convention), `slide` (manifest).
+
 Run the target's existing Vitest `.test.js` files, including source-import tests for TypeScript components.
 Add/update an E2E flow that creates, edits, saves, reloads and previews the device; use exporter tests for
 ZIP/resource changes and the collaboration fixture for remote-edit interactions. Finish with `verify-change`.

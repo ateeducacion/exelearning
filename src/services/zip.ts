@@ -22,13 +22,20 @@ export interface ZipDeps {
     fflate?: typeof fflateModule;
 }
 
+/** Compression level accepted by fflate (0 = store, 9 = max). */
+export type ZipCompressionLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
 /**
  * ZIP service interface
  */
 export interface ZipService {
     extractZip: (zipPath: string, targetDir: string) => Promise<string[]>;
     extractZipFromBuffer: (zipBuffer: Buffer, targetDir: string) => Promise<string[]>;
-    createZip: (sourceDir: string, outputPath: string, options?: { compressionLevel?: number }) => Promise<void>;
+    createZip: (
+        sourceDir: string,
+        outputPath: string,
+        options?: { compressionLevel?: ZipCompressionLevel },
+    ) => Promise<void>;
     createZipBuffer: (sourceDir: string) => Promise<Buffer>;
     addToZip: (zipPath: string, files: Array<{ path: string; name: string }>) => Promise<void>;
     listZipContents: (zipPath: string) => Promise<string[]>;
@@ -140,7 +147,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
     const createZip = async (
         sourceDir: string,
         outputPath: string,
-        options: { compressionLevel?: number } = {},
+        options: { compressionLevel?: ZipCompressionLevel } = {},
     ): Promise<void> => {
         const level = options.compressionLevel ?? 6;
         const files: Record<string, fflateModule.Zippable[string]> = {};

@@ -207,6 +207,27 @@ describe('build-resource-bundles', () => {
             }
         });
 
+        it('should not list .map files in idevice/common staticFiles or idevices.zip', () => {
+            // Source maps next to generated TypeScript iDevice bundles
+            // (ADR-2147-01) must not ship in resource ZIPs or the static
+            // loose-file manifest.
+            const isSourceMap = (p: string) => p.endsWith('.map');
+            const groups = [
+                ...Object.values<any>(manifest.staticFiles.idevices),
+                ...Object.values<any>(manifest.staticFiles.common),
+            ];
+            for (const entries of groups) {
+                for (const { s, t } of entries) {
+                    expect(isSourceMap(s)).toBe(false);
+                    expect(isSourceMap(t)).toBe(false);
+                }
+            }
+            const unzipped = unzipSync(new Uint8Array(fs.readFileSync(path.join(bundlesPath, 'idevices.zip'))));
+            for (const filePath of Object.keys(unzipped)) {
+                expect(isSourceMap(filePath)).toBe(false);
+            }
+        });
+
         it('should reference loose files that actually exist on disk', () => {
             // Spot-check one entry per group so assembly never 404s.
             const groups = [

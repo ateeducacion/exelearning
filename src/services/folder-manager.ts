@@ -118,6 +118,9 @@ export interface FolderManagerService {
 // Invalid characters for folder names (cross-platform safe)
 // Note: we check for control chars (0-31) separately to avoid regex escape issues
 const INVALID_CHARS = /[<>:"|?*\\/]/;
+// Global variant used for sanitization so that ALL invalid characters are
+// replaced, not just the first occurrence (incomplete sanitization fix).
+const INVALID_CHARS_GLOBAL = /[<>:"|?*\\/]/g;
 const RESERVED_NAMES = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'LPT1', 'LPT2', 'LPT3', 'LPT4'];
 
 /**
@@ -188,8 +191,8 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
     const sanitizeFolderName = (name: string): string => {
         // Remove control characters first
         let sanitized = removeControlChars(name);
-        // Remove invalid characters
-        sanitized = sanitized.replace(INVALID_CHARS, '_');
+        // Remove invalid characters (global: replace every occurrence)
+        sanitized = sanitized.replace(INVALID_CHARS_GLOBAL, '_');
         // Remove leading/trailing dots and spaces
         sanitized = sanitized.replace(/^[.\s]+|[.\s]+$/g, '');
         // Truncate to max length

@@ -490,6 +490,15 @@ describe('BaseLegacyHandler', () => {
                 expect(result).toBe(input);
             },
         );
+        it('should not double-decode &amp;lt; into a real angle bracket', () => {
+            // &amp;lt; is the literal text "&lt;" and must stay that way,
+            // not collapse to "<" via two decode passes.
+            expect(handler.decodeHtmlContent('&amp;lt;')).toBe('&lt;');
+        });
+
+        it('should not double-decode &amp;amp;', () => {
+            expect(handler.decodeHtmlContent('&amp;amp;')).toBe('&amp;');
+        });
     });
 
     describe('extractTextAreaFieldRawContent (quiz option plain text)', () => {

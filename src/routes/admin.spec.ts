@@ -1614,6 +1614,31 @@ describe('Admin Routes', () => {
             expect(data.message).toContain('at least one method');
         });
 
+        it('persists Synology as an enabled external authentication provider', async () => {
+            const saved: string[] = [];
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        setSetting: async (_db, key, value) => {
+                            saved.push(`${key}=${value}`);
+                        },
+                    }),
+                ),
+            );
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: [{ key: 'APP_AUTH_METHODS', value: 'synology', type: 'string' }],
+                    }),
+                }),
+            );
+            expect(response.status).toBe(200);
+            expect(saved).toContain('APP_AUTH_METHODS=synology');
+        });
+
         it('should validate APP_AUTH_METHODS for invalid values', async () => {
             const token = await generateAdminToken();
             const app = new Elysia().use(createAdminRoutes(createMockDeps()));

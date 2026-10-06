@@ -19,6 +19,7 @@ import { now } from '../db/types';
 import { createAuthRoutes, verifyToken, getJwtSecret, shouldAutoCreateUsers, type AuthDependencies } from './auth';
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
 import { resetOidcDiscoveryCache } from '../services/oidc-discovery';
+import { resetSynologyAssertionReplayCache, signSynologyAssertion } from '../services/synology-auth';
 
 let testDb: Kysely<Database>;
 let originalEnv: Record<string, string | undefined>;
@@ -2992,6 +2993,132 @@ describe('Auth Routes', () => {
                 .selectAll()
                 .executeTakeFirst();
             expect(user).toBeUndefined();
+        });
+    });
+
+    describe('Synology DSM authentication callback', () => {
+        beforeEach(() => {
+            process.env.APP_AUTH_METHODS = 'synology';
+            process.env.SYNOLOGY_SSO_SECRET = 'test-synology-secret-that-is-at-least-32-bytes';
+            process.env.AUTH_CREATE_USERS = 'true';
+            resetSynologyAssertionReplayCache();
+        });
+
+        afterEach(() => {
+            delete process.env.SYNOLOGY_SSO_SECRET;
+            delete process.env.AUTH_CREATE_USERS;
+            process.env.APP_AUTH_METHODS = 'password,guest';
+        });
+
+        it('rejects a state mismatch without creating a user', async () => {
+            const assertion = signSynologyAssertion('alice', 'expected');
+            const response = await app.handle(
+                new Request('http://localhost/login/synology/callback?state=attacker', {
+                    headers: { cookie: `synology_state=expected; synology_assertion=${assertion}` },
+                }),
+            );
+            expect(response.status).toBe(400);
+            expect(await testDb.selectFrom('users').selectAll().execute()).toHaveLength(0);
+        });
+
+        it('completes DSM login using only the identity returned by DSM', async () => {
+            const begin = await app.handle(
+                new Request('http://localhost/login/synology?username=admin&returnUrl=%2Fworkarea', {
+                    headers: { cookie: 'id=dsm-session' },
+                }),
+            );
+            expect(begin.status).toBe(302);
+            const bridgeLocation = begin.headers.get('location')!;
+            expect(bridgeLocation).toStartWith('/webman/3rdparty/exelearning/auth.cgi?state=');
+            const state = new URL(bridgeLocation, 'http://localhost').searchParams.get('state')!;
+            const assertion = signSynologyAssertion('dsm-alice', state);
+            const loginCookies = `${begin.headers
+                .getSetCookie()
+                .map(value => value.split(';')[0])
+                .join('; ')}; synology_assertion=${assertion}`;
+            const location = `/login/synology/callback?state=${state}`;
+            expect(location).not.toContain('assertion');
+            const callback = await app.handle(
+                new Request(`http://localhost${location}`, { headers: { cookie: loginCookies } }),
+            );
+            expect(callback.status).toBe(302);
+            expect(callback.headers.get('location')).toBe('/workarea');
+            const user = await testDb.selectFrom('users').selectAll().executeTakeFirstOrThrow();
+            expect(user.external_identifier).toBe('synology:dsm-alice');
+            const token = callback.headers
+                .getSetCookie()
+                .find(value => value.startsWith('auth='))!
+                .split(';')[0]
+                .slice(5);
+            expect((await verifyToken(token))?.authMethod).toBe('synology');
+            const replay = await app.handle(
+                new Request(`http://localhost${location}`, { headers: { cookie: loginCookies } }),
+            );
+            expect(replay.status).toBe(401);
+        });
+
+        it('rejects unsigned browser identities, disabled providers and invalid assertions', async () => {
+            expect(
+                (await app.handle(new Request('http://localhost/login/synology/callback?username=admin'))).status,
+            ).toBe(400);
+            const bad = await app.handle(
+                new Request('http://localhost/login/synology/callback?state=expected', {
+                    headers: { cookie: 'synology_state=expected; synology_assertion=invalid' },
+                }),
+            );
+            expect(bad.status).toBe(401);
+            process.env.APP_AUTH_METHODS = 'password';
+            for (const route of ['/login/synology', '/login/synology/callback']) {
+                expect((await app.handle(new Request(`http://localhost${route}`))).status).toBe(404);
+            }
+        });
+
+        it('reuses external identities and rejects disabled accounts', async () => {
+            await createUser(testDb, {
+                email: 'alice@synology.invalid',
+                user_id: 'synology:alice',
+                external_identifier: 'synology:alice',
+                password: 'unused',
+                roles: ['ROLE_USER'],
+                is_active: 0,
+            });
+            const request = () =>
+                new Request('http://localhost/login/synology/callback?state=expected', {
+                    headers: {
+                        cookie: `synology_state=expected; synology_assertion=${signSynologyAssertion('alice', 'expected')}`,
+                    },
+                });
+            expect((await app.handle(request())).status).toBe(403);
+            await testDb.updateTable('users').set({ is_active: 1 }).execute();
+            expect((await app.handle(request())).status).toBe(302);
+            expect(await testDb.selectFrom('users').selectAll().execute()).toHaveLength(1);
+        });
+
+        it('creates and persists an external ROLE_USER identity after a valid callback', async () => {
+            const assertion = signSynologyAssertion('alice', 'expected');
+            const response = await app.handle(
+                new Request('http://localhost/login/synology/callback?state=expected', {
+                    headers: { cookie: `synology_state=expected; synology_assertion=${assertion}` },
+                }),
+            );
+            expect(response.status).toBe(302);
+            const user = await testDb.selectFrom('users').selectAll().executeTakeFirstOrThrow();
+            expect(user.user_id).toBe('synology:alice');
+            expect(user.external_identifier).toBe('synology:alice');
+            expect(user.email.endsWith('@synology.invalid')).toBe(true);
+            expect(JSON.parse(user.roles)).toEqual(['ROLE_USER']);
+            expect(response.headers.get('set-cookie')).toContain('auth=');
+        });
+
+        it('honors AUTH_CREATE_USERS=false', async () => {
+            process.env.AUTH_CREATE_USERS = 'false';
+            const assertion = signSynologyAssertion('alice', 'expected');
+            const response = await app.handle(
+                new Request('http://localhost/login/synology/callback?state=expected', {
+                    headers: { cookie: `synology_state=expected; synology_assertion=${assertion}` },
+                }),
+            );
+            expect(response.status).toBe(401);
         });
     });
 });

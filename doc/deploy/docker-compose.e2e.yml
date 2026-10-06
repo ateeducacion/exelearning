@@ -13,6 +13,12 @@ services:
       # redirect, so the stack must advertise the method and point at a fake
       # provider. OIDC_ISSUER stays unset: no discovery is attempted and the
       # explicit endpoint is used verbatim.
-      APP_AUTH_METHODS: password,guest,openid
+      #
+      # synology-login.spec.ts asserts the DSM method is enabled and signs the
+      # session assertion with E2E_SYNOLOGY_SECRET from doc/deploy/.env.e2e.
+      # Playwright reads that same value when E2E_BASE_URL is set, because this
+      # container is already up and cannot pick up a secret generated later.
+      APP_AUTH_METHODS: password,guest,openid,synology
       OIDC_AUTHORIZATION_ENDPOINT: https://oidc.example.test/authorize
       OIDC_CLIENT_ID: e2e-client
+      SYNOLOGY_SSO_SECRET: ${E2E_SYNOLOGY_SECRET:?set E2E_SYNOLOGY_SECRET in doc/deploy/.env.e2e}

@@ -1,0 +1,135 @@
+{% extends "base.njk" %}
+
+{% block title %}eXeLearning · Style Lab{% endblock %}
+
+{% block stylesheets %}
+    <link class="exe" rel="stylesheet" href="{{ '/libs/bootstrap/bootstrap.min.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/main.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/app/workarea/developer/developer.css' | asset }}">
+{% endblock %}
+
+{% block javascripts %}
+    <script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
+    <script>
+        window.__APP_ENV__ = "dev";
+        window.__DEV_TOOLS__ = { basePath: "{{ basePath or '' }}", version: "{{ version }}" };
+    </script>
+    <script type="module" src="{{ '/app/workarea/developer/style-lab/StyleLab.js' | asset }}" defer></script>
+{% endblock %}
+
+{% block id %}developer-style-lab-root{% endblock %}
+
+{% block body %}
+    <div id="developer-style-lab-root"
+         class="developer-lab"
+         data-testid="developer-style-lab-root"
+         data-base-path="{{ basePath or '' }}">
+
+        <header class="developer-lab__header">
+            <h1>Style Lab</h1>
+            <p class="developer-lab__subtitle">
+                Developer-only sandbox for testing eXeLearning themes against export targets and
+                viewport presets. <strong>Not for production use.</strong>
+            </p>
+            <nav class="developer-lab__nav" aria-label="Developer tools">
+                <a class="developer-lab__nav-link is-active" href="{{ basePath or '' }}/developer/style-lab">Style Lab</a>
+                <a class="developer-lab__nav-link" href="{{ basePath or '' }}/developer/idevice-lab" data-testid="developer-menu-idevice-lab">iDevice Lab</a>
+                <a class="developer-lab__nav-link" href="{{ basePath or '' }}/api/v1/docs" data-testid="developer-menu-rest-api">REST API</a>
+            </nav>
+        </header>
+
+        <section class="developer-lab__controls" aria-label="Style Lab controls">
+            <div class="developer-lab__control">
+                <label for="developer-style-lab-fixture-select">Fixture</label>
+                <select id="developer-style-lab-fixture-select"
+                        data-testid="developer-style-lab-fixture-select"></select>
+            </div>
+
+            <div class="developer-lab__control">
+                <label for="developer-style-lab-theme-source-select">Theme source</label>
+                <select id="developer-style-lab-theme-source-select"
+                        data-testid="developer-style-lab-theme-source-select">
+                    <option value="base">Base (built-in)</option>
+                    <option value="site">Site (admin-installed)</option>
+                    <option value="user">User (imported)</option>
+                </select>
+            </div>
+
+            <div class="developer-lab__control">
+                <label for="developer-style-lab-theme-select">Theme</label>
+                <select id="developer-style-lab-theme-select"
+                        data-testid="developer-style-lab-theme-select"></select>
+            </div>
+
+            <div class="developer-lab__control">
+                <label for="developer-style-lab-export-target-select">Export target</label>
+                <select id="developer-style-lab-export-target-select"
+                        data-testid="developer-style-lab-export-target-select">
+                    <option value="website">Website</option>
+                    <option value="single-page">Single Page</option>
+                    <option value="scorm12">SCORM 1.2</option>
+                </select>
+            </div>
+
+            <div class="developer-lab__control">
+                <label for="developer-style-lab-viewport-select">Viewport</label>
+                <select id="developer-style-lab-viewport-select"
+                        data-testid="developer-style-lab-viewport-select">
+                    <option value="desktop">Desktop · 1440×900</option>
+                    <option value="tablet">Tablet · 768×1024</option>
+                    <option value="mobile">Mobile · 390×844</option>
+                </select>
+                <div class="developer-lab__viewport-buttons" role="group" aria-label="Quick viewport switch">
+                    <button type="button" data-viewport="desktop" data-testid="developer-style-lab-viewport-desktop">Desktop</button>
+                    <button type="button" data-viewport="tablet" data-testid="developer-style-lab-viewport-tablet">Tablet</button>
+                    <button type="button" data-viewport="mobile" data-testid="developer-style-lab-viewport-mobile">Mobile</button>
+                </div>
+            </div>
+
+            <div class="developer-lab__control developer-lab__control--actions">
+                <button type="button" id="developer-style-lab-reload-theme"
+                        data-testid="developer-style-lab-reload-theme">
+                    Reload style from disk
+                </button>
+            </div>
+        </section>
+
+        <section class="developer-lab__options" data-testid="developer-style-lab-export-options-panel"
+                 aria-label="Export options">
+            <details>
+                <summary>Export options</summary>
+                <label><input type="checkbox" name="search" /> Search box</label>
+                <label><input type="checkbox" name="pageCounter" /> Page counter</label>
+                <label><input type="checkbox" name="navigation" checked /> Navigation</label>
+                <label><input type="checkbox" name="icons" checked /> iDevice icons</label>
+                <label><input type="checkbox" name="collapsible" /> Collapsible blocks</label>
+            </details>
+        </section>
+
+        <section class="developer-lab__preview-wrap"
+                 aria-label="Preview"
+                 data-testid="developer-style-lab-preview-wrap">
+            <iframe id="developer-style-lab-preview-frame"
+                    class="developer-lab__preview-frame"
+                    data-testid="developer-style-lab-preview-frame"
+                    title="Style Lab preview"
+                    sandbox="allow-scripts allow-same-origin"></iframe>
+        </section>
+
+        <footer class="developer-lab__status-bar">
+            <div id="developer-style-lab-status"
+                 class="developer-lab__status"
+                 data-testid="developer-style-lab-status"
+                 data-status="initializing">Initializing…</div>
+            <div id="developer-style-lab-error"
+                 class="developer-lab__error"
+                 data-testid="developer-style-lab-error"
+                 hidden></div>
+        </footer>
+
+        <script type="application/json" id="developer-style-lab-state"
+                data-testid="developer-style-lab-state">
+{"fixture":null,"themeSource":"base","theme":null,"export":"website","viewport":"desktop","status":"initializing"}
+        </script>
+    </div>
+{% endblock %}

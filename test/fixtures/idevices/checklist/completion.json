@@ -1,0 +1,12 @@
+{
+  "title": "Completion checklist",
+  "items": [
+    { "label": "Read the chapter", "done": false },
+    { "label": "Answer the warm-up questions", "done": false },
+    { "label": "Submit the reflection", "done": false }
+  ],
+  "feedback": {
+    "complete": "Nice — you have finished every step.",
+    "partial": "Tick off the remaining items before moving on."
+  }
+}

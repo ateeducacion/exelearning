@@ -13,7 +13,9 @@
  * the mermaid npm package with jsdom for DOM virtualization.
  */
 
-import { JSDOM } from 'jsdom';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import type { JSDOM } from 'jsdom';
 import type { MermaidPreRenderResult, ServerMermaidPreRendererInterface } from './interfaces';
 
 // Detection pattern for mermaid diagrams
@@ -70,6 +72,9 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         }
 
         // Create jsdom with required features for mermaid
+        // jsdom reads CSS and worker files relative to its installed package.
+        // Resolve from the application directory, including in compiled executables.
+        const { JSDOM } = createRequire(join(process.cwd(), 'package.json'))('jsdom') as typeof import('jsdom');
         this.dom = new JSDOM(
             '<!DOCTYPE html><html><head></head><body><div id="mermaid-container"></div></body></html>',
             {

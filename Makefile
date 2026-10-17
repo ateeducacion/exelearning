@@ -570,7 +570,10 @@ test-frontend: check-bun check-env bundle ## Run frontend tests (with Vitest + h
 test-coverage: test-unit test-frontend ## Run backend and frontend tests with coverage
 
 .PHONY: test-unit-ci
-test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov coverage for CI/Codecov
+# Depends on `bundle` for the same reason test-unit/test-integration/test-frontend
+# do: backend tests assert against generated assets (e.g. the TypeScript iDevice
+# bundles), which are not committed.
+test-unit-ci: check-bun check-tests check-env bundle ## Run unit tests with lcov coverage for CI/Codecov
 	@echo "Running unit tests with lcov coverage..."
 	@mkdir -p coverage/bun
 	$(TEST_ENV) bun test:unit:ci

@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import { ServerMermaidPreRenderer } from './ServerMermaidPreRenderer';
+import { ServerMermaidPreRenderer, decodeHtmlEntities } from './ServerMermaidPreRenderer';
 
 describe('ServerMermaidPreRenderer', () => {
     let renderer: ServerMermaidPreRenderer;
@@ -125,6 +125,37 @@ describe('ServerMermaidPreRenderer', () => {
             expect(result.hasMermaid).toBe(true);
             // Count may be 0 if rendering fails, or 2 if it succeeds
             expect(result.count).toBeGreaterThanOrEqual(0);
+        });
+    });
+
+    describe('decodeHtmlEntities (decode order / double-decoding)', () => {
+        it('should not double-decode &amp;lt; into < (entity decoded last)', () => {
+            // The literal text "&lt;" is stored as "&amp;lt;". Decoding the
+            // ampersand entity FIRST would wrongly collapse this to "<".
+            expect(decodeHtmlEntities('&amp;lt;')).toBe('&lt;');
+        });
+
+        it('should not double-decode &amp;amp; into & ', () => {
+            expect(decodeHtmlEntities('&amp;amp;')).toBe('&amp;');
+        });
+
+        it('should not double-decode an escaped script payload', () => {
+            // Attacker-controlled literal "&lt;script&gt;" arrives as
+            // "&amp;lt;script&amp;gt;" and must NOT become "<script>".
+            expect(decodeHtmlEntities('&amp;lt;script&amp;gt;')).toBe('&lt;script&gt;');
+        });
+
+        it('should still decode legitimate single-level entities', () => {
+            expect(decodeHtmlEntities('&lt;')).toBe('<');
+            expect(decodeHtmlEntities('&gt;')).toBe('>');
+            expect(decodeHtmlEntities('&amp;')).toBe('&');
+            expect(decodeHtmlEntities('&quot;')).toBe('"');
+            expect(decodeHtmlEntities('&#39;')).toBe("'");
+            expect(decodeHtmlEntities('&nbsp;')).toBe(' ');
+        });
+
+        it('should decode a realistic mermaid snippet without corruption', () => {
+            expect(decodeHtmlEntities('A[&quot;a &amp; b&quot;] --&gt; B')).toBe('A["a & b"] --> B');
         });
     });
 

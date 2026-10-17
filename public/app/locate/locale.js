@@ -1,3 +1,18 @@
+/**
+ * Escape a string for use as a legacy escaped catalogue key.
+ *
+ * Backslashes are escaped FIRST and quotes second so the sanitization is
+ * complete: an input such as `\"` becomes `\\\"` instead of the ambiguous
+ * `\\"`. Inputs without backslashes (the common case, including every real
+ * translation source string) are unaffected, preserving existing lookups.
+ *
+ * @param {string} string
+ * @returns {string}
+ */
+function escapeCatalogueKey(string) {
+    return string.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 export default class Locale {
     constructor(app) {
         this.app = app;
@@ -67,7 +82,7 @@ export default class Locale {
         const catalogue = this.strings?.translations;
         if (catalogue) {
             // Try exact key first (server returns unescaped keys)
-            const key = string in catalogue ? string : string.replace(/"/g, '\\"');
+            const key = string in catalogue ? string : escapeCatalogueKey(string);
             if (key in catalogue) {
                 let res = catalogue[key].replace(/\\"/g, '"').replace(/\\\//g, '/');
                 if (res.startsWith('~')) res = res.substring(1);
@@ -84,7 +99,7 @@ export default class Locale {
         const catalogue = this.c_strings?.translations;
         if (catalogue) {
             // Try exact key first (server returns unescaped keys)
-            const key = string in catalogue ? string : string.replace(/"/g, '\\"');
+            const key = string in catalogue ? string : escapeCatalogueKey(string);
             if (key in catalogue) {
                 let res = catalogue[key].replace(/\\"/g, '"').replace(/\\\//g, '/');
                 if (res.startsWith('~')) res = res.substring(1);
@@ -152,7 +167,7 @@ export default class Locale {
      */
     getTranslation(string, lang, idevice) {
         if (typeof string != 'string') return '';
-        string = string ? string.replace(/"/g, '\\"') : '';
+        string = string ? escapeCatalogueKey(string) : '';
         lang = lang ? lang : this.lang;
         // Idevice po translation
         if (idevice) {

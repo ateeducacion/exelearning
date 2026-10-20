@@ -24,6 +24,17 @@ describe('ServerMermaidPreRenderer', () => {
         }
     });
 
+    it('loads jsdom and its on-disk user-agent stylesheet from the application directory', async () => {
+        const localRenderer = new ServerMermaidPreRenderer();
+        try {
+            await localRenderer.initialize();
+            const window = (globalThis as unknown as { window: Window }).window;
+            expect(window.getComputedStyle(window.document.body).display).toBe('block');
+        } finally {
+            localRenderer.destroy();
+        }
+    });
+
     describe('hasMermaid', () => {
         it('should detect <pre class="mermaid">', () => {
             expect(renderer.hasMermaid('<pre class="mermaid">graph TD; A-->B</pre>')).toBe(true);

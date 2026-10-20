@@ -1,12 +1,18 @@
 /**
- * Edition lifecycle tests for the udl-content iDevice.
+ * Unit tests for the udl-content iDevice (edition code).
  *
- * `loadPreviousValues()` listens on the node chrome around the form
- * (`#activeIdevice`) and on the icon image the style panel swaps in
- * (`#iconiDevice`). Neither lives inside the edition form, so emptying the form
- * never removed them: every re-open stacked another pair, and the icon `load`
- * event — which fires asynchronously — drove whichever iDevice happened to be
- * in the `$exeDevice` global at that moment.
+ * Covers:
+ * - The "accessible hidden text | visible label" parsing that splits the
+ *   button text on the FIRST "|" only. These tests pin the security-relevant
+ *   behavior of the split (CodeQL incomplete-sanitization fixes) and guard
+ *   against regressions for legitimate inputs whose visible label contains
+ *   additional "|" characters.
+ * - The edition lifecycle. `loadPreviousValues()` listens on the node chrome
+ *   around the form (`#activeIdevice`) and on the icon image the style panel
+ *   swaps in (`#iconiDevice`). Neither lives inside the edition form, so
+ *   emptying the form never removed them: every re-open stacked another pair,
+ *   and the icon `load` event — which fires asynchronously — drove whichever
+ *   iDevice happened to be in the `$exeDevice` global at that moment.
  */
 
 /* eslint-disable no-undef */
@@ -123,5 +129,99 @@ describe('udl-content iDevice edition lifecycle', () => {
 
         expect(onButton).toHaveBeenCalledTimes(1);
         expect(onIcon).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('udl-content iDevice (edition)', () => {
+    let $exeDevice;
+    let appended;
+    let saved;
+
+    beforeEach(() => {
+        saved = { $: global.$, _: global._, c_: global.c_ };
+
+        // i18n helpers are invoked eagerly while building the object literal.
+        global._ = (s) => s;
+        global.c_ = (s) => s;
+
+        // createBlockForm() touches the DOM through a tiny set of jQuery
+        // calls. Provide a chainable no-op stub; only .append() captures the
+        // generated HTML so the split logic can be asserted.
+        appended = '';
+        const makeJq = () => {
+            const node = {
+                append: (html) => {
+                    appended += html;
+                    return node;
+                },
+            };
+            const passthrough = ['hide', 'show', 'html', 'addClass', 'removeClass'];
+            for (const m of passthrough) node[m] = () => node;
+            return node;
+        };
+        global.$ = () => makeJq();
+
+        global.$exeDevice = undefined;
+
+        $exeDevice = global.loadIdevice(join(__dirname, 'udl-content.js'));
+        $exeDevice.idevicePath = '/idevice/';
+    });
+
+    afterEach(() => {
+        if ($exeDevice && $exeDevice.$lifecycle) $exeDevice.$lifecycle.destroy();
+        // Restore the real jQuery and i18n helpers the stubs above replaced,
+        // so the lifecycle suite below runs against the real ones.
+        global.$ = saved.$;
+        global._ = saved._;
+        global.c_ = saved.c_;
+    });
+
+    /** Build the block HTML and return what createBlockForm appended. */
+    function renderBlock(btnTxt) {
+        appended = '';
+        $exeDevice.createBlockForm({
+            btnTxt,
+            btnType: 0,
+            contMain: '',
+            contAlt1: '',
+            contAlt2: '',
+            contAlt3: '',
+        });
+        return appended;
+    }
+
+    describe('createBlockForm — split on first "|"', () => {
+        it('splits "hidden | visible" into the two accessibility spans', () => {
+            const html = renderBlock('hidden | visible');
+            // Accessible-hidden part (before the first "|").
+            expect(html).toContain('class="sr-only-explanation"');
+            expect(html).toContain('>hidden </span>');
+            // Visible part (after the first "|").
+            expect(html).toContain('> visible</span>');
+        });
+
+        it('keeps every "|" after the first one in the visible label (no global replace)', () => {
+            // Legitimate input: the visible label itself contains pipe characters.
+            const html = renderBlock('hidden|a|b|c');
+            // Everything after the FIRST pipe stays intact, including later pipes.
+            expect(html).toContain('>hidden</span>');
+            expect(html).toContain('>a|b|c</span>');
+        });
+
+        it('parses purely on the first "|" without a tilde sentinel collision', () => {
+            // Older code used "~~" as an intermediate sentinel; the new split is
+            // sentinel-free, so input is parsed purely on the first "|".
+            const html = renderBlock('left | right side');
+            expect(html).toContain('>left </span>');
+            expect(html).toContain('> right side</span>');
+        });
+
+        it('leaves the explanation block hidden when there is no "|"', () => {
+            const html = renderBlock('plain label');
+            // btnTextPartsStyle stays display:none (no accessible-hidden parts).
+            expect(html).toContain(
+                'udlContentFormBlockButtonTxtExplanation" style="display:none"',
+            );
+        });
     });
 });

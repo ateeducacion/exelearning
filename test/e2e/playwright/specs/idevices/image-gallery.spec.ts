@@ -1183,8 +1183,12 @@ test.describe('Image Gallery iDevice', () => {
                     return;
                 }
                 // Fallback: dispatch a real dblclick event on the folder tile.
+                // Escape backslashes first, then double-quotes, so the value
+                // is safely embedded in the quoted CSS attribute selector even
+                // when the folder name itself contains a backslash or quote.
+                const escapedName = name.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
                 const el = document.querySelector(
-                    `#modalFileManager .media-library-folder[data-folder-name="${name.replace(/"/g, '\\"')}"]`,
+                    `#modalFileManager .media-library-folder[data-folder-name="${escapedName}"]`,
                 );
                 if (!el) throw new Error(`Folder tile not found: ${name}`);
                 el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));

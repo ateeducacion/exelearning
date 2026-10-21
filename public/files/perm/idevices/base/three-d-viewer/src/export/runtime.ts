@@ -4,7 +4,7 @@
  */
 
 import { getAssetManager } from '../runtime/asset-resolver';
-import { getExportModelViewerUrl, resolveAppUrl } from '../runtime/paths';
+import { getExportLibBaseUrl, getExportModelViewerUrl, resolveAppUrl } from '../runtime/paths';
 import { DEFAULT_BACKGROUND_COLOR, DEFAULT_MODEL_COLOR, normalizeColor } from '../shared/colors';
 import { hydrateDocument } from '../shared/migration';
 import { detectModelType } from '../shared/model-source';
@@ -160,4 +160,5 @@ export const exportHelpers = {
     normalizeScorm,
     resolveAppUrl,
     getModelViewerLibUrl: getExportModelViewerUrl,
+    getThreeJSBaseUrl: getExportLibBaseUrl,
 };

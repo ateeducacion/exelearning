@@ -94,6 +94,38 @@ describe('configureRendererColorManagement', () => {
     });
 });
 
+describe('bootStl on a page built for printing', () => {
+    afterEach(() => {
+        delete window.$exeExport;
+    });
+
+    /** The options the STL viewer creates its renderer with. */
+    async function rendererOptionsOf(): Promise<unknown> {
+        const seen: unknown[] = [];
+        const Renderer = three.WebGLRenderer;
+        three.WebGLRenderer = function (params: ConstructorParameters<ThreeNamespace['WebGLRenderer']>[0]) {
+            seen.push(params);
+            return new Renderer(params);
+        } as unknown as ThreeNamespace['WebGLRenderer'];
+        const wrapper = createWrapper();
+        await bootStl(makeInstance(wrapper));
+
+        expect(seen).toHaveLength(1);
+        expect(seen[0]).toMatchObject({ canvas: wrapper.querySelector('canvas.three-js-canvas') });
+        return seen[0];
+    }
+
+    it('keeps the drawn frame readable, for the copy the desktop app prints', async () => {
+        window.$exeExport = { printing: { kind: 'document', activities: null } };
+        expect(await rendererOptionsOf()).toMatchObject({ antialias: true, preserveDrawingBuffer: true });
+    });
+
+    it('does not keep it anywhere else, where it would only cost drawing speed', async () => {
+        window.$exeExport = { printing: null };
+        expect(await rendererOptionsOf()).toMatchObject({ antialias: true, preserveDrawingBuffer: false });
+    });
+});
+
 describe('bootStl', () => {
     it('builds the scene, the mesh and the controls, and starts the loop', async () => {
         const wrapper = createWrapper();

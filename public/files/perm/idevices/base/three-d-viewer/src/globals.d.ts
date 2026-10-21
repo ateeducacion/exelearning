@@ -198,7 +198,11 @@ interface ThreeNamespace {
     Scene: new () => { background?: unknown; add(object: unknown): void; traverse?: unknown };
     Color: new (value: string | number) => unknown;
     PerspectiveCamera: new (fov: number, aspect: number, near: number, far: number) => ThreeCamera;
-    WebGLRenderer: new (params: { canvas: HTMLCanvasElement; antialias?: boolean }) => ThreeRenderer;
+    WebGLRenderer: new (params: {
+        canvas: HTMLCanvasElement;
+        antialias?: boolean;
+        preserveDrawingBuffer?: boolean;
+    }) => ThreeRenderer;
     AmbientLight: new (color: number, intensity: number) => unknown;
     DirectionalLight: new (color: number, intensity: number) => { position: ThreeVector3 };
     MeshStandardMaterial: new (params: Record<string, unknown>) => unknown;
@@ -259,6 +263,8 @@ interface Window {
     eXe3DViewer?: unknown;
     /** Cross-bundle coordination for lazily injected libraries. */
     $exeLibs?: Record<string, unknown>;
+    /** Export engine state; `printing` is set on a page built for printing. */
+    $exeExport?: { printing?: unknown };
     /** Three.js namespace, attached by `ensureThreeJsLoaded()`. */
     THREE?: ThreeNamespace;
     /** Deterministic WebGL override for tests (see `hasWebGL`). */

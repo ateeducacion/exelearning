@@ -169,6 +169,20 @@ export class ThreeDViewerController {
         if (!src && this.config.src.startsWith('asset://')) {
             src = (await resolveAssetUrlAsync(this.config.src, this.assetTimeoutMs)) ?? '';
         }
+        // On a page built for printing every model is loaded and drawn, in view or not.
+        // model-viewer loads a model when its viewer scrolls into view, and draws one that is
+        // out of view only once, so a viewer never scrolled to printed blank, and so did one
+        // whose drawing a resize (the options panel opening, say) had cleared. Counted as
+        // visible once loaded, it is drawn again whenever it needs to be.
+        if (globalThis.window?.$exeExport?.printing) {
+            modelViewer.setAttribute('loading', 'eager');
+            Object.defineProperty(modelViewer, 'modelIsVisible', {
+                configurable: true,
+                get(this: { loaded?: boolean }) {
+                    return Boolean(this.loaded);
+                },
+            });
+        }
         if (src) {
             modelViewer.src = src;
             // The custom element does not always reflect the property to the

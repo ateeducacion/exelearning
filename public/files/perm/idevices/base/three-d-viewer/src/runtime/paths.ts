@@ -23,6 +23,14 @@ export const LIB_RELATIVE_PATH = 'files/perm/idevices/base/three-d-viewer/export
 /** Path of the library directory inside an exported package, from index.html. */
 const EXPORT_LIB_PATH = 'idevices/three-d-viewer/';
 
+/**
+ * Where this script was loaded from, read while it runs. See getExportLibBaseUrl: a page shown
+ * as a blob: document has no folder of its own, but it loads this script from the folder
+ * that holds the 3D libraries.
+ */
+const OWN_SCRIPT_URL =
+    (typeof document !== 'undefined' && (document.currentScript as HTMLScriptElement | null)?.src) || '';
+
 interface RuntimeConfig {
     isStaticMode?: boolean;
     isOfflineInstallation?: boolean;
@@ -112,8 +120,16 @@ export function getEditionLibBaseUrl(): string {
     return withOrigin(`${baseURL}${basePath}/${LIB_RELATIVE_PATH}`);
 }
 
-/** Absolute base URL of the shared library directory, as seen from an export. */
-export function getExportLibBaseUrl(): string {
+/**
+ * Absolute base URL of the shared library directory, as seen from an export.
+ *
+ * A blob: document (the print preview) has no folder to resolve anything against, so it uses
+ * the folder this script was loaded from, which the preview points at the server.
+ */
+export function getExportLibBaseUrl(scriptUrl: string = OWN_SCRIPT_URL): string {
+    if (globalThis.location?.protocol === 'blob:' && scriptUrl) {
+        return scriptUrl.slice(0, scriptUrl.lastIndexOf('/') + 1);
+    }
     const mode = detectMode();
     if (mode.isStaticMode) {
         return `${globalThis.location?.origin ?? ''}/${LIB_RELATIVE_PATH}`;

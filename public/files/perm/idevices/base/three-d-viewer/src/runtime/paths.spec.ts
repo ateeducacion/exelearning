@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     detectMode,
     getEditionLibBaseUrl,
@@ -132,6 +132,41 @@ describe('getExportLibBaseUrl', () => {
     it('falls back to the symfony config', () => {
         globalThis.eXeLearning = { symfony: { baseURL: 'https://host' } };
         expect(getExportLibBaseUrl()).toBe(`https://host/${LIB_RELATIVE_PATH}`);
+    });
+});
+
+describe('getExportLibBaseUrl in a blob: document (the print preview)', () => {
+    const SCRIPT_URL = 'http://localhost:3001/v1/files/perm/idevices/base/three-d-viewer/export/three-d-viewer.js';
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    function inBlobDocument(): void {
+        vi.stubGlobal('location', {
+            origin: 'http://localhost:3001',
+            protocol: 'blob:',
+            href: 'blob:http://localhost:3001/0b6e1f9c-6c4f-4a4f-9a3e-2f0d4c1f6a52',
+        });
+    }
+
+    it('uses the folder of its own script', () => {
+        inBlobDocument();
+        document.documentElement.id = 'exe-index';
+        expect(getExportLibBaseUrl(SCRIPT_URL)).toBe(
+            'http://localhost:3001/v1/files/perm/idevices/base/three-d-viewer/export/',
+        );
+    });
+
+    it('keeps resolving against the page outside a blob: document', () => {
+        document.documentElement.id = 'exe-index';
+        expect(getExportLibBaseUrl(SCRIPT_URL).endsWith('/idevices/three-d-viewer/')).toBe(true);
+    });
+
+    it('falls back to the modes when its script URL is unknown', () => {
+        inBlobDocument();
+        globalThis.eXeLearning = { config: { baseURL: 'https://example.com' } };
+        expect(getExportLibBaseUrl('')).toBe(`https://example.com/${LIB_RELATIVE_PATH}`);
     });
 });
 

@@ -173,6 +173,38 @@ describe('ThreeDViewerController — GLB path', () => {
     });
 });
 
+describe('ThreeDViewerController — page built for printing', () => {
+    afterEach(() => {
+        delete window.$exeExport;
+    });
+
+    it('loads the model at once, as one never scrolled to would print blank', async () => {
+        window.$exeExport = { printing: { kind: 'document', activities: null } };
+        const { wrapper, modelViewer } = mount();
+        await new ThreeDViewerController(wrapper, config()).start();
+        expect(modelViewer.getAttribute('loading')).toBe('eager');
+    });
+
+    it('counts the viewer as visible once its model has loaded, in view or not', async () => {
+        window.$exeExport = { printing: { kind: 'document', activities: null } };
+        const { wrapper, modelViewer } = mount();
+        await new ThreeDViewerController(wrapper, config()).start();
+        const viewer = modelViewer as unknown as { modelIsVisible: boolean };
+
+        expect(viewer.modelIsVisible).toBe(false);
+        Object.defineProperty(modelViewer, 'loaded', { configurable: true, value: true });
+        expect(viewer.modelIsVisible).toBe(true);
+    });
+
+    it('leaves an ordinary page loading and drawing the model when it scrolls into view', async () => {
+        window.$exeExport = { printing: null };
+        const { wrapper, modelViewer } = mount();
+        await new ThreeDViewerController(wrapper, config()).start();
+        expect(modelViewer.hasAttribute('loading')).toBe(false);
+        expect(Object.getOwnPropertyDescriptor(modelViewer, 'modelIsVisible')).toBeUndefined();
+    });
+});
+
 describe('ThreeDViewerController — STL path', () => {
     it('boots the shared runtime with the resolved URL', async () => {
         const runtime = publishViewerRuntime();

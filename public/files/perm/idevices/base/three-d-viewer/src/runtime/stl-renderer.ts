@@ -87,7 +87,11 @@ export async function bootStl(instance: ViewerInstance): Promise<void> {
     const scene = new three.Scene();
     scene.background = new three.Color(normalizeColor(options.backgroundColor, DEFAULT_BACKGROUND_COLOR));
     const camera = new three.PerspectiveCamera(45, width / height, 0.1, 1000);
-    const renderer = new three.WebGLRenderer({ canvas, antialias: true });
+    // preserveDrawingBuffer keeps the last frame readable, so the copy of the page the desktop
+    // app prints can turn the canvas into a picture (<model-viewer> already keeps it). Only a
+    // page built for printing needs it; anywhere else it would only cost drawing speed.
+    const preserveDrawingBuffer = Boolean(globalThis.window?.$exeExport?.printing);
+    const renderer = new three.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer });
     renderer.setSize(width, height);
     renderer.setPixelRatio?.(Math.min(globalThis.devicePixelRatio || 1, 2));
     configureRendererColorManagement(renderer);

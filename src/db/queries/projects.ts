@@ -75,6 +75,8 @@ function buildProjectWithOwner(result: ProjectWithOwnerRow): Project & { owner: 
         last_accessed_at: result.last_accessed_at,
         saved_once: result.saved_once,
         platform_id: result.platform_id,
+        platform_site: result.platform_site,
+        platform_package_hash: result.platform_package_hash,
         public_view_id: result.public_view_id,
         public_view_enabled: result.public_view_enabled,
         created_at: result.created_at,
@@ -119,6 +121,28 @@ export async function findProjectByUuid(db: Kysely<Database>, uuid: string): Pro
 
 export async function findProjectByPlatformId(db: Kysely<Database>, platformId: string): Promise<Project | undefined> {
     return db.selectFrom('projects').selectAll().where('platform_id', '=', platformId).executeTakeFirst();
+}
+
+/**
+ * Find the project a user keeps for one platform activity (site + course module).
+ * Deleted projects are skipped; the most recently updated one wins.
+ */
+export async function findOwnedProjectByPlatformBinding(
+    db: Kysely<Database>,
+    ownerId: number,
+    platformSite: string,
+    platformId: string,
+): Promise<Project | undefined> {
+    return db
+        .selectFrom('projects')
+        .selectAll()
+        .where('owner_id', '=', ownerId)
+        .where('platform_site', '=', platformSite)
+        .where('platform_id', '=', platformId)
+        .where('status', 'in', ['active', 'archived'])
+        .orderBy('updated_at', 'desc')
+        .orderBy('id', 'desc')
+        .executeTakeFirst();
 }
 
 /**

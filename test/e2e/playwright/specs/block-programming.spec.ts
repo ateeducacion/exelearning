@@ -52,7 +52,7 @@ test('creates, reopens, previews and exports a complete editable offline assignm
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);
     await selectFirstPage(page);
-    await addIdevice(page, 'mini-scratch');
+    await addIdevice(page, 'block-programming');
     const author = page.locator('.ms-author');
     await expect(author.getByRole('tab')).toHaveCount(4);
     await expect(author.getByRole('tab', { name: 'Activity', exact: true })).toHaveAttribute('aria-selected', 'true');
@@ -64,7 +64,7 @@ test('creates, reopens, previews and exports a complete editable offline assignm
     await author.locator('[data-field="targetX"]').fill('4');
     await author.locator('[data-field="maxAttempts"]').fill('3');
     await author.locator('[data-field="weight"]').fill('25');
-    const id = await page.locator('.idevice_node.mini-scratch').getAttribute('id');
+    const id = await page.locator('.idevice_node.block-programming').getAttribute('id');
     await author.getByRole('tab', { name: 'Preview', exact: true }).click();
     await author.getByRole('button', { name: 'Preview activity', exact: true }).click();
     await expect(author.locator('.ms-activity h3')).toHaveText('Reach the flag');
@@ -90,25 +90,25 @@ test('creates, reopens, previews and exports a complete editable offline assignm
     const preview = await getPreviewFrame(page);
     await expect(preview.locator('.ms-activity .blocklySvg')).toBeVisible();
     await page.locator('#previewsidenavclose').click();
-    await addIdevice(page, 'mini-scratch');
+    await addIdevice(page, 'block-programming');
     await author.locator('[data-field="title"]').fill('Second activity');
     await author.getByRole('tab', { name: 'Assessment', exact: true }).click();
     await author.locator('[data-field="weight"]').fill('75');
-    const secondId = await page.locator('.idevice_node.mini-scratch').last().getAttribute('id');
+    const secondId = await page.locator('.idevice_node.block-programming').last().getAttribute('id');
     await saveIdevice(page, secondId!);
-    const files = await exported(page, 'scorm12', testInfo.outputPath('mini-scratch-scorm12.zip'));
+    const files = await exported(page, 'scorm12', testInfo.outputPath('block-programming-scorm12.zip'));
     expect(files['imsmanifest.xml']).toBeDefined();
-    expect(files['idevices/mini-scratch/mini-scratch.js']).toBeDefined();
-    expect(files['idevices/mini-scratch/media/sprites.svg']).toBeDefined();
+    expect(files['idevices/block-programming/block-programming.js']).toBeDefined();
+    expect(files['idevices/block-programming/media/sprites.svg']).toBeDefined();
     expect(Object.keys(files).some(name => name.includes('/edition/') || name.includes('/src/'))).toBe(false);
-    const script = Buffer.from(files['idevices/mini-scratch/mini-scratch.js']).toString();
+    const script = Buffer.from(files['idevices/block-programming/block-programming.js']).toString();
     expect(script).not.toContain('Load example (replaces this form)');
     const offline = await page.context().newPage();
     const missing: string[] = [];
     offline.on('pageerror', error => errors.push(error.message));
     await offline.route('**/*', route => {
         const url = new URL(route.request().url());
-        if (url.hostname !== 'mini-scratch.test') {
+        if (url.hostname !== 'block-programming.test') {
             missing.push(url.href);
             return route.abort();
         }
@@ -139,7 +139,7 @@ test('creates, reopens, previews and exports a complete editable offline assignm
                   : 'application/octet-stream';
         return route.fulfill({ contentType, body: Buffer.from(data) });
     });
-    await offline.goto('https://mini-scratch.test/launch');
+    await offline.goto('https://block-programming.test/launch');
     const sco = offline.frameLocator('iframe');
     await expect(sco.locator('.ms-activity .blocklySvg')).toHaveCount(2);
     const first = sco.locator('.ms-activity').first();
@@ -200,7 +200,7 @@ test('creates, reopens, previews and exports a complete editable offline assignm
     expect(errors).toEqual([]);
     await offline.close();
     const html = await exported(page, 'html5');
-    expect(html['idevices/mini-scratch/mini-scratch.js']).toBeDefined();
+    expect(html['idevices/block-programming/block-programming.js']).toBeDefined();
 });
 
 test('preserves all teacher configuration and starter blocks through ELPX import and duplication', async ({
@@ -211,14 +211,14 @@ test('preserves all teacher configuration and starter blocks through ELPX import
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);
     await selectFirstPage(page);
-    await addIdevice(page, 'mini-scratch');
+    await addIdevice(page, 'block-programming');
     const author = page.locator('.ms-author');
     await author.locator('[data-field="example"]').selectOption('calculation');
     await author.getByRole('button', { name: 'Load example (replaces this form)', exact: true }).click();
     await author.getByRole('tab', { name: 'Assessment', exact: true }).click();
     await author.locator('[data-field="expected"]').fill('30');
     await author.locator('[data-field="hint"]').fill('Use a loop and a numeric variable.');
-    const id = await page.locator('.idevice_node.mini-scratch').getAttribute('id');
+    const id = await page.locator('.idevice_node.block-programming').getAttribute('id');
     await author.getByRole('tab', { name: 'Programming', exact: true }).click();
     await author.locator('.ms-workspace').evaluate(element => {
         const Blockly = (window as any).Blockly;
@@ -247,15 +247,15 @@ test('preserves all teacher configuration and starter blocks through ELPX import
         );
     });
     await saveIdevice(page, id!);
-    const before = await page.locator('[data-mini-scratch]').getAttribute('data-mini-scratch');
+    const before = await page.locator('[data-block-programming]').getAttribute('data-block-programming');
     const files = await exported(page, 'elpx');
     const { zipSync } = await import('fflate');
-    const file = testInfo.outputPath('mini-scratch.elpx');
+    const file = testInfo.outputPath('block-programming.elpx');
     writeFileSync(file, zipSync(files));
     await openElpFile(page, file);
     await selectFirstPage(page);
-    await expect(page.locator('[data-mini-scratch]')).toHaveAttribute('data-mini-scratch', before!);
-    const importedId = await page.locator('.idevice_node.mini-scratch').getAttribute('id');
+    await expect(page.locator('[data-block-programming]')).toHaveAttribute('data-block-programming', before!);
+    const importedId = await page.locator('.idevice_node.block-programming').getAttribute('id');
     await editIdevice(page, importedId!);
     await author.getByRole('tab', { name: 'Assessment', exact: true }).click();
     await expect(author.locator('[data-field="expected"]')).toHaveValue('30');
@@ -275,7 +275,7 @@ test('preserves all teacher configuration and starter blocks through ELPX import
     await saveIdevice(page, importedId!);
     await cloneCurrentPage(page);
     await expect(page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text')).toHaveCount(2);
-    await expect(page.locator('[data-mini-scratch]')).toHaveAttribute('data-mini-scratch', before!);
+    await expect(page.locator('[data-block-programming]')).toHaveAttribute('data-block-programming', before!);
 });
 
 test('keeps authoring tabs keyboard accessible and usable at narrow widths', async ({
@@ -289,7 +289,7 @@ test('keeps authoring tabs keyboard accessible and usable at narrow widths', asy
     const betaWarning = page.locator('#eXeBetaWarningCloseBtn');
     if (await betaWarning.isVisible()) await betaWarning.click();
     await selectFirstPage(page);
-    await addIdevice(page, 'mini-scratch');
+    await addIdevice(page, 'block-programming');
     const author = page.locator('.ms-author');
     const activity = author.getByRole('tab', { name: 'Activity', exact: true });
     await expect(author.getByLabel('Activity title', { exact: true })).toHaveValue('Block Programming');
@@ -304,7 +304,7 @@ test('keeps authoring tabs keyboard accessible and usable at narrow widths', asy
     const workspace = await author.locator('.ms-workspace').boundingBox();
     expect(workspace!.width).toBeGreaterThan(300);
     expect(workspace!.height).toBeGreaterThan(300);
-    const programmingImage = testInfo.outputPath('mini-scratch-programming.png');
+    const programmingImage = testInfo.outputPath('block-programming-programming.png');
     await author.screenshot({ path: programmingImage });
     await testInfo.attach('Programming tab', { path: programmingImage, contentType: 'image/png' });
     await author.locator('summary').click();
@@ -320,7 +320,7 @@ test('keeps authoring tabs keyboard accessible and usable at narrow widths', asy
     await expect(activity).toBeFocused();
     await expect(author.getByLabel('Activity title', { exact: true })).toHaveValue('A journey to the flag');
     await expect(author.locator('.ms-activity')).toHaveCount(0);
-    const activityImage = testInfo.outputPath('mini-scratch-activity.png');
+    const activityImage = testInfo.outputPath('block-programming-activity.png');
     await author.screenshot({ path: activityImage });
     await testInfo.attach('Activity tab', { path: activityImage, contentType: 'image/png' });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -328,7 +328,7 @@ test('keeps authoring tabs keyboard accessible and usable at narrow widths', asy
     await author.getByRole('tab', { name: 'Assessment', exact: true }).click();
     await expect(author.getByRole('button', { name: 'Add action', exact: true })).toBeVisible();
     await expect.poll(() => author.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
-    const narrowImage = testInfo.outputPath('mini-scratch-narrow.png');
+    const narrowImage = testInfo.outputPath('block-programming-narrow.png');
     await author.screenshot({ path: narrowImage });
     await testInfo.attach('Narrow assessment tab', { path: narrowImage, contentType: 'image/png' });
 });

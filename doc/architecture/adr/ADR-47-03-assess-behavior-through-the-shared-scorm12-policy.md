@@ -10,7 +10,7 @@ reviewers:
   - "eXeLearning maintainers"
 related:
   prs: [47]
-  changes: [47-mini-scratch]
+  changes: [47-block-programming]
   adrs: [ADR-47-01, ADR-47-02, ADR-2209-02]
 supersedes: []
 superseded_by: []
@@ -87,7 +87,7 @@ Consider source submission or workspace resume only when the shared persistence 
 - https://exelearning.github.io/exelearning/elpx-format/idevices/patterns/
 - `public/app/common/common.js` @ c848eca0
 - `public/app/common/scorm/scorm12/exe-scorm12-activities.js` @ c848eca0
-- `test/e2e/playwright/specs/mini-scratch.spec.ts`
+- `test/e2e/playwright/specs/block-programming.spec.ts`
 
 - https://github.com/ateeducacion/exelearning/pull/47
-- [Block Programming design](../changes/47-mini-scratch/design.md)
+- [Block Programming design](../changes/47-block-programming/design.md)

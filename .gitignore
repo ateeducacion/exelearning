@@ -186,8 +186,8 @@ test/e2e/moodle/plugins/*
 /fuzz/dist
 
 # Block Programming — generated offline runtime and Blockly media
-/public/files/perm/idevices/base/mini-scratch/export/mini-scratch.js
-/public/files/perm/idevices/base/mini-scratch/export/media/
-/public/files/perm/idevices/base/mini-scratch/export/BLOCKLY-LICENSE.txt
-/public/files/perm/idevices/base/mini-scratch/edition/mini-scratch.js
-/public/files/perm/idevices/base/mini-scratch/export/MINI-SCRATCH-LICENSE.txt
+/public/files/perm/idevices/base/block-programming/export/block-programming.js
+/public/files/perm/idevices/base/block-programming/export/media/
+/public/files/perm/idevices/base/block-programming/export/BLOCKLY-LICENSE.txt
+/public/files/perm/idevices/base/block-programming/edition/block-programming.js
+/public/files/perm/idevices/base/block-programming/export/BLOCK-PROGRAMMING-LICENSE.txt

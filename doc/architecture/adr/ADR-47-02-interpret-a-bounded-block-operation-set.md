@@ -10,7 +10,7 @@ reviewers:
   - "eXeLearning maintainers"
 related:
   prs: [47]
-  changes: [47-mini-scratch]
+  changes: [47-block-programming]
   adrs: [ADR-47-01, ADR-47-03, ADR-2293-01]
 supersedes: []
 superseded_by: []
@@ -83,10 +83,10 @@ Any language extension must add its validated data shape, semantics, limits and 
 
 ## References
 
-- `public/files/perm/idevices/base/mini-scratch/src/model.ts`
-- `public/files/perm/idevices/base/mini-scratch/src/player.ts`
+- `public/files/perm/idevices/base/block-programming/src/model.ts`
+- `public/files/perm/idevices/base/block-programming/src/player.ts`
 - https://docs.blockly.com/guides/configure/serialization/
 - [ADR-2293-01](ADR-2293-01-own-idevice-edition-resources-with-an-explicit-lifecycle.md)
 
 - https://github.com/ateeducacion/exelearning/pull/47
-- [Block Programming design](../changes/47-mini-scratch/design.md)
+- [Block Programming design](../changes/47-block-programming/design.md)

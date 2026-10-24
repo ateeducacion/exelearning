@@ -3,7 +3,7 @@ import { Blockly, gui as _, blockLabels, inject, snapshot, toolbox, button, node
 import { defaults, TYPES, validateConfig, type Action, type Config } from './model';
 let nextEditorId = 0;
 export class Editor {
-    private formId = `miniScratchForm${++nextEditorId}`;
+    private formId = `blockProgrammingForm${++nextEditorId}`;
     private panels: HTMLElement[] = [];
     private tabs: HTMLAnchorElement[] = [];
     private previewStatus!: HTMLElement;

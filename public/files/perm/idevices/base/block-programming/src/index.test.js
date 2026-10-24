@@ -19,15 +19,15 @@ vi.mock('./player', () => ({
 }));
 it('initializes once, isolates players, reports invalid data and disposes detached players', async () => {
     document.body.innerHTML =
-        '<section data-mini-scratch="%7B%7D"></section><section data-mini-scratch="%7B%7D"></section><section data-mini-scratch="%7B%22bad%22%3Atrue%7D"></section><div class="ms-author"><section data-mini-scratch="%7B%7D"></section></div>';
+        '<section data-block-programming="%7B%7D"></section><section data-block-programming="%7B%7D"></section><section data-block-programming="%7B%22bad%22%3Atrue%7D"></section><div class="ms-author"><section data-block-programming="%7B%7D"></section></div>';
     const script = document.createElement('script');
-    script.src = 'https://offline.test/nested/idevices/mini-scratch/mini-scratch.js';
+    script.src = 'https://offline.test/nested/idevices/block-programming/block-programming.js';
     vi.spyOn(document, 'currentScript', 'get').mockReturnValue(script);
-    vi.stubGlobal('$miniscratch', undefined);
+    vi.stubGlobal('$blockprogramming', undefined);
     await import('./index');
     document.dispatchEvent(new Event('DOMContentLoaded'));
-    const api = globalThis.$miniscratch;
-    expect(api.authoring.media).toBe('https://offline.test/nested/idevices/mini-scratch/media/');
+    const api = globalThis.$blockprogramming;
+    expect(api.authoring.media).toBe('https://offline.test/nested/idevices/block-programming/media/');
     expect(document.querySelectorAll('[data-mounted]')).toHaveLength(2);
     expect(document.body.textContent).toContain('Invalid imported activity.');
     api.init();
@@ -37,7 +37,7 @@ it('initializes once, isolates players, reports invalid data and disposes detach
     await vi.waitFor(() => expect(disposed).toHaveLength(1));
     document.querySelector('[data-mounted]').remove();
     await vi.waitFor(() => expect(disposed).toHaveLength(2));
-    document.body.innerHTML = '<section data-mini-scratch="%7B%7D"></section>';
+    document.body.innerHTML = '<section data-block-programming="%7B%7D"></section>';
     api.init();
     expect(document.querySelector('[data-mounted]')).not.toBeNull();
     document.body.replaceChildren();

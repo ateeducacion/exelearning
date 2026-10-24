@@ -6,10 +6,10 @@ const media = script?.src ? new URL('media/', script.src).href : '';
 const players = new Map<HTMLElement, Player>();
 let observer: MutationObserver | undefined;
 function scan(): void {
-    document.querySelectorAll<HTMLElement>('[data-mini-scratch]').forEach((root) => {
+    document.querySelectorAll<HTMLElement>('[data-block-programming]').forEach((root) => {
         if (players.has(root) || root.closest('.ms-author')) return;
         try {
-            const player = new Player(root, JSON.parse(decodeURIComponent(root.dataset.miniScratch!)), media);
+            const player = new Player(root, JSON.parse(decodeURIComponent(root.dataset.blockProgramming!)), media);
             players.set(root, player);
         } catch (error) {
             root.textContent = String((error as Error).message);
@@ -30,8 +30,8 @@ function scan(): void {
         observer.observe(document.body, { childList: true, subtree: true });
     }
 }
-if (!globalThis.$miniscratch) {
-    globalThis.$miniscratch = {
+if (!globalThis.$blockprogramming) {
+    globalThis.$blockprogramming = {
         renderView,
         renderBehaviour: scan,
         init: scan,

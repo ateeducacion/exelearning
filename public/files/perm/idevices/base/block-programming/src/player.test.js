@@ -82,9 +82,9 @@ describe('Block Programming learner lifecycle', () => {
         c.title = '<img src=x onerror=alert(1)>';
         c.instructions = ']]> " & <script>你好</script>';
         document.body.innerHTML = renderView(c);
-        const root = document.querySelector('[data-mini-scratch]');
+        const root = document.querySelector('[data-block-programming]');
         expect(root.querySelector('img,script')).toBeNull();
-        expect(JSON.parse(decodeURIComponent(root.dataset.miniScratch))).toEqual(c);
+        expect(JSON.parse(decodeURIComponent(root.dataset.blockProgramming))).toEqual(c);
         expect(root.textContent).toContain(c.title);
         expect(escapeAttribute('\'&<>"')).toBe('&#39;&amp;&lt;&gt;&quot;');
     });
@@ -261,5 +261,5 @@ it('keeps feedback usable if LMS reporting fails', async () => {
 it('renders malformed imported configuration as safe feedback', () => {
     document.body.innerHTML = renderView({ version: 999, title: '<script>bad</script>' });
     expect(document.body.textContent).toContain('invalid data');
-    expect(document.querySelector('script,[data-mini-scratch]')).toBeNull();
+    expect(document.querySelector('script,[data-block-programming]')).toBeNull();
 });

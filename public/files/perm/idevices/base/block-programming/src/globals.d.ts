@@ -4,7 +4,7 @@ declare global {
     var Blockly: typeof import('blockly/core');
     var c_: ((value: string) => string) | undefined;
     var _: ((value: string) => string) | undefined;
-    var $miniscratch: any;
+    var $blockprogramming: any;
     var $exeDevice: any;
     var eXe: any;
     var eXeLearning: any;

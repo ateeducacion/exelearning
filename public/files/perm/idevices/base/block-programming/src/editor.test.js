@@ -16,7 +16,7 @@ const fakeInject = (_root, c) => {
     return ws;
 };
 const svgResize = vi.fn();
-globalThis.$miniscratch = {
+globalThis.$blockprogramming = {
     authoring: { ...Blocks, ...Runtime, Blockly: { ...Blockly, svgResize }, inject: fakeInject, media: '/media/' },
 };
 const { Editor } = await import('./editor');
@@ -256,7 +256,7 @@ describe('Block Programming teacher forms', () => {
     });
 });
 it('owns the native edition instance and reports validation failures through the application alert', async () => {
-    vi.stubGlobal('$miniscratch', { authoring: { ...Blocks, ...Runtime, inject: fakeInject, media: '/media/' } });
+    vi.stubGlobal('$blockprogramming', { authoring: { ...Blocks, ...Runtime, inject: fakeInject, media: '/media/' } });
     const alert = vi.fn();
     vi.stubGlobal('eXe', { app: { alert } });
     vi.stubGlobal('_', (s) => s);

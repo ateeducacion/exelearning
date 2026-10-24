@@ -35,7 +35,7 @@ export function renderView(data: unknown): string {
     } catch {
         return `<p class="ms-error">${escapeAttribute(c_('This Block Programming activity contains invalid data.'))}</p>`;
     }
-    return `<section class="ms-activity" data-mini-scratch="${escapeAttribute(encodeURIComponent(JSON.stringify(c)))}"><h3>${escapeAttribute(c.title)}</h3><p>${escapeAttribute(c.instructions)}</p></section>`;
+    return `<section class="ms-activity" data-block-programming="${escapeAttribute(encodeURIComponent(JSON.stringify(c)))}"><h3>${escapeAttribute(c.title)}</h3><p>${escapeAttribute(c.instructions)}</p></section>`;
 }
 /** Cancelled sleeps settle immediately, including when a player leaves the DOM. */
 function pause(ms: number, signal: AbortSignal): Promise<void> {

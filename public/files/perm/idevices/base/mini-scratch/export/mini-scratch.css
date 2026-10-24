@@ -1,0 +1,17 @@
+.ms-activity { color: #172b40; background: #fff; padding: 1rem; border: 1px solid #62778b; border-radius: .4rem; }
+.ms-activity h3 { margin-top: 0; }
+.ms-activity p { white-space: pre-wrap; }
+.ms-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 25%); gap: .75rem; }
+.ms-workspace { height: 32rem; min-width: 0; text-align: left; }
+.ms-stage svg { width: 100%; background: #f1f5f9; border: 1px solid #62778b; }
+.ms-stage output { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ms-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+.ms-activity button { color: #fff; background: #175b94; border: 2px solid #175b94; border-radius: .25rem; padding: .5rem .8rem; min-height: 44px; cursor: pointer; }
+.ms-activity button:disabled { opacity: .65; cursor: default; }
+.ms-activity button:focus-visible, .ms-author :focus-visible { outline: 3px solid #a74500; outline-offset: 3px; }
+.ms-feedback { border-left: 4px solid #175b94; padding: .5rem; min-height: 2rem; white-space: pre-wrap; }
+.ms-score { font-weight: bold; }
+.ms-keyboard-help { font-size: .9em; }
+@media (max-width: 700px) { .ms-layout { grid-template-columns: minmax(0, 1fr); } .ms-stage { max-width: 20rem; } .ms-workspace { height: 28rem; } }
+@media (prefers-reduced-motion: reduce) { .ms-activity * { animation: none !important; transition: none !important; } }
+@media print { .ms-workspace, .ms-controls, .ms-keyboard-help { display: none; } }

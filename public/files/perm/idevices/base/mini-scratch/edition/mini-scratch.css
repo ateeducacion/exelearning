@@ -1,0 +1,7 @@
+.ms-author label { display: block; margin: .5rem 0; }
+.ms-author input:not([type=checkbox]), .ms-author textarea, .ms-author select { max-width: 100%; padding: .3rem; }
+.ms-author textarea { width: 100%; min-height: 4rem; }
+.ms-author fieldset { margin: 1rem 0; padding: 1rem; border: 1px solid #777; }
+.ms-author .ms-fields { display: flex; flex-wrap: wrap; gap: 1rem; }
+.ms-author .ms-block-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+.ms-author .ms-sequence-row { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem; }

@@ -95,14 +95,17 @@ export default class EmbeddingBridge {
         const navigation = documentManager?.getNavigation?.();
         this._watchDirtyState(documentManager);
 
-        window.parent.postMessage({
+        // Route through postToParent so this inherits the known-origin guard.
+        // DOCUMENT_LOADED carries project metadata (id, dirty state, page count)
+        // that must never be broadcast to '*': until the parent handshake has
+        // set a trusted parentOrigin, the message is dropped rather than leaked
+        // to every embedding origin (js/cross-window-information-leak).
+        this.postToParent({
             type: 'DOCUMENT_LOADED',
             projectId: bridge?.projectId || null,
             isDirty: documentManager?.isDirty || false,
             pageCount: navigation?.length || 0,
-        }, this.parentOrigin || '*');
-
-        getLogger().log('[EmbeddingBridge] Announced DOCUMENT_LOADED to parent');
+        });
     }
 
     /**
@@ -517,13 +520,10 @@ export default class EmbeddingBridge {
             window.parent.postMessage(message, this.parentOrigin);
             return true;
         } catch (e) {
-            // If origin validation fails, try with '*' for same-origin iframes
-            if (e.name === 'DataCloneError') {
-                getLogger().error('[EmbeddingBridge] Cannot serialize message:', e);
-                return false;
-            }
-            window.parent.postMessage(message, '*');
-            return true;
+            // Never broadcast to '*' on failure: it would leak the message to
+            // any origin. Log the error and drop the message instead.
+            getLogger().error('[EmbeddingBridge] Failed to post message to parent:', e);
+            return false;
         }
     }
 

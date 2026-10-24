@@ -1,10 +1,12 @@
-# Mini Scratch
+# Block Programming
 
-Mini Scratch is a native JSON iDevice for small offline programming assignments. It uses Blockly 13.4.0, a single SVG character and an interpreter for a fixed set of operations. It does not include Scratch, Scratch VM, a language generator or a backend execution service.
+Block Programming is a native JSON iDevice for small offline programming assignments. It uses Blockly 13.4.0, a single SVG character and an interpreter for a fixed set of operations. It does not include Scratch, Scratch VM, a language generator or a backend execution service.
+
+The display name is **Block Programming**. The original development identifier `mini-scratch`, asset names and JSON schema remain stable so earlier activities and exports continue to work. Existing teacher-authored titles are preserved. The icon is an original SVG showing interlocking blue, green and orange blocks; it does not use the Scratch or Blockly logos.
 
 ## Create an assignment
 
-1. Add **Interactive activities → Mini Scratch**.
+1. Add **Interactive activities → Block Programming**.
 2. In **Activity**, load one of the three examples or write the title, instructions and educational objective. Loading an example replaces the settings and starter program.
 3. In **Programming**, expand **Available blocks** to choose the student toolbox, then build the starter program in the full-width workspace.
 4. In **Assessment**, configure the challenge, feedback, passing threshold, activity weight and attempts. A maximum of zero means unlimited attempts. Update the activity instructions when changing challenge parameters.
@@ -34,7 +36,7 @@ The supported blocks cover start, movement/position, turns, repeat, if/else, wai
 
 ## SCORM 1.2 contract
 
-Graded activities register through `$exeDevices.iDevice.gamification.scorm.reportActivity`. On a submitted execution, `updateActivity` reports the normalized result, one answered assignment and explicit completion flag. The shared registry and policy aggregate activity weights, respect the package completion policy, persist suspend data and commit the session. Mini Scratch never writes CMI elements, calls LMSFinish or replaces another activity's score directly.
+Graded activities register through `$exeDevices.iDevice.gamification.scorm.reportActivity`. On a submitted execution, `updateActivity` reports the normalized result, one answered assignment and explicit completion flag. The shared registry and policy aggregate activity weights, respect the package completion policy, persist suspend data and commit the session. Block Programming never writes CMI elements, calls LMSFinish or replaces another activity's score directly.
 
 A submitted attempt is **completed** even if it fails; its score and configured threshold determine **success**. A new submitted attempt replaces this activity's previous result. Running or resetting alone leaves the submitted grade unchanged. Ungraded activities do not hold up completion or send grades. HTML and previews work without an LMS. Only SCORM 1.2 is supported and tested for grading in this feature; SCORM 2004 is outside its scope.
 
@@ -66,7 +68,7 @@ bun run bundle:mini-scratch
 bun run bundle:mini-scratch --measure
 ```
 
-The existing Bun build runs this step **before** resource-bundle generation, preventing stale or missing runtime assets in browser/static exports. Generated JS, UI media and the original Apache-2.0 Blockly and AGPL-3.0 Mini Scratch licenses are ignored by Git and recreated from the pinned package. `config.xml` lists the shared export runtime before the separate edition bundle. The native resource pipeline copies only `export/` into learner packages. Required media resolve relative to the executing script URL, including nested LMS paths. No CDN is used. A page without this iDevice does not load its runtime.
+The existing Bun build runs this step **before** resource-bundle generation, preventing stale or missing runtime assets in browser/static exports. Generated JS, UI media and the original Apache-2.0 Blockly and AGPL-3.0 Block Programming licenses are ignored by Git and recreated from the pinned package. `config.xml` lists the shared export runtime before the separate edition bundle. The native resource pipeline copies only `export/` into learner packages. Required media resolve relative to the executing script URL, including nested LMS paths. No CDN is used. A page without this iDevice does not load its runtime.
 
 Measurements below use Bun 1.3.11, Blockly 13.4.0 and Node-compatible Gzip level 9 on this implementation. Byte counts refer to payloads; HTTP framing is excluded. Incremental resource totals sum individual compressed resources and conservatively include the license and template even though they are not fetched by the learner UI.
 
@@ -74,15 +76,15 @@ Measurements below use Bun 1.3.11, Blockly 13.4.0 and Node-compatible Gzip level
 | --- | ---: | ---: |
 | Published Blockly core distribution | 640,950 | 180,012 |
 | Published English messages | 49,746 | 10,185 |
-| Mini Scratch learner code, separately minified | 20,142 | 7,742 |
-| Conventional Bun module core + English + learner code | 746,229 | 205,686 |
-| Selected prebuilt core + English + learner code | 711,002 | 197,849 |
+| Block Programming learner code, separately minified | 20,152 | 7,740 |
+| Conventional Bun module core + English + learner code | 746,239 | 205,686 |
+| Selected prebuilt core + English + learner code | 711,017 | 197,846 |
 | Learner CSS | 1,472 | 633 |
-| All static iDevice export resources, including UI media/licenses/template | 762,725 | 216,192 |
+| All static iDevice export resources, including UI media/licenses/template | 762,740 | 216,189 |
 
 Per-activity configuration and rendered HTML grow with the instructions, challenge and starter program. They are included in the sample SCORM package, but not in this shared static-resource budget.
 
-The selected approach is approximately **211.1 KiB Gzip for all additional exported resources**, below the 300 KiB target. It saves about 7.7 KiB compressed compared with the ordinary module bundle. It concatenates the published precompiled files verbatim with the normal Bun output; it does not run Closure Compiler or modify Blockly. The separate teacher bundle is roughly 11 KiB uncompressed and is excluded from learner exports. Shared eXeLearning/SCORM assets are not counted in these incremental figures. The main application bundle imports no Mini Scratch or Blockly code. A direct Bun build of the fork base and feature branch produced the same 989,364 bytes and SHA-256 `c5e1763fd8f2ae4abb6ec347f8c42aba0e87e826e27a3d9f4dba8b26cf463035`.
+The selected approach is approximately **211.1 KiB Gzip for all additional exported resources**, below the 300 KiB target. It saves about 7.7 KiB compressed compared with the ordinary module bundle. It concatenates the published precompiled files verbatim with the normal Bun output; it does not run Closure Compiler or modify Blockly. The separate teacher bundle is 15,249 bytes uncompressed (14.9 KiB) and is excluded from learner exports. Shared eXeLearning/SCORM assets are not counted in these incremental figures. The main application bundle imports no Block Programming or Blockly code. A direct Bun build of the fork base and feature branch produced the same 989,364 bytes and SHA-256 `c5e1763fd8f2ae4abb6ec347f8c42aba0e87e826e27a3d9f4dba8b26cf463035`.
 
 A representative SCORM 1.2 package from the acceptance test (two activities, one page, default theme and embedded source) is approximately **517 KiB** including standard eXeLearning/SCORM assets. The exact archived size is printed by the Playwright test and saved in its output directory.
 
@@ -99,3 +101,5 @@ Research was performed before implementation using the Internet and Context7, re
 - [Blockly documentation](https://docs.blockly.com/), [serialization](https://docs.blockly.com/guides/configure/serialization/), [toolboxes](https://docs.blockly.com/guides/configure/toolboxes/category/) and [published package](https://www.npmjs.com/package/blockly).
 - [Blockly source and license](https://github.com/RaspberryPiFoundation/blockly) and [Bun build API](https://bun.sh/docs/bundler).
 - `src/shared/export/providers/FileSystemResourceProvider.ts`, `public/app/workarea/project/idevices/content/ideviceNode.js` and the existing Slide iDevice build split.
+
+The product name avoids using the Scratch brand, following the [Scratch trademark guidelines](https://mitscratch.freshdesk.com/es/support/solutions/articles/4000232107-normas-sobre-las-marcas-registradas-de-scratch). Blockly attribution follows its [official guidance](https://docs.blockly.com/guides/app-integration/attribution/); library use does not make this an official Blockly product.

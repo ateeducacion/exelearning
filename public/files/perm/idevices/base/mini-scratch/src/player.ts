@@ -33,7 +33,7 @@ export function renderView(data: unknown): string {
     try {
         c = validateConfig(data);
     } catch {
-        return `<p class="ms-error">${escapeAttribute(c_('This Mini Scratch activity contains invalid data.'))}</p>`;
+        return `<p class="ms-error">${escapeAttribute(c_('This Block Programming activity contains invalid data.'))}</p>`;
     }
     return `<section class="ms-activity" data-mini-scratch="${escapeAttribute(encodeURIComponent(JSON.stringify(c)))}"><h3>${escapeAttribute(c.title)}</h3><p>${escapeAttribute(c.instructions)}</p></section>`;
 }

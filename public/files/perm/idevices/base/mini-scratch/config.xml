@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <idevice>
     <name>mini-scratch</name>
-    <title>Mini Scratch</title>
+    <title>Block Programming</title>
     <css-class>mini-scratch</css-class>
     <category>Interactive activities</category>
     <icon><name>mini-scratch-icon</name><url>mini-scratch-icon.svg</url><type>img</type></icon>

@@ -48,7 +48,7 @@ const click = (text) =>
     Array.from(root.querySelectorAll('button'))
         .find((b) => b.textContent === text)
         .click();
-describe('Mini Scratch teacher forms', () => {
+describe('Block Programming teacher forms', () => {
     it('uses native iDevice tabs with linked accessible panels and keyboard navigation', () => {
         editor = new Editor(root, {}, '/media/');
         const tabs = root.querySelectorAll('[role="tab"]');
@@ -236,7 +236,7 @@ describe('Mini Scratch teacher forms', () => {
         editor = new Editor(root, {}, '/media/');
         const before = editor.save();
         click('Preview activity');
-        expect(root.querySelector('.ms-activity h3').textContent).toBe('Mini Scratch');
+        expect(root.querySelector('.ms-activity h3').textContent).toBe('Block Programming');
         click('Preview activity');
         click('Close preview');
         expect(root.querySelector('.ms-activity h3')).toBeNull();

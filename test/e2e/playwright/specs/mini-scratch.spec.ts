@@ -1,4 +1,4 @@
-/** Mini Scratch authoring and offline SCORM 1.2 package acceptance. */
+/** Block Programming authoring and offline SCORM 1.2 package acceptance. */
 import { test, expect } from '../fixtures/auth.fixture';
 import {
     gotoWorkarea,
@@ -37,7 +37,7 @@ async function exported(page: Page, format: string, outputPath?: string): Promis
     const data = new Uint8Array(Buffer.from(base64, 'base64'));
     if (outputPath) {
         writeFileSync(outputPath, data);
-        console.info(`Mini Scratch sample SCORM package: ${data.length} bytes`);
+        console.info(`Block Programming sample SCORM package: ${data.length} bytes`);
     }
     return unzipSync(data);
 }
@@ -48,7 +48,7 @@ test('creates, reopens, previews and exports a complete editable offline assignm
 }, testInfo) => {
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
-    const uuid = await createProject(page, 'Mini Scratch acceptance');
+    const uuid = await createProject(page, 'Block Programming acceptance');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);
     await selectFirstPage(page);
@@ -207,7 +207,7 @@ test('preserves all teacher configuration and starter blocks through ELPX import
     authenticatedPage: page,
     createProject,
 }, testInfo) => {
-    const uuid = await createProject(page, 'Mini Scratch round trip');
+    const uuid = await createProject(page, 'Block Programming round trip');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);
     await selectFirstPage(page);
@@ -283,7 +283,7 @@ test('keeps authoring tabs keyboard accessible and usable at narrow widths', asy
     createProject,
 }, testInfo) => {
     await page.setViewportSize({ width: 1280, height: 960 });
-    const uuid = await createProject(page, 'Mini Scratch authoring layout');
+    const uuid = await createProject(page, 'Block Programming authoring layout');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);
     const betaWarning = page.locator('#eXeBetaWarningCloseBtn');
@@ -292,6 +292,8 @@ test('keeps authoring tabs keyboard accessible and usable at narrow widths', asy
     await addIdevice(page, 'mini-scratch');
     const author = page.locator('.ms-author');
     const activity = author.getByRole('tab', { name: 'Activity', exact: true });
+    await expect(author.getByLabel('Activity title', { exact: true })).toHaveValue('Block Programming');
+    await expect(author.getByRole('tablist', { name: 'Block Programming settings', exact: true })).toBeVisible();
     await author.getByLabel('Activity title', { exact: true }).fill('A journey to the flag');
     await activity.focus();
     await page.keyboard.press('ArrowRight');

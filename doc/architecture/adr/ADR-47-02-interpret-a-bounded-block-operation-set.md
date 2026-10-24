@@ -89,4 +89,4 @@ Any language extension must add its validated data shape, semantics, limits and 
 - [ADR-2293-01](ADR-2293-01-own-idevice-edition-resources-with-an-explicit-lifecycle.md)
 
 - https://github.com/ateeducacion/exelearning/pull/47
-- [Mini Scratch design](../changes/47-mini-scratch/design.md)
+- [Block Programming design](../changes/47-mini-scratch/design.md)

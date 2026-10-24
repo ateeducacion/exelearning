@@ -9,7 +9,7 @@ globalThis.$exeDevice = {
             this.$lifecycle.own(this.editor, 'dispose');
         } catch {
             element.textContent = _(
-                'This Mini Scratch activity could not be loaded. Original data is preserved; discard to leave without changes.',
+                'This Block Programming activity could not be loaded. Original data is preserved; discard to leave without changes.',
             );
         }
     },

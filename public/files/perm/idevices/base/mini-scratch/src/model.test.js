@@ -27,7 +27,12 @@ function run(program, config = defaults()) {
         if (next.done) return next.value;
     }
 }
-describe('Mini Scratch configuration boundary', () => {
+describe('Block Programming configuration boundary', () => {
+    it('uses the new product name for defaults while preserving previously authored titles', () => {
+        expect(defaults().title).toBe('Block Programming');
+        const previous = { ...defaults(), title: 'Mini Scratch' };
+        expect(validateConfig(JSON.parse(JSON.stringify(previous)))).toEqual(previous);
+    });
     it.each(['destination', 'sequence', 'calculation'])('round-trips every field for %s', (challenge) => {
         const c = defaults(challenge);
         c.title = '<script>not markup</script>';
@@ -77,7 +82,7 @@ describe('Mini Scratch configuration boundary', () => {
     it('requires a supported version even when fields are missing', () =>
         expect(() => validateConfig({ version: 1 })).toThrow());
 });
-describe('Mini Scratch workspace boundary', () => {
+describe('Block Programming workspace boundary', () => {
     it('round-trips public Blockly coordinates and fields, discarding executable metadata and IDs', () => {
         const source = starter();
         Object.assign(source.blocks.blocks[0], {
@@ -121,7 +126,7 @@ describe('Mini Scratch workspace boundary', () => {
         expect(validateWorkspace(data)).toEqual(data);
     });
 });
-describe('Mini Scratch interpreter and behavior assessment', () => {
+describe('Block Programming interpreter and behavior assessment', () => {
     it('accepts alternative correct programs for the same destination', () => {
         const direct = run(workspace(move(3)));
         const repeated = run(workspace(op('repeat', {}, { TIMES: input(num(3)), DO: input(move(1)) })));

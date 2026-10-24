@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { buildMiniScratch, measurePackaging } from './build-mini-scratch';
 
-describe('Mini Scratch offline asset build', () => {
+describe('Block Programming offline asset build', () => {
     it('measures both packaging options and all incremental offline resources', async () => {
         const dir = await mkdtemp(join(tmpdir(), 'mini-scratch-measure-test-'));
         try {

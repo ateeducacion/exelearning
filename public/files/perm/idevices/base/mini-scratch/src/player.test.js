@@ -76,7 +76,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
 });
-describe('Mini Scratch learner lifecycle', () => {
+describe('Block Programming learner lifecycle', () => {
     it('renders safe serializable HTML with Unicode and malicious markup as data', () => {
         const c = defaults();
         c.title = '<img src=x onerror=alert(1)>';

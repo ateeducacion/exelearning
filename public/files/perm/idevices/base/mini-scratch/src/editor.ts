@@ -83,7 +83,7 @@ export class Editor {
         globalThis.$exeDevicesEdition.iDevice.tabs.init(form.id);
         const list = form.querySelector<HTMLElement>('.exe-form-tabs')!;
         list.setAttribute('role', 'tablist');
-        list.setAttribute('aria-label', _('Mini Scratch settings'));
+        list.setAttribute('aria-label', _('Block Programming settings'));
         this.tabs = Array.from(list.querySelectorAll('a'));
         this.tabs.forEach((tab, index) => {
             tab.id = `${this.formId}-tab-${index}`;

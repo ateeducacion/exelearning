@@ -1,4 +1,4 @@
-/** Mini Scratch data boundary and deterministic interpreter. SPDX-License-Identifier: AGPL-3.0-or-later */
+/** Block Programming data boundary and deterministic interpreter. SPDX-License-Identifier: AGPL-3.0-or-later */
 const c_ = (s: string): string => (typeof globalThis.c_ === 'function' ? globalThis.c_(s) : s);
 export const TYPES = [
     'start',
@@ -59,7 +59,7 @@ export const starter = (): Workspace => ({
 export function defaults(challenge: Config['challenge'] = 'destination'): Config {
     return {
         version: 1,
-        title: c_('Mini Scratch'),
+        title: c_('Block Programming'),
         instructions:
             challenge === 'destination'
                 ? c_('Move the character to the target (3, 0).')

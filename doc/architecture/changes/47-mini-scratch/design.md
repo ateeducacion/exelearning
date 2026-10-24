@@ -1,6 +1,6 @@
 ---
 tracking_issue: 47
-title: "Mini Scratch programming assignments"
+title: "Block Programming programming assignments"
 status: in-review
 date: 2026-10-24
 authors:
@@ -18,7 +18,7 @@ ai_assistance:
   model: "GPT-6"
 ---
 
-# Mini Scratch programming assignments — design
+# Block Programming programming assignments — design
 
 ## Current state
 
@@ -36,7 +36,7 @@ Version 1 JSON stores title, instructions, objective, hints/feedback, challenge 
 
 ## Migration and compatibility
 
-This adds a new iDevice type without migrating existing projects or changing their schema. Version 1 configuration is validated on authoring and learner initialization; malformed imported data produces a visible error and is preserved for recovery. Offline packages include all required editor assets using existing exporters. Older eXeLearning versions without the Mini Scratch resources cannot edit this new type; exported HTML remains self-contained. SCORM 1.2 is the only graded export target in scope.
+This adds a new iDevice type without migrating existing projects or changing their schema. Its public name is Block Programming; the development identifier `mini-scratch`, asset paths, JSON schema and existing authored titles are retained for compatibility. Its original multicolor SVG icon does not reuse third-party logos. Version 1 configuration is validated on authoring and learner initialization; malformed imported data produces a visible error and is preserved for recovery. Offline packages include all required editor assets using existing exporters. Older eXeLearning versions without the Block Programming resources cannot edit this new type; exported HTML remains self-contained. SCORM 1.2 is the only graded export target in scope.
 
 ## Security and privacy
 
@@ -52,7 +52,7 @@ All eXeLearning-owned strings use English source text through `_()` or `c_()`. N
 
 ## Performance
 
-The selected packaging and alternatives are measured by `bun run bundle:mini-scratch --measure`; current numbers and reproduction details are in the iDevice README. The incremental learner resource budget is below 300 KiB Gzip. Assets are shared per type and only included on pages using Mini Scratch. No game engine, generators, plugin ecosystem or custom compiler is bundled.
+The selected packaging and alternatives are measured by `bun run bundle:mini-scratch --measure`; current numbers and reproduction details are in the iDevice README. The incremental learner resource budget is below 300 KiB Gzip. Assets are shared per type and only included on pages using Block Programming. No game engine, generators, plugin ecosystem or custom compiler is bundled.
 
 ## Testing strategy
 

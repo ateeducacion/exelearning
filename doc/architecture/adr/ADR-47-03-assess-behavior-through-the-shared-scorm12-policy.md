@@ -27,7 +27,7 @@ The existing SCORM 1.2 registry owns activity identity, weights, completion, sco
 
 ## Problem
 
-How should Mini Scratch assess different valid programs, distinguish practice from submission and report grades without corrupting another activity or inventing a second SCORM wrapper?
+How should Block Programming assess different valid programs, distinguish practice from submission and report grades without corrupting another activity or inventing a second SCORM wrapper?
 
 ## Decision drivers
 
@@ -90,4 +90,4 @@ Consider source submission or workspace resume only when the shared persistence 
 - `test/e2e/playwright/specs/mini-scratch.spec.ts`
 
 - https://github.com/ateeducacion/exelearning/pull/47
-- [Mini Scratch design](../changes/47-mini-scratch/design.md)
+- [Block Programming design](../changes/47-mini-scratch/design.md)

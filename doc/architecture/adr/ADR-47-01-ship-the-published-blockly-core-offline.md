@@ -49,7 +49,7 @@ Adds blocks/generators/media not used by this interpreter. Custom Closure builds
 
 ## Evidence
 
-`bun run bundle:mini-scratch --measure` compares the options with the same Bun minifier and Gzip level 9. See the measurement table in `public/files/perm/idevices/base/mini-scratch/README.md`. The published core is 640,950 bytes raw / 180,012 bytes Gzip. Conventional module bundling produces 746,229 / 205,686 bytes for learner JavaScript; the selected published-core bundle is 711,002 / 197,849 bytes. All shared export resources, including media, template and both licenses, total 762,725 / 216,192 bytes (211.1 KiB Gzip). The interpreter/UI portion is 20,142 / 7,742 bytes. The main app bundle is byte-identical to the base at 989,364 bytes; a representative two-activity SCORM package is approximately 517 KiB including the normal theme and embedded source. Per-activity authored data is additional. Measurements use Bun minification and independent Gzip level 9 compression, not HTTP overhead. Context7 resolved `/raspberrypifoundation/blockly` and `/oven-sh/bun` before implementation. The actual native config parser and resource provider were inspected at c848eca0.
+`bun run bundle:mini-scratch --measure` compares the options with the same Bun minifier and Gzip level 9. See the measurement table in `public/files/perm/idevices/base/mini-scratch/README.md`. The published core is 640,950 bytes raw / 180,012 bytes Gzip. Conventional module bundling produces 746,239 / 205,686 bytes for learner JavaScript; the selected published-core bundle is 711,017 / 197,846 bytes. All shared export resources, including media, template and both licenses, total 762,740 / 216,189 bytes (211.1 KiB Gzip). The interpreter/UI portion is 20,152 / 7,740 bytes. The main app bundle is byte-identical to the base at 989,364 bytes; a representative two-activity SCORM package is approximately 517 KiB including the normal theme and embedded source. Per-activity authored data is additional. Measurements use Bun minification and independent Gzip level 9 compression, not HTTP overhead. Context7 resolved `/raspberrypifoundation/blockly` and `/oven-sh/bun` before implementation. The actual native config parser and resource provider were inspected at c848eca0.
 
 ## Decision
 
@@ -91,4 +91,4 @@ Review the proposed decision and manually verify other Blockly system locales be
 - `scripts/build-resource-bundles.js` @ c848eca0
 
 - https://github.com/ateeducacion/exelearning/pull/47
-- [Mini Scratch design](../changes/47-mini-scratch/design.md)
+- [Block Programming design](../changes/47-mini-scratch/design.md)

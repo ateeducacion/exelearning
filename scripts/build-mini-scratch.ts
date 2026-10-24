@@ -1,4 +1,4 @@
-/** Build the offline Mini Scratch assets with the existing Bun toolchain. */
+/** Build the offline Block Programming assets with the existing Bun toolchain. */
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
@@ -18,14 +18,14 @@ export async function buildMiniScratch(output = device): Promise<number> {
         outdir: resolve(output, 'export'),
         naming: 'mini-scratch.js',
         banner:
-            '/*! Mini Scratch - AGPL-3.0-or-later. Source: https://github.com/ateeducacion/exelearning. See MINI-SCRATCH-LICENSE.txt. */\n' +
+            '/*! Block Programming - AGPL-3.0-or-later. Source: https://github.com/ateeducacion/exelearning. See MINI-SCRATCH-LICENSE.txt. */\n' +
             'if (!globalThis.$miniscratch) {\n' +
             (await readFile(resolve(root, 'node_modules/blockly/blockly_compressed.js'), 'utf8')) +
             '\n;\n' +
             (await readFile(resolve(root, 'node_modules/blockly/msg/en.js'), 'utf8')) +
             '\n;\n}\n',
     });
-    if (!result.success) throw new AggregateError(result.logs, 'Mini Scratch build failed');
+    if (!result.success) throw new AggregateError(result.logs, 'Block Programming build failed');
     const edition = await Bun.build({
         entrypoints: [resolve(device, 'src/edition.ts')],
         target: 'browser',
@@ -34,7 +34,7 @@ export async function buildMiniScratch(output = device): Promise<number> {
         outdir: resolve(output, 'edition'),
         naming: 'mini-scratch.js',
     });
-    if (!edition.success) throw new AggregateError(edition.logs, 'Mini Scratch edition build failed');
+    if (!edition.success) throw new AggregateError(edition.logs, 'Block Programming edition build failed');
     await mkdir(resolve(output, 'export/media'), { recursive: true });
     // Sounds and unused image/bitmap blocks are disabled. Keep required UI media local.
     for (const name of [
@@ -77,5 +77,5 @@ Blockly.setLocale(English); globalThis.Blockly = Blockly;`);
 
 if (import.meta.main) {
     const size = await buildMiniScratch();
-    console.log(process.argv.includes('--measure') ? JSON.stringify(await measurePackaging(), null, 2) : `Mini Scratch: ${size} bytes (Blockly core, English messages, runtime).`);
+    console.log(process.argv.includes('--measure') ? JSON.stringify(await measurePackaging(), null, 2) : `Block Programming: ${size} bytes (Blockly core, English messages, runtime).`);
 }

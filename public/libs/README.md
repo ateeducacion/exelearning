@@ -86,6 +86,9 @@
 *   Package: bcryptjs
     *   Copyright: Daniel Wirtz
     *   License: BSD-3-Clause
+*   Package: blockly
+    *   Copyright: Neil Fraser
+    *   License: Apache-2.0
 *   Package: bootstrap
     *   Copyright: The Bootstrap Authors
     *   License: MIT

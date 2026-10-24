@@ -111,16 +111,24 @@ export default class ModalSessionLogout extends Modal {
      */
     async saveAndCloseOffline() {
         try {
+            const project = eXeLearning.app.project;
             // Use Yjs export for saving
             if (
-                eXeLearning.app.project?._yjsEnabled &&
-                eXeLearning.app.project?.exportToElpxViaYjs
+                project?._yjsEnabled &&
+                project?.exportToElpxViaYjs
             ) {
-                await eXeLearning.app.project.exportToElpxViaYjs({
+                const bridge = project._yjsBridge;
+                const result = await project.exportToElpxViaYjs({
                     saveAs: false,
                 });
+                if (result?.saved !== true || eXeLearning.app.project !== project || project._yjsBridge !== bridge) {
+                    return false;
+                }
+            } else {
+                throw new Error('Project export is unavailable');
             }
             this.closeOfflineApp();
+            return true;
         } catch (error) {
             console.error(
                 '[ModalSessionLogout] Error saving before exit:',
@@ -131,6 +139,7 @@ export default class ModalSessionLogout extends Modal {
                 body: _('An error occurred while saving the project'),
                 contentId: 'error',
             });
+            return false;
         }
     }
 
@@ -169,12 +178,20 @@ export default class ModalSessionLogout extends Modal {
             // Pure logout with save: save and redirect
             this.close();
             try {
-                const saveManager = eXeLearning.app.project?._yjsBridge?.saveManager;
-                if (saveManager) {
-                    await saveManager.save();
+                const project = eXeLearning.app.project;
+                const bridge = project?._yjsBridge;
+                const result = await bridge?.saveManager?.save();
+                if (result?.success !== true || eXeLearning.app.project !== project || project._yjsBridge !== bridge) {
+                    throw new Error('Project save was not confirmed');
                 }
             } catch (error) {
                 console.error('[SessionLogout] Error saving before logout:', error);
+                eXeLearning.app.modals.alert.show({
+                    title: _('Error saving'),
+                    body: _('An error occurred while saving the project'),
+                    contentId: 'error',
+                });
+                return;
             }
             window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
             window.onbeforeunload = null;

@@ -1848,6 +1848,42 @@ describe('NavbarFile', () => {
             navbarFile = new NavbarFile(mockMenu);
         });
 
+        it('DOWNLOAD-01: reports an initiated download without cleaning the document or its assets', async () => {
+            const toast = { toastBody: document.createElement('div'), remove: vi.fn() };
+            eXeLearning.app.toasts.createToast.mockReturnValue(toast);
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue({ saved: false, downloaded: true });
+            const markClean = vi.fn();
+            eXeLearning.app.project._yjsBridge = { documentManager: { markClean } };
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+
+            const result = await navbarFile.downloadProjectViaYjs();
+
+            expect(result).toEqual({ saved: false, downloaded: true });
+            expect(toast.toastBody.textContent).toContain('Download started.');
+            expect(markClean).not.toHaveBeenCalled();
+            expect(eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface).not.toHaveBeenCalled();
+        });
+
+        it('LEAVE-11: does not clean another project after a delayed save', async () => {
+            const markClean = vi.fn();
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn(async () => {
+                eXeLearning.app.project = { _yjsBridge: { documentManager: { markClean } } };
+                return { saved: true };
+            });
+            window.electronAPI = {};
+            await navbarFile.downloadProjectViaYjs();
+            expect(markClean).not.toHaveBeenCalled();
+        });
+
+        it('LEAVE-12: an undefined export result is not a save receipt', async () => {
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue(undefined);
+            const markClean = vi.fn();
+            eXeLearning.app.project._yjsBridge = { documentManager: { markClean } };
+            window.electronAPI = {};
+            await navbarFile.downloadProjectViaYjs();
+            expect(markClean).not.toHaveBeenCalled();
+        });
+
         it('should export via Yjs and update UI on success', async () => {
             eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue({ saved: true });
 

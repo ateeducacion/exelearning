@@ -2242,12 +2242,21 @@ export default class NavbarFile {
         let toast = eXeLearning.app.toasts.createToast(toastData);
 
         try {
-            const result = await eXeLearning.app.project.exportToElpxViaYjs();
+            const project = eXeLearning.app.project;
+            const bridge = project._yjsBridge;
+            const result = await project.exportToElpxViaYjs();
 
-            // If user cancelled the OS save dialog, leave project dirty
-            if (result?.saved === false) {
+            // A download was initiated, but the browser cannot confirm a disk write.
+            if (result?.downloaded === true) {
+                toast.toastBody.textContent = _('Download started. Check that your copy was saved before leaving.');
+                setTimeout(() => toast.remove(), 5000);
+                return result;
+            }
+
+            // Cancelled, failed, or ambiguous results leave the project dirty.
+            if (result?.saved !== true || eXeLearning.app.project !== project || project._yjsBridge !== bridge) {
                 toast.remove();
-                return;
+                return result;
             }
 
             toast.toastBody.innerHTML = _('File saved.');
@@ -2258,8 +2267,7 @@ export default class NavbarFile {
             const capabilities = eXeLearning?.app?.capabilities;
             const isOfflineLike = window.electronAPI || (capabilities && capabilities.storage?.remote === false);
             if (isOfflineLike) {
-                const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
-                const docManager = yjsBridge?.documentManager;
+                const docManager = bridge?.documentManager;
                 if (docManager?.markClean) {
                     docManager.markClean();
                 }

@@ -5583,6 +5583,7 @@ describe('YjsProjectBridge', () => {
 
       // Not in Electron mode
       global.eXeLearning = { config: { isOfflineInstallation: false } };
+      bridge.assetManager.markAssetsSavedLocally = mock(() => {});
 
       const mockLink = {
         href: '',
@@ -5599,7 +5600,8 @@ describe('YjsProjectBridge', () => {
 
       const result = await bridge.exportToElpx({ saveAs: false });
 
-      expect(result).toEqual({ saved: true });
+      expect(result).toEqual({ saved: false, downloaded: true });
+      expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
       expect(mockLink.click).toHaveBeenCalled();
       expect(mockLink.download).toBe('test.elpx');
 
@@ -7791,6 +7793,63 @@ describe('YjsProjectBridge', () => {
         observe: mock(() => undefined),
         unobserve: mock(() => undefined),
       };
+    });
+
+    it.each([true, false])('SNAPSHOT-01: screenshot metadata preserves the existing dirty state (%j)', async (dirty) => {
+      bridge.documentManager = {
+        isDirty: dirty,
+        _suppressDirtyTracking: false,
+        getMetadata: () => mockMetadata,
+        markClean: mock(() => { bridge.documentManager.isDirty = false; }),
+      };
+      mockMetadata.set = mock(() => {
+        if (!bridge.documentManager._suppressDirtyTracking) bridge.documentManager.isDirty = true;
+      });
+      window.SharedExporters = { generatePreviewForSW: mock(async () => ({
+        success: true, files: { 'index.html': new TextEncoder().encode('<html><head></head><body>snapshot</body></html>').buffer },
+      })) };
+      bridge._captureHtmlAsScreenshot = mock(async () => 'data:image/png;base64,snapshot');
+
+      await bridge.generateScreenshotFromFirstPage();
+
+      expect(mockMetadata.set).toHaveBeenCalledWith('screenshot', 'data:image/png;base64,snapshot');
+      expect(bridge.documentManager.isDirty).toBe(dirty);
+      expect(bridge.documentManager.markClean).not.toHaveBeenCalled();
+      expect(bridge.documentManager._suppressDirtyTracking).toBe(false);
+    });
+
+    it('SNAPSHOT-02: an edit during screenshot rendering remains pending', async () => {
+      bridge.documentManager = {
+        isDirty: false,
+        getMetadata: () => mockMetadata,
+        markClean: mock(() => { bridge.documentManager.isDirty = false; }),
+      };
+      window.SharedExporters = { generatePreviewForSW: mock(async () => ({
+        success: true, files: { 'index.html': new TextEncoder().encode('<html><head></head><body>snapshot</body></html>').buffer },
+      })) };
+      bridge._captureHtmlAsScreenshot = mock(async () => {
+        bridge.documentManager.isDirty = true;
+        return 'data:image/png;base64,snapshot';
+      });
+      await bridge.generateScreenshotFromFirstPage();
+      expect(bridge.documentManager.isDirty).toBe(true);
+      expect(bridge.documentManager.markClean).not.toHaveBeenCalled();
+    });
+
+    it('SNAPSHOT-03: a delayed screenshot cannot mutate or clean a replacement document', async () => {
+      bridge.documentManager = { getMetadata: () => mockMetadata };
+      const replacement = { isDirty: true, markClean: mock(() => {}) };
+      window.SharedExporters = { generatePreviewForSW: mock(async () => ({
+        success: true, files: { 'index.html': new TextEncoder().encode('<html><head></head><body>snapshot</body></html>').buffer },
+      })) };
+      bridge._captureHtmlAsScreenshot = mock(async () => {
+        bridge.documentManager = replacement;
+        return 'data:image/png;base64,snapshot';
+      });
+      await bridge.generateScreenshotFromFirstPage();
+      expect(mockMetadata.set).not.toHaveBeenCalled();
+      expect(replacement.markClean).not.toHaveBeenCalled();
+      expect(replacement.isDirty).toBe(true);
     });
 
     it('returns early when documentManager is null', async () => {

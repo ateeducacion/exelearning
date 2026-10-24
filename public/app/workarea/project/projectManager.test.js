@@ -3511,6 +3511,43 @@ describe('ProjectManager', () => {
             delete global.indexedDB;
         });
 
+        it.each([undefined, false, { success: false }, { saved: true }])(
+            'LEAVE-01: keeps the project and unload guards when server save returns %j',
+            async (result) => {
+                const guard = window.onbeforeunload;
+                projectManager._yjsBridge = {
+                    saveManager: { save: vi.fn().mockResolvedValue(result) },
+                    documentManager: { hasUnsavedChanges: () => true },
+                };
+
+                await expect(projectManager.transitionToProject({ action: 'new' })).rejects.toThrow();
+
+                expect(window.location.href).toBe('');
+                expect(global.fetch).not.toHaveBeenCalled();
+                expect(window.onbeforeunload).toBe(guard);
+                expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).not.toHaveBeenCalled();
+            },
+        );
+
+        it('LEAVE-02: a missing save manager cannot authorize a dirty transition', async () => {
+            projectManager._yjsBridge = { documentManager: { hasUnsavedChanges: () => true } };
+            await expect(projectManager.transitionToProject({ action: 'open', projectUuid: 'other' })).rejects.toThrow();
+            expect(window.location.href).toBe('');
+        });
+
+        it('LEAVE-03: an old save cannot navigate a replacement project', async () => {
+            projectManager._yjsBridge = {
+                documentManager: { hasUnsavedChanges: () => true },
+                saveManager: { save: vi.fn(async () => {
+                    projectManager._yjsBridge = { documentManager: {} };
+                    return { success: true };
+                }) },
+            };
+            await expect(projectManager.transitionToProject({ action: 'new' })).rejects.toThrow();
+            expect(global.fetch).not.toHaveBeenCalled();
+            expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).not.toHaveBeenCalled();
+        });
+
         it('new action: creates project and redirects', async () => {
             await projectManager.transitionToProject({ action: 'new' });
 
@@ -3539,7 +3576,7 @@ describe('ProjectManager', () => {
         });
 
         it('saves current project when skipSave is false and has unsaved changes', async () => {
-            const mockSave = vi.fn().mockResolvedValue(true);
+            const mockSave = vi.fn().mockResolvedValue({ success: true });
             projectManager._yjsBridge = {
                 saveManager: { save: mockSave },
                 documentManager: { hasUnsavedChanges: vi.fn(() => true) },
@@ -3575,6 +3612,8 @@ describe('ProjectManager', () => {
             await expect(
                 projectManager.transitionToProject({ action: 'new' }),
             ).rejects.toThrow('Failed to create project: 500');
+            expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).not.toHaveBeenCalled();
+            expect(window.onbeforeunload).not.toBeNull();
         });
 
         it('throws when API returns non-ok response (import)', async () => {
@@ -3584,6 +3623,7 @@ describe('ProjectManager', () => {
             await expect(
                 projectManager.transitionToProject({ action: 'import', file }),
             ).rejects.toThrow('Failed to create project: 403');
+            expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).not.toHaveBeenCalled();
         });
 
         it('uses basePath from config', async () => {
@@ -3608,6 +3648,24 @@ describe('ProjectManager', () => {
                 projectManager.app = window.eXeLearning.app;
                 window.location.reload = vi.fn();
             });
+
+            it.each([undefined, false, { saved: false }, { success: true }, { saved: false, downloaded: true }])(
+                'LEAVE-04: does not reload or clear the Electron association after unconfirmed export %j',
+                async (result) => {
+                    const guard = window.onbeforeunload;
+                    window.electronAPI = { clearSavedPath: vi.fn() };
+                    projectManager.exportToElpxViaYjs = vi.fn().mockResolvedValue(result);
+                    projectManager._yjsBridge = { documentManager: { hasUnsavedChanges: () => true } };
+                    try {
+                        await expect(projectManager.transitionToProject({ action: 'new' })).rejects.toThrow();
+                        expect(window.location.reload).not.toHaveBeenCalled();
+                        expect(window.electronAPI.clearSavedPath).not.toHaveBeenCalled();
+                        expect(window.onbeforeunload).toBe(guard);
+                    } finally {
+                        delete window.electronAPI;
+                    }
+                },
+            );
 
             it('new action: reloads page without server call', async () => {
                 await projectManager.transitionToProject({ action: 'new' });

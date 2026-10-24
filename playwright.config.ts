@@ -50,6 +50,7 @@ const dynamicServerEnv = {
     APP_ENV: 'prod',
     API_JWT_SECRET: 'e2e-test-jwt-secret-not-for-production-use',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
+    APP_ENV: 'dev', // Exposes the Developer menu & dev-only routes for E2E coverage
     PUBLIC_VIEW_ENABLED: 'true', // Enable public read-only links for E2E tests
     // Platform (Moodle) integration: specs run a stand-in Moodle on localhost and
     // sign its JWTs with this secret (see specs/platform-edit-reuses-project.spec.ts).

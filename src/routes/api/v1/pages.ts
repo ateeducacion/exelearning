@@ -8,6 +8,7 @@ import { Elysia } from 'elysia';
 import { db } from '../../../db/client';
 import { findProjectByUuid } from '../../../db/queries';
 import { withDocument, readDocument, getPages, getPage, addPage, updatePage, deletePage, movePage } from '../../../yjs';
+import { assertRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -16,6 +17,9 @@ import {
     CreatePageBody,
     UpdatePageBody,
     MovePageBody,
+    type CreatePageInput,
+    type UpdatePageInput,
+    type MovePageInput,
     ProjectUuidParam,
     PageIdParam,
     type AuthenticatedUser,
@@ -29,15 +33,15 @@ import {
 async function checkProjectAccess(
     uuid: string,
     auth: AuthenticatedUser,
-): Promise<{ project: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
+): Promise<{ project?: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
     const project = await findProjectByUuid(db, uuid);
 
     if (!project) {
-        return { project: null, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
+        return { project: undefined, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
     }
 
     if (project.owner_id !== auth.userId && !isAdmin(auth)) {
-        return { project: null, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
+        return { project: undefined, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
     }
 
     return { project };
@@ -53,7 +57,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/pages',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -84,7 +88,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/pages',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -96,15 +100,16 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
+            const input = assertRequestBody<CreatePageInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 addPage(ydoc, {
-                    name: body.name,
-                    parentId: body.parentId ?? null,
-                    order: body.order,
+                    name: input.name,
+                    parentId: input.parentId ?? null,
+                    order: input.order,
                 }),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = 400;
                 return errorResponse('CREATE_FAILED', result.error || 'Failed to create page');
             }
@@ -128,7 +133,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/pages/:pageId',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -164,7 +169,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/pages/:pageId',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -176,15 +181,15 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
+            const input = assertRequestBody<UpdatePageInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
-                updatePage(ydoc, {
-                    pageId: params.pageId,
-                    name: body.name,
-                    properties: body.properties,
+                updatePage(ydoc, params.pageId, {
+                    name: input.name,
+                    properties: input.properties,
                 }),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = result.error?.includes('not found') ? 404 : 400;
                 return errorResponse('UPDATE_FAILED', result.error || 'Failed to update page');
             }
@@ -207,7 +212,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/pages/:pageId',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -223,7 +228,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
                 deletePage(ydoc, params.pageId),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = result.error?.includes('not found') ? 404 : 400;
                 return errorResponse('DELETE_FAILED', result.error || 'Failed to delete page');
             }
@@ -245,7 +250,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/pages/:pageId/move',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -257,15 +262,12 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
+            const input = assertRequestBody<MovePageInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
-                movePage(ydoc, {
-                    pageId: params.pageId,
-                    newParentId: body.newParentId,
-                    position: body.position,
-                }),
+                movePage(ydoc, params.pageId, input.newParentId, input.position),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = result.error?.includes('not found') ? 404 : 400;
                 return errorResponse('MOVE_FAILED', result.error || 'Failed to move page');
             }

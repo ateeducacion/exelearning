@@ -1,0 +1,4 @@
+#!/bin/sh
+# DSM requires this hook before replacing immutable package files.
+# Persistent state remains in SYNOPKG_PKGVAR and needs no relocation.
+exit 0

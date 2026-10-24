@@ -10,4 +10,5 @@ declare global {
     var eXeLearning: any;
     var exeScorm12: any;
     var $exeDevices: any;
+    var $exeDevicesEdition: any;
 }

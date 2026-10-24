@@ -5,10 +5,10 @@ Mini Scratch is a native JSON iDevice for small offline programming assignments.
 ## Create an assignment
 
 1. Add **Interactive activities → Mini Scratch**.
-2. Load one of the three examples, or edit the current assignment. Loading an example replaces the form.
-3. Write the instructions and educational objective. Update the instructions when changing challenge parameters.
-4. Configure the challenge, available blocks, initial program, feedback, passing threshold, activity weight and attempts. A maximum of zero means unlimited attempts.
-5. Use **Preview activity** to try the exact student experience. Close the preview and save the iDevice. Native eXeLearning save/load, duplication and ELPX preserve the configuration and starter program.
+2. In **Activity**, load one of the three examples or write the title, instructions and educational objective. Loading an example replaces the settings and starter program.
+3. In **Programming**, expand **Available blocks** to choose the student toolbox, then build the starter program in the full-width workspace.
+4. In **Assessment**, configure the challenge, feedback, passing threshold, activity weight and attempts. A maximum of zero means unlimited attempts. Update the activity instructions when changing challenge parameters.
+5. Open **Preview** to try the current activity as a student. **Preview activity** refreshes it after edits; leaving the tab stops and releases the preview. Native eXeLearning save/load, duplication and ELPX preserve the configuration and starter program. Switching tabs keeps unsaved work.
 
 All challenge rules are visible to students. Teachers do not write JavaScript, JSON or XML.
 
@@ -52,7 +52,7 @@ Each player owns its workspace, event AbortController, deadline, cancellable wai
 
 ## Accessibility and localization
 
-Controls use native buttons and labelled fields, a visible focus outline, responsive layout, text feedback, a textual stage/variable readout and polite status announcements for results and scores. Assessment does not rely on color. There are no decorative motion transitions; the CSS also respects reduced motion.
+Authoring reuses eXeLearning's native iDevice tabs with linked tab/panel roles, selected state and arrow/Home/End keyboard navigation. Tab and field identifiers are isolated per editor. Controls use native buttons and labelled fields, a visible focus outline, responsive layout, text feedback, a textual stage/variable readout and polite status announcements for results and scores. Assessment does not rely on color. There are no decorative motion transitions; the CSS also respects reduced motion.
 
 Blockly 13 includes keyboard navigation. Tab to its workspace, press T for the toolbox, use arrows to navigate, Enter to insert/edit, M to move, Delete to remove and Escape to close menus. These are Blockly's documented controls. English Blockly system messages are shipped locally. eXeLearning-owned source strings use `_()` for authoring and `c_()` for learner content; this change does not edit translation catalogs. Other Blockly system locales are not bundled in this first version.
 

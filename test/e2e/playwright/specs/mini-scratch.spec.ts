@@ -54,13 +54,18 @@ test('creates, reopens, previews and exports a complete editable offline assignm
     await selectFirstPage(page);
     await addIdevice(page, 'mini-scratch');
     const author = page.locator('.ms-author');
-    await expect(author.locator('.blocklySvg')).toBeVisible();
+    await expect(author.getByRole('tab')).toHaveCount(4);
+    await expect(author.getByRole('tab', { name: 'Activity', exact: true })).toHaveAttribute('aria-selected', 'true');
     await author.locator('[data-field="title"]').fill('Reach the flag');
-    await author.locator('[data-field="targetX"]').fill('4');
     await author.locator('[data-field="instructions"]').fill('Reach the target at (4, 0).');
+    await author.getByRole('tab', { name: 'Programming', exact: true }).click();
+    await expect(author.locator('.blocklySvg')).toBeVisible();
+    await author.getByRole('tab', { name: 'Assessment', exact: true }).click();
+    await author.locator('[data-field="targetX"]').fill('4');
     await author.locator('[data-field="maxAttempts"]').fill('3');
     await author.locator('[data-field="weight"]').fill('25');
     const id = await page.locator('.idevice_node.mini-scratch').getAttribute('id');
+    await author.getByRole('tab', { name: 'Preview', exact: true }).click();
     await author.getByRole('button', { name: 'Preview activity', exact: true }).click();
     await expect(author.locator('.ms-activity h3')).toHaveText('Reach the flag');
     await author.getByRole('button', { name: 'Close preview', exact: true }).click();
@@ -77,6 +82,7 @@ test('creates, reopens, previews and exports a complete editable offline assignm
         .toMatchObject({ title: 'Reach the flag', targetX: 4, maxAttempts: 3 });
     await editIdevice(page, id!);
     await expect(author.locator('[data-field="title"]')).toHaveValue('Reach the flag');
+    await author.getByRole('tab', { name: 'Assessment', exact: true }).click();
     await expect(author.locator('[data-field="targetX"]')).toHaveValue('4');
     await saveIdevice(page, id!);
     await page.getByRole('button', { name: 'Preview', exact: true }).click();
@@ -85,8 +91,8 @@ test('creates, reopens, previews and exports a complete editable offline assignm
     await expect(preview.locator('.ms-activity .blocklySvg')).toBeVisible();
     await page.locator('#previewsidenavclose').click();
     await addIdevice(page, 'mini-scratch');
-    await expect(author.locator('.blocklySvg')).toBeVisible();
     await author.locator('[data-field="title"]').fill('Second activity');
+    await author.getByRole('tab', { name: 'Assessment', exact: true }).click();
     await author.locator('[data-field="weight"]').fill('75');
     const secondId = await page.locator('.idevice_node.mini-scratch').last().getAttribute('id');
     await saveIdevice(page, secondId!);
@@ -209,9 +215,11 @@ test('preserves all teacher configuration and starter blocks through ELPX import
     const author = page.locator('.ms-author');
     await author.locator('[data-field="example"]').selectOption('calculation');
     await author.getByRole('button', { name: 'Load example (replaces this form)', exact: true }).click();
+    await author.getByRole('tab', { name: 'Assessment', exact: true }).click();
     await author.locator('[data-field="expected"]').fill('30');
     await author.locator('[data-field="hint"]').fill('Use a loop and a numeric variable.');
     const id = await page.locator('.idevice_node.mini-scratch').getAttribute('id');
+    await author.getByRole('tab', { name: 'Programming', exact: true }).click();
     await author.locator('.ms-workspace').evaluate(element => {
         const Blockly = (window as any).Blockly;
         const workspace = Blockly.common
@@ -249,8 +257,10 @@ test('preserves all teacher configuration and starter blocks through ELPX import
     await expect(page.locator('[data-mini-scratch]')).toHaveAttribute('data-mini-scratch', before!);
     const importedId = await page.locator('.idevice_node.mini-scratch').getAttribute('id');
     await editIdevice(page, importedId!);
+    await author.getByRole('tab', { name: 'Assessment', exact: true }).click();
     await expect(author.locator('[data-field="expected"]')).toHaveValue('30');
     await expect(author.locator('[data-field="hint"]')).toHaveValue('Use a loop and a numeric variable.');
+    await author.getByRole('tab', { name: 'Programming', exact: true }).click();
     const blockTypes = await author.locator('.ms-workspace').evaluate(element => {
         const Blockly = (window as any).Blockly;
         const workspace = Blockly.common
@@ -266,4 +276,57 @@ test('preserves all teacher configuration and starter blocks through ELPX import
     await cloneCurrentPage(page);
     await expect(page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text')).toHaveCount(2);
     await expect(page.locator('[data-mini-scratch]')).toHaveAttribute('data-mini-scratch', before!);
+});
+
+test('keeps authoring tabs keyboard accessible and usable at narrow widths', async ({
+    authenticatedPage: page,
+    createProject,
+}, testInfo) => {
+    await page.setViewportSize({ width: 1280, height: 960 });
+    const uuid = await createProject(page, 'Mini Scratch authoring layout');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    const betaWarning = page.locator('#eXeBetaWarningCloseBtn');
+    if (await betaWarning.isVisible()) await betaWarning.click();
+    await selectFirstPage(page);
+    await addIdevice(page, 'mini-scratch');
+    const author = page.locator('.ms-author');
+    const activity = author.getByRole('tab', { name: 'Activity', exact: true });
+    await author.getByLabel('Activity title', { exact: true }).fill('A journey to the flag');
+    await activity.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(author.getByRole('tab', { name: 'Programming', exact: true })).toBeFocused();
+    await expect(author.getByRole('tabpanel', { name: 'Programming', exact: true })).toBeVisible();
+    await expect(author.getByRole('tabpanel', { name: 'Activity', exact: true })).toBeHidden();
+    await expect(author.locator('.blocklySvg')).toBeVisible();
+    const workspace = await author.locator('.ms-workspace').boundingBox();
+    expect(workspace!.width).toBeGreaterThan(300);
+    expect(workspace!.height).toBeGreaterThan(300);
+    const programmingImage = testInfo.outputPath('mini-scratch-programming.png');
+    await author.screenshot({ path: programmingImage });
+    await testInfo.attach('Programming tab', { path: programmingImage, contentType: 'image/png' });
+    await author.locator('summary').click();
+    await expect(author.getByRole('checkbox', { name: 'Move forward', exact: true })).toBeVisible();
+    await author.getByRole('tab', { name: 'Assessment', exact: true }).click();
+    await author.getByLabel('Challenge', { exact: true }).selectOption('sequence');
+    await expect(author.getByRole('button', { name: 'Add action', exact: true })).toBeVisible();
+    await author.getByRole('button', { name: 'Add action', exact: true }).click();
+    await expect(author.locator('.ms-sequence-row')).toHaveCount(4);
+    await author.getByRole('tab', { name: 'Preview', exact: true }).click();
+    await expect(author.locator('.ms-activity h3')).toHaveText('A journey to the flag');
+    await page.keyboard.press('Home');
+    await expect(activity).toBeFocused();
+    await expect(author.getByLabel('Activity title', { exact: true })).toHaveValue('A journey to the flag');
+    await expect(author.locator('.ms-activity')).toHaveCount(0);
+    const activityImage = testInfo.outputPath('mini-scratch-activity.png');
+    await author.screenshot({ path: activityImage });
+    await testInfo.attach('Activity tab', { path: activityImage, contentType: 'image/png' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect.poll(() => author.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await author.getByRole('tab', { name: 'Assessment', exact: true }).click();
+    await expect(author.getByRole('button', { name: 'Add action', exact: true })).toBeVisible();
+    await expect.poll(() => author.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    const narrowImage = testInfo.outputPath('mini-scratch-narrow.png');
+    await author.screenshot({ path: narrowImage });
+    await testInfo.attach('Narrow assessment tab', { path: narrowImage, contentType: 'image/png' });
 });

@@ -1,5 +1,8 @@
 import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import * as Blockly from 'blockly/core';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const nativeTabs = require('../../../../../../app/common/common_edition.js').iDevice.tabs;
 import { defaults } from './model';
 globalThis.Blockly = Blockly;
 const Blocks = await import('./blocks');
@@ -12,7 +15,10 @@ const fakeInject = (_root, c) => {
     lastWorkspace = ws;
     return ws;
 };
-globalThis.$miniscratch = { authoring: { ...Blocks, ...Runtime, inject: fakeInject, media: '/media/' } };
+const svgResize = vi.fn();
+globalThis.$miniscratch = {
+    authoring: { ...Blocks, ...Runtime, Blockly: { ...Blockly, svgResize }, inject: fakeInject, media: '/media/' },
+};
 const { Editor } = await import('./editor');
 let editor;
 let root;
@@ -26,6 +32,8 @@ beforeEach(() => {
         },
     );
     vi.spyOn(Blocks, 'inject').mockImplementation(fakeInject);
+    svgResize.mockClear();
+    vi.stubGlobal('$exeDevicesEdition', { iDevice: { tabs: nativeTabs } });
     root = document.createElement('div');
     document.body.replaceChildren(root);
 });
@@ -41,6 +49,95 @@ const click = (text) =>
         .find((b) => b.textContent === text)
         .click();
 describe('Mini Scratch teacher forms', () => {
+    it('uses native iDevice tabs with linked accessible panels and keyboard navigation', () => {
+        editor = new Editor(root, {}, '/media/');
+        const tabs = root.querySelectorAll('[role="tab"]');
+        const panels = root.querySelectorAll('[role="tabpanel"]');
+        expect(Array.from(tabs, (tab) => tab.textContent)).toEqual([
+            'Activity',
+            'Programming',
+            'Assessment',
+            'Preview',
+        ]);
+        expect(tabs[0].getAttribute('aria-selected')).toBe('true');
+        expect(panels[0].hidden).toBe(false);
+        expect(panels[1].hidden).toBe(true);
+        tabs.forEach((tab, i) => {
+            expect(tab.getAttribute('aria-controls')).toBe(panels[i].id);
+            expect(panels[i].getAttribute('aria-labelledby')).toBe(tab.id);
+        });
+        tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        expect(document.activeElement).toBe(tabs[1]);
+        expect(tabs[1].tabIndex).toBe(0);
+        expect(panels[1].hidden).toBe(false);
+        expect(svgResize).toHaveBeenCalledWith(lastWorkspace);
+        tabs[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+        expect(document.activeElement).toBe(tabs[3]);
+        expect(root.querySelector('.ms-activity')).not.toBeNull();
+        tabs[3].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+        expect(document.activeElement).toBe(tabs[0]);
+        expect(root.querySelector('.ms-activity')).toBeNull();
+        tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+        expect(document.activeElement).toBe(tabs[3]);
+        tabs[3].dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+        expect(tabs[3].getAttribute('aria-selected')).toBe('true');
+        tabs[3].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(tabs[3].getAttribute('aria-selected')).toBe('true');
+    });
+    it('keeps unsaved fields and starter blocks while moving between tabs', () => {
+        editor = new Editor(root, {}, '/media/');
+        const tabs = root.querySelectorAll('[role="tab"]');
+        field('title').value = 'Unsaved task';
+        field('targetX').value = '8';
+        const before = editor.save();
+        tabs[1].click();
+        tabs[2].click();
+        tabs[3].click();
+        expect(root.querySelector('.ms-activity h3').textContent).toBe('Unsaved task');
+        tabs[0].click();
+        expect(editor.save()).toEqual(before);
+        expect(field('title').labels[0].textContent).toBe('Activity title');
+        expect(field('graded').labels[0].textContent).toBe('Report grade to SCORM 1.2');
+        expect(root.querySelector('details').open).toBe(false);
+        const resize = svgResize.mock.calls.length;
+        editor.dispose();
+        tabs[1].click();
+        expect(svgResize).toHaveBeenCalledTimes(resize);
+    });
+    it('isolates tab and field identifiers across two editors', () => {
+        editor = new Editor(root, {}, '/media/');
+        const secondRoot = document.createElement('div');
+        document.body.append(secondRoot);
+        const second = new Editor(secondRoot, {}, '/media/');
+        try {
+            const ids = Array.from(document.querySelectorAll('[id]'), (element) => element.id);
+            expect(new Set(ids).size).toBe(ids.length);
+            secondRoot.querySelectorAll('[role="tab"]')[2].click();
+            expect(root.querySelector('[role="tab"]').getAttribute('aria-selected')).toBe('true');
+            expect(secondRoot.querySelectorAll('[role="tabpanel"]')[2].hidden).toBe(false);
+        } finally {
+            second.dispose();
+        }
+    });
+    it('follows reading direction when navigating tabs', () => {
+        editor = new Editor(root, {}, '/media/');
+        root.querySelector('[role="tablist"]').style.direction = 'rtl';
+        const tabs = root.querySelectorAll('[role="tab"]');
+        tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+        expect(document.activeElement).toBe(tabs[3]);
+        tabs[3].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+        expect(document.activeElement).toBe(tabs[0]);
+    });
+    it('clears a stale preview when a changed configuration is invalid', () => {
+        editor = new Editor(root, {}, '/media/');
+        const tab = root.querySelectorAll('[role="tab"]')[3];
+        tab.click();
+        expect(root.querySelector('.ms-activity')).not.toBeNull();
+        field('variable').value = 'invalid name';
+        click('Preview activity');
+        expect(root.querySelector('.ms-activity')).toBeNull();
+        expect(root.querySelector('[role="status"]').textContent).toContain('Use a variable name');
+    });
     it.each(['destination', 'sequence', 'calculation'])(
         'reopens every stored field and starter for %s',
         (challenge) => {

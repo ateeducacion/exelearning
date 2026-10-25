@@ -14,6 +14,7 @@ var $exeDevice = {
         this.createForm();
         this.loadPreviousValues();
         this.initBlockly();
+        this.setBehaviour();
     },
 
     getDefaultData: function () {
@@ -44,74 +45,115 @@ var $exeDevice = {
                         '',
                     )
                     : ''}
-                <fieldset>
-                    <legend>${_('Activity')}</legend>
-                    <label for="learningmlTitle">${_('Title')}</label>
-                    <input id="learningmlTitle" type="text" class="form-control" />
-                    <label for="learningmlInstructions">${_('Instructions')}</label>
-                    <textarea id="learningmlInstructions" class="form-control"></textarea>
-                    <div class="learningml-inline">
-                        <div>
-                            <label for="learningmlMode">${_('Activity mode')}</label>
-                            <select id="learningmlMode" class="form-select">
-                                <option value="demo">${_('Demo mode')}</option>
-                                <option value="guided-challenge">${_('Guided challenge mode')}</option>
-                                <option value="free-lab">${_('Free lab mode')}</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="learningmlToolbox">${_('Toolbox preset')}</label>
-                            <select id="learningmlToolbox" class="form-select">
-                                <option value="basic">${_('Basic Logic')}</option>
-                                <option value="turtle">${_('Turtle/Canvas')}</option>
-                                <option value="intro-ml">${_('Intro ML')}</option>
-                            </select>
-                        </div>
+                <fieldset class="exe-fieldset exe-fieldset-open">
+                    <legend class="exe-text-legend"><a href="#">${_('Activity')}</a></legend>
+                    <div class="exe-field exe-text-field">
+                        <label for="learningmlTitle">${_('Title')}:</label>
+                        <input type="text" id="learningmlTitle" class="ideviceTextfield" />
+                    </div>
+                    <div class="exe-field exe-text-field">
+                        <label for="learningmlInstructions">${_('Instructions')}:</label>
+                        <textarea id="learningmlInstructions" class="ideviceTextfield" rows="3"></textarea>
+                    </div>
+                    <div class="exe-field exe-text-field">
+                        <label for="learningmlMode">${_('Activity mode')}:</label>
+                        <select id="learningmlMode" class="ideviceTextfield">
+                            <option value="demo">${_('Demo mode')}</option>
+                            <option value="guided-challenge">${_('Guided challenge')}</option>
+                            <option value="free-lab">${_('Free lab')}</option>
+                        </select>
                     </div>
                 </fieldset>
-                <fieldset>
-                    <legend>${_('Initial blocks')}</legend>
+
+                <fieldset class="exe-fieldset exe-fieldset-open">
+                    <legend class="exe-text-legend"><a href="#">${_('Blockly workspace')}</a></legend>
+                    <div class="exe-field exe-text-field">
+                        <label for="learningmlToolbox">${_('Toolbox preset')}:</label>
+                        <select id="learningmlToolbox" class="ideviceTextfield">
+                            <option value="basic">${_('Basic logic')}</option>
+                            <option value="turtle">${_('Turtle / Canvas')}</option>
+                            <option value="intro-ml">${_('Intro ML')}</option>
+                        </select>
+                    </div>
+                    <div id="learningmlAuthorWorkspace" class="learningml-author-workspace"></div>
                     <div class="learningml-checkboxes">
-                        <label><input id="learningmlAllowEdit" type="checkbox" /> ${_('Students may edit initial blocks')}</label>
-                        <label><input id="learningmlAllowDelete" type="checkbox" /> ${_('Students may delete initial blocks')}</label>
+                        <label><input type="checkbox" id="learningmlAllowEdit" /> ${_('Allow students to edit initial blocks')}</label>
+                        <label><input type="checkbox" id="learningmlAllowDelete" /> ${_('Allow students to delete initial blocks')}</label>
                     </div>
-                    <div class="learningml-inline">
-                        <div>
-                            <label for="learningmlMaxBlocks">${_('Maximum number of blocks')}</label>
-                            <input id="learningmlMaxBlocks" type="number" min="1" max="250" class="form-control" />
-                        </div>
-                        <div>
-                            <label for="learningmlMaxSteps">${_('Maximum execution steps')}</label>
-                            <input id="learningmlMaxSteps" type="number" min="1" max="10000" class="form-control" />
-                        </div>
-                        <div>
-                            <label for="learningmlMaxTime">${_('Maximum execution time (ms)')}</label>
-                            <input id="learningmlMaxTime" type="number" min="250" max="5000" class="form-control" />
-                        </div>
-                    </div>
-                    <div id="learningmlAuthorWorkspace" class="learningml-author-workspace" aria-label="${_('Initial Blockly workspace')}"></div>
-                    <label for="learningmlWorkspaceJson">${_('Workspace JSON')}</label>
-                    <textarea id="learningmlWorkspaceJson" class="form-control"></textarea>
                 </fieldset>
-                <fieldset>
-                    <legend>${_('Assessment')}</legend>
-                    <label><input id="learningmlAssessmentEnabled" type="checkbox" /> ${_('Enable assessment')}</label>
-                    <div class="learningml-inline">
-                        <div>
-                            <label for="learningmlPassingScore">${_('Passing score')}</label>
-                            <input id="learningmlPassingScore" type="number" min="0" max="100" class="form-control" />
-                        </div>
-                        <div>
-                            <label for="learningmlAttemptsLimit">${_('Attempts limit')}</label>
-                            <input id="learningmlAttemptsLimit" type="number" min="0" max="99" class="form-control" />
-                        </div>
+
+                <fieldset class="exe-fieldset exe-fieldset-closed">
+                    <legend class="exe-text-legend"><a href="#">${_('Execution limits')}</a></legend>
+                    <div class="exe-field exe-text-field">
+                        <label for="learningmlMaxBlocks">${_('Maximum blocks')}:</label>
+                        <input type="number" id="learningmlMaxBlocks" class="ideviceTextfield" min="1" max="250" />
                     </div>
-                    <label for="learningmlAssessmentJson">${_('Assessment tests JSON')}</label>
-                    <textarea id="learningmlAssessmentJson" class="form-control"></textarea>
+                    <div class="exe-field exe-text-field">
+                        <label for="learningmlMaxSteps">${_('Maximum steps')}:</label>
+                        <input type="number" id="learningmlMaxSteps" class="ideviceTextfield" min="1" max="10000" />
+                    </div>
+                    <div class="exe-field exe-text-field">
+                        <label for="learningmlMaxTime">${_('Maximum time (ms)')}:</label>
+                        <input type="number" id="learningmlMaxTime" class="ideviceTextfield" min="250" max="5000" step="250" />
+                    </div>
                 </fieldset>
+
+                <fieldset class="exe-fieldset exe-fieldset-closed">
+                    <legend class="exe-text-legend"><a href="#">${_('Assessment')}</a></legend>
+                    <div class="learningml-checkboxes">
+                        <label><input type="checkbox" id="learningmlAssessmentEnabled" /> ${_('Enable assessment')}</label>
+                    </div>
+                    <div class="exe-field exe-text-field">
+                        <label for="learningmlPassingScore">${_('Passing score')}:</label>
+                        <input type="number" id="learningmlPassingScore" class="ideviceTextfield" min="0" max="100" />
+                    </div>
+                    <div class="exe-field exe-text-field">
+                        <label for="learningmlAttemptsLimit">${_('Attempts limit (0 for unlimited)')}:</label>
+                        <input type="number" id="learningmlAttemptsLimit" class="ideviceTextfield" min="0" />
+                    </div>
+                </fieldset>
+
+                <fieldset class="exe-advanced exe-fieldset exe-fieldset-closed">
+                    <legend class="exe-text-legend"><a href="#">${_('Advanced JSON')}</a></legend>
+                    <div class="exe-field exe-text-field">
+                        <label for="learningmlWorkspaceJson">${_('Initial workspace JSON')}:</label>
+                        <textarea id="learningmlWorkspaceJson" class="ideviceTextfield" rows="5"></textarea>
+                    </div>
+                    <div class="exe-field exe-text-field">
+                        <label for="learningmlAssessmentJson">${_('Assessment tests JSON')}:</label>
+                        <textarea id="learningmlAssessmentJson" class="ideviceTextfield" rows="5"></textarea>
+                    </div>
+                </fieldset>
+
+                <p class="learningml-editor-buttons">
+                    <button type="button" class="btn btn-primary btn-save-footer">${_('Save')}</button>
+                    <button type="button" class="btn btn-secondary btn-cancel-footer">${_('Cancel')}</button>
+                </p>
             </div>
         `;
         this.ideviceBody.innerHTML = html;
+    },
+
+    setBehaviour: function () {
+        const ideviceId = this.ideviceBody.getAttribute('idevice-id');
+        const root = this.ideviceBody;
+
+        root.querySelector('.btn-save-footer').addEventListener('click', () => {
+            const saveBtn = document.getElementById('saveIdevice' + ideviceId);
+            if (saveBtn) saveBtn.click();
+        });
+
+        root.querySelector('.btn-cancel-footer').addEventListener('click', () => {
+            const undoBtn = document.getElementById('undoIdevice' + ideviceId);
+            if (undoBtn) undoBtn.click();
+        });
+
+        root.querySelector('#learningmlToolbox').addEventListener('change', (e) => {
+            if (this.workspace && window.eXeLearning && window.eXeLearning.iDevices && window.eXeLearning.iDevices.learningml) {
+                const api = window.eXeLearning.iDevices.learningml;
+                this.workspace.updateToolbox(api.TOOLBOXES[e.target.value] || api.TOOLBOXES.turtle);
+            }
+        });
     },
 
     initBlockly: function () {
@@ -132,9 +174,6 @@ var $exeDevice = {
                 null,
                 2,
             );
-        });
-        this.ideviceBody.querySelector('#learningmlToolbox').addEventListener('change', () => {
-            this.workspace.updateToolbox(api.TOOLBOXES[this.ideviceBody.querySelector('#learningmlToolbox').value] || api.TOOLBOXES.turtle);
         });
         setTimeout(() => Blockly.svgResize(this.workspace), 0);
     },

@@ -12,6 +12,7 @@
     <version>1.0</version>
     <api-version>3.0</api-version>
     <component-type>json</component-type>
+    <have-edition>1</have-edition>
     <location>location</location>
     <location-type>location type</location-type>
     <edition-js>

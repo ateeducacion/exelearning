@@ -12,7 +12,7 @@
 var $exeDevice = {
     formId: 'learningmlIdeviceForm',
 
-    /** Author images, resized so a whole activity stays within the package budget. */
+    /** Author photos: resized, stored in the media library, within the package budget. */
     IMAGE_SIZE: 128,
     IMAGE_BUDGET: 280000,
 
@@ -184,7 +184,13 @@ var $exeDevice = {
             if (error?.name !== 'AbortError') eXe.app.alert(_('The example could not be loaded.'));
             return;
         }
-        this.confirmReplace(_('The example replaces the current classes and examples. Continue?'), () => {
+        this.confirmReplace(_('The example replaces the current classes and examples. Continue?'), async () => {
+            if (data.dataType === 'images')
+                for (const c of data.classes)
+                    for (const key of ['examples', 'tests'])
+                        for (const [i, url] of c[key].entries())
+                            c[key][i] = await this.storeImage(url, `${file}-${c.name}-${key}-${i + 1}.jpg`);
+            if (this.$lifecycle && !this.$lifecycle.isActive()) return;
             this.classes = data.classes;
             this.dataType = data.dataType;
             this.field('dataType').value = data.dataType;
@@ -192,8 +198,37 @@ var $exeDevice = {
         });
     },
 
+    /** Folder of the media library that receives this iDevice's photos. */
+    FOLDER: 'learningml',
+
+    assets: function () {
+        return window.eXeLearning?.app?.project?._yjsBridge?.assetManager || null;
+    },
+
+    /** Put an image data URL into the project's media library; returns its asset:// URL. */
+    storeImage: async function (dataUrl, name) {
+        const assets = this.assets();
+        if (!assets || !dataUrl.startsWith('data:')) return dataUrl;
+        const [head, body] = dataUrl.split(',');
+        const bytes = Uint8Array.from(atob(body), (ch) => ch.charCodeAt(0));
+        const type = head.slice(5, head.indexOf(';'));
+        const safe = name.normalize('NFD').replace(/[^\w.-]+/g, '-');
+        return assets.insertImage(new File([bytes], safe, { type }), { folderPath: this.FOLDER });
+    },
+
+    /**
+     * Bytes of the activity's photos, as stored in the media library. Saved
+     * data comes back from the workarea with blob: URLs for its assets.
+     */
     imageBytes: function () {
-        return this.classes.reduce((n, c) => n + [...c.examples, ...c.tests].reduce((m, u) => m + u.length, 0), 0);
+        const assets = this.assets();
+        const id = (url) =>
+            url.startsWith('asset://') ? assets?.extractAssetId(url) : assets?.reverseBlobCache?.get(url);
+        const size = (url) => {
+            const assetId = url.startsWith('data:') ? null : id(url);
+            return assetId ? assets.getAssetMetadata(assetId)?.size || 0 : url.length;
+        };
+        return this.classes.reduce((n, c) => n + [...c.examples, ...c.tests].reduce((m, u) => m + size(u), 0), 0);
     },
 
     renderSize: function () {
@@ -263,6 +298,7 @@ var $exeDevice = {
                 <ul class="lml-examples lml-images" data-class-field="${key}"></ul>
                 <input type="file" id="lml${key}${n}" data-class-upload="${key}" accept="image/*" multiple class="lml-upload-input" />
                 <label for="lml${key}${n}" class="btn btn-sm btn-secondary lml-upload">${_('Add images')}</label>
+                ${window.eXeLearning?.app?.modals?.filemanager ? `<button type="button" class="btn btn-sm btn-secondary lml-upload" data-class-library="${key}">${_('Choose from the media library')}</button>` : ''}
             </div>`;
     },
 
@@ -272,8 +308,7 @@ var $exeDevice = {
             list.replaceChildren();
             c[key].forEach((url, i) => {
                 const item = document.createElement('li');
-                const img = document.createElement('img');
-                img.src = url;
+                const img = $learningml.showImage(document.createElement('img'), url);
                 img.alt = `${c.name} ${i + 1}`;
                 const remove = document.createElement('button');
                 remove.type = 'button';
@@ -295,12 +330,25 @@ var $exeDevice = {
             input.value = '';
             for (const file of files) {
                 try {
-                    c[key].push(await $learningml.image.fromFile(file, this.IMAGE_SIZE));
+                    const resized = await $learningml.image.fromFile(file, this.IMAGE_SIZE);
+                    c[key].push(await this.storeImage(resized, file.name.replace(/\.[^.]*$/, '') + '.jpg'));
                 } catch {
                     eXe.app.alert(_('The image could not be read.'));
                 }
             }
             render();
+        });
+        row.querySelector(`[data-class-library="${key}"]`)?.addEventListener('click', () => {
+            const add = (result) => {
+                for (const asset of [].concat(result || [])) if (asset?.assetUrl) c[key].push(asset.assetUrl);
+                render();
+            };
+            eXeLearning.app.modals.filemanager.show({
+                accept: 'image',
+                multiSelect: true,
+                // The modal outlives the form: a late selection must not reach a closed editor.
+                onSelect: this.$lifecycle ? this.$lifecycle.bind(add) : add,
+            });
         });
         render();
     },

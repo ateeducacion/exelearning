@@ -22,8 +22,11 @@ The editor uses the native iDevice tabs:
   **Start from an example**.
 - **Classes**: at least two classes with distinct names. Each one has training examples (shown to
   learners) and evaluation examples (used only to score the model). Text and numbers take one example
-  per line; numbers are comma separated (`1.5, 2`) and all must have the same count. Photos are
-  resized to 128 px on their longer side, and an activity may hold up to 280 kB of them.
+  per line; numbers are comma separated (`1.5, 2`) and all must have the same count. Photos go to the
+  project's **media library** (folder `learningml`): **Add images** resizes them to 128 px on their
+  longer side before storing them, and **Choose from the media library** reuses existing ones. The
+  activity keeps `asset://` references, which exports rewrite to `content/resources/…` like any other
+  asset. An activity may hold up to 280 kB of photos, measured from the media library metadata.
 - **Grading**: the shared SCORM options (do not save, save automatically when the model is checked,
   or a save button), weight, pass score and progress report. Scores go through
   `$exeDevices.iDevice.gamification.scorm.registerActivity/sendScoreNew` like other scored iDevices.
@@ -33,7 +36,7 @@ The editor uses the native iDevice tabs:
 
 `edition/examples/` holds the LearningML editor (`lml-editor`) example datasets, with about a quarter
 of each class moved to the evaluation examples. They are only fetched by the editor and are not copied
-into exports:
+into exports as such; loading the Insects example stores its photos in the media library:
 
 | Example | Data | Source |
 | --- | --- | --- |
@@ -97,7 +100,8 @@ of an iDevice type. Photos learners add during a session are not part of the pac
 ## Scope and limits
 
 - Learner examples and the trained model live in the page; reloading starts again from the teacher's
-  examples. The LMS stores the score, not the examples.
+  examples. The LMS stores the score, not the examples. Photos added by learners never reach the
+  media library.
 - There is no webcam capture: learners pick photos with the file chooser, which on phones and
   tablets can open the camera.
 - Sound, the LearningML Scratch blocks and `.mdl` model import are not included.

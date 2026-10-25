@@ -174,6 +174,50 @@ describe('LearningML edition', () => {
         await vi.waitFor(() => expect(eXe.app._alertHistory).toContain('The image could not be read.'));
     });
 
+    it('stores author photos in the media library and measures them from its metadata', async () => {
+        const inserted = [];
+        const assetManager = {
+            insertImage: vi.fn(async (file, options) => {
+                inserted.push([file.name, file.type, file.size, options.folderPath]);
+                return `asset://0000000${inserted.length}-0000-0000-0000-000000000000.jpg`;
+            }),
+            extractAssetId: (url) => url.slice(8, 44),
+            getAssetMetadata: vi.fn(() => ({ size: 1500 })),
+            resolveAssetURL: vi.fn(async (url) => `blob:${url}`),
+        };
+        const show = vi.fn();
+        window.eXeLearning = { app: { project: { odeId: 'ode', _yjsBridge: { assetManager } }, modals: { filemanager: { show } } } };
+        device.init(element, { ...saved, isScorm: 0, evaluation: false, dataType: 'images', classes: [{ name: 'Gato' }, { name: 'B' }] });
+        window.$learningml.image.fromFile = vi.fn(async () => 'data:image/jpeg;base64,AAAA');
+        const upload = element.querySelector('[data-class-upload="examples"]');
+        Object.defineProperty(upload, 'files', { value: [new File(['x'], 'mi gato.png')], configurable: true });
+        upload.dispatchEvent(new Event('change'));
+        await vi.waitFor(() => expect(device.classes[0].examples).toHaveLength(1));
+        expect(inserted[0]).toEqual(['mi-gato.jpg', 'image/jpeg', 3, 'learningml']);
+        expect(device.classes[0].examples[0]).toMatch(/^asset:\/\//);
+        await vi.waitFor(() => expect(element.querySelector('.lml-images img').src).toContain('blob:asset://'));
+
+        element.querySelector('[data-class-library="tests"]').click();
+        const { onSelect, accept, multiSelect } = show.mock.calls[0][0];
+        expect([accept, multiSelect]).toEqual(['image', true]);
+        onSelect([{ assetUrl: 'asset://00000009-0000-0000-0000-000000000000.png' }, {}]);
+        expect(device.classes[0].tests).toEqual(['asset://00000009-0000-0000-0000-000000000000.png']);
+        expect(element.querySelector('.lml-size').textContent).toBe('Images: 3 kB / 280 kB');
+        // Reopened data carries the workarea's blob: URLs for the same assets.
+        assetManager.reverseBlobCache = new Map([['blob:http://x/1', '00000001-0000-0000-0000-000000000000']]);
+        device.classes[1].examples = ['blob:http://x/1'];
+        device.renderSize();
+        expect(element.querySelector('.lml-size').textContent).toBe('Images: 5 kB / 280 kB');
+
+        const example = { dataType: 'images', classes: [{ name: 'A', examples: ['data:image/jpeg;base64,BBBB'] }, { name: 'B', examples: ['data:image/jpeg;base64,CCCC'] }] };
+        vi.stubGlobal('fetch', vi.fn(async () => ({ json: async () => example })));
+        await device.loadExample('insectos');
+        await vi.waitFor(() => expect(device.classes.map((c) => c.name)).toEqual(['A', 'B']));
+        expect(device.classes.flatMap((c) => c.examples).every((u) => u.startsWith('asset://'))).toBe(true);
+        expect(inserted.at(-1)[0]).toBe('insectos-B-examples-1.jpg');
+        expect(device.save().classes[0].examples[0]).toMatch(/^asset:\/\//);
+    });
+
     it('rejects invalid or oversized configurations with a clear message', () => {
         device.init(element, saved);
         const tests = element.querySelectorAll('[data-class-field="tests"]')[1];

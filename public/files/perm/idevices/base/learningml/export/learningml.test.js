@@ -268,6 +268,33 @@ describe('LearningML configuration', () => {
             classes: [{ name: 'A', examples: [png, 'javascript:alert(1)', 'data:text/html;base64,PGI+'] }],
         });
         expect(c.classes[0].examples).toEqual([png]);
+        const sources = [
+            'asset://7e0bb9a6-6f6c-4d0c-9d3a-1a2b3c4d5e6f.jpg',
+            'content/resources/learningml/gato.jpg',
+            '../content/resources/learningml/gato.jpg',
+            'blob:http://localhost/abc',
+        ];
+        const rejected = ['http://example.com/a.png', 'content/resources/x" onerror="y', 'javascript:alert(1)'];
+        const kept = lml.normalize({ dataType: 'images', classes: [{ name: 'A', examples: [...sources, ...rejected] }] });
+        expect(kept.classes[0].examples).toEqual(sources);
+    });
+
+    it('resolves media library assets inside eXeLearning and leaves package paths alone', async () => {
+        expect(await lml.image.resolve('content/resources/a.jpg')).toBe('content/resources/a.jpg');
+        expect(await lml.image.resolve('asset://x.jpg')).toBe('asset://x.jpg');
+        const resolveAssetURL = vi.fn(async (url) => (url === 'asset://x.jpg' ? 'blob:x' : null));
+        window.eXeLearning = { app: { project: { _yjsBridge: { assetManager: { resolveAssetURL } } } } };
+        try {
+            expect(await lml.image.resolve('asset://x.jpg')).toBe('blob:x');
+            expect(await lml.image.resolve('asset://missing.jpg')).toBe('asset://missing.jpg');
+            const img = lml.showImage(document.createElement('img'), 'asset://x.jpg');
+            await vi.waitFor(() => expect(img.getAttribute('src')).toBe('blob:x'));
+            expect(lml.showImage(document.createElement('img'), 'content/resources/a.jpg').getAttribute('src')).toBe(
+                'content/resources/a.jpg'
+            );
+        } finally {
+            delete window.eXeLearning;
+        }
     });
 
     it('reports the first authoring problem', () => {

@@ -201,18 +201,90 @@ test('loads the insects example and classifies photos offline with the MobileNet
 
     const view = page.locator(`.idevice_node[id="${id}"] .lml-activity`);
     await expect(view.locator('.lml-class')).toHaveCount(4);
-    const photo = await view.locator('.lml-class').first().locator('img').first().getAttribute('src');
+    const photo: string = JSON.parse(
+        readFileSync('public/files/perm/idevices/base/learningml/edition/examples/insectos.json', 'utf8'),
+    ).classes[0].examples[0];
     await view.getByRole('button', { name: 'Train the model', exact: true }).click();
     await expect(view.locator('.lml-status')).toHaveText('Model trained with 32 examples.', { timeout: 30000 });
     await view.getByLabel('Image to classify').setInputFiles({
         name: 'probe.jpg',
         mimeType: 'image/jpeg',
-        buffer: Buffer.from(photo!.split(',')[1], 'base64'),
+        buffer: Buffer.from(photo.split(',')[1], 'base64'),
     });
     await expect(view.locator('.lml-prediction')).toHaveText('The model says: hormiga');
     await expect(view.locator('.lml-bar')).toHaveCount(4);
     await view.getByRole('button', { name: 'Check my model', exact: true }).click();
     await expect(view.locator('.lml-score')).toContainText('Score: ');
     await shot(view, 'learningml-images-learner');
+
+    // The author photos live in the project's media library, referenced as asset:// URLs.
+    const stored = await page.evaluate(id => {
+        const w = window as any;
+        const bridge = w.eXeLearning.app.project._yjsBridge;
+        // The raw Y.Doc value: getComponent() resolves asset:// to blob: for display.
+        const json = JSON.parse(bridge.structureBinding.getComponentMap(id).get('jsonProperties'));
+        const library = [...bridge.assetManager.getAssetsYMap().values()].filter(
+            (a: any) => a.folderPath === 'learningml',
+        );
+        return { first: json.classes[0].examples[0], library: library.length };
+    }, id);
+    expect(stored.first).toMatch(/^asset:\/\//);
+    expect(stored.library).toBe(44);
+
+    // The preview resolves the same assets.
+    await page.getByRole('button', { name: 'Preview', exact: true }).click();
+    await openPreviewPanel(page);
+    const previewFrame = await getPreviewFrame(page);
+    const previewPhoto = previewFrame.locator('.lml-class img').first();
+    await expect(previewPhoto).toBeVisible();
+    await expect.poll(() => previewPhoto.evaluate(img => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    await previewFrame.getByRole('button', { name: 'Train the model', exact: true }).click();
+    await expect(previewFrame.locator('.lml-status')).toHaveText('Model trained with 32 examples.', { timeout: 30000 });
+    await page.locator('#previewsidenavclose').click();
+
+    // An exported package loads them from content/resources/ and trains offline.
+    const files = await exported(page, 'html5');
+    expect(
+        Object.keys(files).filter(name => name.startsWith('content/resources/') && name.endsWith('.jpg')),
+    ).toHaveLength(44);
+    const offline = await page.context().newPage();
+    const missing: string[] = [];
+    offline.on('pageerror', error => errors.push(error.message));
+    await offline.route('**/*', route => {
+        const url = new URL(route.request().url());
+        const name = decodeURIComponent(url.pathname.slice(1));
+        if (url.hostname !== 'learningml-images.test' || !files[name]) {
+            missing.push(url.href);
+            return route.abort();
+        }
+        const types: Record<string, string> = {
+            js: 'text/javascript',
+            css: 'text/css',
+            html: 'text/html',
+            jpg: 'image/jpeg',
+            png: 'image/png',
+            svg: 'image/svg+xml',
+        };
+        return route.fulfill({
+            contentType: types[name.split('.').pop()!] || 'application/octet-stream',
+            body: Buffer.from(files[name]),
+        });
+    });
+    await offline.goto('https://learningml-images.test/index.html');
+    const packaged = offline.locator('.lml-activity');
+    await expect(packaged.locator('.lml-class').first().locator('img').first()).toHaveAttribute(
+        'src',
+        /^content\/resources\//,
+    );
+    await packaged.getByRole('button', { name: 'Train the model', exact: true }).click();
+    await expect(packaged.locator('.lml-status')).toHaveText('Model trained with 32 examples.', { timeout: 30000 });
+    await packaged.getByLabel('Image to classify').setInputFiles({
+        name: 'probe.jpg',
+        mimeType: 'image/jpeg',
+        buffer: Buffer.from(photo.split(',')[1], 'base64'),
+    });
+    await expect(packaged.locator('.lml-prediction')).toHaveText('The model says: hormiga');
+    await offline.close();
+    expect(missing).toEqual([]);
     expect(errors).toEqual([]);
 });

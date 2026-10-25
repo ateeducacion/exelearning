@@ -81,7 +81,13 @@ var $learningml = {
 
     DATA_TYPES: ['text', 'numbers', 'images'],
     ALGORITHMS: ['neural-network', 'naive-bayes', 'knn'],
-    IMAGE_URL: /^data:image\/(png|jpeg|gif|webp);base64,[a-z0-9+/=]+$/i,
+    /**
+     * Image sources an activity may hold: media library assets (asset://,
+     * rewritten to content/resources/ in exports), and data or blob URLs for
+     * photos added during a session.
+     */
+    IMAGE_URL:
+        /^(?:asset:\/\/[^\s"'<>]+|(?:\.\.\/)*content\/resources\/[^\s"'<>:]+|blob:[^\s"'<>]+|data:image\/(?:png|jpeg|gif|webp);base64,[a-z0-9+/=]+)$/i,
 
     /** Version 1 configuration with every field defaulted and bounded. */
     normalize(raw) {
@@ -469,12 +475,20 @@ var $learningml = {
             return pooled.map((s) => s / (h * h));
         },
 
-        decode(url) {
+        /** A displayable URL: media library assets become blob URLs inside eXeLearning. */
+        async resolve(url) {
+            const assets = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (!url.startsWith('asset://') || !assets) return url;
+            return (await assets.resolveAssetURL(url)) || url;
+        },
+
+        async decode(url) {
+            const src = await this.resolve(url);
             return new Promise((resolve, reject) => {
                 const img = new Image();
                 img.onload = () => resolve(img);
                 img.onerror = () => reject(new Error('msgImageError'));
-                img.src = url;
+                img.src = src;
             });
         },
 
@@ -547,6 +561,13 @@ var $learningml = {
             return;
         }
         this.mount(root, config);
+    },
+
+    /** Show an activity image; media library assets resolve asynchronously in eXeLearning. */
+    showImage(img, url) {
+        if (url.startsWith('asset://')) this.image.resolve(url).then((src) => (img.src = src));
+        else img.src = url;
+        return img;
     },
 
     el(tag, parent, text, attrs) {
@@ -632,7 +653,7 @@ var $learningml = {
                 list.replaceChildren();
                 c.examples.forEach((example, ei) => {
                     const item = el('li', list);
-                    if (images) el('img', item, undefined, { src: example, alt: `${c.name} ${ei + 1}` });
+                    if (images) this.showImage(el('img', item, undefined, { alt: `${c.name} ${ei + 1}` }), example);
                     else el('span', item, example);
                     el('button', item, '×', {
                         type: 'button',

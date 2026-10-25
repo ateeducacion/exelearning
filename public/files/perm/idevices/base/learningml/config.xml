@@ -6,7 +6,7 @@
     <category>Interactive activities</category>
     <icon>
         <name>learningml-icon</name>
-        <url>learningml-icon.svg</url>
+        <url>learningml-icon.png</url>
         <type>img</type>
     </icon>
     <version>1.0</version>
@@ -24,6 +24,7 @@
     </edition-css>
     <export-js>
         <filename>learningml.js</filename>
+        <filename>learningml-mobilenet.js</filename>
     </export-js>
     <export-css>
         <filename>learningml.css</filename>
@@ -32,6 +33,6 @@
     <author>eXeLearning contributors</author>
     <license>AGPL-3.0-or-later</license>
     <license-url>https://www.gnu.org/licenses/agpl-3.0.html</license-url>
-    <description>Train a text or numeric classifier with examples, as in LearningML, with optional SCORM grading.</description>
+    <description>Train a model with text, numbers or images, as in LearningML, and try it offline.</description>
     <downloadable>0</downloadable>
 </idevice>

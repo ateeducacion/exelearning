@@ -1,65 +1,118 @@
 # LearningML iDevice
 
-A native JSON iDevice that brings the LearningML model editor into eXeLearning content. Learners work
-through the same three columns as [LearningML](https://learningml.org):
+A native JSON iDevice that brings the [LearningML](https://learningml.org) model editor into eXeLearning
+content. Learners work through the same three columns as LearningML:
 
 1. **Training data**: the teacher's classes, with optional starter examples. Learners add or remove
-   their own examples.
-2. **Train**: pick an algorithm and train the model in the browser.
-3. **Result**: type an example and see the predicted class with a confidence bar per class.
-   When the teacher adds evaluation examples, **Check my model** scores the trained model.
+   their own texts, numbers or photos.
+2. **Train**: choose the neural network (the LearningML default), Naive Bayes or k-NN and train in the
+   browser. The network shows its progress epoch by epoch.
+3. **Result**: type an example or pick a photo, and see the predicted class with a confidence bar per
+   class. When the teacher adds evaluation examples, **Check my model** scores the trained model.
 
-It runs offline in HTML5, single-page and SCORM 1.2 exports: one 20 kB script (about 6 kB gzip) and
-one stylesheet. It has no dependencies and makes no network requests.
+Everything runs offline in exported packages, with no dependencies and no network requests. The
+weights are embedded in a classic script rather than fetched, so nothing depends on `fetch()` from
+`file://`; opening a package by double click has not been tested yet.
 
 ## Authoring
 
-- **Type of data**: text, or numbers separated by commas (`1.5, 2`). Every numeric example must
-  have the same number of values.
-- **Default algorithm**: Naive Bayes or nearest neighbours (k-NN). Learners can switch.
-- **Classes**: at least two, with distinct names. Each one has training examples (shown to the
-  learner) and evaluation examples (used only to score the model), one per line.
-- **Assessment**: when enabled, the score is the percentage of evaluation examples classified as
-  their own class. It is reported to the LMS through the shared SCORM 1.2 activity registry
-  (`$exeDevices.iDevice.gamification.scorm.reportActivity/updateActivity`), with the activity's
-  weight and passing score.
+The editor uses the native iDevice tabs:
+
+- **General settings**: instructions, type of data (text, numbers or images), default algorithm and
+  **Start from an example**.
+- **Classes**: at least two classes with distinct names. Each one has training examples (shown to
+  learners) and evaluation examples (used only to score the model). Text and numbers take one example
+  per line; numbers are comma separated (`1.5, 2`) and all must have the same count. Photos are
+  resized to 128 px on their longer side, and an activity may hold up to 280 kB of them.
+- **Grading**: the shared SCORM options (do not save, save automatically when the model is checked,
+  or a save button), weight, pass score and progress report. Scores go through
+  `$exeDevices.iDevice.gamification.scorm.registerActivity/sendScoreNew` like other scored iDevices.
+- **Custom texts**: every text the learner sees.
+
+### Examples
+
+`edition/examples/` holds the LearningML editor (`lml-editor`) example datasets, with about a quarter
+of each class moved to the evaluation examples. They are only fetched by the editor and are not copied
+into exports:
+
+| Example | Data | Source |
+| --- | --- | --- |
+| Feelings | Text, 2 classes | `sentimientos.json` |
+| Virtual assistant | Text, 4 classes | `asistente-virtual.json` |
+| Iris flowers | 4 numbers, 3 classes | `iris.json` (Fisher's Iris data set) |
+| Quadrants of the plane | 2 numbers, 4 classes | `cuadrantes.json` |
+| Insects | Photos, 4 classes (8 + 3 each) | `insectos.json`, resized to 128 px JPEG |
 
 ## Machine learning
 
-The classifiers follow the LearningML NG research (`learningml-ng`, DEC-0011: pure code instead of
-TensorFlow.js):
+- **Text**: bag of words over the training vocabulary. Words are lowercased and accents are removed
+  with Unicode normalization, so `Canción` and `cancion` match and `niño` stays `nino`. An input with
+  no known word is reported instead of being classified by the priors alone.
+- **Numbers**: standardized with the mean and deviation of the training examples.
+- **Images**: 256 features from MobileNet v1 0.25/224 (see below), L2-normalized.
+- **Neural network**: LearningML's `LMLSequential` (dense 200 ReLU, dense 100 ReLU, softmax without
+  bias; Adam 0.001, 20 epochs, batches of 10, cross-entropy), in plain JavaScript and seeded so the
+  same data always trains the same network.
+- **Naive Bayes**: Gaussian, as in LearningML (variance smoothing `1e-9`, prior smoothing `1`).
+- **k-NN**: k = 3 with weighted votes: cosine similarity for words and images, and
+  `1 / (1 + distance)` for numbers.
 
-- Text is encoded as a bag of words over the training vocabulary. Words are lowercased and accents
-  are removed, so `Canción` and `cancion` match.
-- **Naive Bayes** is Gaussian, as in LearningML (`lml-algorithms`): variance smoothing `1e-9`,
-  prior smoothing `1`.
-- **k-NN** uses k = 3 with weighted votes: cosine similarity for text, and `1 / (1 + distance)`
-  (Euclidean) for numbers. Cosine alone would ignore magnitude, so 1 and 10 would look the same.
-  An example that shares no word with the input does not vote.
+## Image feature extractor
+
+`export/learningml-mobilenet.js` is generated by
+`bun scripts/build-learningml-mobilenet.ts <model-dir>` from the official TensorFlow.js
+`mobilenet_v1_0.25_224` Keras model (Apache-2.0,
+`https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/`). The script drops the
+ImageNet head, folds batch normalization into the convolutions and stores the weights as int8 per
+output channel, base64-encoded in a classic script. `export/learningml.js` runs the 27 layers itself
+(TensorFlow "same" padding, ReLU6, average pool); there is no TensorFlow.js runtime.
+
+Measured with that model:
+
+| Check | Result |
+| --- | --- |
+| JavaScript forward, folded FP32 weights, vs TensorFlow.js 4.22 | max difference 6·10⁻⁵, cosine 1.000000 |
+| int8 vs FP32 embeddings, 60 LearningML insect photos | mean cosine 0.978 |
+| Accuracy, 4 insects, 10 train / 5 test per class, 3 splits, int8 | neural network 50/60, Naive Bayes 45/60, k-NN 43/60 |
+| Same with the 128 px example photos | 46/60, 40/60, 42/60 |
+| Time per photo, Chromium | about 40 ms |
+
+These are small tests on one dataset, not a general accuracy claim. Input pixels are scaled to
+`[-1, 1]`, the range this Keras model was trained with.
+
+## Size budget
+
+The incremental files of the iDevice in a package stay below 640,000 bytes:
+
+| File | Bytes |
+| --- | ---: |
+| `learningml-mobilenet.js` | 306,762 |
+| `learningml.js`, `learningml.css`, `learningml.html` | about 41,000 |
+| Author photos of one image activity (limit) | 280,000 |
+
+A unit test fails if the export files grow past `640,000 − 280,000`. All exports carry the
+extractor, also for text or numbers activities, because exporters copy the whole `export/` folder
+of an iDevice type. Photos learners add during a session are not part of the package.
 
 ## Scope and limits
 
-Not included, on purpose:
-
-- **Images and sound.** They need a pretrained feature extractor: MobileNet through
-  TensorFlow.js is about 124 kB gzip of runtime plus a 2 MB model in every package, and the
-  quality of smaller models has not been validated. WASM/WebGPU runtimes measured heavier
-  (about 3.2 MB gzip of WASM) in the LearningML NG benchmarks.
-- **The neural network (MLP)**, which in LearningML NG depends on `tfjs-layers`.
-- **Programming blocks.** This iDevice is the model editor only.
-- **Persistence.** Learner examples and the model live in the page; reloading starts again from the
-  teacher's examples. The LMS keeps the score, not the examples.
-- **SCORM 2004.** Only SCORM 1.2 reports a score.
-
-Evaluation examples are in the exported page, so they can be read by a learner who inspects it:
-assessment is formative, not tamper-proof.
+- Learner examples and the trained model live in the page; reloading starts again from the teacher's
+  examples. The LMS stores the score, not the examples.
+- There is no webcam capture: learners pick photos with the file chooser, which on phones and
+  tablets can open the camera.
+- Sound, the LearningML Scratch blocks and `.mdl` model import are not included.
+- Evaluation examples are in the exported page, so a learner who inspects it can read them:
+  assessment is formative, not tamper-proof.
 
 ## Tests
 
 ```sh
 npx vitest run public/files/perm/idevices/base/learningml/
+bun test scripts/build-learningml-mobilenet.spec.ts
 bun x playwright test --project=chromium test/e2e/playwright/specs/learningml.spec.ts
 ```
 
-The Playwright spec authors an activity, reopens it, previews it, exports a SCORM 1.2 package and
-runs it offline under scorm-again, checking the reported score and lesson status.
+The unit tests check the classifiers, the network, the layer arithmetic, the shipped extractor
+against a TensorFlow.js reference embedding, the size budget, the edition tabs and the examples. The
+Playwright specs author a text activity, export SCORM 1.2 and grade it offline under scorm-again,
+and load the insects example, train on the photos and classify one.

@@ -337,6 +337,10 @@ describe('idevice-config-browser', () => {
             expect(threeIdx).toBeLessThan(orbitIdx);
         });
 
+        it('includes the MobileNet image extractor for learningml', () => {
+            expect(getIdeviceExportFiles('learningml', '.js')).toEqual(['learningml-mobilenet.js', 'learningml.js']);
+        });
+
         it('includes model-viewer and Three.js dependencies for three-d-viewer', () => {
             const files = getIdeviceExportFiles('three-d-viewer', '.js');
             expect(files).toContain('three-d-viewer.js');

@@ -47,9 +47,16 @@ test('authors, previews and grades a LearningML text classifier in an offline SC
     await selectFirstPage(page);
     await addIdevice(page, 'learningml');
 
-    const author = page.locator('.lml-author');
-    await author.locator('[data-field="title"]').fill('Greetings');
-    await author.locator('[data-field="instructions"]').fill('Teach the model to tell greetings from farewells.');
+    const author = page.locator('#learningmlIdeviceForm');
+    const tab = (name: string) => author.locator('.exe-form-tabs a', { hasText: name }).click();
+    await expect(author.locator('.exe-form-tabs a')).toHaveText([
+        'General settings',
+        'Classes',
+        'Grading',
+        'Custom texts',
+    ]);
+    await author.locator('[data-field="algorithm"]').selectOption('naive-bayes');
+    await tab('Classes');
     const rows = author.locator('.lml-author-class');
     await rows.nth(0).locator('[data-class-field="name"]').fill('Hello');
     await rows.nth(0).locator('[data-class-field="examples"]').fill('hello friend\ngood morning');
@@ -57,8 +64,11 @@ test('authors, previews and grades a LearningML text classifier in an offline SC
     await rows.nth(1).locator('[data-class-field="name"]').fill('Bye');
     await rows.nth(1).locator('[data-class-field="examples"]').fill('goodbye friend');
     await rows.nth(1).locator('[data-class-field="tests"]').fill('see you tomorrow\ngoodbye');
-    await author.locator('[data-field="graded"]').check();
-    await author.locator('[data-field="weight"]').fill('50');
+    await tab('Grading');
+    await author.locator('#eXeGameSCORMAutoSave').check();
+    await author.locator('#eXeGameSCORMWeight').fill('50');
+    await tab('Custom texts');
+    await author.locator('#ci18n_msgCheck').fill('Check the model');
     const id = await page.locator('.idevice_node.learningml').getAttribute('id');
     await saveIdevice(page, id!);
     await expect
@@ -70,7 +80,13 @@ test('authors, previews and grades a LearningML text classifier in an offline SC
                     : component?.jsonProperties;
             }, id),
         )
-        .toMatchObject({ title: 'Greetings', graded: true, weight: 50, classes: [{ name: 'Hello' }, { name: 'Bye' }] });
+        .toMatchObject({
+            algorithm: 'naive-bayes',
+            isScorm: 1,
+            weighted: 50,
+            classes: [{ name: 'Hello' }, { name: 'Bye' }],
+            msgs: { msgCheck: 'Check the model' },
+        });
     await expect(page.locator('.idevice_node.learningml .lml-column h4')).toHaveText([
         '1. Training data',
         '2. Train',
@@ -78,8 +94,10 @@ test('authors, previews and grades a LearningML text classifier in an offline SC
     ]);
 
     await editIdevice(page, id!);
-    await expect(author.locator('[data-field="title"]')).toHaveValue('Greetings');
+    await tab('Classes');
     await expect(rows.nth(1).locator('[data-class-field="tests"]')).toHaveValue('see you tomorrow\ngoodbye');
+    await tab('Grading');
+    await expect(author.locator('#eXeGameSCORMAutoSave')).toBeChecked();
     await saveIdevice(page, id!);
 
     await page.getByRole('button', { name: 'Preview', exact: true }).click();
@@ -91,6 +109,7 @@ test('authors, previews and grades a LearningML text classifier in an offline SC
     const files = await exported(page, 'scorm12');
     expect(files['imsmanifest.xml']).toBeDefined();
     expect(files['idevices/learningml/learningml.js']).toBeDefined();
+    expect(files['idevices/learningml/learningml-mobilenet.js']).toBeDefined();
     expect(Object.keys(files).some(name => name.includes('learningml') && name.includes('/edition/'))).toBe(false);
 
     const offline = await page.context().newPage();
@@ -142,7 +161,7 @@ test('authors, previews and grades a LearningML text classifier in an offline SC
     await activity.getByLabel('Example to classify').fill('see you soon');
     await activity.getByRole('button', { name: 'Classify', exact: true }).click();
     await expect(activity.locator('.lml-prediction')).toHaveText('The model says: Bye');
-    await activity.getByRole('button', { name: 'Check my model', exact: true }).click();
+    await activity.getByRole('button', { name: 'Check the model', exact: true }).click();
     await expect(activity.locator('.lml-score')).toHaveText('Score: 100/100. Passed.');
     await expect.poll(() => offline.evaluate(() => Number((window as any).API.cmi.core.score.raw))).toBe(100);
     await expect.poll(() => offline.evaluate(() => (window as any).API.cmi.core.lesson_status)).toBe('passed');
@@ -150,4 +169,50 @@ test('authors, previews and grades a LearningML text classifier in an offline SC
     expect(missing).toEqual([]);
     expect(errors).toEqual([]);
     await offline.close();
+});
+
+test('loads the insects example and classifies photos offline with the MobileNet extractor', async ({
+    authenticatedPage: page,
+    createProject,
+}, testInfo) => {
+    const shot = async (locator: ReturnType<Page['locator']>, name: string) => {
+        const path = testInfo.outputPath(`${name}.png`);
+        await locator.screenshot({ path });
+        await testInfo.attach(name, { path, contentType: 'image/png' });
+    };
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const uuid = await createProject(page, 'LearningML images');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'learningml');
+    const author = page.locator('#learningmlIdeviceForm');
+    await author.locator('[data-field="algorithm"]').selectOption('knn');
+    await author.locator('[data-field="example"]').selectOption('insectos');
+    await author.locator('[data-action="load-example"]').click();
+    await author.locator('.exe-form-tabs a', { hasText: 'Classes' }).click();
+    await expect(author.locator('.lml-author-class')).toHaveCount(4);
+    await expect(author.locator('.lml-author-class').first().locator('.lml-images img')).toHaveCount(11);
+    await expect(author.locator('.lml-size')).toContainText('/ 280 kB');
+    await shot(author, 'learningml-editor-classes');
+    const id = await page.locator('.idevice_node.learningml').getAttribute('id');
+    await saveIdevice(page, id!);
+
+    const view = page.locator(`.idevice_node[id="${id}"] .lml-activity`);
+    await expect(view.locator('.lml-class')).toHaveCount(4);
+    const photo = await view.locator('.lml-class').first().locator('img').first().getAttribute('src');
+    await view.getByRole('button', { name: 'Train the model', exact: true }).click();
+    await expect(view.locator('.lml-status')).toHaveText('Model trained with 32 examples.', { timeout: 30000 });
+    await view.getByLabel('Image to classify').setInputFiles({
+        name: 'probe.jpg',
+        mimeType: 'image/jpeg',
+        buffer: Buffer.from(photo!.split(',')[1], 'base64'),
+    });
+    await expect(view.locator('.lml-prediction')).toHaveText('The model says: hormiga');
+    await expect(view.locator('.lml-bar')).toHaveCount(4);
+    await view.getByRole('button', { name: 'Check my model', exact: true }).click();
+    await expect(view.locator('.lml-score')).toContainText('Score: ');
+    await shot(view, 'learningml-images-learner');
+    expect(errors).toEqual([]);
 });

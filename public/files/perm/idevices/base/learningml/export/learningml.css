@@ -81,7 +81,7 @@
 }
 
 .lml-column select,
-.lml-column > .btn {
+.lml-column > .btn:not(.lml-upload) {
     display: block;
     margin: 0.5rem 0;
 }
@@ -112,4 +112,66 @@
 
 .lml-error {
     color: #b91c1c;
+}
+
+.lml-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.lml-images li {
+    position: relative;
+    padding: 0;
+}
+
+.lml-images img,
+.lml-preview {
+    display: block;
+    width: 4rem;
+    height: 4rem;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.lml-images .lml-remove {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 0 4px 0 4px;
+}
+
+.lml-preview {
+    width: 8rem;
+    height: 8rem;
+    margin: 0.5rem 0;
+}
+
+.lml-progress {
+    display: block;
+    width: 100%;
+}
+
+.lml-instructions {
+    margin-bottom: 0.5rem;
+}
+
+.lml-upload {
+    display: inline-block;
+    margin: 0.5rem 0 0;
+}
+
+.lml-upload-input:focus-visible + .lml-upload {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.lml-upload-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
 }

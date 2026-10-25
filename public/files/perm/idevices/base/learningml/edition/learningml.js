@@ -2,20 +2,36 @@
 /**
  * LearningML iDevice (edition code)
  *
- * The teacher defines the classes, optional starter examples and hidden
- * evaluation examples. Validation and defaults come from the export
- * runtime ($learningml), loaded first by config.xml.
+ * Native iDevice tabs: general settings, the classes with their training
+ * and evaluation examples, the shared Grading tab and custom learner texts.
+ * Validation and defaults come from the export runtime ($learningml), loaded
+ * first by config.xml.
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 var $exeDevice = {
-    init: function (element, previousData) {
+    formId: 'learningmlIdeviceForm',
+
+    /** Author images, resized so a whole activity stays within the package budget. */
+    IMAGE_SIZE: 128,
+    IMAGE_BUDGET: 280000,
+
+    EXAMPLES: [
+        { file: 'sentimientos', dataType: 'text', label: _('Feelings (positive or negative)') },
+        { file: 'asistente-virtual', dataType: 'text', label: _('Virtual assistant (lights and fan)') },
+        { file: 'iris', dataType: 'numbers', label: _('Iris flowers (petal and sepal sizes)') },
+        { file: 'cuadrantes', dataType: 'numbers', label: _('Quadrants of the plane') },
+        { file: 'insectos', dataType: 'images', label: _('Insects (photos)') },
+    ],
+
+    init: function (element, previousData, path) {
         this.ideviceBody = element;
+        this.idevicePath = path || '';
         this.loaded = false;
         let config;
         try {
             config = $learningml.normalize(
-                previousData && Object.keys(previousData).length ? previousData : this.getDefaultData()
+                previousData && previousData.classes ? previousData : this.getDefaultData()
             );
         } catch {
             element.textContent = _(
@@ -23,6 +39,8 @@ var $exeDevice = {
             );
             return;
         }
+        this.classes = config.classes;
+        this.dataType = config.dataType;
         this.createForm(config);
         this.loaded = true;
     },
@@ -30,17 +48,13 @@ var $exeDevice = {
     getDefaultData: function () {
         return {
             version: 1,
-            title: '',
-            instructions: '',
+            instructions: c_('Add examples to each class, train the model and check what it has learnt.'),
             dataType: 'text',
-            algorithm: 'naive-bayes',
+            algorithm: 'neural-network',
             classes: [
-                { name: _('Class 1'), examples: [], tests: [] },
-                { name: _('Class 2'), examples: [], tests: [] },
+                { name: c_('Class 1'), examples: [], tests: [] },
+                { name: c_('Class 2'), examples: [], tests: [] },
             ],
-            graded: false,
-            weight: 100,
-            pass: 50,
         };
     },
 
@@ -49,106 +63,270 @@ var $exeDevice = {
     },
 
     createForm: function (config) {
-        const e = (s) => $learningml.escape(s);
+        const gamification = $exeDevicesEdition.iDevice.gamification;
+        const option = (value, label) => `<option value="${value}">${label}</option>`;
+        const examples = ['text', 'numbers', 'images']
+            .map((type) => {
+                const items = this.EXAMPLES.filter((e) => e.dataType === type);
+                return `<optgroup label="${this.typeLabel(type)}">${items.map((e) => option(e.file, e.label)).join('')}</optgroup>`;
+            })
+            .join('');
         this.ideviceBody.innerHTML = `
-            <div class="lml-author">
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Activity')}</a></legend>
-                    <p>
-                        <label for="lmlTitle">${_('Title')}:</label>
-                        <input type="text" id="lmlTitle" data-field="title" class="ideviceTextfield" value="${e(config.title)}" />
-                    </p>
-                    <p>
-                        <label for="lmlInstructions">${_('Instructions')}:</label>
-                        <textarea id="lmlInstructions" data-field="instructions" class="ideviceTextfield" rows="3">${e(config.instructions)}</textarea>
-                    </p>
-                    <p>
-                        <label for="lmlDataType">${_('Type of data')}:</label>
-                        <select id="lmlDataType" data-field="dataType">
-                            <option value="text">${_('Text')}</option>
-                            <option value="numbers">${_('Numbers')}</option>
-                        </select>
-                        <label for="lmlAlgorithm">${_('Default algorithm')}:</label>
-                        <select id="lmlAlgorithm" data-field="algorithm">
-                            <option value="naive-bayes">${_('Naive Bayes')}</option>
-                            <option value="knn">${_('Nearest neighbours (k-NN)')}</option>
-                        </select>
-                    </p>
-                </fieldset>
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Classes')}</a></legend>
-                    <p class="lml-help">${_('Write one example per line. Students see the training examples and can add or remove their own; evaluation examples are only used to grade the trained model. For numbers, separate values with commas, such as 1.5, 2.')}</p>
+            <div id="${this.formId}" class="lml-author">
+                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                    _('Learners add examples to each class, train a model and try it with new data, as in LearningML. Text, numbers and images work offline, without sending data anywhere.')
+                )}
+                <div class="exe-form-tab" title="${_('General settings')}">
+                    ${gamification.instructions.getFieldset('')}
+                    <fieldset class="exe-fieldset">
+                        <legend><a href="#">${_('Model')}</a></legend>
+                        <div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+                                <label for="lmlDataType">${_('Type of data')}:</label>
+                                <select id="lmlDataType" data-field="dataType" class="form-select w-auto">
+                                    ${['text', 'numbers', 'images'].map((t) => option(t, this.typeLabel(t))).join('')}
+                                </select>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+                                <label for="lmlAlgorithm">${_('Default algorithm')}:</label>
+                                <select id="lmlAlgorithm" data-field="algorithm" class="form-select w-auto">
+                                    ${option('neural-network', _('Neural network'))}
+                                    ${option('naive-bayes', _('Naive Bayes'))}
+                                    ${option('knn', _('Nearest neighbours (k-NN)'))}
+                                </select>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+                                <label for="lmlExample">${_('Start from an example')}:</label>
+                                <select id="lmlExample" data-field="example" class="form-select w-auto">${examples}</select>
+                                <button type="button" class="btn btn-secondary" data-action="load-example">${_('Load example')}</button>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="exe-form-tab" title="${_('Classes')}">
+                    <p class="exe-block-info lml-help" data-field="help"></p>
                     <div class="lml-author-classes"></div>
-                    <p><button type="button" class="btn btn-secondary" data-action="add-class">${_('Add class')}</button></p>
-                </fieldset>
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Assessment')}</a></legend>
-                    <p>
-                        <label><input type="checkbox" data-field="graded" ${config.graded ? 'checked' : ''} /> ${_('Grade the trained model with the evaluation examples (SCORM)')}</label>
-                    </p>
-                    <p>
-                        <label for="lmlWeight">${_('Weight')}:</label>
-                        <input type="number" id="lmlWeight" data-field="weight" min="1" max="100" value="${config.weight}" />
-                        <label for="lmlPass">${_('Passing score (%)')}:</label>
-                        <input type="number" id="lmlPass" data-field="pass" min="0" max="100" value="${config.pass}" />
-                    </p>
-                </fieldset>
+                    <div class="d-flex align-items-center gap-3 flex-wrap mb-3">
+                        <button type="button" class="btn btn-secondary" data-action="add-class">${_('Add class')}</button>
+                        <span class="lml-size" data-field="size"></span>
+                    </div>
+                </div>
+                ${gamification.scorm.getTab(this.idevicePath)}
+                ${gamification.common.getLanguageTab($learningml.defaultMessages())}
             </div>`;
         this.field('dataType').value = config.dataType;
         this.field('algorithm').value = config.algorithm;
-        config.classes.forEach((c) => this.addClass(c));
+        this.ideviceBody.querySelector('#eXeGameInstructions').value = config.instructions;
+        $exeDevicesEdition.iDevice.tabs.init(this.formId);
+        gamification.scorm.init();
+        gamification.scorm.setValues(config.isScorm, config.textButtonScorm || _('Save score'), true, config.weighted);
+        gamification.progressBar.setValues(config);
+        gamification.passScore.setValues(config);
+        gamification.progressBar.addEvents();
+        gamification.passScore.addEvents();
+        gamification.common.setLanguageTabValues(config.msgs);
+        this.renderClasses();
+
+        const self = this;
+        this.field('dataType').addEventListener('change', function () {
+            const next = this.value;
+            this.value = self.dataType;
+            self.changeDataType(next);
+        });
+        this.ideviceBody.querySelector('[data-action="add-class"]').addEventListener('click', () => {
+            this.classes.push({ name: `${c_('Class')} ${this.classes.length + 1}`, examples: [], tests: [] });
+            this.renderClasses();
+        });
         this.ideviceBody
-            .querySelector('[data-action="add-class"]')
-            .addEventListener('click', () =>
-                this.addClass({ name: `${_('Class')} ${this.classRows().length + 1}`, examples: [], tests: [] })
-            );
+            .querySelector('[data-action="load-example"]')
+            .addEventListener('click', () => this.loadExample(this.field('example').value));
     },
 
-    classRows: function () {
-        return Array.from(this.ideviceBody.querySelectorAll('.lml-author-class'));
+    typeLabel: function (type) {
+        return { text: _('Text'), numbers: _('Numbers'), images: _('Images') }[type];
     },
 
-    nextRowId: 0,
+    hasExamples: function () {
+        return this.classes.some((c) => c.examples.length || c.tests.length);
+    },
 
-    addClass: function (c) {
-        const e = (s) => $learningml.escape(s);
-        const n = ++this.nextRowId;
-        const row = document.createElement('div');
-        row.className = 'lml-author-class';
+    /** Run `apply` now, or after the author confirms losing the current examples. */
+    confirmReplace: function (message, apply) {
+        if (!this.hasExamples()) return apply();
+        eXe.app.confirm(_('Attention'), message, apply);
+    },
+
+    changeDataType: function (type) {
+        if (type === this.dataType) return;
+        const compatible = type !== 'images' && this.dataType !== 'images';
+        const apply = () => {
+            if (!compatible)
+                this.classes.forEach((c) => {
+                    c.examples = [];
+                    c.tests = [];
+                });
+            this.dataType = type;
+            this.field('dataType').value = type;
+            this.renderClasses();
+        };
+        if (compatible) apply();
+        else this.confirmReplace(_('Text or numbers and images cannot be mixed. Remove the current examples?'), apply);
+    },
+
+    loadExample: async function (file) {
+        const example = this.EXAMPLES.find((e) => e.file === file);
+        if (!example) return;
+        let data;
+        try {
+            const response = await fetch(`${this.idevicePath}examples/${file}.json`, { signal: this.$lifecycle?.signal });
+            data = $learningml.normalize(await response.json());
+        } catch (error) {
+            if (error?.name !== 'AbortError') eXe.app.alert(_('The example could not be loaded.'));
+            return;
+        }
+        this.confirmReplace(_('The example replaces the current classes and examples. Continue?'), () => {
+            this.classes = data.classes;
+            this.dataType = data.dataType;
+            this.field('dataType').value = data.dataType;
+            this.renderClasses();
+        });
+    },
+
+    imageBytes: function () {
+        return this.classes.reduce((n, c) => n + [...c.examples, ...c.tests].reduce((m, u) => m + u.length, 0), 0);
+    },
+
+    renderSize: function () {
+        const size = this.field('size');
+        if (this.dataType !== 'images') return (size.textContent = '');
+        const kb = (n) => Math.ceil(n / 1000);
+        size.textContent = `${_('Images')}: ${kb(this.imageBytes())} kB / ${kb(this.IMAGE_BUDGET)} kB`;
+        size.classList.toggle('text-danger', this.imageBytes() > this.IMAGE_BUDGET);
+    },
+
+    renderClasses: function () {
+        const images = this.dataType === 'images';
+        this.field('help').textContent = images
+            ? _('Add photos to each class. Learners see the training images and can add their own; evaluation images are only used to grade the trained model.')
+            : _('Write one example per line. Learners see the training examples and can add their own; evaluation examples are only used to grade the trained model. For numbers, separate the values with commas, such as 1.5, 2.');
+        const container = this.ideviceBody.querySelector('.lml-author-classes');
+        container.replaceChildren(...this.classes.map((c, i) => this.classRow(c, i)));
+        this.renderSize();
+    },
+
+    nextId: 0,
+
+    classRow: function (c, index) {
+        const n = ++this.nextId;
+        const row = document.createElement('fieldset');
+        row.className = 'exe-fieldset lml-author-class';
         row.innerHTML = `
-            <p>
-                <label for="lmlClassName${n}">${_('Class name')}:</label>
-                <input type="text" id="lmlClassName${n}" data-class-field="name" value="${e(c.name)}" />
-                <button type="button" class="btn btn-link" data-action="remove-class">${_('Remove class')}</button>
-            </p>
-            <p>
-                <label for="lmlExamples${n}">${_('Training examples')}:</label>
-                <textarea id="lmlExamples${n}" data-class-field="examples" rows="4">${e(c.examples.join('\n'))}</textarea>
-            </p>
-            <p>
-                <label for="lmlTests${n}">${_('Evaluation examples (hidden from students)')}:</label>
-                <textarea id="lmlTests${n}" data-class-field="tests" rows="3">${e(c.tests.join('\n'))}</textarea>
-            </p>`;
-        row.querySelector('[data-action="remove-class"]').addEventListener('click', () => row.remove());
-        this.ideviceBody.querySelector('.lml-author-classes').append(row);
+            <legend><a href="#">${$learningml.escape(c.name)}</a></legend>
+            <div>
+                <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+                    <label for="lmlClassName${n}">${_('Class name')}:</label>
+                    <input type="text" id="lmlClassName${n}" data-class-field="name" class="form-control w-auto" />
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-class">${_('Remove class')}</button>
+                </div>
+                ${this.examplesField(n, 'examples', _('Training examples'))}
+                ${this.examplesField(n, 'tests', _('Evaluation examples (hidden from learners)'))}
+            </div>`;
+        const name = row.querySelector('[data-class-field="name"]');
+        name.value = c.name;
+        name.addEventListener('input', () => {
+            c.name = name.value;
+            row.querySelector('legend a').textContent = name.value;
+        });
+        row.querySelector('[data-action="remove-class"]').addEventListener('click', () => {
+            this.classes.splice(index, 1);
+            this.renderClasses();
+        });
+        for (const key of ['examples', 'tests']) {
+            if (this.dataType === 'images') this.bindImages(row, c, key);
+            else {
+                const area = row.querySelector(`[data-class-field="${key}"]`);
+                area.value = c[key].join('\n');
+                area.addEventListener('input', () => (c[key] = area.value.split('\n')));
+            }
+        }
+        return row;
     },
 
-    getData: function () {
-        const lines = (row, name) => row.querySelector(`[data-class-field="${name}"]`).value.split('\n');
+    examplesField: function (n, key, label) {
+        if (this.dataType !== 'images')
+            return `<div class="mb-3">
+                    <label for="lml${key}${n}">${label}:</label>
+                    <textarea id="lml${key}${n}" data-class-field="${key}" class="form-control" rows="4"></textarea>
+                </div>`;
+        return `<div class="mb-3">
+                <span class="lml-images-label">${label}:</span>
+                <ul class="lml-examples lml-images" data-class-field="${key}"></ul>
+                <input type="file" id="lml${key}${n}" data-class-upload="${key}" accept="image/*" multiple class="lml-upload-input" />
+                <label for="lml${key}${n}" class="btn btn-sm btn-secondary lml-upload">${_('Add images')}</label>
+            </div>`;
+    },
+
+    bindImages: function (row, c, key) {
+        const list = row.querySelector(`[data-class-field="${key}"]`);
+        const render = () => {
+            list.replaceChildren();
+            c[key].forEach((url, i) => {
+                const item = document.createElement('li');
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = `${c.name} ${i + 1}`;
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'lml-remove';
+                remove.textContent = '×';
+                remove.setAttribute('aria-label', `${_('Remove image')} ${i + 1}`);
+                remove.addEventListener('click', () => {
+                    c[key].splice(i, 1);
+                    render();
+                });
+                item.append(img, remove);
+                list.append(item);
+            });
+            this.renderSize();
+        };
+        const input = row.querySelector(`[data-class-upload="${key}"]`);
+        input.addEventListener('change', async () => {
+            const files = Array.from(input.files || []);
+            input.value = '';
+            for (const file of files) {
+                try {
+                    c[key].push(await $learningml.image.fromFile(file, this.IMAGE_SIZE));
+                } catch {
+                    eXe.app.alert(_('The image could not be read.'));
+                }
+            }
+            render();
+        });
+        render();
+    },
+
+    getData: function (report) {
+        const gamification = $exeDevicesEdition.iDevice.gamification;
+        const scorm = gamification.scorm.getValues();
+        const editor = window.tinyMCE?.get('eXeGameInstructions');
+        const msgs = {};
+        for (const key of Object.keys($learningml.defaultMessages())) {
+            const value = this.ideviceBody.querySelector(`#ci18n_${key}`)?.value;
+            if (value) msgs[key] = value;
+        }
         return $learningml.normalize({
             version: 1,
-            title: this.field('title').value.trim(),
-            instructions: this.field('instructions').value.trim(),
-            dataType: this.field('dataType').value,
+            instructions: editor ? editor.getContent() : this.ideviceBody.querySelector('#eXeGameInstructions').value,
+            dataType: this.dataType,
             algorithm: this.field('algorithm').value,
-            classes: this.classRows().map((row) => ({
-                name: row.querySelector('[data-class-field="name"]').value,
-                examples: lines(row, 'examples'),
-                tests: lines(row, 'tests'),
-            })),
-            graded: this.field('graded').checked,
-            weight: this.field('weight').value,
-            pass: this.field('pass').value,
+            classes: this.classes,
+            isScorm: scorm.isScorm,
+            textButtonScorm: scorm.textButtonScorm,
+            weighted: scorm.weighted,
+            ...gamification.passScore.getValues(),
+            evaluation: report.evaluation,
+            evaluationID: report.evaluationID,
+            msgs,
         });
     },
 
@@ -157,8 +335,12 @@ var $exeDevice = {
             eXe.app.alert(_('The activity could not be loaded and has not been changed.'));
             return false;
         }
-        const data = this.getData();
-        const error = $learningml.check(data);
+        const progressBar = $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        if (!progressBar) return false;
+        const data = this.getData(progressBar);
+        let error = $learningml.check(data);
+        if (!error && this.imageBytes() > this.IMAGE_BUDGET)
+            error = 'The images take too much space. Remove some images to stay within the limit.';
         if (error) {
             eXe.app.alert(_(error));
             return false;

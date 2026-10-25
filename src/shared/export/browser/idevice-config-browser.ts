@@ -76,6 +76,7 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         'file-attachment',
         'digcompedu',
         'lomloe',
+        'learningml',
     ];
     const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
 

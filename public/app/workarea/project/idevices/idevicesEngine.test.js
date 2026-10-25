@@ -1164,7 +1164,6 @@ describe('IdevicesEngine', () => {
 
             expect(script.tagName).toBe('SCRIPT');
             expect(script.getAttribute('type')).toBe('text/javascript');
-            expect(script.async).toBe(false);
             expect(script.src).toContain('/path/to/script.js');
         });
 

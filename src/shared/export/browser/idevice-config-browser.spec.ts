@@ -175,7 +175,7 @@ describe('idevice-config-browser', () => {
         // 'json'. Anything keying off componentType in the browser — renderView(), and the
         // printing path's notion of what counts as an interactive activity — read the wrong
         // answer for them.
-        it.each(['digcompedu', 'lomloe'])('marks %s as a json component (matches config.xml)', type => {
+        it.each(['digcompedu', 'lomloe', 'learningml'])('marks %s as a json component (matches config.xml)', type => {
             const config = getIdeviceConfig(type);
             expect(config.cssClass).toBe(type);
             expect(config.componentType).toBe('json');

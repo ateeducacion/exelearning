@@ -1,802 +1,447 @@
 /* eslint-disable no-undef */
-(function () {
-    'use strict';
+/**
+ * LearningML iDevice (export code)
+ *
+ * The three LearningML columns: training data, train and result. Students
+ * add examples to the teacher's classes, train a text or numeric classifier
+ * in the browser and try it. Optional evaluation examples grade the model
+ * through the shared SCORM 1.2 activity registry.
+ *
+ * Classifiers follow LearningML NG (Gaussian Naive Bayes and k-nearest
+ * neighbours over bag-of-words or numeric vectors); no TensorFlow.js, no
+ * network and no stored workspace.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+var $learningml = {
+    instances: 0,
 
-    const DEFAULT_WORKSPACE = {
-        blocks: {
-            languageVersion: 0,
-            blocks: [
-                {
-                    type: 'learningml_when_run',
-                    x: 24,
-                    y: 24,
-                    next: {
-                        block: {
-                            type: 'learningml_move',
-                            fields: { STEPS: 80 },
-                            next: {
-                                block: {
-                                    type: 'learningml_turn_right',
-                                    fields: { DEGREES: 90 },
-                                },
-                            },
-                        },
-                    },
-                },
-            ],
-        },
-    };
+    /** Content string: c_() exists in the editor, not in exported pages. */
+    t(text) {
+        return typeof c_ === 'function' ? c_(text) : text;
+    },
 
-    const DEFAULTS = {
-        schemaVersion: 1,
-        activityMode: 'guided-challenge',
-        title: 'LearningML activity',
-        instructions: 'Run the blocks, inspect the result, and improve the program.',
-        toolboxPreset: 'turtle',
-        initialWorkspace: DEFAULT_WORKSPACE,
-        studentEditing: {
-            allowEditInitialBlocks: true,
-            allowDeleteInitialBlocks: true,
-            maxBlocks: 50,
-        },
-        runtime: {
-            type: 'canvas-ml-world',
-            width: 640,
-            height: 360,
-            maxSteps: 1000,
-            maxRuntimeMs: 2000,
-        },
-        assessment: {
-            enabled: true,
-            passingScore: 70,
-            attemptsLimit: 0,
-            tests: [
-                { id: 'completes', type: 'runtime-completion', score: 40 },
-                { id: 'target', type: 'final-position', x: 400, y: 180, tolerance: 120, score: 40 },
-                { id: 'uses-move', type: 'block-usage', requires: ['learningml_move'], score: 20 },
-            ],
-        },
-        ml: {
-            trainingExamples: [
-                { features: [1, 1], label: 'small' },
-                { features: [8, 8], label: 'large' },
-            ],
-            testExamples: [
-                { features: [2, 2], label: 'small' },
-                { features: [9, 9], label: 'large' },
-            ],
-        },
-        scorm: {
-            enabled: true,
-            weighted: 100,
-            evaluation: false,
-            evaluationID: '',
-        },
-    };
+    escape(value) {
+        return String(value).replace(
+            /[&<>"']/g,
+            (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+        );
+    },
 
-    const BLOCK_TYPES = new Set([
-        'learningml_when_run',
-        'learningml_move',
-        'learningml_turn_left',
-        'learningml_turn_right',
-        'learningml_pen_up',
-        'learningml_pen_down',
-        'learningml_say',
-        'learningml_reset_world',
-        'learningml_add_training_example',
-        'learningml_train_model',
-        'learningml_classify',
-        'learningml_if_class_is',
-        'controls_repeat_ext',
-        'controls_if',
-        'logic_compare',
-        'logic_boolean',
-        'math_number',
-    ]);
-
-    const TOOLBOXES = {
-        basic: {
-            kind: 'categoryToolbox',
-            contents: [
-                { kind: 'category', name: 'Events', colour: '#5b67a5', contents: [{ kind: 'block', type: 'learningml_when_run' }] },
-                { kind: 'category', name: 'Control', colour: '#a55b80', contents: [{ kind: 'block', type: 'controls_repeat_ext' }, { kind: 'block', type: 'controls_if' }] },
-                { kind: 'category', name: 'Logic', colour: '#5c81a6', contents: [{ kind: 'block', type: 'logic_compare' }, { kind: 'block', type: 'logic_boolean' }] },
-                { kind: 'category', name: 'Math', colour: '#5ca65c', contents: [{ kind: 'block', type: 'math_number' }] },
-            ],
-        },
-        turtle: {
-            kind: 'categoryToolbox',
-            contents: [
-                { kind: 'category', name: 'Events', colour: '#5b67a5', contents: [{ kind: 'block', type: 'learningml_when_run' }] },
-                { kind: 'category', name: 'Control', colour: '#a55b80', contents: [{ kind: 'block', type: 'controls_repeat_ext' }, { kind: 'block', type: 'controls_if' }] },
-                { kind: 'category', name: 'Logic', colour: '#5c81a6', contents: [{ kind: 'block', type: 'logic_compare' }] },
-                { kind: 'category', name: 'Math', colour: '#5ca65c', contents: [{ kind: 'block', type: 'math_number' }] },
-                {
-                    kind: 'category',
-                    name: 'Turtle',
-                    colour: '#2f8f6f',
-                    contents: [
-                        { kind: 'block', type: 'learningml_move' },
-                        { kind: 'block', type: 'learningml_turn_left' },
-                        { kind: 'block', type: 'learningml_turn_right' },
-                        { kind: 'block', type: 'learningml_pen_up' },
-                        { kind: 'block', type: 'learningml_pen_down' },
-                        { kind: 'block', type: 'learningml_say' },
-                        { kind: 'block', type: 'learningml_reset_world' },
-                    ],
-                },
-            ],
-        },
-        'intro-ml': {
-            kind: 'categoryToolbox',
-            contents: [
-                { kind: 'category', name: 'Events', colour: '#5b67a5', contents: [{ kind: 'block', type: 'learningml_when_run' }] },
-                { kind: 'category', name: 'Control', colour: '#a55b80', contents: [{ kind: 'block', type: 'controls_repeat_ext' }, { kind: 'block', type: 'learningml_if_class_is' }] },
-                { kind: 'category', name: 'Math', colour: '#5ca65c', contents: [{ kind: 'block', type: 'math_number' }] },
-                {
-                    kind: 'category',
-                    name: 'Intro ML',
-                    colour: '#7c5fb0',
-                    contents: [
-                        { kind: 'block', type: 'learningml_add_training_example' },
-                        { kind: 'block', type: 'learningml_train_model' },
-                        { kind: 'block', type: 'learningml_classify' },
-                        { kind: 'block', type: 'learningml_if_class_is' },
-                    ],
-                },
-                { kind: 'category', name: 'Turtle', colour: '#2f8f6f', contents: [{ kind: 'block', type: 'learningml_say' }] },
-            ],
-        },
-    };
-
-    function mergeDeep(base, value) {
-        if (!value || typeof value !== 'object' || Array.isArray(value)) return structuredCloneSafe(base);
-        const result = structuredCloneSafe(base);
-        Object.keys(value).forEach((key) => {
-            if (key === '__proto__' || key === 'constructor' || key === 'prototype') return;
-            if (value[key] && typeof value[key] === 'object' && !Array.isArray(value[key]) && result[key]) {
-                result[key] = mergeDeep(result[key], value[key]);
-            } else {
-                result[key] = value[key];
-            }
-        });
-        return result;
-    }
-
-    function structuredCloneSafe(value) {
-        return JSON.parse(JSON.stringify(value));
-    }
-
-    function normalizeConfig(data) {
-        const config = mergeDeep(DEFAULTS, data || {});
-        config.schemaVersion = 1;
-        config.studentEditing.maxBlocks = clampInt(config.studentEditing.maxBlocks, 1, 250, 50);
-        config.runtime.maxSteps = clampInt(config.runtime.maxSteps, 1, 10000, 1000);
-        config.runtime.maxRuntimeMs = clampInt(config.runtime.maxRuntimeMs, 250, 5000, 2000);
-        config.assessment.passingScore = clampInt(config.assessment.passingScore, 0, 100, 70);
-        if (!TOOLBOXES[config.toolboxPreset]) config.toolboxPreset = 'turtle';
-        return config;
-    }
-
-    function clampInt(value, min, max, fallback) {
-        const parsed = Number.parseInt(value, 10);
-        if (!Number.isFinite(parsed)) return fallback;
-        return Math.min(max, Math.max(min, parsed));
-    }
-
-    function defineBlocks(Blockly) {
-        if (!Blockly || Blockly.Blocks.learningml_when_run) return;
-        Blockly.common.defineBlocksWithJsonArray([
-            { type: 'learningml_when_run', message0: 'when run', nextStatement: null, colour: 230 },
-            { type: 'learningml_move', message0: 'move forward %1', args0: [{ type: 'field_number', name: 'STEPS', value: 40 }], previousStatement: null, nextStatement: null, colour: 150 },
-            { type: 'learningml_turn_left', message0: 'turn left %1 degrees', args0: [{ type: 'field_number', name: 'DEGREES', value: 90 }], previousStatement: null, nextStatement: null, colour: 150 },
-            { type: 'learningml_turn_right', message0: 'turn right %1 degrees', args0: [{ type: 'field_number', name: 'DEGREES', value: 90 }], previousStatement: null, nextStatement: null, colour: 150 },
-            { type: 'learningml_pen_up', message0: 'pen up', previousStatement: null, nextStatement: null, colour: 150 },
-            { type: 'learningml_pen_down', message0: 'pen down', previousStatement: null, nextStatement: null, colour: 150 },
-            { type: 'learningml_say', message0: 'say %1', args0: [{ type: 'field_input', name: 'TEXT', text: 'Hello' }], previousStatement: null, nextStatement: null, colour: 150 },
-            { type: 'learningml_reset_world', message0: 'reset world', previousStatement: null, nextStatement: null, colour: 150 },
-            { type: 'learningml_add_training_example', message0: 'example x %1 y %2 label %3', args0: [{ type: 'field_number', name: 'X', value: 1 }, { type: 'field_number', name: 'Y', value: 1 }, { type: 'field_input', name: 'LABEL', text: 'small' }], previousStatement: null, nextStatement: null, colour: 280 },
-            { type: 'learningml_train_model', message0: 'train model', previousStatement: null, nextStatement: null, colour: 280 },
-            { type: 'learningml_classify', message0: 'classify x %1 y %2', args0: [{ type: 'field_number', name: 'X', value: 2 }, { type: 'field_number', name: 'Y', value: 2 }], previousStatement: null, nextStatement: null, colour: 280 },
-            { type: 'learningml_if_class_is', message0: 'if class is %1 do %2', args0: [{ type: 'field_input', name: 'LABEL', text: 'small' }, { type: 'input_statement', name: 'DO' }], previousStatement: null, nextStatement: null, colour: 280 },
-        ]);
-    }
-
-    function getBlocks(state) {
-        return state && state.blocks && Array.isArray(state.blocks.blocks) ? state.blocks.blocks : [];
-    }
-
-    function countBlocksInState(state) {
-        let count = 0;
-        walkBlocks(getBlocks(state), () => { count += 1; });
-        return count;
-    }
-
-    function collectBlockTypes(state) {
-        const types = [];
-        walkBlocks(getBlocks(state), block => types.push(block.type));
-        return types;
-    }
-
-    function walkBlocks(blocks, visit) {
-        blocks.forEach((block) => walkBlock(block, visit));
-    }
-
-    function walkBlock(block, visit) {
-        if (!block || typeof block !== 'object') return;
-        visit(block);
-        Object.values(block.inputs || {}).forEach((input) => {
-            if (input && input.block) walkBlock(input.block, visit);
-        });
-        if (block.next && block.next.block) walkBlock(block.next.block, visit);
-    }
-
-    function validateWorkspaceState(state, config) {
-        const serialized = JSON.stringify(state || {});
-        if (serialized.length > 262144) return { valid: false, message: 'Workspace data is too large.' };
-        let blockCount = 0;
-        let invalidType = '';
-        walkBlocks(getBlocks(state), (block) => {
-            blockCount += 1;
-            if (!BLOCK_TYPES.has(block.type)) invalidType = block.type;
-        });
-        if (blockCount > config.studentEditing.maxBlocks) {
-            return { valid: false, message: `The workspace has ${blockCount} blocks. The limit is ${config.studentEditing.maxBlocks}.` };
-        }
-        if (invalidType) return { valid: false, message: `Unsupported block: ${invalidType}.` };
-        return { valid: true, blockCount };
-    }
-
-    function createRuntime(config, canvas, output) {
-        const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
-        const state = {
-            x: 120,
-            y: 180,
-            heading: 0,
-            penDown: true,
-            stopped: false,
-            completed: false,
-            error: '',
-            steps: 0,
-            output: [],
-            model: {
-                examples: structuredCloneSafe(config.ml.trainingExamples || []),
-                trained: false,
-                prediction: '',
-                confidence: 0,
-            },
+    /** Version 1 configuration with every field defaulted and bounded. */
+    normalize(raw) {
+        const d = raw && typeof raw === 'object' ? raw : {};
+        if (d.version !== undefined && d.version !== 1) throw new Error('Unsupported LearningML data version.');
+        const lines = (v) => (Array.isArray(v) ? v.map((s) => String(s).trim()).filter(Boolean) : []);
+        const bounded = (v, min, max, fallback) => {
+            const n = Number(v);
+            return Number.isFinite(n) && v !== '' && v !== null ? Math.min(max, Math.max(min, Math.round(n))) : fallback;
         };
-        function log(message) {
-            state.output.push(String(message).slice(0, 160));
-            if (state.output.length > 500) state.output.shift();
-            if (output) output.textContent = state.output.join('\n');
+        return {
+            version: 1,
+            title: String(d.title ?? ''),
+            instructions: String(d.instructions ?? ''),
+            dataType: d.dataType === 'numbers' ? 'numbers' : 'text',
+            algorithm: d.algorithm === 'knn' ? 'knn' : 'naive-bayes',
+            classes: (Array.isArray(d.classes) ? d.classes : [])
+                .map((c) => ({
+                    name: String(c?.name ?? '').trim(),
+                    examples: lines(c?.examples),
+                    tests: lines(c?.tests),
+                }))
+                .filter((c) => c.name),
+            graded: d.graded === true,
+            weight: bounded(d.weight, 1, 100, 100),
+            pass: bounded(d.pass, 0, 100, 50),
+        };
+    },
+
+    /** First authoring problem, as an English source string, or ''. */
+    check(config) {
+        if (config.classes.length < 2) return 'Add at least two classes.';
+        const names = config.classes.map((c) => c.name.toLowerCase());
+        if (new Set(names).size !== names.length) return 'Class names must be different.';
+        if (config.dataType === 'numbers') {
+            const all = config.classes.flatMap((c) => c.examples.concat(c.tests));
+            const vectors = all.map((s) => this.ml.numbers(s));
+            if (vectors.some((v) => !v)) return 'Numeric examples must be numbers separated by commas, such as 1.5, 2.';
+            if (new Set(vectors.map((v) => v.length)).size > 1) return 'All numeric examples must have the same number of values.';
         }
-        function reset() {
-            state.x = 120;
-            state.y = 180;
-            state.heading = 0;
-            state.penDown = true;
-            state.stopped = false;
-            state.completed = false;
-            state.error = '';
-            state.steps = 0;
-            state.output = [];
-            state.model = {
-                examples: structuredCloneSafe(config.ml.trainingExamples || []),
-                trained: false,
-                prediction: '',
-                confidence: 0,
+        if (config.graded && !config.classes.some((c) => c.tests.length))
+            return 'Add evaluation examples to grade this activity.';
+        return '';
+    },
+
+    ml: {
+        /** Lowercase words without accents, so "Canción" and "cancion" match. */
+        tokens(text) {
+            return text
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/\p{M}/gu, '')
+                .split(/[^\p{L}\p{N}]+/u)
+                .filter(Boolean);
+        },
+
+        numbers(text) {
+            const values = String(text)
+                .split(/[\s,;]+/)
+                .filter(Boolean)
+                .map(Number);
+            return values.length && values.every(Number.isFinite) ? values : null;
+        },
+
+        softmax(logs) {
+            const max = Math.max(...logs);
+            const exp = logs.map((l) => Math.exp(l - max));
+            const sum = exp.reduce((a, b) => a + b, 0) || 1;
+            return exp.map((e) => e / sum);
+        },
+
+        /** Gaussian Naive Bayes, as LearningML's (variance smoothing 1e-9, prior smoothing 1). */
+        naiveBayes(rows, classCount) {
+            const dim = rows[0].x.length;
+            const stats = Array.from({ length: classCount }, () => ({
+                n: 0,
+                sum: new Array(dim).fill(0),
+                sq: new Array(dim).fill(0),
+            }));
+            for (const { x, y } of rows) {
+                const s = stats[y];
+                s.n++;
+                for (let d = 0; d < dim; d++) {
+                    s.sum[d] += x[d];
+                    s.sq[d] += x[d] * x[d];
+                }
+            }
+            return (x) =>
+                this.softmax(
+                    stats.map((s) => {
+                        let score = Math.log((s.n + 1) / (rows.length + classCount));
+                        for (let d = 0; d < dim; d++) {
+                            const mean = s.sum[d] / s.n;
+                            const variance = Math.max(s.sq[d] / s.n - mean * mean, 0) + 1e-9 + Number.EPSILON;
+                            const diff = x[d] - mean;
+                            score += -0.5 * Math.log(2 * Math.PI * variance) - (diff * diff) / (2 * variance);
+                        }
+                        return score;
+                    })
+                );
+        },
+
+        /**
+         * Weighted k-NN with k = 3: cosine similarity for word counts,
+         * 1 / (1 + Euclidean distance) for numbers (cosine would ignore
+         * magnitude, so 1 and 10 would look identical). A neighbour sharing
+         * no word with the input has no say.
+         */
+        knn(rows, classCount, cosine) {
+            const unit = (v) => {
+                const norm = Math.hypot(...v);
+                return norm ? v.map((n) => n / norm) : v;
             };
-            draw();
-            if (output) output.textContent = '';
-        }
-        function draw() {
-            if (!ctx) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#f8fafc';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = '#d7dee8';
-            ctx.strokeRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#ef4444';
-            ctx.beginPath();
-            ctx.arc(400, 180, 10, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.save();
-            ctx.translate(state.x, state.y);
-            ctx.rotate((state.heading * Math.PI) / 180);
-            ctx.fillStyle = '#2f5f8f';
-            ctx.beginPath();
-            ctx.moveTo(14, 0);
-            ctx.lineTo(-10, -8);
-            ctx.lineTo(-10, 8);
-            ctx.closePath();
-            ctx.fill();
-            ctx.restore();
-        }
-        function move(distance) {
-            const previous = { x: state.x, y: state.y };
-            const radians = (state.heading * Math.PI) / 180;
-            state.x += Math.cos(radians) * distance;
-            state.y += Math.sin(radians) * distance;
-            if (ctx && state.penDown) {
-                ctx.strokeStyle = '#1f2937';
-                ctx.beginPath();
-                ctx.moveTo(previous.x, previous.y);
-                ctx.lineTo(state.x, state.y);
-                ctx.stroke();
-            }
-            draw();
-        }
-        reset();
-        return { state, log, reset, draw, move };
-    }
+            const data = rows.map((r) => ({ x: cosine ? unit(r.x) : r.x, y: r.y }));
+            const k = Math.min(3, data.length);
+            return (input) => {
+                const q = cosine ? unit(input) : input;
+                const weight = (x) =>
+                    cosine
+                        ? x.reduce((s, v, i) => s + v * q[i], 0)
+                        : 1 / (1 + Math.sqrt(x.reduce((s, v, i) => s + (v - q[i]) ** 2, 0)));
+                const votes = new Array(classCount).fill(0);
+                data.map((r) => ({ y: r.y, w: weight(r.x) }))
+                    .sort((a, b) => b.w - a.w)
+                    .slice(0, k)
+                    .forEach((n) => (votes[n.y] += n.w));
+                const total = votes.reduce((a, b) => a + b, 0);
+                return votes.map((v) => (total ? v / total : 1 / classCount));
+            };
+        },
 
-    function executeWorkspace(state, config, runtime) {
-        const validation = validateWorkspaceState(state, config);
-        if (!validation.valid) {
-            runtime.state.error = validation.message;
-            runtime.log(validation.message);
-            return runtime.state;
-        }
-        const startedAt = Date.now();
-        const blocks = getBlocks(state);
-        const runBlock = blocks.find(block => block.type === 'learningml_when_run') || blocks[0];
-        try {
-            executeSequence(runBlock, config, runtime, startedAt, runBlock && runBlock.type === 'learningml_when_run');
-            runtime.state.completed = !runtime.state.error && !runtime.state.stopped;
-        } catch (error) {
-            runtime.state.error = error.message || 'The program stopped with an error.';
-            runtime.log(runtime.state.error);
-        }
-        return runtime.state;
-    }
-
-    function tick(config, runtime, startedAt) {
-        runtime.state.steps += 1;
-        if (runtime.state.stopped) throw new Error('Program stopped.');
-        if (runtime.state.steps > config.runtime.maxSteps) throw new Error('The program reached the step limit.');
-        if (Date.now() - startedAt > config.runtime.maxRuntimeMs) throw new Error('The program reached the time limit.');
-    }
-
-    function executeSequence(block, config, runtime, startedAt, skipFirst) {
-        let current = block;
-        let skip = skipFirst;
-        while (current) {
-            if (!skip) executeBlock(current, config, runtime, startedAt);
-            skip = false;
-            current = current.next && current.next.block;
-        }
-    }
-
-    function executeBlock(block, config, runtime, startedAt) {
-        tick(config, runtime, startedAt);
-        switch (block.type) {
-            case 'learningml_move':
-                runtime.move(getNumberField(block, 'STEPS', 0));
-                break;
-            case 'learningml_turn_left':
-                runtime.state.heading -= getNumberField(block, 'DEGREES', 90);
-                runtime.draw();
-                break;
-            case 'learningml_turn_right':
-                runtime.state.heading += getNumberField(block, 'DEGREES', 90);
-                runtime.draw();
-                break;
-            case 'learningml_pen_up':
-                runtime.state.penDown = false;
-                break;
-            case 'learningml_pen_down':
-                runtime.state.penDown = true;
-                break;
-            case 'learningml_say':
-                runtime.log(getTextField(block, 'TEXT', ''));
-                break;
-            case 'learningml_reset_world':
-                runtime.reset();
-                break;
-            case 'learningml_add_training_example':
-                runtime.state.model.examples.push({
-                    features: [getNumberField(block, 'X', 0), getNumberField(block, 'Y', 0)],
-                    label: getTextField(block, 'LABEL', 'class'),
-                });
-                break;
-            case 'learningml_train_model':
-                runtime.state.model.trained = true;
-                runtime.log(`Model trained with ${runtime.state.model.examples.length} examples.`);
-                break;
-            case 'learningml_classify':
-                classify(runtime.state.model, [getNumberField(block, 'X', 0), getNumberField(block, 'Y', 0)]);
-                runtime.log(`Prediction: ${runtime.state.model.prediction}`);
-                break;
-            case 'learningml_if_class_is':
-                if (runtime.state.model.prediction === getTextField(block, 'LABEL', '')) {
-                    executeSequence(block.inputs && block.inputs.DO && block.inputs.DO.block, config, runtime, startedAt, false);
-                }
-                break;
-            case 'controls_repeat_ext': {
-                const repeats = Math.min(100, Math.max(0, Math.floor(getInputNumber(block, 'TIMES', 0))));
-                for (let i = 0; i < repeats; i += 1) {
-                    executeSequence(block.inputs && block.inputs.DO && block.inputs.DO.block, config, runtime, startedAt, false);
-                }
-                break;
-            }
-            case 'controls_if':
-                if (getInputBoolean(block, 'IF0', false)) {
-                    executeSequence(block.inputs && block.inputs.DO0 && block.inputs.DO0.block, config, runtime, startedAt, false);
-                }
-                break;
-            default:
-                if (block.type !== 'learningml_when_run') throw new Error(`Unsupported executable block: ${block.type}.`);
-        }
-    }
-
-    function getTextField(block, field, fallback) {
-        const value = block.fields && block.fields[field];
-        return String(value == null ? fallback : value).slice(0, 120);
-    }
-
-    function getNumberField(block, field, fallback) {
-        const value = Number(block.fields && block.fields[field]);
-        return Number.isFinite(value) ? value : fallback;
-    }
-
-    function getInputNumber(block, name, fallback) {
-        const input = block.inputs && block.inputs[name] && block.inputs[name].block;
-        if (!input) return fallback;
-        if (input.type === 'math_number') return getNumberField(input, 'NUM', fallback);
-        return fallback;
-    }
-
-    function getInputBoolean(block, name, fallback) {
-        const input = block.inputs && block.inputs[name] && block.inputs[name].block;
-        if (!input) return fallback;
-        if (input.type === 'logic_boolean') return input.fields && input.fields.BOOL === 'TRUE';
-        if (input.type === 'logic_compare') {
-            const left = getInputNumber(input, 'A', 0);
-            const right = getInputNumber(input, 'B', 0);
-            const op = input.fields && input.fields.OP;
-            if (op === 'EQ') return left === right;
-            if (op === 'LT') return left < right;
-            if (op === 'GT') return left > right;
-        }
-        return fallback;
-    }
-
-    function classify(model, features) {
-        if (!model.trained || !model.examples.length) {
-            model.prediction = '';
-            model.confidence = 0;
-            return model;
-        }
-        let best = null;
-        model.examples.forEach((example) => {
-            const dx = Number(example.features && example.features[0]) - features[0];
-            const dy = Number(example.features && example.features[1]) - features[1];
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (!best || distance < best.distance) best = { label: example.label, distance };
-        });
-        model.prediction = best ? String(best.label) : '';
-        model.confidence = best ? 1 / (1 + best.distance) : 0;
-        return model;
-    }
-
-    function assess(state, config, runtimeState) {
-        const tests = Array.isArray(config.assessment.tests) ? config.assessment.tests : [];
-        const blockTypes = collectBlockTypes(state);
-        const results = [];
-        let score = 0;
-        let maxScore = 0;
-        tests.forEach((test) => {
-            const points = clampInt(test.score, 0, 100, 0);
-            maxScore += points;
-            let passed = false;
-            let message = '';
-            if (test.type === 'runtime-completion') {
-                passed = runtimeState.completed && !runtimeState.error;
-                message = passed ? 'The program completed.' : runtimeState.error || 'The program did not complete.';
-            } else if (test.type === 'block-usage') {
-                const requires = Array.isArray(test.requires) ? test.requires : [];
-                passed = requires.every(type => blockTypes.includes(type));
-                message = passed ? 'Required blocks are present.' : 'Some required blocks are missing.';
-            } else if (test.type === 'final-position') {
-                const distance = Math.sqrt((runtimeState.x - Number(test.x)) ** 2 + (runtimeState.y - Number(test.y)) ** 2);
-                passed = distance <= Number(test.tolerance || 20);
-                message = `Distance to target: ${Math.round(distance)}.`;
-            } else if (test.type === 'classification-accuracy') {
-                const accuracy = classificationAccuracy(runtimeState.model, config.ml.testExamples || []);
-                passed = accuracy >= Number(test.minAccuracy || 0.8);
-                message = `Accuracy is ${Math.round(accuracy * 100)}%.`;
-            }
-            const awarded = passed ? points : 0;
-            score += awarded;
-            results.push({ id: test.id || test.type, passed, score: awarded, maxScore: points, message });
-        });
-        const normalized = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-        return {
-            score: normalized,
-            passed: normalized >= config.assessment.passingScore,
-            completed: runtimeState.completed,
-            tests: results,
-        };
-    }
-
-    function classificationAccuracy(model, examples) {
-        if (!model.trained || !examples.length) return 0;
-        let correct = 0;
-        examples.forEach((example) => {
-            const copy = structuredCloneSafe(model);
-            classify(copy, example.features || []);
-            if (copy.prediction === example.label) correct += 1;
-        });
-        return correct / examples.length;
-    }
-
-    function createStorage(instanceId) {
-        const key = `exe:learningml:v1:${location.pathname}:${instanceId}`;
-        return {
-            key,
-            save(payload) {
-                try {
-                    localStorage.setItem(key, JSON.stringify({ version: 1, ideviceId: instanceId, updatedAt: Date.now(), payload }));
-                    return true;
-                } catch (_error) {
-                    return false;
-                }
-            },
-            load() {
-                try {
-                    const parsed = JSON.parse(localStorage.getItem(key) || 'null');
-                    if (!parsed || parsed.version !== 1 || parsed.ideviceId !== instanceId) return null;
-                    return parsed.payload || null;
-                } catch (_error) {
-                    return null;
-                }
-            },
-        };
-    }
-
-    function createScormAdapter(instanceId, config) {
-        function available() {
-            return !!(document.body && document.body.classList.contains('exe-scorm') && config.scorm.enabled && window.scorm);
-        }
-        return {
-            saveProgress(payload) {
-                if (!available() || !window.scorm.set) return false;
-                const compact = JSON.stringify({ learningml: { [instanceId]: payload } });
-                if (compact.length > 3500) return false;
-                try {
-                    window.scorm.set('cmi.suspend_data', compact);
-                    if (window.scorm.save) window.scorm.save();
-                    return true;
-                } catch (_error) {
-                    return false;
-                }
-            },
-            report(assessment) {
-                const score = Math.max(0, Math.min(100, Number(assessment.score) || 0));
-                if (window.$exeDevices && $exeDevices.iDevice && $exeDevices.iDevice.gamification && $exeDevices.iDevice.gamification.scorm) {
-                    $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, {
-                        ideviceId: instanceId,
-                        title: config.title,
-                        scorerp: score,
-                        weighted: config.scorm.weighted || 100,
-                        evaluation: !!config.scorm.evaluation,
-                        evaluationID: config.scorm.evaluationID || '',
-                    });
-                    return true;
-                }
-                if (!available() || !window.scorm.set) return false;
-                try {
-                    window.scorm.set('cmi.core.score.raw', String(score));
-                    window.scorm.set('cmi.core.lesson_status', assessment.passed ? 'passed' : 'failed');
-                    if (window.scorm.save) window.scorm.save();
-                    return true;
-                } catch (_error) {
-                    return false;
-                }
-            },
-        };
-    }
-
-    function renderResults(element, assessment, runtimeState) {
-        element.textContent = '';
-        const status = document.createElement('p');
-        status.textContent = `Score: ${assessment.score}. ${assessment.passed ? 'Passed' : 'Not passed'}.`;
-        element.appendChild(status);
-        if (runtimeState.error) {
-            const error = document.createElement('p');
-            error.textContent = runtimeState.error;
-            element.appendChild(error);
-        }
-        const list = document.createElement('ul');
-        assessment.tests.forEach((test) => {
-            const item = document.createElement('li');
-            item.textContent = `${test.passed ? 'Pass' : 'Needs work'}: ${test.message}`;
-            list.appendChild(item);
-        });
-        element.appendChild(list);
-    }
-
-    function getWorkspaceState(instance) {
-        if (instance.workspace && window.Blockly && Blockly.serialization) {
-            return Blockly.serialization.workspaces.save(instance.workspace);
-        }
-        return structuredCloneSafe(instance.config.initialWorkspace);
-    }
-
-    function init(container, rawConfig) {
-        const config = normalizeConfig(rawConfig);
-        const instanceId = config.ideviceId || container.id || `learningml-${Math.random().toString(36).slice(2)}`;
-        container.textContent = '';
-
-        const app = document.createElement('div');
-        app.className = 'learningml-app';
-        const header = document.createElement('div');
-        header.className = 'learningml-header';
-        const title = document.createElement('h3');
-        title.className = 'learningml-title';
-        title.textContent = config.title;
-        const instructions = document.createElement('p');
-        instructions.className = 'learningml-instructions';
-        instructions.textContent = config.instructions;
-        header.append(title, instructions);
-
-        const row = document.createElement('div');
-        row.className = 'learningml-workspace-row';
-        const blocklyDiv = document.createElement('div');
-        blocklyDiv.className = 'learningml-blockly';
-        blocklyDiv.setAttribute('aria-label', 'Blockly workspace');
-        const side = document.createElement('div');
-        side.className = 'learningml-side';
-        const canvas = document.createElement('canvas');
-        canvas.className = 'learningml-canvas';
-        canvas.width = config.runtime.width;
-        canvas.height = config.runtime.height;
-        canvas.setAttribute('aria-label', 'Execution canvas');
-        const output = document.createElement('pre');
-        output.className = 'learningml-summary';
-        const controls = document.createElement('div');
-        controls.className = 'learningml-controls';
-        const results = document.createElement('div');
-        results.className = 'learningml-results';
-        results.setAttribute('aria-live', 'polite');
-
-        const buttons = {};
-        ['Run', 'Step', 'Stop', 'Reset', 'Check', 'Save progress', 'Restore progress'].forEach((label) => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.textContent = label;
-            button.setAttribute('aria-label', label);
-            controls.appendChild(button);
-            buttons[label] = button;
-        });
-
-        side.append(canvas, controls, output, results);
-        row.append(blocklyDiv, side);
-        app.append(header, row);
-        container.appendChild(app);
-
-        const runtime = createRuntime(config, canvas, output);
-        const storage = createStorage(instanceId);
-        const scorm = createScormAdapter(instanceId, config);
-        const instance = { container, config, instanceId, runtime, storage, scorm, workspace: null };
-
-        if (window.Blockly && Blockly.inject) {
-            defineBlocks(Blockly);
-            instance.workspace = Blockly.inject(blocklyDiv, {
-                toolbox: TOOLBOXES[config.toolboxPreset],
-                trashcan: !!config.studentEditing.allowDeleteInitialBlocks,
-                readOnly: !config.studentEditing.allowEditInitialBlocks,
-                grid: { spacing: 20, length: 3, colour: '#d7dee8', snap: true },
-                zoom: { controls: true, wheel: true, startScale: 0.9, maxScale: 2, minScale: 0.5 },
-            });
-            try {
-                Blockly.serialization.workspaces.load(config.initialWorkspace || DEFAULT_WORKSPACE, instance.workspace);
-            } catch (_error) {
-                Blockly.serialization.workspaces.load(DEFAULT_WORKSPACE, instance.workspace);
-            }
-            instance.workspace.addChangeListener((event) => {
-                if (Blockly.Events && Blockly.Events.isTransient && Blockly.Events.isTransient(event)) return;
-                const validation = validateWorkspaceState(getWorkspaceState(instance), config);
-                if (!validation.valid) results.textContent = validation.message;
-            });
-            setTimeout(() => Blockly.svgResize(instance.workspace), 0);
-        } else {
-            const fallback = document.createElement('div');
-            fallback.className = 'learningml-fallback';
-            fallback.textContent = 'Blockly could not be loaded. The activity can still run the teacher workspace.';
-            blocklyDiv.appendChild(fallback);
-        }
-
-        buttons.Run.addEventListener('click', () => {
-            runtime.reset();
-            executeWorkspace(getWorkspaceState(instance), config, runtime);
-        });
-        buttons.Step.addEventListener('click', () => {
-            runtime.reset();
-            const stepConfig = mergeDeep(config, { runtime: { maxSteps: 1 } });
-            executeWorkspace(getWorkspaceState(instance), stepConfig, runtime);
-        });
-        buttons.Stop.addEventListener('click', () => {
-            runtime.state.stopped = true;
-            runtime.log('Program stopped.');
-        });
-        buttons.Reset.addEventListener('click', () => {
-            runtime.reset();
-            results.textContent = '';
-        });
-        buttons.Check.addEventListener('click', () => {
-            runtime.reset();
-            executeWorkspace(getWorkspaceState(instance), config, runtime);
-            const assessment = assess(getWorkspaceState(instance), config, runtime.state);
-            renderResults(results, assessment, runtime.state);
-            scorm.report(assessment);
-        });
-        buttons['Save progress'].addEventListener('click', () => {
-            const payload = { workspace: getWorkspaceState(instance), score: null };
-            const saved = scorm.saveProgress(payload) || storage.save(payload);
-            results.textContent = saved ? 'Progress saved.' : 'Progress could not be saved in this browser.';
-        });
-        buttons['Restore progress'].addEventListener('click', () => {
-            const payload = storage.load();
-            if (payload && payload.workspace && instance.workspace && window.Blockly) {
-                Blockly.serialization.workspaces.load(payload.workspace, instance.workspace);
-                results.textContent = 'Progress restored.';
+        /**
+         * Train on every class's examples. Throws an English source message
+         * when the data cannot be trained.
+         */
+        train(dataType, algorithm, classes) {
+            if (classes.length < 2) throw new Error('At least two classes are needed.');
+            if (classes.some((c) => !c.examples.length)) throw new Error('Every class needs at least one example.');
+            let encode;
+            if (dataType === 'text') {
+                const vocabulary = new Map();
+                for (const c of classes)
+                    for (const e of c.examples)
+                        for (const t of this.tokens(e)) if (!vocabulary.has(t)) vocabulary.set(t, vocabulary.size);
+                encode = (text) => {
+                    const v = new Array(vocabulary.size).fill(0);
+                    for (const t of this.tokens(text)) if (vocabulary.has(t)) v[vocabulary.get(t)]++;
+                    return v;
+                };
             } else {
-                results.textContent = 'No saved progress was found for this activity.';
+                const dim = this.numbers(classes[0].examples[0])?.length;
+                encode = (text) => {
+                    const v = this.numbers(text);
+                    if (!v || v.length !== dim) throw new Error('Write the same number of values as the examples.');
+                    return v;
+                };
             }
-        });
+            const rows = classes.flatMap((c, y) => c.examples.map((e) => ({ x: encode(e), y })));
+            const predict =
+                algorithm === 'knn'
+                    ? this.knn(rows, classes.length, dataType === 'text')
+                    : this.naiveBayes(rows, classes.length);
+            return {
+                /** [[label, confidence 0..1], ...], most likely first. */
+                classify: (text) =>
+                    predict(encode(text))
+                        .map((p, i) => [classes[i].name, p])
+                        .sort((a, b) => b[1] - a[1]),
+            };
+        },
 
-        return instance;
-    }
+        /** Percentage of evaluation examples classified as their class, or null. */
+        evaluate(model, classes) {
+            let total = 0;
+            let correct = 0;
+            for (const c of classes)
+                for (const test of c.tests) {
+                    total++;
+                    try {
+                        if (model.classify(test)[0][0] === c.name) correct++;
+                    } catch {
+                        // An unclassifiable evaluation example counts as wrong.
+                    }
+                }
+            return total ? Math.round((100 * correct) / total) : null;
+        },
+    },
 
-    function initAll() {
-        document.querySelectorAll('.idevice_node.learningml').forEach((node) => {
-            if (node.dataset.learningmlReady === '1') return;
-            node.dataset.learningmlReady = '1';
-            let config = {};
+    renderView(data, accessibility, template) {
+        let config;
+        try {
+            config = this.normalize(data);
+        } catch {
+            return template.replace(
+                '{content}',
+                `<p class="lml-error">${this.escape(this.t('This LearningML activity contains invalid data.'))}</p>`
+            );
+        }
+        const html =
+            `<section class="lml-activity" data-learningml="${this.escape(encodeURIComponent(JSON.stringify(config)))}">` +
+            (config.title ? `<h3 class="lml-title">${this.escape(config.title)}</h3>` : '') +
+            (config.instructions ? `<p class="lml-instructions">${this.escape(config.instructions)}</p>` : '') +
+            '</section>';
+        return template.replace('{content}', html);
+    },
+
+    renderBehaviour() {
+        this.scan();
+    },
+
+    init() {
+        this.scan();
+    },
+
+    mounted: new WeakSet(),
+
+    scan() {
+        document.querySelectorAll('[data-learningml]').forEach((root) => {
+            if (this.mounted.has(root)) return;
+            this.mounted.add(root);
             try {
-                config = JSON.parse(node.getAttribute('data-idevice-json-data') || '{}');
-            } catch (_error) {
-                config = {};
+                this.mount(root, this.normalize(JSON.parse(decodeURIComponent(root.dataset.learningml))));
+            } catch {
+                root.textContent = this.t('This LearningML activity contains invalid data.');
             }
-            config.ideviceId = config.ideviceId || node.id;
-            init(node, config);
         });
-    }
+    },
 
-    const api = {
-        DEFAULTS,
-        TOOLBOXES,
-        normalizeConfig,
-        defineBlocks,
-        validateWorkspaceState,
-        countBlocksInState,
-        collectBlockTypes,
-        createRuntime,
-        executeWorkspace,
-        assess,
-        createStorage,
-        createScormAdapter,
-        init,
-        initAll,
-        renderView(data, _accessibility, template) {
-            return template || '<div class="learningml-template"></div>';
-        },
-        renderBehaviour(data, _accessibility, ideviceId) {
-            const node = document.getElementById(ideviceId || data.ideviceId);
-            if (node) init(node, data);
-        },
-    };
+    el(tag, parent, text, attrs) {
+        const node = document.createElement(tag);
+        if (text !== undefined) node.textContent = text;
+        for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, v);
+        parent?.append(node);
+        return node;
+    },
 
-    window.eXeLearning = window.eXeLearning || {};
-    window.eXeLearning.iDevices = window.eXeLearning.iDevices || {};
-    window.eXeLearning.iDevices.learningml = api;
-    window.$learningml = api;
+    /** Build the three columns for one activity; state stays in this closure. */
+    mount(root, config) {
+        const t = (s) => this.t(s);
+        const el = (...args) => this.el(...args);
+        const id = `lml${++this.instances}`;
+        const classes = config.classes.map((c) => ({ name: c.name, examples: c.examples.slice(), tests: c.tests }));
+        const hasTests = classes.some((c) => c.tests.length);
+        let model = null;
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initAll);
-    } else {
-        initAll();
-    }
-})();
+        root.querySelector('.lml-columns')?.remove();
+        if (classes.length < 2) {
+            el('p', root, t('This activity has no classes yet.'), { class: 'lml-error' });
+            return;
+        }
+        const columns = el('div', root, undefined, { class: 'lml-columns' });
+        const column = (n, title) => {
+            const section = el('section', columns, undefined, { class: 'lml-column', 'aria-labelledby': `${id}c${n}` });
+            el('h4', section, `${n}. ${title}`, { id: `${id}c${n}` });
+            return section;
+        };
+        const form = (parent, label, inputId, buttonText, onSubmit) => {
+            const f = el('form', parent, undefined, { class: 'lml-form' });
+            el('label', f, label, { for: inputId, class: 'lml-label' });
+            const input = el('input', f, undefined, { id: inputId, type: 'text', autocomplete: 'off' });
+            el('button', f, buttonText, { type: 'submit', class: 'btn btn-primary' });
+            f.addEventListener('submit', (event) => {
+                event.preventDefault();
+                onSubmit(input);
+            });
+            return input;
+        };
+        const placeholder =
+            config.dataType === 'numbers' ? t('Numbers separated by commas') : t('Write an example');
+
+        // 1. Training data
+        const data = column(1, t('Training data'));
+        const invalidate = () => {
+            model = null;
+            status.textContent = t('Train the model again to use the new examples.');
+            renderResult([]);
+        };
+        classes.forEach((c, ci) => {
+            const card = el('div', data, undefined, { class: 'lml-class' });
+            el('h5', card, c.name);
+            const list = el('ul', card, undefined, { class: 'lml-examples' });
+            const count = el('p', card, '', { class: 'lml-count' });
+            const renderList = () => {
+                list.replaceChildren();
+                c.examples.forEach((example, ei) => {
+                    const item = el('li', list, undefined);
+                    el('span', item, example);
+                    const remove = el('button', item, '×', {
+                        type: 'button',
+                        class: 'lml-remove',
+                        'aria-label': `${t('Remove example')}: ${example}`,
+                    });
+                    remove.addEventListener('click', () => {
+                        c.examples.splice(ei, 1);
+                        renderList();
+                        invalidate();
+                    });
+                });
+                count.textContent = `${t('Examples')}: ${c.examples.length}`;
+            };
+            const input = form(card, `${t('New example for')} ${c.name}`, `${id}e${ci}`, t('Add'), (field) => {
+                const value = field.value.trim();
+                if (!value) return;
+                if (config.dataType === 'numbers' && !this.ml.numbers(value)) {
+                    status.textContent = t('Numeric examples must be numbers separated by commas, such as 1.5, 2.');
+                    return;
+                }
+                c.examples.push(value);
+                field.value = '';
+                renderList();
+                invalidate();
+            });
+            input.placeholder = placeholder;
+            renderList();
+        });
+
+        // 2. Train
+        const train = column(2, t('Train'));
+        el('label', train, t('Algorithm'), { for: `${id}alg`, class: 'lml-label' });
+        const algorithm = el('select', train, undefined, { id: `${id}alg` });
+        el('option', algorithm, t('Naive Bayes'), { value: 'naive-bayes' });
+        el('option', algorithm, t('Nearest neighbours (k-NN)'), { value: 'knn' });
+        algorithm.value = config.algorithm;
+        algorithm.addEventListener('change', invalidate);
+        const trainButton = el('button', train, t('Train the model'), { type: 'button', class: 'btn btn-primary' });
+        const status = el('p', train, t('Add examples to every class and train the model.'), {
+            class: 'lml-status',
+            role: 'status',
+        });
+        trainButton.addEventListener('click', () => {
+            try {
+                model = this.ml.train(config.dataType, algorithm.value, classes);
+                const total = classes.reduce((n, c) => n + c.examples.length, 0);
+                status.textContent = `${t('Model trained with')} ${total} ${t('examples')}.`;
+            } catch (error) {
+                model = null;
+                status.textContent = t(error.message);
+            }
+            renderResult([]);
+        });
+
+        // 3. Result
+        const result = column(3, t('Result'));
+        const tryInput = form(result, t('Example to classify'), `${id}try`, t('Classify'), (field) => {
+            if (!model) {
+                status.textContent = t('Train the model first.');
+                return renderResult([]);
+            }
+            try {
+                renderResult(model.classify(field.value));
+            } catch (error) {
+                renderResult([], t(error.message));
+            }
+        });
+        tryInput.placeholder = placeholder;
+        const output = el('div', result, undefined, { class: 'lml-result', 'aria-live': 'polite' });
+        const renderResult = (ranking, message) => {
+            output.replaceChildren();
+            if (message) el('p', output, message);
+            if (!ranking.length) return;
+            el('p', output, `${t('The model says')}: ${ranking[0][0]}`, { class: 'lml-prediction' });
+            for (const [label, p] of ranking) {
+                const percent = Math.round(p * 100);
+                const row = el('div', output, undefined, { class: 'lml-bar' });
+                el('span', row, `${label}: ${percent}%`);
+                el('span', row, undefined, { class: 'lml-bar-fill', style: `width:${percent}%` });
+            }
+        };
+
+        if (!hasTests) return;
+        const check = el('button', result, t('Check my model'), { type: 'button', class: 'btn btn-secondary' });
+        const score = el('p', result, '', { class: 'lml-score', role: 'status' });
+        const scorm = this.register(root, config);
+        if (scorm) {
+            const record = window.exeScorm12.activities.get(scorm.game.ideviceId);
+            if (record && record.score !== null && record.score !== undefined)
+                score.textContent = `${t('Saved score')}: ${record.score}/100`;
+        }
+        check.addEventListener('click', () => {
+            if (!model) {
+                score.textContent = t('Train the model first.');
+                return;
+            }
+            const value = this.ml.evaluate(model, classes);
+            score.textContent = `${t('Score')}: ${value}/100`;
+            if (config.graded)
+                score.textContent += `. ${value >= config.pass ? t('Passed.') : t('Add better examples and try again.')}`;
+            if (!scorm) return;
+            scorm.game.scorerp = value / 10;
+            scorm.game.answered = 1;
+            try {
+                scorm.api.updateActivity(scorm.game, {}, true);
+            } catch {
+                score.textContent += ` ${t('The LMS score could not be saved. Check again to retry.')}`;
+            }
+        });
+    },
+
+    /** Register with the shared SCORM 1.2 registry; null outside an LMS package or in the editor. */
+    register(root, config) {
+        if (!config.graded || window.eXeLearning) return null;
+        const api = window.$exeDevices?.iDevice?.gamification?.scorm;
+        const wrapper = root.closest('.idevice_node');
+        if (!window.exeScorm12?.activities || !api || !wrapper?.id) return null;
+        const game = {
+            ideviceId: wrapper.id,
+            ideviceNumber: Array.from(document.querySelectorAll('.idevice_node')).indexOf(wrapper) + 1,
+            isScorm: 2,
+            weighted: config.weight,
+            passScoreMode: 'custom',
+            passScoreCustom: config.pass / 10,
+            title: config.title,
+            msgs: { msgYouScore: this.t('Score'), msgScore: this.t('Score'), msgWeight: this.t('Weight') },
+        };
+        api.reportActivity(game, { total: 1, legacyIndex: game.ideviceNumber });
+        return { api, game };
+    },
+};

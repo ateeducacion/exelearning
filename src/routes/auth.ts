@@ -3,8 +3,8 @@
  * Handles login, logout, session checks, and guest access
  */
 import { Elysia, t } from 'elysia';
+import { isProductionEnv } from '../utils/env';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import type { Kysely } from 'kysely';
 import { db as defaultDb } from '../db/client';
 import type { User, Database } from '../db/types';
@@ -24,6 +24,8 @@ import type { LoginRequest, GuestLoginRequest } from './types/request-payloads';
 import { getAuthMethods, getSettingString, getSettingNumber } from '../services/app-settings';
 import { getPostLoginTarget } from '../services/maintenance';
 import { logActivity } from '../services/activity-logger';
+import { resolveOidcEndpoints, type ResolvedOidcEndpoints } from '../services/oidc-discovery';
+import { verifyPassword } from '../services/password';
 
 // Domain for temporary emails (CAS, OIDC, Guest users without real email)
 const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
@@ -43,6 +45,35 @@ export function shouldAutoCreateUsers(): boolean {
     if (['false', '0', 'no', 'off'].includes(normalized)) return false;
     // Any other value (true/1/yes/on, or typos) falls back to the documented default.
     return true;
+}
+
+/**
+ * Resolve the effective OIDC endpoints for the current configuration.
+ *
+ * Reads the issuer and the explicit per-endpoint settings (DB setting first,
+ * then the matching `OIDC_*` env var), then runs OpenID Connect Discovery to
+ * fill any endpoint left blank. Explicit configuration always wins; discovery
+ * only fills the gaps and degrades gracefully when the issuer is empty or the
+ * discovery document is unavailable. See `services/oidc-discovery.ts`.
+ */
+export async function getResolvedOidcConfig(db: Kysely<Database>): Promise<ResolvedOidcEndpoints> {
+    const [issuer, authorizationEndpoint, tokenEndpoint, userinfoEndpoint, endSessionEndpoint, jwksUri] =
+        await Promise.all([
+            getSettingString(db, 'OIDC_ISSUER', process.env.OIDC_ISSUER || ''),
+            getSettingString(db, 'OIDC_AUTHORIZATION_ENDPOINT', process.env.OIDC_AUTHORIZATION_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_TOKEN_ENDPOINT', process.env.OIDC_TOKEN_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_USERINFO_ENDPOINT', process.env.OIDC_USERINFO_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_END_SESSION_ENDPOINT', process.env.OIDC_END_SESSION_ENDPOINT || ''),
+            getSettingString(db, 'OIDC_JWKS_URI', process.env.OIDC_JWKS_URI || ''),
+        ]);
+    return resolveOidcEndpoints({
+        issuer,
+        authorizationEndpoint,
+        tokenEndpoint,
+        userinfoEndpoint,
+        endSessionEndpoint,
+        jwksUri,
+    });
 }
 
 /**
@@ -101,6 +132,36 @@ const loginSchema = t.Object({
 });
 
 /**
+ * Pre-computed bcrypt hash (cost factor 10, matching real user passwords) of a
+ * random secret that intentionally corresponds to no real account. It is used
+ * as a decoy so password verification always performs one `verifyPassword`
+ * call — even when the email does not exist — keeping the response time of a
+ * failed login constant and closing the username-enumeration timing oracle.
+ *
+ * Verification goes through `src/services/password.ts` (`Bun.password.verify`),
+ * not bcryptjs, so this dummy compare stays off the JS event loop (ADR-2255-02).
+ */
+const DUMMY_PASSWORD_HASH = '$2b$10$pWMhak8HjxajRfmz7mkS8O99xR2ozkUT89L1IFMeKMaE3ERN0huYm';
+
+/**
+ * Verify a plaintext password against a (possibly missing) user in constant time.
+ *
+ * When `user` is null/undefined we still run `verifyPassword` against
+ * DUMMY_PASSWORD_HASH so an attacker cannot use the response latency to tell
+ * whether the email exists. Returns true only when the user exists AND the
+ * password matches. Shared by both password-login entry points so the
+ * comparison behaviour lives in a single place.
+ */
+export async function verifyUserPassword(
+    user: { password?: string | null } | null | undefined,
+    password: string,
+): Promise<boolean> {
+    const hash = user?.password || DUMMY_PASSWORD_HASH;
+    const matches = await verifyPassword(password, hash);
+    return Boolean(user) && matches;
+}
+
+/**
  * Factory function to create auth routes with dependency injection
  * @param deps - Dependencies to inject (db, queries)
  */
@@ -111,7 +172,6 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
     return (
         new Elysia({ name: 'auth-routes' })
             // Add cookie and JWT plugins
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
@@ -177,15 +237,18 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const { email, password } = body;
 
                     const user = await findUserByEmail(db, email);
-                    if (!user) {
+                    // Always run one verifyPassword (see verifyUserPassword) so an
+                    // unknown email and a wrong password take the same time and
+                    // cannot be distinguished via response latency.
+                    const passwordValid = await verifyUserPassword(user, password);
+                    if (!user || !passwordValid) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Invalid credentials' };
                     }
 
-                    const isValid = await bcrypt.compare(password, user.password);
-                    if (!isValid) {
-                        set.status = 401;
-                        return { error: 'Unauthorized', message: 'Invalid credentials' };
+                    if (!user.is_active) {
+                        set.status = 403;
+                        return { error: 'Forbidden', message: 'Account deactivated' };
                     }
 
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
@@ -201,7 +264,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -278,7 +341,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: originalToken,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 7 * 24 * 60 * 60,
                     path: '/',
@@ -342,6 +405,32 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 if (basePath === '/') basePath = '';
                 const loginUrl = `${basePath}/login`;
 
+                // Origin/Referer guard: this endpoint sets the auth cookie on
+                // form POST. SameSite=Lax cookies allow top-level form posts
+                // from any site, so without this check an attacker page could
+                // submit credentials and silently sign the visitor in as the
+                // attacker (session fixation). When an Origin or Referer is
+                // present, require it to match the request host.
+                const origin = request.headers.get('origin');
+                const referer = request.headers.get('referer');
+                const headerHost = origin || referer;
+                if (headerHost) {
+                    try {
+                        const headerUrl = new URL(headerHost);
+                        if (headerUrl.host !== url.host) {
+                            return Response.redirect(
+                                `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid request origin')}`,
+                                302,
+                            );
+                        }
+                    } catch {
+                        return Response.redirect(
+                            `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid request origin')}`,
+                            302,
+                        );
+                    }
+                }
+
                 if (!email || !password) {
                     // Redirect back to login with error
                     return Response.redirect(
@@ -351,7 +440,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 const user = await findUserByEmail(db, email);
-                if (!user) {
+                // Always run one verifyPassword (see verifyUserPassword) so an
+                // unknown email and a wrong password take the same time and
+                // cannot be distinguished via response latency.
+                const passwordValid = await verifyUserPassword(user, password);
+                if (!user || !passwordValid) {
                     // Redirect back to login with error
                     return Response.redirect(
                         `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
@@ -359,11 +452,9 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     );
                 }
 
-                const isValid = await bcrypt.compare(password, user.password);
-                if (!isValid) {
-                    // Redirect back to login with error
+                if (!user.is_active) {
                     return Response.redirect(
-                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
+                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Account deactivated')}`,
                         302,
                     );
                 }
@@ -381,7 +472,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: token,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 7 * 24 * 60 * 60,
                     path: '/',
@@ -434,8 +525,9 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 if (authMethod === 'openid') {
-                    // OpenID Connect logout - redirect to end_session endpoint
-                    const endSessionEndpoint = process.env.OIDC_END_SESSION_ENDPOINT;
+                    // OpenID Connect logout - redirect to end_session endpoint.
+                    // Resolved from the explicit setting/env first, then OIDC Discovery.
+                    const { endSessionEndpoint } = await getResolvedOidcConfig(db);
                     const clientId = await getSettingString(db, 'OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID || '');
 
                     if (endSessionEndpoint) {
@@ -515,7 +607,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 const returnUrl = query.returnUrl as string | undefined;
                 const headers: [string, string][] = [['Location', loginUrl]];
                 if (returnUrl && isValidReturnUrl(returnUrl)) {
-                    const isSecure = process.env.NODE_ENV === 'production';
+                    const isSecure = isProductionEnv();
                     headers.push([
                         'Set-Cookie',
                         `sso_return_url=${encodeURIComponent(returnUrl)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${isSecure ? '; Secure' : ''}`,
@@ -633,7 +725,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -685,11 +777,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'Not Found', message: 'OpenID authentication is not enabled.' };
                 }
 
-                const authorizeEndpoint = await getSettingString(
-                    db,
-                    'OIDC_AUTHORIZATION_ENDPOINT',
-                    process.env.OIDC_AUTHORIZATION_ENDPOINT || '',
-                );
+                const { authorizationEndpoint: authorizeEndpoint } = await getResolvedOidcConfig(db);
                 if (!authorizeEndpoint) {
                     set.status = 500;
                     return { error: 'Server Error', message: 'OpenID Connect is misconfigured.' };
@@ -722,11 +810,10 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     nonce,
                     code_challenge: codeChallenge,
                     code_challenge_method: 'S256',
-                    prompt: 'consent',
                 });
 
                 // Build cookies to set (OIDC state + optional returnUrl)
-                const isSecure = process.env.NODE_ENV === 'production';
+                const isSecure = isProductionEnv();
                 const cookies: string[] = [
                     `oidc_state=${encodeURIComponent(oidcState)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${isSecure ? '; Secure' : ''}`,
                 ];
@@ -783,28 +870,30 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     ?.split(';')
                     .find(c => c.trim().startsWith('oidc_state='));
 
-                let codeVerifier = '';
-                if (oidcStateCookie) {
-                    try {
-                        const stateJson = decodeURIComponent(oidcStateCookie.split('=')[1]);
-                        const stateData = JSON.parse(stateJson);
-                        codeVerifier = stateData.codeVerifier || '';
-
-                        // Verify state matches
-                        if (query.state && stateData.state !== query.state) {
-                            set.status = 400;
-                            return { error: 'Bad Request', message: 'Invalid state parameter.' };
-                        }
-                    } catch {
-                        // Ignore parse errors
-                    }
+                // The state cookie set by GET /login/openid is mandatory: without it the
+                // callback cannot be bound to a login this browser started (CSRF/login fixation).
+                let stateData: { codeVerifier?: unknown; state?: unknown; nonce?: unknown } | undefined;
+                try {
+                    stateData = oidcStateCookie
+                        ? JSON.parse(decodeURIComponent(oidcStateCookie.split('=')[1]))
+                        : undefined;
+                } catch {
+                    stateData = undefined;
                 }
+                if (
+                    typeof stateData?.state !== 'string' ||
+                    typeof stateData.nonce !== 'string' ||
+                    !stateData.state ||
+                    !stateData.nonce ||
+                    stateData.state !== query.state
+                ) {
+                    set.status = 400;
+                    return { error: 'Bad Request', message: 'Invalid state parameter.' };
+                }
+                const codeVerifier = typeof stateData.codeVerifier === 'string' ? stateData.codeVerifier : '';
+                const expectedNonce = stateData.nonce;
 
-                const tokenEndpoint = await getSettingString(
-                    db,
-                    'OIDC_TOKEN_ENDPOINT',
-                    process.env.OIDC_TOKEN_ENDPOINT || '',
-                );
+                const { tokenEndpoint, userinfoEndpoint, jwksUri } = await getResolvedOidcConfig(db);
                 if (!tokenEndpoint) {
                     set.status = 500;
                     return { error: 'Server Error', message: 'OpenID Connect is misconfigured.' };
@@ -824,11 +913,6 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         'OIDC_CLIENT_SECRET',
                         process.env.OIDC_CLIENT_SECRET || '',
                     );
-                    const userinfoEndpoint = await getSettingString(
-                        db,
-                        'OIDC_USERINFO_ENDPOINT',
-                        process.env.OIDC_USERINFO_ENDPOINT || '',
-                    );
 
                     const tokenResponse = await fetch(tokenEndpoint, {
                         method: 'POST',
@@ -843,23 +927,79 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         }),
                     });
 
-                    const tokenJson = (await tokenResponse.json()) as Record<string, unknown>;
+                    const tokenJson = (await tokenResponse.json().catch(() => ({}))) as Record<string, unknown>;
+                    if (!tokenResponse.ok || tokenJson.error) {
+                        console.warn(
+                            `[auth/openid] token exchange failed (HTTP ${tokenResponse.status}): ${String(tokenJson.error ?? '')}`,
+                        );
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                    }
                     const accessToken = tokenJson.access_token as string | undefined;
                     const idToken = tokenJson.id_token as string | undefined;
 
-                    // Decode ID token to get user info
+                    // Decode ID token to get user info.
+                    //
+                    // Security: when a JWKS URI is available we verify the
+                    // signature against the provider's published JWKS, which
+                    // is the only way to trust the claims. The JWKS URI is
+                    // taken from the explicit OIDC_JWKS_URI setting and, when
+                    // that is blank, from the issuer's discovery document
+                    // (jwks_uri) — so a minimal OIDC_ISSUER-only config still
+                    // verifies signatures. Only when neither is available do we
+                    // fall back to decoding (preserves legacy behaviour) but
+                    // log a loud warning so the operator notices. The nonce
+                    // claim, when our authorize request set one, is always
+                    // checked — that does not require knowing the key.
                     let userEmail: string | undefined;
                     let subject: string | undefined;
+                    let idTokenPayload: Record<string, unknown> | undefined;
 
                     if (idToken) {
-                        try {
-                            const [, payloadB64] = idToken.split('.');
-                            const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf-8');
-                            const payload = JSON.parse(payloadJson);
-                            userEmail = payload.email || payload.preferred_username;
-                            subject = payload.sub;
-                        } catch {
-                            // Ignore decode errors
+                        if (jwksUri) {
+                            try {
+                                const { jwtVerify, createRemoteJWKSet } = await import('jose');
+                                const jwks = createRemoteJWKSet(new URL(jwksUri));
+                                const verifyOpts: { audience?: string } = {};
+                                if (clientId) verifyOpts.audience = clientId;
+                                const { payload } = await jwtVerify(idToken, jwks, verifyOpts);
+                                idTokenPayload = payload as Record<string, unknown>;
+                            } catch (verifyErr) {
+                                console.warn(
+                                    `[auth/openid] id_token signature verification failed via JWKS ${jwksUri}:`,
+                                    verifyErr,
+                                );
+                                set.status = 401;
+                                return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                            }
+                        } else {
+                            console.warn(
+                                '[auth/openid] No JWKS URI is available (neither OIDC_JWKS_URI nor a discovered ' +
+                                    'jwks_uri); id_token signature is NOT verified. Set OIDC_JWKS_URI or configure ' +
+                                    'OIDC_ISSUER so discovery can supply jwks_uri to enable signature verification ' +
+                                    'in production.',
+                            );
+                            try {
+                                const [, payloadB64] = idToken.split('.');
+                                const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf-8');
+                                idTokenPayload = JSON.parse(payloadJson);
+                            } catch {
+                                // ignore decode errors; fall through
+                            }
+                        }
+
+                        if (idTokenPayload) {
+                            userEmail =
+                                (idTokenPayload.email as string) || (idTokenPayload.preferred_username as string);
+                            subject = idTokenPayload.sub as string | undefined;
+
+                            // Nonce binding: the returned id_token must echo the
+                            // nonce our authorize request set.
+                            if (idTokenPayload.nonce !== expectedNonce) {
+                                console.warn('[auth/openid] id_token nonce mismatch');
+                                set.status = 401;
+                                return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                            }
                         }
                     }
 
@@ -879,14 +1019,15 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         }
                     }
 
+                    if (!userEmail && !subject) {
+                        // Never synthesize an account when the provider vouched for no identity
+                        console.warn('[auth/openid] token exchange yielded no subject or email');
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                    }
                     if (!userEmail) {
-                        if (subject?.includes('@')) {
-                            // subject is already an email address
-                            userEmail = subject;
-                        } else {
-                            // Generate fallback email with temp email domain
-                            userEmail = `${subject || randomBytes(8).toString('hex')}@${TEMP_EMAIL_DOMAIN}`;
-                        }
+                        // subject may already be an email address; otherwise use the temp email domain
+                        userEmail = subject?.includes('@') ? subject : `${subject}@${TEMP_EMAIL_DOMAIN}`;
                     }
 
                     // Find or create user in database
@@ -929,7 +1070,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -964,7 +1105,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         'sso_return_url=; Path=/; HttpOnly; Max-Age=0', // Clear returnUrl cookie
                     ];
                     if (idToken) {
-                        const isSecure = process.env.NODE_ENV === 'production';
+                        const isSecure = isProductionEnv();
                         setCookieHeaders.push(
                             `oidc_id_token=${idToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}${isSecure ? '; Secure' : ''}`,
                         );
@@ -1046,7 +1187,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: token,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 24 * 60 * 60,
                     path: '/',

@@ -17,6 +17,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('app:exportToFolder', { downloadUrl, projectKey, suggestedDirName }),
   exportBufferToFolder: (base64Data, suggestedDirName) =>
     ipcRenderer.invoke('app:exportBufferToFolder', { base64Data, suggestedDirName }),
+  // Advanced: open an unpacked project folder. Returns the folder
+  // contents as a base64-encoded zip so the renderer can hand it to
+  // the existing importFromElpxViaYjs(File) pipeline unchanged.
+  openProjectFolder: () => ipcRenderer.invoke('app:openProjectFolder'),
+  // Advanced: save the current project as an unpacked folder. Reuses
+  // the existing exportBufferToFolder handler — exposed under a
+  // distinct name so the renderer can offer it as a separate menu
+  // entry without touching .elpx behaviour.
+  saveProjectFolder: (base64Data, suggestedDirName) =>
+    ipcRenderer.invoke('app:exportBufferToFolder', { base64Data, suggestedDirName }),
   // Remember / forget the file currently associated with the window so the
   // next Save dialog pre-fills with its name (PR #1670 review). Both names
   // survive the full page reload that follows Open/New because they are
@@ -34,8 +44,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
   openElp: () => ipcRenderer.invoke('app:openElp'),
+  // Check an external link from the main process (no CORS) so the link
+  // validation report can show real HTTP statuses, like online mode does.
+  checkLink: (url) => ipcRenderer.invoke('app:checkLink', { url }),
+  // Return the native print result, including failures after beforeprint and cancellation.
+  printPreview: (url) => ipcRenderer.invoke('app:printPreview', { url }),
+  // Save the print preview as a PDF from the main process, which makes it from the preview's own
+  // frame (named frameName) and asks where to put it. Works without a printer.
+  savePrintPreviewAsPdf: (frameName, title) =>
+    ipcRenderer.invoke('app:savePrintPreviewAsPdf', { frameName, title }),
+  // Close the current window (File > Close). The existing close guard in the
+  // main process still prompts for unsaved changes.
+  closeCurrentWindow: () => ipcRenderer.invoke('app:closeCurrentWindow'),
   readFile: (filePath) => ipcRenderer.invoke('app:readFile', { filePath }),
   getMemoryUsage: () => ipcRenderer.invoke('app:getMemoryUsage'),
+  getSpellCheckerSettings: () => ipcRenderer.invoke('app:getSpellCheckerSettings'),
+  setSpellCheckerLanguages: (languages) => ipcRenderer.invoke('app:setSpellCheckerLanguages', languages),
   notifyRendererReadyForOpenFile: () => ipcRenderer.send('app:renderer-ready-for-open-file'),
   onDownloadProgress: (cb) => ipcRenderer.on('download-progress', (_e, data) => cb && cb(data)),
   onDownloadDone: (cb) => ipcRenderer.on('download-done', (_e, data) => cb && cb(data)),

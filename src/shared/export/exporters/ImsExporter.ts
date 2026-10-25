@@ -44,10 +44,23 @@ export class ImsExporter extends Html5Exporter {
             const meta = this.getMetadata();
             // Theme priority: 1º parameter > 2º ELP metadata > 3º default
             const themeName = options?.theme || meta.theme || 'base';
-            const projectId = this.generateProjectId();
+            // Stable manifest identifier (see BaseExporter.getManifestIdentifier and #1785).
+            // `manifestIdentifier` is the final `<manifest identifier="...">` value;
+            // `projectId` is the bare id used for organization and resource ids,
+            // so a single project identity flows through manifest and content.xml.
+            const manifestIdentifier = this.getManifestIdentifier();
+            const projectId = this.getBareProjectIdentifier();
 
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
+
+            // Keep the complete (pre-visibility-filter) page list for the
+            // re-editable content.xml. Hidden pages (drafts / teacher-only) must
+            // survive an IMS export -> re-import round trip; only the rendered
+            // HTML and the imsmanifest organization below exclude them. The
+            // SCORM exporters get this for free via getContentXml(); IMS builds
+            // content.xml from `pages`, so it must retain the full list here.
+            const allPagesForContentXml = pages;
 
             // Filter out hidden pages (visibility: false)
             pages = pages.filter(p => this.isPageVisible(p, pages));
@@ -66,15 +79,20 @@ export class ImsExporter extends Html5Exporter {
             };
 
             // Initialize manifest generator
-            this.manifestGenerator = new ImsManifestGenerator(projectId, pages, {
-                identifier: projectId,
-                pages: pages,
-                title: meta.title || 'eXeLearning',
-                language: meta.language || 'en',
-                author: meta.author || '',
-                description: meta.description || '',
-                license: meta.license || '',
-            });
+            this.manifestGenerator = new ImsManifestGenerator(
+                projectId,
+                pages,
+                {
+                    identifier: manifestIdentifier,
+                    pages: pages,
+                    title: meta.title || 'eXeLearning',
+                    language: meta.language || 'en',
+                    author: meta.author || '',
+                    description: meta.description || '',
+                    license: meta.license || '',
+                },
+                manifestIdentifier,
+            );
 
             // Track files for manifest
             const commonFiles: string[] = [];
@@ -109,7 +127,7 @@ export class ImsExporter extends Html5Exporter {
                     navLabels,
                 );
 
-                // Pre-render LaTeX ONLY if addMathJax is false
+                // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
                 if (!meta.addMathJax) {
                     // Pre-render LaTeX in encrypted DataGame divs FIRST
                     if (options?.preRenderDataGameLatex) {
@@ -296,11 +314,20 @@ export class ImsExporter extends Html5Exporter {
             // 8. Add project assets (with tracking for ELPX manifest)
             await this.addAssetsToZipWithResourcePath(fileList);
 
-            // 8b. Add content.xml (ODE format) and content.dtd for re-editing
-            const contentXml = generateOdeXml(meta, pages);
-            addFile('content.xml', contentXml);
-            addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
-            commonFiles.push('content.xml', ODE_DTD_FILENAME);
+            // 8b. Add content.xml (ODE format) and content.dtd for re-editing.
+            // Use the full page list (incl. hidden pages) so nothing is lost on
+            // re-import — see allPagesForContentXml above. Skipped when the
+            // author disabled the "Editable export" project property
+            // (`exportSource`), which the website and ePub exporters already
+            // honour (#2415). Both the files and their manifest entries are
+            // skipped together, so the manifest never references a file that
+            // was not written.
+            if (this.shipsEditableSource(meta, options)) {
+                const contentXml = generateOdeXml(meta, allPagesForContentXml);
+                addFile('content.xml', contentXml);
+                addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                commonFiles.push('content.xml', ODE_DTD_FILENAME);
+            }
 
             // 9. Generate ELPX manifest file if download-source-file is used
             if (needsElpxDownload && fileList) {
@@ -348,7 +375,12 @@ export class ImsExporter extends Html5Exporter {
     }
 
     /**
-     * Generate project ID for IMS package
+     * Generate a random low-level project ID.
+     *
+     * @deprecated Since #1785, the IMS manifest identifier is derived from
+     * the project's odeIdentifier via {@link BaseExporter.getManifestIdentifier}
+     * so LMS tracking survives re-uploads. This helper is kept only for
+     * external callers/tests and is no longer used by the export pipeline.
      */
     generateProjectId(): string {
         return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
@@ -414,6 +446,13 @@ export class ImsExporter extends Html5Exporter {
             addSearchBox: false,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
+            addMathJax: meta.addMathJax === true,
+            // Project-wide pass score, published to the page as a META so iDevices
+            // resolve it at runtime instead of carrying a copy of their own.
+            passScore: meta.passScore,
+            passScoreEveryActivity: meta.passScoreEveryActivity,
+            // Accessibility toolbar (exe_atools) when enabled in project properties (#1978)
+            addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
             bodyClass: bodyClass,

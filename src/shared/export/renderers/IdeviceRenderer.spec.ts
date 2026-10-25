@@ -2,12 +2,12 @@
  * Tests for IdeviceRenderer
  */
 
-import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { IdeviceRenderer } from './IdeviceRenderer';
 import type { ExportComponent, ExportBlock } from '../interfaces';
-import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
+import { loadIdeviceConfigs, resetIdeviceConfigCache, setIdevicesBasePath } from '../../../services/idevice-config';
 
 // Path to real iDevices for integration testing
 const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/base');
@@ -966,6 +966,68 @@ describe('IdeviceRenderer', () => {
     });
 
     describe('renderBlock with icon', () => {
+        it('falls back to the inlined help data URI when no icon data URI is provided', () => {
+            // The loose per-icon SVG files were removed; the renderer must NOT
+            // emit a dead libs/material-icons/icons/{name}.svg path. With no
+            // materialIconDataUris map (e.g. total sprite-fetch failure) it must
+            // still emit a self-contained help data: URI.
+            const block: ExportBlock = {
+                id: 'block-material',
+                name: 'Material Block',
+                order: 0,
+                components: [],
+                iconName: 'mi-lightbulb',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('libs/material-icons/icons/');
+            expect(html).not.toContain('theme/icons/');
+            expect(html).toContain('--exe-material-icon-url:url(');
+            expect(html).toContain('data:image/svg+xml;utf8,');
+        });
+
+        it('falls back to the help data URI for an unknown material icon name', () => {
+            // The requested icon ("does-not-exist") is absent from the provided
+            // map, so the renderer must reuse the map's "help" entry rather than
+            // point at a missing file.
+            const block: ExportBlock = {
+                id: 'block-material-unknown',
+                name: 'Material Block Unknown',
+                order: 0,
+                components: [],
+                iconName: 'mi-does-not-exist',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                materialIconDataUris: new Map([['help', 'data:image/svg+xml;utf8,%3Chelp%2F%3E']]),
+            });
+
+            expect(html).not.toContain('libs/material-icons/icons/');
+            expect(html).toContain('data:image/svg+xml;utf8,%3Chelp%2F%3E');
+        });
+
+        it('should inline material icon mask as data URI when provided', () => {
+            const block: ExportBlock = {
+                id: 'block-material-inline',
+                name: 'Material Block Inline',
+                order: 0,
+                components: [],
+                iconName: 'mi-lightbulb',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                materialIconDataUris: new Map([['lightbulb', 'data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E']]),
+            });
+
+            expect(html).toContain('data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E');
+            expect(html).not.toContain('libs/material-icons/icons/lightbulb.svg');
+        });
+
         it('should render block header with icon when iconName is provided', () => {
             const block: ExportBlock = {
                 id: 'block-1',
@@ -979,6 +1041,29 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('box-icon');
             expect(html).toContain('theme/icons/lightbulb.png');
+        });
+
+        it('should resolve custom asset icons to exported resources path', () => {
+            const block: ExportBlock = {
+                id: 'block-asset',
+                name: 'Asset Block',
+                order: 0,
+                components: [],
+                icon: {
+                    source: 'asset',
+                    value: 'asset://12345678-1234-1234-1234-123456789012/dogs/black-dog.jpg',
+                } as any,
+                iconName: 'asset://12345678-1234-1234-1234-123456789012/dogs/black-dog.jpg',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                assetExportPathMap: new Map([['12345678-1234-1234-1234-123456789012', 'dogs/black-dog.jpg']]),
+            });
+
+            expect(html).toContain('content/resources/dogs/black-dog.jpg');
+            expect(html).not.toContain('asset://12345678-1234-1234-1234-123456789012');
         });
 
         it('should use themeIconBasePath when provided for icon (preview mode)', () => {
@@ -1188,6 +1273,90 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('theme/icons/activity.svg');
             // Should not have just the baseName without extension
             expect(html).not.toMatch(/theme\/icons\/activity["']/);
+        });
+
+        it('should resolve a stored icon name the style has since renamed', () => {
+            // `objetives` is what neo shipped from v4.0.0 to v4.0.3, so projects saved then
+            // store that name. Without the rename table the export emits
+            // theme/icons/objetives.png, which 404s in preview and in every package.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'objetives',
+            };
+
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/objectives.png', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/objectives.png');
+            expect(html).not.toContain('theme/icons/objetives.png');
+        });
+
+        it('should resolve a renamed icon held in an already-structured descriptor', () => {
+            // A block saved back then carries the old name in `icon`, not only in `iconName`,
+            // so it never passes through deriveBlockIcon.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                icon: { source: 'theme', value: 'think-alt' },
+            } as ExportBlock;
+
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/think_alt.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/think_alt.svg');
+        });
+
+        it('should fall back on the current spelling when the style ships neither', () => {
+            // The name is mapped before it reaches the theme's file list, so a style that
+            // ships neither spelling falls back to <current name>.png -- not to the stored
+            // one. That is what the other styles would have on disk if they had the icon.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'objetives',
+            };
+
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/objectives.png');
+        });
+
+        it('should fall back on the current spelling for a structured descriptor with no theme files', () => {
+            // `PrintPreviewExporter` and `Html5Exporter` swallow a failed `fetchTheme` and
+            // carry on with an empty resolution map, so the `.png` fallback is the only branch
+            // that runs. A descriptor never passes through `deriveBlockIcon`, which makes this
+            // the one path where the old spelling could still reach the output.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                icon: { source: 'theme', value: 'objetives' },
+            } as ExportBlock;
+
+            renderer.setThemeIconFiles(new Map<string, unknown>());
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/objectives.png');
+            expect(html).not.toContain('theme/icons/objetives.png');
         });
 
         it('should fall back to iconName when theme does not contain the icon', () => {
@@ -1590,6 +1759,333 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('&lt;script src=&quot;test.js&quot;&gt;&lt;/script&gt;');
             expect(html).not.toContain('<script src="test.js">');
+        });
+    });
+
+    // Regression coverage for issue #1810 (3D Viewer iDevice does not render after export):
+    // Custom iDevices ship ES module scripts (e.g. three.module.min.js, STLLoader.js,
+    // OrbitControls.js). The exporter must mark them as <script type="module"> so the
+    // browser parses `import`/`export` instead of throwing a SyntaxError. Detection must
+    // work via filename convention (.module.js / .mjs) AND content sniffing (top-level
+    // `import`/`export`) so plugin authors don't have to rename existing files. The same
+    // detection must apply for index pages (basePath = '') and subpages (basePath = '../')
+    // and is exercised by every Html5Exporter subclass (SCORM 1.2/2004, EPUB, IMS).
+    describe('getJsScripts / getJsScriptInfo (ES module detection — issue #1810)', () => {
+        const fixtureRoot = path.join(process.cwd(), 'test/temp/idevice-renderer-module-detection');
+        const ideviceName = 'three-d-viewer';
+        const exportDir = path.join(fixtureRoot, ideviceName, 'export');
+
+        beforeEach(async () => {
+            // Fresh fixture per test so file edits don't leak between cases.
+            await fs.remove(fixtureRoot);
+            await fs.ensureDir(exportDir);
+
+            // Mirror the plugin layout reported in issue #1810:
+            //   - three-d-viewer.js          → classic bootstrap script
+            //   - three.module.min.js        → ES module (named convention)
+            //   - STLLoader.js               → ES module (no convention; sniffed)
+            //   - OrbitControls.mjs          → ES module (.mjs extension)
+            //   - model-viewer.min.js        → UMD bundle that *uses* the word `export`
+            //                                  inside a string but is NOT a module.
+            await fs.writeFile(
+                path.join(exportDir, `${ideviceName}.js`),
+                '/* eslint-disable */\n(function () { window.ThreeDViewerRuntime = {}; })();\n',
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'three.module.min.js'),
+                'export const REVISION="160";export class Vector3{}\n',
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'STLLoader.js'),
+                "import { BufferGeometry } from './three.module.min.js';\nexport class STLLoader {}\n",
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'OrbitControls.mjs'),
+                "import { EventDispatcher } from './three.module.min.js';\nexport class OrbitControls {}\n",
+            );
+            await fs.writeFile(
+                path.join(exportDir, 'model-viewer.min.js'),
+                '/*! @license model-viewer */\n(function(g,f){typeof exports==="object"?f(exports):g.modelViewer=f({})})(this,function(e){e.foo=1});\n',
+            );
+
+            // Minimal config.xml so loadIdeviceConfigs() recognises the fixture iDevice.
+            await fs.writeFile(
+                path.join(fixtureRoot, ideviceName, 'config.xml'),
+                `<?xml version="1.0" encoding="UTF-8"?>
+<idevice>
+    <name>${ideviceName}</name>
+    <css-class>${ideviceName}</css-class>
+    <component-type>json</component-type>
+    <export-template-filename>${ideviceName}.html</export-template-filename>
+</idevice>`,
+            );
+
+            setIdevicesBasePath(fixtureRoot);
+            loadIdeviceConfigs(fixtureRoot);
+            renderer = new IdeviceRenderer();
+        });
+
+        afterEach(async () => {
+            await fs.remove(fixtureRoot);
+            // Restore real iDevice configs so the rest of the suite keeps working.
+            resetIdeviceConfigCache();
+            const real = path.join(process.cwd(), 'public/files/perm/idevices/base');
+            setIdevicesBasePath(real);
+            loadIdeviceConfigs(real);
+        });
+
+        it('emits <script type="module"> for .module.js files', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBeDefined();
+            expect(moduleTag).toContain('type="module"');
+        });
+
+        it('emits <script type="module"> for .mjs files', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const mjsTag = scripts.find(s => s.includes('OrbitControls.mjs'));
+            expect(mjsTag).toBeDefined();
+            expect(mjsTag).toContain('type="module"');
+        });
+
+        it('detects ES modules by top-level import/export content (no rename required)', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const stlTag = scripts.find(s => s.includes('STLLoader.js'));
+            expect(stlTag).toBeDefined();
+            // Author shipped a file with top-level `import`; exporter must treat it as a module
+            // even though its name does not follow the .module.js / .mjs convention.
+            expect(stlTag).toContain('type="module"');
+        });
+
+        it('does NOT add type="module" to classic / UMD scripts', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const bootstrapTag = scripts.find(s => s.includes(`${ideviceName}.js`) && !s.includes('module'));
+            const umdTag = scripts.find(s => s.includes('model-viewer.min.js'));
+            expect(bootstrapTag).toBeDefined();
+            expect(bootstrapTag).not.toContain('type="module"');
+            expect(umdTag).toBeDefined();
+            expect(umdTag).not.toContain('type="module"');
+        });
+
+        it('applies basePath to module scripts on index page (basePath="")', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBe(`<script type="module" src="idevices/${ideviceName}/three.module.min.js"></script>`);
+        });
+
+        it('applies basePath to module scripts on subpages (basePath="../")', () => {
+            const scripts = renderer.getJsScripts([ideviceName], '../');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBe(
+                `<script type="module" src="../idevices/${ideviceName}/three.module.min.js"></script>`,
+            );
+        });
+
+        it('applies BASE_PATH-style absolute prefix to module scripts (e.g. /myapp/)', () => {
+            // Mirrors deploy with BASE_PATH=/myapp where PageRenderer is invoked with the
+            // configured prefix; the same module-detection must still apply.
+            const scripts = renderer.getJsScripts([ideviceName], '/myapp/');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBe(
+                `<script type="module" src="/myapp/idevices/${ideviceName}/three.module.min.js"></script>`,
+            );
+        });
+
+        it('getJsScriptInfo returns identical tags (used by Html5Exporter/SCORM/EPUB)', () => {
+            const info = renderer.getJsScriptInfo([ideviceName], '../');
+            const moduleEntry = info.find(s => s.src.endsWith('three.module.min.js'));
+            const classicEntry = info.find(s => s.src.endsWith(`${ideviceName}.js`));
+            expect(moduleEntry?.tag).toBe(
+                `<script type="module" src="../idevices/${ideviceName}/three.module.min.js"></script>`,
+            );
+            expect(classicEntry?.tag).toBe(`<script src="../idevices/${ideviceName}/${ideviceName}.js"></script>`);
+        });
+
+        it('module scripts appear AFTER the classic bootstrap to preserve load order', () => {
+            // getIdeviceExportFiles puts the main `${typeName}.js` first; module siblings
+            // come after it (alphabetical). The fix must not reorder scripts.
+            const scripts = renderer.getJsScripts([ideviceName], '');
+            const mainIdx = scripts.findIndex(s => s.endsWith(`${ideviceName}.js"></script>`));
+            const moduleIdx = scripts.findIndex(s => s.includes('three.module.min.js'));
+            expect(mainIdx).toBeGreaterThanOrEqual(0);
+            expect(moduleIdx).toBeGreaterThan(mainIdx);
+        });
+    });
+
+    // End-to-end check against the real plugin that triggered issue #1810. Skipped
+    // automatically if the iDevice is not installed on the current branch.
+    describe('three-d-viewer real iDevice integration (issue #1810)', () => {
+        const realIdevicesPath = path.join(process.cwd(), 'public/files/perm/idevices/base');
+        const threeDViewerPath = path.join(realIdevicesPath, 'three-d-viewer', 'export');
+
+        beforeEach(() => {
+            resetIdeviceConfigCache();
+            setIdevicesBasePath(realIdevicesPath);
+            loadIdeviceConfigs(realIdevicesPath);
+            renderer = new IdeviceRenderer();
+        });
+
+        it('emits type="module" for three.module.min.js (filename convention)', () => {
+            if (!fs.existsSync(threeDViewerPath)) {
+                console.log('[Test] three-d-viewer iDevice not installed; skipping');
+                return;
+            }
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const moduleTag = scripts.find(s => s.includes('three.module.min.js'));
+            expect(moduleTag).toBeDefined();
+            expect(moduleTag).toContain('type="module"');
+        });
+
+        it('emits type="module" for STLLoader.js (content-sniffed; no rename)', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const stlTag = scripts.find(s => s.includes('STLLoader.js'));
+            expect(stlTag).toBeDefined();
+            expect(stlTag).toContain('type="module"');
+        });
+
+        it('emits type="module" for OrbitControls.js (content-sniffed; no rename)', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const ctrlTag = scripts.find(s => s.includes('OrbitControls.js'));
+            expect(ctrlTag).toBeDefined();
+            expect(ctrlTag).toContain('type="module"');
+        });
+
+        it('does NOT mark the UMD model-viewer.min.js as a module', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const umdTag = scripts.find(s => s.includes('model-viewer.min.js'));
+            expect(umdTag).toBeDefined();
+            expect(umdTag).not.toContain('type="module"');
+        });
+
+        it('does NOT mark the classic three-d-viewer.js bootstrap as a module', () => {
+            if (!fs.existsSync(threeDViewerPath)) return;
+            const scripts = renderer.getJsScripts(['three-d-viewer'], '');
+            const mainTag = scripts.find(s => /three-d-viewer\.js"><\/script>$/.test(s));
+            expect(mainTag).toBeDefined();
+            expect(mainTag).not.toContain('type="module"');
+        });
+    });
+
+    // Issue #2543: 3dmol's config.xml declares <css-class>dmole</css-class>, but the export packages
+    // the iDevice under idevices/3dmol/ and its export JS looks the node up as .idevice_node.3dmol.
+    describe('3dmol real iDevice (issue #2543)', () => {
+        const realIdevicesPath = path.join(process.cwd(), 'public/files/perm/idevices/base');
+
+        beforeEach(() => {
+            resetIdeviceConfigCache();
+            setIdevicesBasePath(realIdevicesPath);
+            loadIdeviceConfigs(realIdevicesPath);
+            renderer = new IdeviceRenderer();
+        });
+
+        it('names the node and its export path after the 3dmol folder', () => {
+            const html = renderer.render(
+                { id: 'mol-1', type: '3dmol', order: 0, content: '<div class="dmole-IDevice"></div>' },
+                { basePath: '../', includeDataAttributes: true },
+            );
+
+            expect(html).toContain(
+                'class="idevice_node 3dmol" data-idevice-path="../idevices/3dmol/" data-idevice-type="3dmol"',
+            );
+            expect(html).not.toContain('idevices/dmole/');
+        });
+
+        it('links its CSS and JS from the 3dmol folder', () => {
+            expect(renderer.getCssLinks(['3dmol'], '../')).toContain(
+                '<link rel="stylesheet" href="../idevices/3dmol/3dmol.css">',
+            );
+            expect(renderer.getJsScripts(['3dmol'], '../')).toContain(
+                '<script src="../idevices/3dmol/3dmol.js"></script>',
+            );
+            expect(renderer.getCssLinkInfo(['3dmol'], '').map(link => link.href)).toContain('idevices/3dmol/3dmol.css');
+            expect(renderer.getJsScriptInfo(['3dmol'], '').map(script => script.src)).toContain(
+                'idevices/3dmol/3dmol.js',
+            );
+        });
+
+        it('keeps resolving a legacy alias to the folder it names', () => {
+            const html = renderer.render(
+                { id: 'dl-1', type: 'download-package', order: 0, content: '<p>x</p>' },
+                { basePath: '', includeDataAttributes: true },
+            );
+
+            expect(html).toContain('data-idevice-path="idevices/download-source-file/"');
+            expect(renderer.getJsScripts(['download-package'], '')).toContain(
+                '<script src="idevices/download-source-file/download-source-file.js"></script>',
+            );
+        });
+    });
+
+    describe('addReferrerPolicyToEmbeds', () => {
+        it('adds referrerpolicy to a YouTube iframe that lacks it', () => {
+            const html = '<p>x</p><iframe src="https://www.youtube.com/embed/abc" allowfullscreen></iframe>';
+            const out = renderer.addReferrerPolicyToEmbeds(html);
+            expect(out).toContain('referrerpolicy="strict-origin-when-cross-origin"');
+            expect(out).toContain('allowfullscreen');
+        });
+
+        it('adds referrerpolicy to nocookie, youtu.be and Vimeo iframes', () => {
+            const html =
+                '<iframe src="https://www.youtube-nocookie.com/embed/a"></iframe>' +
+                '<iframe src="https://player.vimeo.com/video/123"></iframe>';
+            const out = renderer.addReferrerPolicyToEmbeds(html);
+            expect(out.match(/referrerpolicy=/g)).toHaveLength(2);
+        });
+
+        it('does not duplicate an existing referrerpolicy', () => {
+            const html = '<iframe src="https://www.youtube.com/embed/abc" referrerpolicy="no-referrer"></iframe>';
+            const out = renderer.addReferrerPolicyToEmbeds(html);
+            expect(out.match(/referrerpolicy=/g)).toHaveLength(1);
+            expect(out).toContain('referrerpolicy="no-referrer"');
+        });
+
+        it('leaves non-provider iframes untouched', () => {
+            const html = '<iframe src="https://example.com/widget"></iframe>';
+            expect(renderer.addReferrerPolicyToEmbeds(html)).toBe(html);
+        });
+
+        it('is a no-op for content without iframes', () => {
+            expect(renderer.addReferrerPolicyToEmbeds('<p>no iframes</p>')).toBe('<p>no iframes</p>');
+            expect(renderer.addReferrerPolicyToEmbeds('')).toBe('');
+        });
+
+        it('handles uppercase tag and attribute names', () => {
+            // HTML tag and attribute names are case-insensitive, and pasted embed codes vary.
+            const html = '<IFRAME SRC="https://www.YOUTUBE.com/embed/abc" ALLOWFULLSCREEN></IFRAME>';
+            const out = renderer.addReferrerPolicyToEmbeds(html);
+            expect(out).toContain('referrerpolicy="strict-origin-when-cross-origin"');
+        });
+
+        it('does not corrupt a tag with ">" inside a quoted attribute value', () => {
+            const html = '<iframe src="https://www.youtube.com/embed/abc" title="1 > 2" allowfullscreen></iframe>';
+            const out = renderer.addReferrerPolicyToEmbeds(html);
+            // The title must survive intact and the policy must land as a real attribute.
+            expect(out).toContain('title="1 > 2"');
+            expect(out).toContain('allowfullscreen');
+            expect(out).toContain('referrerpolicy="strict-origin-when-cross-origin"');
+            expect(out).toContain('</iframe>');
+            expect(out.match(/<iframe/gi)).toHaveLength(1);
+        });
+
+        it('matches the provider by hostname, not by substring', () => {
+            // A lookalike host that merely contains "vimeo.com" is not the provider.
+            const html = '<iframe src="https://vimeo.com.attacker.io/x"></iframe>';
+            expect(renderer.addReferrerPolicyToEmbeds(html)).toBe(html);
+        });
+
+        it('recognises protocol-relative provider URLs', () => {
+            const html = '<iframe src="//www.youtube.com/embed/abc"></iframe>';
+            expect(renderer.addReferrerPolicyToEmbeds(html)).toContain(
+                'referrerpolicy="strict-origin-when-cross-origin"',
+            );
+        });
+
+        it('leaves relative-src iframes untouched', () => {
+            const html = '<iframe src="/local/player.html"></iframe>';
+            expect(renderer.addReferrerPolicyToEmbeds(html)).toBe(html);
         });
     });
 });

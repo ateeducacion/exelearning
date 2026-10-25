@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="ro" datatype="plaintext" original="file.ext">
-    <header>
-      <tool tool-id="symfony" tool-name="Symfony"/>
-    </header>
     <body>
       <trans-unit id="cBwQM6_" resname="Permissions error">
         <source>Permissions error</source>
@@ -1307,7 +1304,7 @@
       </trans-unit>
       <trans-unit id="JJHU27u" resname="Asymptotically equal">
         <source>Asymptotically equal</source>
-        <target>Aproximativ egal</target>
+        <target>~Asimptotic egal</target>
       </trans-unit>
       <trans-unit id="0t4ArND" resname="Asterisk">
         <source>Asterisk</source>
@@ -2056,10 +2053,6 @@
       <trans-unit id="U33cqMv" resname="Huge text">
         <source>Huge text</source>
         <target>Text uriaș</target>
-      </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Extra large text">
-        <source>Extra large text</source>
-        <target>Text enorm</target>
       </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
@@ -3729,14 +3722,6 @@
         <source>Info</source>
         <target>Informații</target>
       </trans-unit>
-      <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
-        <source>Show or hide the node's children</source>
-        <target>Afișează sau ascunde copiii nodului</target>
-      </trans-unit>
-      <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
-        <source>Start working on a new mind map</source>
-        <target>Începe să lucrezi la o hartă mentală nouă</target>
-      </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
         <target>Eroare la încărcarea fișierului</target>
@@ -3857,10 +3842,6 @@
         <source>Project properties</source>
         <target>Proprietăți proiect</target>
       </trans-unit>
-      <trans-unit id="W7h4Kea" resname="Share link">
-        <source>Share link</source>
-        <target>Link de partajare</target>
-      </trans-unit>
       <trans-unit id="Uom6tJO" resname="Information and presentation">
         <source>Information and presentation</source>
         <target>Informații și prezentare</target>
@@ -3953,10 +3934,6 @@
         <source>New file</source>
         <target>Fișier nou</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Creează fișier nou fără a salva</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>Se salvează proiectul...</target>
@@ -3977,17 +3954,9 @@
         <source>Please enter the project title:</source>
         <target>Vă rugăm să introduceți titlul proiectului:</target>
       </trans-unit>
-      <trans-unit id="cPW6CJ0" resname="Google Drive error">
-        <source>Google Drive error</source>
-        <target>Eroare Google Drive</target>
-      </trans-unit>
       <trans-unit id="KEhkI6s" resname="Unknown">
         <source>Unknown</source>
         <target>Necunoscut</target>
-      </trans-unit>
-      <trans-unit id="crz7e6x" resname="Dropbox error">
-        <source>Dropbox error</source>
-        <target>Eroare Dropbox</target>
       </trans-unit>
       <trans-unit id="d2WU0Ah" resname="Error opening">
         <source>Error opening</source>
@@ -4397,22 +4366,6 @@
         <source>Upload</source>
         <target>Încărcare</target>
       </trans-unit>
-      <trans-unit id="JcEtEhk" resname="Upload to Dropbox">
-        <source>Upload to Dropbox</source>
-        <target>Încărcare în Dropbox</target>
-      </trans-unit>
-      <trans-unit id="JOFdorq" resname="Select the Dropbox directory where the project will be uploaded:">
-        <source>Select the Dropbox directory where the project will be uploaded:</source>
-        <target>Selectați directorul Dropbox în care va fi încărcat proiectul:</target>
-      </trans-unit>
-      <trans-unit id="9a1eDpd" resname="Upload to Google Drive">
-        <source>Upload to Google Drive</source>
-        <target>Încărcare pe Google Drive</target>
-      </trans-unit>
-      <trans-unit id="HMP7DeK" resname="Select the Google Drive directory where the project will be uploaded:">
-        <source>Select the Google Drive directory where the project will be uploaded:</source>
-        <target>Selectați directorul Google Drive în care va fi încărcat proiectul:</target>
-      </trans-unit>
       <trans-unit id="9Mm2eRT" resname="An error occurred while saving block's properties in database">
         <source>An error occurred while saving block's properties in database</source>
         <target>A apărut o eroare în timpul salvării proprietăților blocului în baza de date</target>
@@ -4548,10 +4501,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>Nu puteți adăuga un iDevice pe pagina principală</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Problema la adăugarea iDevice-ului</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -5635,7 +5584,7 @@
       </trans-unit>
       <trans-unit id="I4MH_aK" resname="% right to see the feedback">
         <source>% right to see the feedback</source>
-        <target>&amp;percnt; drept de a vedea feedback-ul</target>
+        <target>~% corect pentru a vedea feedback-ul</target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -6029,14 +5978,6 @@
         <source>This content was created with eXeLearning, your free and open source editor to create educational resources.</source>
         <target>Acest conținut a fost creat cu eXeLearning, editorul tău gratuit și open source pentru crearea de resurse educaționale.</target>
       </trans-unit>
-      <trans-unit id="V7aVH8i" resname="Download .elp file">
-        <source>Download .elp file</source>
-        <target>Descarcă fișierul .elp</target>
-      </trans-unit>
-      <trans-unit id="dap6H5j" resname="This block will create a link to download the elp file. Write some use instructions and customize your download link.">
-        <source>This block will create a link to download the elp file. Write some use instructions and customize your download link.</source>
-        <target>Acest bloc va crea un link pentru descărcarea fișierului elp. Scrie câteva instrucțiuni de utilizare și personalizează link-ul de descărcare.</target>
-      </trans-unit>
       <trans-unit id="vaXcPZz" resname="Download link">
         <source>Download link</source>
         <target>Link de descărcare</target>
@@ -6389,10 +6330,6 @@
         <source>No questions in the form</source>
         <target>Nu există întrebări în formular</target>
       </trans-unit>
-      <trans-unit id="DCmDkZO" resname="Set the pass mark">
-        <source>Set the pass mark</source>
-        <target>Setează pragul de promovare</target>
-      </trans-unit>
       <trans-unit id="jkH6U0E" resname="Include a button to display the answers">
         <source>Include a button to display the answers</source>
         <target>Include un buton pentru afișarea răspunsurilor</target>
@@ -6616,14 +6553,6 @@
       <trans-unit id="kVirQpc" resname="Border color">
         <source>Border color</source>
         <target>Culoarea marginii</target>
-      </trans-unit>
-      <trans-unit id="yWj5Kfm" resname="Save score button">
-        <source>Save score button</source>
-        <target>Buton de salvare scor</target>
-      </trans-unit>
-      <trans-unit id=".Rk8uO0" resname="The button will only be displayed when exporting as SCORM and while editing in eXeLearning.">
-        <source>The button will only be displayed when exporting as SCORM and while editing in eXeLearning.</source>
-        <target>Butonul va fi afișat doar atunci când exportați ca SCORM și în timpul editării în eXeLearning.</target>
       </trans-unit>
       <trans-unit id="LjhASK4" resname="Provide a valid GeoGebra URL or activity ID.">
         <source>Provide a valid GeoGebra URL or activity ID.</source>
@@ -7508,10 +7437,6 @@
       <trans-unit id="pY9ORr8" resname="Absolute error">
         <source>Absolute error</source>
         <target>Eroare absolută</target>
-      </trans-unit>
-      <trans-unit id="DpYu48b" resname="% right to see the feedback">
-        <source>% right to see the feedback</source>
-        <target>% drept pentru a vedea feedback-ul</target>
       </trans-unit>
       <trans-unit id="ye8G32n" resname="Please specify the number of operations">
         <source>Please specify the number of operations</source>
@@ -10733,102 +10658,6 @@
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
         <target>Schimbă textul taburilor adăugând un titlu fiecărui antet de nivel 2 cu opțiunea „Inserează/Editare Atribute”: </target>
       </trans-unit>
-      <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
-        <source>From Wikipedia, the free encyclopedia.</source>
-        <target>Din Wikipedia, enciclopedia liberă.</target>
-      </trans-unit>
-      <trans-unit id="178jFkN" resname="Redirected from">
-        <source>Redirected from</source>
-        <target>Redirecționat de la</target>
-      </trans-unit>
-      <trans-unit id="D.N0TPy" resname="Wikipedia does not have an article with this exact name.">
-        <source>Wikipedia does not have an article with this exact name.</source>
-        <target>Wikipedia nu are un articol cu acest nume exact.</target>
-      </trans-unit>
-      <trans-unit id="vWtWulw" resname="search for">
-        <source>search for</source>
-        <target>căutați</target>
-      </trans-unit>
-      <trans-unit id="ReLHScr" resname="in Wikipedia">
-        <source>in Wikipedia</source>
-        <target>pe Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="uLQ19JQ" resname="to check for alternative titles or spellings.">
-        <source>to check for alternative titles or spellings.</source>
-        <target>pentru a verifica titluri alternative sau ortografii.</target>
-      </trans-unit>
-      <trans-unit id="Uy3s6Ik" resname="Wikipedia Article">
-        <source>Wikipedia Article</source>
-        <target>Articol Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="8RTGAQT" resname="Article">
-        <source>Article</source>
-        <target>Articol</target>
-      </trans-unit>
-      <trans-unit id="NR2RdXC" resname="English">
-        <source>English</source>
-        <target>Engleză</target>
-      </trans-unit>
-      <trans-unit id="VNPyy5F" resname="Basque">
-        <source>Basque</source>
-        <target>Basque</target>
-      </trans-unit>
-      <trans-unit id="6xS7ahk" resname="Catalan">
-        <source>Catalan</source>
-        <target>Catalan</target>
-      </trans-unit>
-      <trans-unit id="dY9PyfQ" resname="Chinese">
-        <source>Chinese</source>
-        <target>Chineză</target>
-      </trans-unit>
-      <trans-unit id="AdxkL_L" resname="Dutch">
-        <source>Dutch</source>
-        <target>Olandez</target>
-      </trans-unit>
-      <trans-unit id="pMwerq8" resname="French">
-        <source>French</source>
-        <target>Franceză</target>
-      </trans-unit>
-      <trans-unit id="_PBILaW" resname="Galician">
-        <source>Galician</source>
-        <target>Galiciană</target>
-      </trans-unit>
-      <trans-unit id="HqedDt2" resname="German">
-        <source>German</source>
-        <target>Germană</target>
-      </trans-unit>
-      <trans-unit id="xuAMUN9" resname="Italian">
-        <source>Italian</source>
-        <target>Italiană</target>
-      </trans-unit>
-      <trans-unit id="1PzOojp" resname="Japanese">
-        <source>Japanese</source>
-        <target>Japoneză</target>
-      </trans-unit>
-      <trans-unit id=".af6ZfV" resname="Magyar">
-        <source>Magyar</source>
-        <target>Maghiară</target>
-      </trans-unit>
-      <trans-unit id="ZYhMxlL" resname="Polish">
-        <source>Polish</source>
-        <target>Poloneză</target>
-      </trans-unit>
-      <trans-unit id="jJYRmbQ" resname="Portuguese">
-        <source>Portuguese</source>
-        <target>Portugueză</target>
-      </trans-unit>
-      <trans-unit id="b0hwZlf" resname="Slovenian">
-        <source>Slovenian</source>
-        <target>Slovenă</target>
-      </trans-unit>
-      <trans-unit id="YHU6HyX" resname="Spanish">
-        <source>Spanish</source>
-        <target>Spaniolă</target>
-      </trans-unit>
-      <trans-unit id="OCwplzN" resname="Swedish">
-        <source>Swedish</source>
-        <target>Suedeză</target>
-      </trans-unit>
       <trans-unit id="zJxoJ__" resname="Emphasis">
         <source>Emphasis</source>
         <target>Accent</target>
@@ -10952,6 +10781,10 @@
       <trans-unit id="OToz6k0" resname="Help us spreading eXeLearning. Checking this option, a &quot;Made with eXeLearning&quot; link will be displayed in your pages.">
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>Ajută-ne să răspândim eXeLearning. Bifând această opțiune, va fi afișat un link „Realizat cu eXeLearning” pe paginile tale.</target>
+      </trans-unit>
+      <trans-unit id="MwExe01" resname="Made with eXeLearning">
+        <source>Made with eXeLearning</source>
+        <target>Realizat cu eXeLearning</target>
       </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
@@ -11248,10 +11081,6 @@
       <trans-unit id="qHaNrGf" resname="Changelog">
         <source>Changelog</source>
         <target>Jurnal de modificări</target>
-      </trans-unit>
-      <trans-unit id="rFqGW9s" resname="Upload to Drive">
-        <source>Upload to Drive</source>
-        <target>Încărcare în Drive</target>
       </trans-unit>
       <trans-unit id="6C92oaM" resname="System">
         <source>System</source>
@@ -12209,10 +12038,6 @@
         <source>Send to %s</source>
         <target>Trimite la %s</target>
       </trans-unit>
-      <trans-unit id="finish_001" resname="Finish">
-        <source>Finish</source>
-        <target>Terminare</target>
-      </trans-unit>
       <trans-unit id="h72md8e" resname="Unsaved changes">
         <source>Unsaved changes</source>
         <target>Modificări nesalvate</target>
@@ -12561,22 +12386,6 @@
         <source>People with access</source>
         <target>Persoane cu acces</target>
       </trans-unit>
-      <trans-unit id="bwjbmyv" resname="General access">
-        <source>General access</source>
-        <target>Acces general</target>
-      </trans-unit>
-      <trans-unit id="fbntbt0" resname="Restricted (Private)">
-        <source>Restricted (Private)</source>
-        <target>Restricționat (Privat)</target>
-      </trans-unit>
-      <trans-unit id="naa6hjq" resname="Anyone with the link (Public)">
-        <source>Anyone with the link (Public)</source>
-        <target>Oricine are linkul (Public)</target>
-      </trans-unit>
-      <trans-unit id="0btjzxc" resname="Anyone who has the link can view and edit in real time">
-        <source>Anyone who has the link can view and edit in real time</source>
-        <target>Oricine cu link-ul poate vizualiza și edita în timp real</target>
-      </trans-unit>
       <trans-unit id="ngzh1y7" resname="Print preview">
         <source>Print preview</source>
         <target>Previzualizare de imprimare</target>
@@ -12624,18 +12433,6 @@
       <trans-unit id="7e98it6" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
         <target>Scrie cuvântul sau fraza corectă și fă clic pe butonul "Răspunde".</target>
-      </trans-unit>
-      <trans-unit id="ne0i1et" resname="Timeout">
-        <source>Timeout</source>
-        <target>Timpul de așteptare a expirat</target>
-      </trans-unit>
-      <trans-unit id="b5rft7j" resname="Network error">
-        <source>Network error</source>
-        <target>Eroare de rețea</target>
-      </trans-unit>
-      <trans-unit id="u0g7lr6" resname="Invalid URL">
-        <source>Invalid URL</source>
-        <target>URL invalid</target>
       </trans-unit>
       <trans-unit id="8m7zds5" resname="Session Expired">
         <source>Session Expired</source>
@@ -12748,10 +12545,6 @@
       <trans-unit id="0dk7xj5" resname="An error occurred while cloning the block">
         <source>An error occurred while cloning the block</source>
         <target>Eroare la clonarea casetei</target>
-      </trans-unit>
-      <trans-unit id="feo2sap" resname="Being edited by">
-        <source>Being edited by</source>
-        <target>Editat de</target>
       </trans-unit>
       <trans-unit id="0pf40k4" resname="An error occurred while creating the page">
         <source>An error occurred while creating the page</source>
@@ -13012,10 +12805,6 @@
       <trans-unit id="dj148zj" resname="Error validating links">
         <source>Error validating links</source>
         <target>Eroare la validarea linkurilor</target>
-      </trans-unit>
-      <trans-unit id="d4j1h8g" resname="No broken links to export">
-        <source>No broken links to export</source>
-        <target>Fără linkuri defecte pentru export</target>
       </trans-unit>
       <trans-unit id="2ih36gk" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
@@ -13401,10 +13190,6 @@
         <source>config.xml not found in ZIP</source>
         <target>config.xml nu a fost găsit în ZIP</target>
       </trans-unit>
-      <trans-unit id="cu49yos" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>Acest stil nu poate fi descărcat</target>
-      </trans-unit>
       <trans-unit id="x7kouct" resname="Style already exists">
         <source>Style already exists</source>
         <target>Stilul deja există</target>
@@ -13484,14 +13269,6 @@
       <trans-unit id="ujy8vwh" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>Vor fi redirecționați automat către pagina de nivel superior.</target>
-      </trans-unit>
-      <trans-unit id="vtiv805" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>Preferințele vor fi aplicate după reîmprospătarea paginii.</target>
-      </trans-unit>
-      <trans-unit id="rbvvztp" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>Modificările necesită o reîncărcare a paginii pentru a intra în vigoare. Vă rugăm să descărcați mai întâi proiectul pentru a evita pierderea lucrării, apoi reîncărcați pagina.</target>
       </trans-unit>
       <trans-unit id="ho5a2tz" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -13700,18 +13477,6 @@
       <trans-unit id="pmk20cs" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
         <target>Accesul tău la acest proiect a fost revocat.</target>
-      </trans-unit>
-      <trans-unit id="qmyd880" resname="Mind map saved">
-        <source>Mind map saved</source>
-        <target>Hartă mentală salvată</target>
-      </trans-unit>
-      <trans-unit id="ogtaqry" resname="source">
-        <source>source</source>
-        <target>sursă</target>
-      </trans-unit>
-      <trans-unit id="ggim3m6" resname="target">
-        <source>target</source>
-        <target>destinație</target>
       </trans-unit>
       <trans-unit id="fclnnoo" resname="Create new formula toolbar">
         <source>Create new formula toolbar</source>
@@ -14125,10 +13890,6 @@
         <source>Close without saving</source>
         <target>Închideți fără a salva</target>
       </trans-unit>
-      <trans-unit id="yt9h5lj" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
-        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
-        <target>Nu a putut fi verificat: conținutul HTTP este blocat pe paginile HTTPS.</target>
-      </trans-unit>
       <trans-unit id="906przj" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>
         <target>Puteți adăuga un singur iDevice Rubrică pe pagină.</target>
@@ -14224,6 +13985,2026 @@
       <trans-unit id="7z9sd7x" resname="Your score will be automatically saved after each change.">
         <source>Your score will be automatically saved after each change.</source>
         <target>~Scorul dvs. va fi salvat automat după fiecare modificare.</target>
+      </trans-unit>
+      <trans-unit id="qwf83at" resname="Use the default style of the site">
+        <source>Use the default style of the site</source>
+        <target>~Folosește stilul implicit al aplicației</target>
+      </trans-unit>
+      <trans-unit id="1fktxs2" resname="Pick a style that will be preselected when you create a new project. Overrides the site default.">
+        <source>Pick a style that will be preselected when you create a new project. Overrides the site default.</source>
+        <target>~Alege un stil implicit pentru proiectele noi. Are prioritate față de stilul implicit al aplicației.</target>
+      </trans-unit>
+      <trans-unit id="u3uh62v" resname="Toggle mobile preview">
+        <source>Toggle mobile preview</source>
+        <target>~Comutare previzualizare mobil</target>
+      </trans-unit>
+      <trans-unit id="k5l86d0" resname="Open from folder">
+        <source>Open from folder</source>
+        <target>~Deschide din folder</target>
+      </trans-unit>
+      <trans-unit id="fhhratk" resname="Save to folder">
+        <source>Save to folder</source>
+        <target>~Salvează în folder</target>
+      </trans-unit>
+      <trans-unit id="ohkc3ri" resname="3D Model">
+        <source>3D Model</source>
+        <target>~Model 3D</target>
+      </trans-unit>
+      <trans-unit id="99vruz0" resname="3D Models">
+        <source>3D Models</source>
+        <target>~Modele 3D</target>
+      </trans-unit>
+      <trans-unit id="1xaaikg" resname="The selected folder is not a valid eXeLearning project.">
+        <source>The selected folder is not a valid eXeLearning project.</source>
+        <target>~Folderul selectat nu conține un proiect eXeLearning valid.</target>
+      </trans-unit>
+      <trans-unit id="uecpfte" resname="Not supported">
+        <source>Not supported</source>
+        <target>~Neacceptat</target>
+      </trans-unit>
+      <trans-unit id="citpsbd" resname="Opening a project from a folder is not available in this browser.">
+        <source>Opening a project from a folder is not available in this browser.</source>
+        <target>~Acest browser nu permite deschiderea unui proiect dintr-un folder.</target>
+      </trans-unit>
+      <trans-unit id="ap8rdov" resname="Folder save requires the Yjs export pipeline.">
+        <source>Folder save requires the Yjs export pipeline.</source>
+        <target>~Salvarea în folder necesită canalul de export Yjs.</target>
+      </trans-unit>
+      <trans-unit id="yf1er34" resname="Generating folder project...">
+        <source>Generating folder project...</source>
+        <target>~Se generează proiectul în folder...</target>
+      </trans-unit>
+      <trans-unit id="7b76fmh" resname="Saving to a folder is not available in this browser.">
+        <source>Saving to a folder is not available in this browser.</source>
+        <target>~Acest browser nu permite salvarea într-un folder.</target>
+      </trans-unit>
+      <trans-unit id="2o8yybw" resname="Folder saved.">
+        <source>Folder saved.</source>
+        <target>~Folder salvat.</target>
+      </trans-unit>
+      <trans-unit id="f37jom3" resname="An error occurred while exporting the project: ">
+        <source>An error occurred while exporting the project: </source>
+        <target>~A apărut o eroare la exportul proiectului: </target>
+      </trans-unit>
+      <trans-unit id="z5gxdif" resname="Sending to the platform...">
+        <source>Sending to the platform...</source>
+        <target>~Se trimite la platformă...</target>
+      </trans-unit>
+      <trans-unit id="8a9sxnz" resname="Could not send the project to the platform: ">
+        <source>Could not send the project to the platform: </source>
+        <target>~Proiectul nu a putut fi trimis la platformă: </target>
+      </trans-unit>
+      <trans-unit id="8yq3xaf" resname="TikZ code">
+        <source>TikZ code</source>
+        <target>~Cod TikZ</target>
+      </trans-unit>
+      <trans-unit id="t8sgx3s" resname="One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.">
+        <source>One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.</source>
+        <target>~O întrebare pe linie. Câmpuri separate prin #. Descriere: text scurt care descrie circuitul. Cod TikZ: cod circuitikz pentru diagramă. Soluție: orice combinație de A, B, C și D (ex. A, AC, BD). Întrebare: textul întrebării. Apoi 2 până la 4 opțiuni de răspuns.</target>
+      </trans-unit>
+      <trans-unit id="hza9h2y" resname="Simple resistor circuit">
+        <source>Simple resistor circuit</source>
+        <target>~Circuit simplu cu rezistență</target>
+      </trans-unit>
+      <trans-unit id="jyozjcv" resname="What is the resistance value?">
+        <source>What is the resistance value?</source>
+        <target>~Care este valoarea rezistenței?</target>
+      </trans-unit>
+      <trans-unit id="faslbvl" resname="Battery and lamp circuit">
+        <source>Battery and lamp circuit</source>
+        <target>~Circuit cu baterie și lampă</target>
+      </trans-unit>
+      <trans-unit id="ppdnodc" resname="What happens when the switch is closed?">
+        <source>What happens when the switch is closed?</source>
+        <target>~Ce se întâmplă când întrerupătorul este închis?</target>
+      </trans-unit>
+      <trans-unit id="5u7osy3" resname="Nothing">
+        <source>Nothing</source>
+        <target>~Nimic</target>
+      </trans-unit>
+      <trans-unit id="c3y1dik" resname="The lamp turns on">
+        <source>The lamp turns on</source>
+        <target>~Lampa se aprinde</target>
+      </trans-unit>
+      <trans-unit id="qu93ws3" resname="The battery drains">
+        <source>The battery drains</source>
+        <target>~Bateria se descarcă</target>
+      </trans-unit>
+      <trans-unit id="xk7msvy" resname="Drop an .elpx file here to open it">
+        <source>Drop an .elpx file here to open it</source>
+        <target>~Plasează un fișier .elpx aici pentru a-l deschide</target>
+      </trans-unit>
+      <trans-unit id="6zd9uo5" resname="360° panorama viewer">
+        <source>360° panorama viewer</source>
+        <target>~Vizualizator panoramă 360°</target>
+      </trans-unit>
+      <trans-unit id="4yp4wjg" resname="Scene">
+        <source>Scene</source>
+        <target>~Scenă</target>
+      </trans-unit>
+      <trans-unit id="k9ihq2g" resname="Hotspot">
+        <source>Hotspot</source>
+        <target>~Punct interactiv</target>
+      </trans-unit>
+      <trans-unit id="y5soo22" resname="Initial view">
+        <source>Initial view</source>
+        <target>~Vedere inițială</target>
+      </trans-unit>
+      <trans-unit id="rkil545" resname="Yaw">
+        <source>Yaw</source>
+        <target>~Yaw (rotație orizontală)</target>
+      </trans-unit>
+      <trans-unit id="4m899np" resname="Pitch">
+        <source>Pitch</source>
+        <target>~Pitch (înclinare verticală)</target>
+      </trans-unit>
+      <trans-unit id="mweyrt3" resname="Field of view">
+        <source>Field of view</source>
+        <target>~Câmp vizual</target>
+      </trans-unit>
+      <trans-unit id="bd9e2ie" resname="Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.">
+        <source>Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.</source>
+        <target>~Adaugă imagini 360° ecirectangulare (raport 2:1) sau debifează “Imagine panoramă 360°” pentru a folosi o fotografie plată obișnuită. Vizualizatorul folosește WebGL pentru scenele 360°.</target>
+      </trans-unit>
+      <trans-unit id="66ob7pm" resname="Scenes">
+        <source>Scenes</source>
+        <target>~Scene</target>
+      </trans-unit>
+      <trans-unit id="1y104hj" resname="Add scene">
+        <source>Add scene</source>
+        <target>~Adaugă scenă</target>
+      </trans-unit>
+      <trans-unit id="i64eotd" resname="Active scene">
+        <source>Active scene</source>
+        <target>~Scenă activă</target>
+      </trans-unit>
+      <trans-unit id="ngc9ktt" resname="Panorama image">
+        <source>Panorama image</source>
+        <target>~Imagine panoramică</target>
+      </trans-unit>
+      <trans-unit id="6gu7lkc" resname="Choose image…">
+        <source>Choose image…</source>
+        <target>~Alege imagine…</target>
+      </trans-unit>
+      <trans-unit id="qxpomzq" resname="No image selected">
+        <source>No image selected</source>
+        <target>~Nicio imagine selectată</target>
+      </trans-unit>
+      <trans-unit id="tidt41c" resname="Clear">
+        <source>Clear</source>
+        <target>~Șterge</target>
+      </trans-unit>
+      <trans-unit id="ohzw7nv" resname="360° panorama image">
+        <source>360° panorama image</source>
+        <target>~Imagine panoramică 360°</target>
+      </trans-unit>
+      <trans-unit id="w4ysus1" resname="Uncheck for a regular flat photo (no 360° effect).">
+        <source>Uncheck for a regular flat photo (no 360° effect).</source>
+        <target>~Debifează pentru o fotografie plată obișnuită (fără efect 360°).</target>
+      </trans-unit>
+      <trans-unit id="2p1fqb4" resname="Hotspots">
+        <source>Hotspots</source>
+        <target>~Puncte interactive</target>
+      </trans-unit>
+      <trans-unit id="m7iikdi" resname="Click on the image to place a hotspot, or drag an existing hotspot to move it.">
+        <source>Click on the image to place a hotspot, or drag an existing hotspot to move it.</source>
+        <target>~Fă clic pe imagine pentru a plasa un punct interactiv sau trage un punct existent pentru a-l muta.</target>
+      </trans-unit>
+      <trans-unit id="twbbahl" resname="Click on the panorama to place a hotspot, or drag an existing hotspot to move it.">
+        <source>Click on the panorama to place a hotspot, or drag an existing hotspot to move it.</source>
+        <target>~Fă clic pe panoramă pentru a plasa un punct interactiv sau trage un punct existent pentru a-l muta.</target>
+      </trans-unit>
+      <trans-unit id="jobh4pv" resname="Place hotspot by clicking">
+        <source>Place hotspot by clicking</source>
+        <target>~Plasează punct interactiv făcând clic</target>
+      </trans-unit>
+      <trans-unit id="rmj71t5" resname="…or add at current view">
+        <source>…or add at current view</source>
+        <target>~…sau adaugă la vederea curentă</target>
+      </trans-unit>
+      <trans-unit id="w05jn6w" resname="Controls">
+        <source>Controls</source>
+        <target>~Controale</target>
+      </trans-unit>
+      <trans-unit id="kgi917i" resname="Auto-rotate">
+        <source>Auto-rotate</source>
+        <target>~Rotație automată</target>
+      </trans-unit>
+      <trans-unit id="9ex2tgi" resname="Speed">
+        <source>Speed</source>
+        <target>~Viteză</target>
+      </trans-unit>
+      <trans-unit id="vn7cmso" resname="Allow zoom">
+        <source>Allow zoom</source>
+        <target>~Permite zoom</target>
+      </trans-unit>
+      <trans-unit id="kebexwx" resname="Show fullscreen button">
+        <source>Show fullscreen button</source>
+        <target>~Afișează butonul ecran complet</target>
+      </trans-unit>
+      <trans-unit id="syo2d8l" resname="Show hotspot labels">
+        <source>Show hotspot labels</source>
+        <target>~Afișează etichetele punctelor interactive</target>
+      </trans-unit>
+      <trans-unit id="1b99st2" resname="Show navigation arrows">
+        <source>Show navigation arrows</source>
+        <target>~Afișează săgețile de navigare</target>
+      </trans-unit>
+      <trans-unit id="ksexnuy" resname="Select an image to see a live preview.">
+        <source>Select an image to see a live preview.</source>
+        <target>~Selectează o imagine pentru a vedea o previzualizare.</target>
+      </trans-unit>
+      <trans-unit id="5hyjjbg" resname="Scene actions">
+        <source>Scene actions</source>
+        <target>~Acțiuni scenă</target>
+      </trans-unit>
+      <trans-unit id="whndrwt" resname="Set as start scene">
+        <source>Set as start scene</source>
+        <target>~Setează ca scenă de start</target>
+      </trans-unit>
+      <trans-unit id="mklvnbk" resname="Duplicate scene">
+        <source>Duplicate scene</source>
+        <target>~Dublează scena</target>
+      </trans-unit>
+      <trans-unit id="53w8al6" resname="Remove scene">
+        <source>Remove scene</source>
+        <target>~Elimină scena</target>
+      </trans-unit>
+      <trans-unit id="oe3zpl5" resname="No hotspots in this scene yet.">
+        <source>No hotspots in this scene yet.</source>
+        <target>~Nu există încă puncte interactive în această scenă.</target>
+      </trans-unit>
+      <trans-unit id="zbnj29k" resname="Label">
+        <source>Label</source>
+        <target>~Etichetă</target>
+      </trans-unit>
+      <trans-unit id="jghv5mi" resname="Remove hotspot">
+        <source>Remove hotspot</source>
+        <target>~Elimină punctul interactiv</target>
+      </trans-unit>
+      <trans-unit id="27j2w50" resname="Action">
+        <source>Action</source>
+        <target>~Acțiune</target>
+      </trans-unit>
+      <trans-unit id="mrh1e02" resname="Go to scene">
+        <source>Go to scene</source>
+        <target>~Mergi la scenă</target>
+      </trans-unit>
+      <trans-unit id="ucltxm2" resname="External link">
+        <source>External link</source>
+        <target>~Link extern</target>
+      </trans-unit>
+      <trans-unit id="xbw1qvm" resname="Target scene">
+        <source>Target scene</source>
+        <target>~Scena țintă</target>
+      </trans-unit>
+      <trans-unit id="9fvxfp0" resname="Video URL">
+        <source>Video URL</source>
+        <target>~URL video</target>
+      </trans-unit>
+      <trans-unit id="qetcasu" resname="Choose video…">
+        <source>Choose video…</source>
+        <target>~Alege video…</target>
+      </trans-unit>
+      <trans-unit id="wcwshz6" resname="Paste a YouTube, Vimeo or Educamadrid Mediateca page URL to embed it, or choose an uploaded video file.">
+        <source>Paste a YouTube, Vimeo or Educamadrid Mediateca page URL to embed it, or choose an uploaded video file.</source>
+        <target>~Lipește URL-ul unei pagini YouTube, Vimeo sau Mediateca Educamadrid pentru a o încorpora, sau alege un fișier video încărcat.</target>
+      </trans-unit>
+      <trans-unit id="lcsvjlp" resname="Open in a new tab">
+        <source>Open in a new tab</source>
+        <target>~Deschide într-o filă nouă</target>
+      </trans-unit>
+      <trans-unit id="zi4ym8b" resname="Loading 3D preview…">
+        <source>Loading 3D preview…</source>
+        <target>~Se încarcă previzualizarea 3D…</target>
+      </trans-unit>
+      <trans-unit id="l74jpnn" resname="Drag to move">
+        <source>Drag to move</source>
+        <target>~Trage pentru a muta</target>
+      </trans-unit>
+      <trans-unit id="pgbb60x" resname="Pan navigation">
+        <source>Pan navigation</source>
+        <target>~Navigare panoramică</target>
+      </trans-unit>
+      <trans-unit id="eba4hc1" resname="Pan left">
+        <source>Pan left</source>
+        <target>~Deplasare la stânga</target>
+      </trans-unit>
+      <trans-unit id="sh5glbh" resname="Pan up">
+        <source>Pan up</source>
+        <target>~Deplasare în sus</target>
+      </trans-unit>
+      <trans-unit id="so0x89g" resname="Pan down">
+        <source>Pan down</source>
+        <target>~Deplasare în jos</target>
+      </trans-unit>
+      <trans-unit id="iduykuo" resname="Pan right">
+        <source>Pan right</source>
+        <target>~Deplasare la dreapta</target>
+      </trans-unit>
+      <trans-unit id="a083esf" resname="3D Viewer">
+        <source>3D Viewer</source>
+        <target>~Vizualizator 3D</target>
+      </trans-unit>
+      <trans-unit id="m0mj6ta" resname="Exit fullscreen">
+        <source>Exit fullscreen</source>
+        <target>~Ieșire din ecran complet</target>
+      </trans-unit>
+      <trans-unit id="rmjo2cm" resname="Select a 3D model to preview">
+        <source>Select a 3D model to preview</source>
+        <target>~Selectează un model 3D pentru previzualizare</target>
+      </trans-unit>
+      <trans-unit id="33feew8" resname="Rotate model">
+        <source>Rotate model</source>
+        <target>~Rotește modelul</target>
+      </trans-unit>
+      <trans-unit id="zremod2" resname="Rotate left">
+        <source>Rotate left</source>
+        <target>~Rotește la stânga</target>
+      </trans-unit>
+      <trans-unit id="7vbwo3a" resname="Tilt up">
+        <source>Tilt up</source>
+        <target>~Înclină în sus</target>
+      </trans-unit>
+      <trans-unit id="x4o4obi" resname="Tilt down">
+        <source>Tilt down</source>
+        <target>~Înclină în jos</target>
+      </trans-unit>
+      <trans-unit id="ep0et93" resname="Rotate right">
+        <source>Rotate right</source>
+        <target>~Rotește la dreapta</target>
+      </trans-unit>
+      <trans-unit id="7w1pg2q" resname="Select a GLB, GLTF or STL file">
+        <source>Select a GLB, GLTF or STL file</source>
+        <target>~Selectează un fișier GLB, GLTF sau STL</target>
+      </trans-unit>
+      <trans-unit id="1eeth79" resname="Describe the 3D model for accessibility">
+        <source>Describe the 3D model for accessibility</source>
+        <target>~Descrie modelul 3D pentru accesibilitate</target>
+      </trans-unit>
+      <trans-unit id="nbwsnys" resname="Describe the 3D model for screen readers and accessibility">
+        <source>Describe the 3D model for screen readers and accessibility</source>
+        <target>~Descrie modelul 3D pentru cititoare de ecran și accesibilitate</target>
+      </trans-unit>
+      <trans-unit id="okirl7l" resname="Display Options">
+        <source>Display Options</source>
+        <target>~Opțiuni de afișare</target>
+      </trans-unit>
+      <trans-unit id="thd462x" resname="Choose background color">
+        <source>Choose background color</source>
+        <target>~Alege culoarea fundalului</target>
+      </trans-unit>
+      <trans-unit id="gr2gdl9" resname="STL model color">
+        <source>STL model color</source>
+        <target>~Culoarea modelului STL</target>
+      </trans-unit>
+      <trans-unit id="bs1r4mv" resname="Choose STL model color">
+        <source>Choose STL model color</source>
+        <target>~Alege culoarea modelului STL</target>
+      </trans-unit>
+      <trans-unit id="4zwj76i" resname="Only used for STL files; ignored for GLB/GLTF (materials come from the model).">
+        <source>Only used for STL files; ignored for GLB/GLTF (materials come from the model).</source>
+        <target>~Folosit doar pentru fișierele STL; ignorat pentru GLB/GLTF (materialele provin din model).</target>
+      </trans-unit>
+      <trans-unit id="d8f10d6" resname="Enable camera controls">
+        <source>Enable camera controls</source>
+        <target>~Activează controalele camerei</target>
+      </trans-unit>
+      <trans-unit id="2l7wqnw" resname="Auto-rotate model">
+        <source>Auto-rotate model</source>
+        <target>~Rotire automată a modelului</target>
+      </trans-unit>
+      <trans-unit id="lv2x5vf" resname="Show navigation controls (fullscreen + arrows)">
+        <source>Show navigation controls (fullscreen + arrows)</source>
+        <target>~Afișează controalele de navigare (ecran complet + săgeți)</target>
+      </trans-unit>
+      <trans-unit id="6eff9f6" resname="Mutually exclusive with auto-rotate.">
+        <source>Mutually exclusive with auto-rotate.</source>
+        <target>~Incompatibil cu rotirea automată.</target>
+      </trans-unit>
+      <trans-unit id="0grjbbc" resname="Animation">
+        <source>Animation</source>
+        <target>~Animație</target>
+      </trans-unit>
+      <trans-unit id="nc9nzi5" resname="Play animation">
+        <source>Play animation</source>
+        <target>~Redă animația</target>
+      </trans-unit>
+      <trans-unit id="p1nbexh" resname="Animation paused">
+        <source>Animation paused</source>
+        <target>~Animație în pauză</target>
+      </trans-unit>
+      <trans-unit id="8g0tn01" resname="Playing animation">
+        <source>Playing animation</source>
+        <target>~Animație în redare</target>
+      </trans-unit>
+      <trans-unit id="rz3hwrl" resname="Please select a 3D model file">
+        <source>Please select a 3D model file</source>
+        <target>~Selectează un fișier de model 3D</target>
+      </trans-unit>
+      <trans-unit id="9yxgxv4" resname="Please select a valid 3D model file (GLB, GLTF, or STL)">
+        <source>Please select a valid 3D model file (GLB, GLTF, or STL)</source>
+        <target>~Selectează un fișier de model 3D valid (GLB, GLTF sau STL)</target>
+      </trans-unit>
+      <trans-unit id="1b31rdx" resname="Loading editor…">
+        <source>Loading editor…</source>
+        <target>~Se încarcă editorul…</target>
+      </trans-unit>
+      <trans-unit id="5u2170h" resname="Could not load the slide editor. Please reload the page.">
+        <source>Could not load the slide editor. Please reload the page.</source>
+        <target>~Nu s-a putut încărca editorul de diapozitive. Reîncarcă pagina.</target>
+      </trans-unit>
+      <trans-unit id="tnamg35" resname="Markdown text">
+        <source>Markdown text</source>
+        <target>~Text Markdown</target>
+      </trans-unit>
+      <trans-unit id="egbbm8q" resname="Markdown content">
+        <source>Markdown content</source>
+        <target>~Conținut Markdown</target>
+      </trans-unit>
+      <trans-unit id="uynbi4y" resname="Electrical Circuits">
+        <source>Electrical Circuits</source>
+        <target>~Circuite electrice</target>
+      </trans-unit>
+      <trans-unit id="hmudkoq" resname="Please write the question">
+        <source>Please write the question</source>
+        <target>~Scrie întrebarea</target>
+      </trans-unit>
+      <trans-unit id="v4443hp" resname="Please complete all options">
+        <source>Please complete all options</source>
+        <target>~Completează toate opțiunile</target>
+      </trans-unit>
+      <trans-unit id="eeuvfy4" resname="Please write the word/phrase">
+        <source>Please write the word/phrase</source>
+        <target>~Scrie cuvântul/fraza</target>
+      </trans-unit>
+      <trans-unit id="b74zeu3" resname="The selected file is not a valid game">
+        <source>The selected file is not a valid game</source>
+        <target>~Fișierul selectat nu conține un joc valid</target>
+      </trans-unit>
+      <trans-unit id="ymtzvnw" resname="Please indicate the time to display the solution">
+        <source>Please indicate the time to display the solution</source>
+        <target>~Indică timpul pentru afișarea soluției</target>
+      </trans-unit>
+      <trans-unit id="z9k2njs" resname="Please provide the word or phrase">
+        <source>Please provide the word or phrase</source>
+        <target>~Furnizează cuvântul sau fraza</target>
+      </trans-unit>
+      <trans-unit id="9npjbsm" resname="Create quiz activities based on electrical circuit diagrams drawn with TikZ.">
+        <source>Create quiz activities based on electrical circuit diagrams drawn with TikZ.</source>
+        <target>~Creează activități de chestionar bazate pe diagrame de circuite electrice desenate cu TikZ.</target>
+      </trans-unit>
+      <trans-unit id="re7084k" resname="&amp;percnt; right to see the feedback">
+        <source>&amp;percnt; right to see the feedback</source>
+        <target>~&amp;percnt; corect pentru a vedea feedback-ul</target>
+      </trans-unit>
+      <trans-unit id="n01vlpq" resname="% Questions">
+        <source>% Questions</source>
+        <target>~% Întrebări</target>
+      </trans-unit>
+      <trans-unit id="ih3hprg" resname="No circuit">
+        <source>No circuit</source>
+        <target>~Niciun circuit</target>
+      </trans-unit>
+      <trans-unit id="g9bqpfl" resname="Circuit code (TikZ)">
+        <source>Circuit code (TikZ)</source>
+        <target>~Codul circuitului (TikZ)</target>
+      </trans-unit>
+      <trans-unit id="n2zuqug" resname="Preview circuit">
+        <source>Preview circuit</source>
+        <target>~Previzualizează circuitul</target>
+      </trans-unit>
+      <trans-unit id="5nl48wd" resname="You answered all the questions.">
+        <source>You answered all the questions.</source>
+        <target>~Ai răspuns la toate întrebările.</target>
+      </trans-unit>
+      <trans-unit id="susloul" resname="You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.">
+        <source>You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.</source>
+        <target>~Ai nevoie de cel puțin &amp;percnt;s&amp;percnt; răspunsuri corecte pentru a obține informațiile. Încearcă din nou.</target>
+      </trans-unit>
+      <trans-unit id="dmdhk2w" resname="The score can not be saved because this page is not part of a SCORM package.">
+        <source>The score can not be saved because this page is not part of a SCORM package.</source>
+        <target>~Scorul nu poate fi salvat deoarece această pagină nu face parte dintr-un pachet SCORM.</target>
+      </trans-unit>
+      <trans-unit id="aod38ek" resname="You can only save the score once">
+        <source>You can only save the score once</source>
+        <target>~Poți salva scorul o singură dată</target>
+      </trans-unit>
+      <trans-unit id="i0dwzy6" resname="Please start the activity before saving your score.">
+        <source>Please start the activity before saving your score.</source>
+        <target>~Pornește activitatea înainte de a salva scorul.</target>
+      </trans-unit>
+      <trans-unit id="71zmylc" resname="Electrical Circuits Quiz">
+        <source>Electrical Circuits Quiz</source>
+        <target>~Chestionar circuite electrice</target>
+      </trans-unit>
+      <trans-unit id="4ckiquf" resname="Observe the electrical circuit and answer the questions.">
+        <source>Observe the electrical circuit and answer the questions.</source>
+        <target>~Observă circuitul electric și răspunde la întrebări.</target>
+      </trans-unit>
+      <trans-unit id="g3kkfks" resname="What type of circuit is shown?">
+        <source>What type of circuit is shown?</source>
+        <target>~Ce tip de circuit este prezentat?</target>
+      </trans-unit>
+      <trans-unit id="rkyvzkp" resname="Series circuit">
+        <source>Series circuit</source>
+        <target>~Circuit în serie</target>
+      </trans-unit>
+      <trans-unit id="zhcv1ck" resname="Parallel circuit">
+        <source>Parallel circuit</source>
+        <target>~Circuit în paralel</target>
+      </trans-unit>
+      <trans-unit id="j5ngo70" resname="Mixed circuit">
+        <source>Mixed circuit</source>
+        <target>~Circuit mixt</target>
+      </trans-unit>
+      <trans-unit id="yxvip31" resname="Open circuit">
+        <source>Open circuit</source>
+        <target>~Circuit deschis</target>
+      </trans-unit>
+      <trans-unit id="hrnptwz" resname="Circuit with a battery connected in series with two resistors">
+        <source>Circuit with a battery connected in series with two resistors</source>
+        <target>~Circuit cu o baterie conectată în serie cu două rezistențe</target>
+      </trans-unit>
+      <trans-unit id="egso3ij" resname="3Dmol">
+        <source>3Dmol</source>
+        <target>~3Dmol</target>
+      </trans-unit>
+      <trans-unit id="1hnyud1" resname="Please upload a valid 3D model file">
+        <source>Please upload a valid 3D model file</source>
+        <target>~Încarcă un fișier de model 3D valid</target>
+      </trans-unit>
+      <trans-unit id="flv1quu" resname="Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz">
+        <source>Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</source>
+        <target>~Format de model 3D neacceptat. Formate acceptate: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</target>
+      </trans-unit>
+      <trans-unit id="ef1knlm" resname="Could not render the selected 3D model">
+        <source>Could not render the selected 3D model</source>
+        <target>~Nu s-a putut reda modelul 3D selectat</target>
+      </trans-unit>
+      <trans-unit id="9o0r3jz" resname="Large model file. This may affect performance.">
+        <source>Large model file. This may affect performance.</source>
+        <target>~Fișier de model mare. Acest lucru poate afecta performanța.</target>
+      </trans-unit>
+      <trans-unit id="knv7tnv" resname="3D model">
+        <source>3D model</source>
+        <target>~Model 3D</target>
+      </trans-unit>
+      <trans-unit id="8gfijpk" resname="No 3D model">
+        <source>No 3D model</source>
+        <target>~Niciun model 3D</target>
+      </trans-unit>
+      <trans-unit id="777wxm8" resname="Camera enabled">
+        <source>Camera enabled</source>
+        <target>~Cameră activată</target>
+      </trans-unit>
+      <trans-unit id="qklqfhy" resname="Click to disable">
+        <source>Click to disable</source>
+        <target>~Clic pentru dezactivare</target>
+      </trans-unit>
+      <trans-unit id="wt6icib" resname="Camera disabled">
+        <source>Camera disabled</source>
+        <target>~Cameră dezactivată</target>
+      </trans-unit>
+      <trans-unit id="kiay8bx" resname="Click to enable">
+        <source>Click to enable</source>
+        <target>~Clic pentru activare</target>
+      </trans-unit>
+      <trans-unit id="i32tt82" resname="Dark background">
+        <source>Dark background</source>
+        <target>~Fundal întunecat</target>
+      </trans-unit>
+      <trans-unit id="rt9kpk6" resname="Click to switch to light">
+        <source>Click to switch to light</source>
+        <target>~Clic pentru a comuta la fundal deschis</target>
+      </trans-unit>
+      <trans-unit id="2wkgc77" resname="Light background">
+        <source>Light background</source>
+        <target>~Fundal deschis</target>
+      </trans-unit>
+      <trans-unit id="lcbbm7a" resname="Click to switch to dark">
+        <source>Click to switch to dark</source>
+        <target>~Clic pentru a comuta la fundal întunecat</target>
+      </trans-unit>
+      <trans-unit id="26zmv9x" resname="Atom legend visible">
+        <source>Atom legend visible</source>
+        <target>~Legenda atomilor vizibilă</target>
+      </trans-unit>
+      <trans-unit id="pjxxnm6" resname="Click to hide">
+        <source>Click to hide</source>
+        <target>~Clic pentru a ascunde</target>
+      </trans-unit>
+      <trans-unit id="ocp4ch9" resname="Atom legend hidden">
+        <source>Atom legend hidden</source>
+        <target>~Legenda atomilor ascunsă</target>
+      </trans-unit>
+      <trans-unit id="pfg13dy" resname="Click to show">
+        <source>Click to show</source>
+        <target>~Clic pentru a afișa</target>
+      </trans-unit>
+      <trans-unit id="9u9bpi0" resname="Create quiz activities based on interactive 3D models.">
+        <source>Create quiz activities based on interactive 3D models.</source>
+        <target>~Creează activități de chestionar bazate pe modele 3D interactive.</target>
+      </trans-unit>
+      <trans-unit id="c956etx" resname="3D model preview">
+        <source>3D model preview</source>
+        <target>~Previzualizare model 3D</target>
+      </trans-unit>
+      <trans-unit id="fbbd526" resname="Molecule style">
+        <source>Molecule style</source>
+        <target>~Stil moleculă</target>
+      </trans-unit>
+      <trans-unit id="xcecjfx" resname="Smaller">
+        <source>Smaller</source>
+        <target>~Mai mic</target>
+      </trans-unit>
+      <trans-unit id="s7lbk71" resname="Bigger">
+        <source>Bigger</source>
+        <target>~Mai mare</target>
+      </trans-unit>
+      <trans-unit id="hw95eb7" resname="Reset camera view">
+        <source>Reset camera view</source>
+        <target>~Resetează vederea camerei</target>
+      </trans-unit>
+      <trans-unit id="ib7ywts" resname="Save initial view">
+        <source>Save initial view</source>
+        <target>~Salvează vederea inițială</target>
+      </trans-unit>
+      <trans-unit id="mnsu2yd" resname="Download image">
+        <source>Download image</source>
+        <target>~Descarcă imaginea</target>
+      </trans-unit>
+      <trans-unit id="kajvdla" resname="3D model file">
+        <source>3D model file</source>
+        <target>~Fișier model 3D</target>
+      </trans-unit>
+      <trans-unit id="wr3kslr" resname="Preview model">
+        <source>Preview model</source>
+        <target>~Previzualizare model</target>
+      </trans-unit>
+      <trans-unit id="u6pp0mq" resname="Line">
+        <source>Line</source>
+        <target>~Linie</target>
+      </trans-unit>
+      <trans-unit id="4nd3w05" resname="Cross">
+        <source>Cross</source>
+        <target>~Cruce</target>
+      </trans-unit>
+      <trans-unit id="ubq5dim" resname="Stick">
+        <source>Stick</source>
+        <target>~Bețișor</target>
+      </trans-unit>
+      <trans-unit id="ywxyuvf" resname="Sphere">
+        <source>Sphere</source>
+        <target>~Sferă</target>
+      </trans-unit>
+      <trans-unit id="8ae7vox" resname="Cartoon">
+        <source>Cartoon</source>
+        <target>~Cartoon</target>
+      </trans-unit>
+      <trans-unit id="0w1g9bc" resname="Surface">
+        <source>Surface</source>
+        <target>~Suprafață</target>
+      </trans-unit>
+      <trans-unit id="9j0rzlp" resname="Toggle background">
+        <source>Toggle background</source>
+        <target>~Comutare fundal</target>
+      </trans-unit>
+      <trans-unit id="nvq3s0e" resname="3D Model Quiz">
+        <source>3D Model Quiz</source>
+        <target>~Chestionar model 3D</target>
+      </trans-unit>
+      <trans-unit id="fwabuhj" resname="Chemical composition">
+        <source>Chemical composition</source>
+        <target>~Compoziție chimică</target>
+      </trans-unit>
+      <trans-unit id="aqdfnc5" resname="Observe the 3D model and answer the questions.">
+        <source>Observe the 3D model and answer the questions.</source>
+        <target>~Observă modelul 3D și răspunde la întrebări.</target>
+      </trans-unit>
+      <trans-unit id="rlc6hve" resname="You can rotate the 3D model by clicking on it and dragging.">
+        <source>You can rotate the 3D model by clicking on it and dragging.</source>
+        <target>~Poți roti modelul 3D făcând clic pe el și trăgând.</target>
+      </trans-unit>
+      <trans-unit id="3hcd1hl" resname="What is the central atom in the model?">
+        <source>What is the central atom in the model?</source>
+        <target>~Care este atomul central din model?</target>
+      </trans-unit>
+      <trans-unit id="uo93rnx" resname="How many hydroxyl groups (–OH) does a glucose molecule have?">
+        <source>How many hydroxyl groups (–OH) does a glucose molecule have?</source>
+        <target>~Câte grupe hidroxil (–OH) are o moleculă de glucoză?</target>
+      </trans-unit>
+      <trans-unit id="4il2dmr" resname="Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.">
+        <source>Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.</source>
+        <target>~Glucoza (C₆H₁₂O₆) este monozaharidul cel mai abundent și principala sursă de energie celulară. Rotește modelul pentru a-i explora structura.</target>
+      </trans-unit>
+      <trans-unit id="0akm6cp" resname="Default style for new documents">
+        <source>Default style for new documents</source>
+        <target>~Stil implicit pentru documentele noi</target>
+      </trans-unit>
+      <trans-unit id="1np1opf" resname="Only STL files use this color; the current file is not STL">
+        <source>Only STL files use this color; the current file is not STL</source>
+        <target>~Doar fișierele STL folosesc această culoare; fișierul curent nu este STL</target>
+      </trans-unit>
+      <trans-unit id="ed6piah" resname="Please select the correct answer for each question">
+        <source>Please select the correct answer for each question</source>
+        <target>~Selectează răspunsul corect pentru fiecare întrebare</target>
+      </trans-unit>
+      <trans-unit id="h339y1x" resname="Enter TikZ circuit code…">
+        <source>Enter TikZ circuit code…</source>
+        <target>~Introdu codul TikZ al circuitului…</target>
+      </trans-unit>
+      <trans-unit id="1419gg9" resname="Legal framework:">
+        <source>Legal framework:</source>
+        <target>~Cadru legal:</target>
+      </trans-unit>
+      <trans-unit id="bzalsa1" resname="Specification:">
+        <source>Specification:</source>
+        <target>~Concretizare:</target>
+      </trans-unit>
+      <trans-unit id="0anksdg" resname="This dataset is not available yet. It will be added in an upcoming version.">
+        <source>This dataset is not available yet. It will be added in an upcoming version.</source>
+        <target>~Acest set de date nu este disponibil încă. Va fi adăugat într-o versiune viitoare.</target>
+      </trans-unit>
+      <trans-unit id="x3xnras" resname="Curriculum elements selector">
+        <source>Curriculum elements selector</source>
+        <target>~Selector elemente curriculare</target>
+      </trans-unit>
+      <trans-unit id="zmityjm" resname="Loading curriculum data…">
+        <source>Loading curriculum data…</source>
+        <target>~Se încarcă datele curriculare…</target>
+      </trans-unit>
+      <trans-unit id="p2fbuhd" resname="Filter…">
+        <source>Filter…</source>
+        <target>~Filtrează…</target>
+      </trans-unit>
+      <trans-unit id="1335gex" resname="Basic knowledge">
+        <source>Basic knowledge</source>
+        <target>~Cunoștințe de bază</target>
+      </trans-unit>
+      <trans-unit id="k7hq2fz" resname="Select a subject">
+        <source>Select a subject</source>
+        <target>~Selectează o disciplină</target>
+      </trans-unit>
+      <trans-unit id="6wx5592" resname="No elements selected yet.">
+        <source>No elements selected yet.</source>
+        <target>~Nu au fost selectate elemente încă.</target>
+      </trans-unit>
+      <trans-unit id="rl98tc7" resname="Summary preview">
+        <source>Summary preview</source>
+        <target>~Previzualizare rezumat</target>
+      </trans-unit>
+      <trans-unit id="m4rul3w" resname="Curriculum foundations summary">
+        <source>Curriculum foundations summary</source>
+        <target>~Rezumat fundamentare curriculară</target>
+      </trans-unit>
+      <trans-unit id="ftgf0hn" resname="Reset all selections? Changes will be lost.">
+        <source>Reset all selections? Changes will be lost.</source>
+        <target>~Resetezi toate selecțiile? Modificările vor fi pierdute.</target>
+      </trans-unit>
+      <trans-unit id="crdrusv" resname="Select stage and level">
+        <source>Select stage and level</source>
+        <target>~Selectează etapa și nivelul</target>
+      </trans-unit>
+      <trans-unit id="ucxcrt5" resname="No results">
+        <source>No results</source>
+        <target>~Niciun rezultat</target>
+      </trans-unit>
+      <trans-unit id="63icayg" resname="No basic knowledge for this subject.">
+        <source>No basic knowledge for this subject.</source>
+        <target>~Nu există cunoștințe de bază pentru această disciplină.</target>
+      </trans-unit>
+      <trans-unit id="e7bfr18" resname="No specific competencies for this subject.">
+        <source>No specific competencies for this subject.</source>
+        <target>~Nu există competențe specifice pentru această disciplină.</target>
+      </trans-unit>
+      <trans-unit id="9dmk9bx" resname="Partial">
+        <source>Partial</source>
+        <target>~Parțial</target>
+      </trans-unit>
+      <trans-unit id="5ap1jrx" resname="Key Comp.">
+        <source>Key Comp.</source>
+        <target>~Comp. Cheie</target>
+      </trans-unit>
+      <trans-unit id="cpxwpij" resname="Operational descriptors">
+        <source>Operational descriptors</source>
+        <target>~Descriptori operaționali</target>
+      </trans-unit>
+      <trans-unit id="47oef6u" resname="No curriculum elements selected.">
+        <source>No curriculum elements selected.</source>
+        <target>~Nu sunt elemente curriculare selectate.</target>
+      </trans-unit>
+      <trans-unit id="dg3wg2w" resname="LOMLOE Curriculum Foundations">
+        <source>LOMLOE Curriculum Foundations</source>
+        <target>~Fundamentare Curriculară LOMLOE</target>
+      </trans-unit>
+      <trans-unit id="glc6gca" resname="Foundations">
+        <source>Foundations</source>
+        <target>~Fundamentare</target>
+      </trans-unit>
+      <trans-unit id="ni75n0y" resname="Selected elements">
+        <source>Selected elements</source>
+        <target>~Elemente selectate</target>
+      </trans-unit>
+      <trans-unit id="pzfwean" resname="criteria">
+        <source>criteria</source>
+        <target>~criterii</target>
+      </trans-unit>
+      <trans-unit id="frijrs0" resname="knowledge">
+        <source>knowledge</source>
+        <target>~cunoștințe</target>
+      </trans-unit>
+      <trans-unit id="eznxc9k" resname="Specific Competencies">
+        <source>Specific Competencies</source>
+        <target>~Competențe Specifice</target>
+      </trans-unit>
+      <trans-unit id="vuay2xy" resname="Spec. Comp.">
+        <source>Spec. Comp.</source>
+        <target>~Comp. Specifică</target>
+      </trans-unit>
+      <trans-unit id="yskmm57" resname="Key Competencies">
+        <source>Key Competencies</source>
+        <target>~Competențe Cheie</target>
+      </trans-unit>
+      <trans-unit id="jasu0ju" resname="Eval. Criteria">
+        <source>Eval. Criteria</source>
+        <target>~Criterii de Eval.</target>
+      </trans-unit>
+      <trans-unit id="5plg1h1" resname="partial">
+        <source>partial</source>
+        <target>~parțial</target>
+      </trans-unit>
+      <trans-unit id="nky6xi1" resname="Error loading data: ">
+        <source>Error loading data: </source>
+        <target>~Eroare la încărcarea datelor: </target>
+      </trans-unit>
+      <trans-unit id="l6i0d1k" resname="Only .elpx, .elp or .zip project files can be opened by dragging them here.">
+        <source>Only .elpx, .elp or .zip project files can be opened by dragging them here.</source>
+        <target>~Prin tragere, pot fi deschise doar fișiere de proiect .elpx, .elp sau .zip.</target>
+      </trans-unit>
+      <trans-unit id="cq3ifph" resname="Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).">
+        <source>Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).</source>
+        <target>~Nivel: 0 (scăzut), 1 (mediu), 2 (ridicat), 3 (expert) sau 4 (maestru).</target>
+      </trans-unit>
+      <trans-unit id="953viei" resname="Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).">
+        <source>Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).</source>
+        <target>~Nivel: 0 (scăzut), 1 (mediu), 2 (ridicat) sau 3 (expert).</target>
+      </trans-unit>
+      <trans-unit id="atxh1qt" resname="Level: 0 (low), 1 (medium) or 2 (high).">
+        <source>Level: 0 (low), 1 (medium) or 2 (high).</source>
+        <target>~Nivel: 0 (scăzut), 1 (mediu) sau 2 (ridicat).</target>
+      </trans-unit>
+      <trans-unit id="c7qmhrj" resname="OptionE">
+        <source>OptionE</source>
+        <target>~OpțiuneaE</target>
+      </trans-unit>
+      <trans-unit id="eydrd9t" resname="OptionF">
+        <source>OptionF</source>
+        <target>~OpțiuneaF</target>
+      </trans-unit>
+      <trans-unit id="incyool" resname="Which of the following are prime numbers?">
+        <source>Which of the following are prime numbers?</source>
+        <target>~Care dintre următoarele sunt numere prime?</target>
+      </trans-unit>
+      <trans-unit id="3z3xsjf" resname="Sort from largest to smallest">
+        <source>Sort from largest to smallest</source>
+        <target>~Sortează de la cel mai mare la cel mai mic</target>
+      </trans-unit>
+      <trans-unit id="fbkwb7b" resname="Elephant">
+        <source>Elephant</source>
+        <target>~Elefant</target>
+      </trans-unit>
+      <trans-unit id="uf0rgg2" resname="Mouse">
+        <source>Mouse</source>
+        <target>~Șoarece</target>
+      </trans-unit>
+      <trans-unit id="6e6gxy5" resname="Which of these are transcendental numbers?">
+        <source>Which of these are transcendental numbers?</source>
+        <target>~Care dintre acestea sunt numere transcendente?</target>
+      </trans-unit>
+      <trans-unit id="6sj8e71" resname="Liouville constant">
+        <source>Liouville constant</source>
+        <target>~Constanta lui Liouville</target>
+      </trans-unit>
+      <trans-unit id="2z35dkc" resname="Champernowne constant">
+        <source>Champernowne constant</source>
+        <target>~Constanta lui Champernowne</target>
+      </trans-unit>
+      <trans-unit id="mujg8uv" resname="Sort these chemical elements from lowest to highest atomic number">
+        <source>Sort these chemical elements from lowest to highest atomic number</source>
+        <target>~Sortează aceste elemente chimice de la cel mai mic la cel mai mare număr atomic</target>
+      </trans-unit>
+      <trans-unit id="rknv1t9" resname="Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:">
+        <source>Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:</source>
+        <target>~Sunt acceptate trei tipuri de întrebări. Fiecare linie trebuie să înceapă cu numărul tipului, urmat de @, nivelul și restul câmpurilor separate cu #:</target>
+      </trans-unit>
+      <trans-unit id="gjspkod" resname="Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.">
+        <source>Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.</source>
+        <target>~Tipul 0 (alegere multiplă): 0@Nivel#Soluție#Întrebare#OpțiuneaA#OpțiuneaB[#OpțiuneaC][#OpțiuneaD][#OpțiuneaE][#OpțiuneaF]. Soluția este o combinație de majuscule din A, B, C, D, E, F care identifică opțiunile corecte (de ex. A, AB, ACD, ABCDEF). Folosește până la 6 litere și niciodată mai multe decât numărul de opțiuni. Lasă Soluția goală dacă nicio opțiune nu este corectă.</target>
+      </trans-unit>
+      <trans-unit id="f6b506d" resname="Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.">
+        <source>Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.</source>
+        <target>~Tipul 1 (sortare): 1@Nivel#Întrebare#Element1#Element2#Element3[#Element4][#Element5][#Element6]. Furnizează între 3 și 6 elemente deja enumerate în ordinea corectă conform criteriului întrebării.</target>
+      </trans-unit>
+      <trans-unit id="jgwnab5" resname="Type 2 (word/definition): 2@Level#Word#Definition.">
+        <source>Type 2 (word/definition): 2@Level#Word#Definition.</source>
+        <target>~Tipul 2 (cuvânt/definiție): 2@Nivel#Cuvânt#Definiție.</target>
+      </trans-unit>
+      <trans-unit id="uzpnzes" resname="Do not include the # character inside any field.">
+        <source>Do not include the # character inside any field.</source>
+        <target>~Nu include caracterul # în interiorul niciunui câmp.</target>
+      </trans-unit>
+      <trans-unit id="28d622b" resname="balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)">
+        <source>balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)</source>
+        <target>~distribuite echilibrat pe cele 5 niveluri (0=scăzut, 1=mediu, 2=ridicat, 3=expert, 4=maestru)</target>
+      </trans-unit>
+      <trans-unit id="hwr4f6t" resname="balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)">
+        <source>balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)</source>
+        <target>~distribuite echilibrat pe cele 4 niveluri (0=scăzut, 1=mediu, 2=ridicat, 3=expert)</target>
+      </trans-unit>
+      <trans-unit id="ifq2ww0" resname="balanced across the 3 levels (0=low, 1=medium, 2=high)">
+        <source>balanced across the 3 levels (0=low, 1=medium, 2=high)</source>
+        <target>~distribuite echilibrat pe cele 3 niveluri (0=scăzut, 1=mediu, 2=ridicat)</target>
+      </trans-unit>
+      <trans-unit id="7k185uf" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.</source>
+        <target>~Nivelul 0 trebuie să conțină cele mai ușoare întrebări (fapte de bază și reamintire simplă); fiecare nivel următor trebuie să fie strict mai dificil decât cel anterior (mai mult raționament, opțiuni mai lungi sau mai complicate, vocabular mai abstract), iar nivelul 4 (maestru) trebuie să conțină cele mai dificile întrebări.</target>
+      </trans-unit>
+      <trans-unit id="axdnyc0" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.</source>
+        <target>~Nivelul 0 trebuie să conțină cele mai ușoare întrebări (fapte de bază și reamintire simplă); fiecare nivel următor trebuie să fie strict mai dificil decât cel anterior (mai mult raționament, opțiuni mai lungi sau mai complicate, vocabular mai abstract), iar nivelul 3 (expert) trebuie să conțină cele mai dificile întrebări.</target>
+      </trans-unit>
+      <trans-unit id="ha2f8if" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.</source>
+        <target>~Nivelul 0 trebuie să conțină cele mai ușoare întrebări (fapte de bază și reamintire simplă); fiecare nivel următor trebuie să fie strict mai dificil decât cel anterior (mai mult raționament, opțiuni mai lungi sau mai complicate, vocabular mai abstract), iar nivelul 2 (ridicat) trebuie să conțină cele mai dificile întrebări.</target>
+      </trans-unit>
+      <trans-unit id="hka3vtc" resname="Your browser is not compatible with this type of activity.">
+        <source>Your browser is not compatible with this type of activity.</source>
+        <target>~Browserul tău nu este compatibil cu acest tip de activitate.</target>
+      </trans-unit>
+      <trans-unit id="9i1tbkk" resname="You must add at least one question.">
+        <source>You must add at least one question.</source>
+        <target>~Trebuie să adaugi cel puțin o întrebare.</target>
+      </trans-unit>
+      <trans-unit id="trkm1vj" resname="You must have at least one question.">
+        <source>You must have at least one question.</source>
+        <target>~Trebuie să ai cel puțin o întrebare.</target>
+      </trans-unit>
+      <trans-unit id="v1ec5x0" resname="Question %s: the question text cannot be empty.">
+        <source>Question %s: the question text cannot be empty.</source>
+        <target>~Întrebarea %s: textul întrebării nu poate fi gol.</target>
+      </trans-unit>
+      <trans-unit id="hjptj2j" resname="Question %s: please fill in all answer options.">
+        <source>Question %s: please fill in all answer options.</source>
+        <target>~Întrebarea %s: completează toate opțiunile de răspuns.</target>
+      </trans-unit>
+      <trans-unit id="gztiq8g" resname="Question %s: please mark which option is the correct answer.">
+        <source>Question %s: please mark which option is the correct answer.</source>
+        <target>~Întrebarea %s: indică ce opțiune este răspunsul corect.</target>
+      </trans-unit>
+      <trans-unit id="e757315" resname="You must add at least %s questions.">
+        <source>You must add at least %s questions.</source>
+        <target>~Trebuie să adaugi cel puțin %s întrebări.</target>
+      </trans-unit>
+      <trans-unit id="tb43muf" resname="Warning: the selected initial level has no questions. The quiz will start using the fallback level.">
+        <source>Warning: the selected initial level has no questions. The quiz will start using the fallback level.</source>
+        <target>~Avertisment: nivelul inițial selectat nu are întrebări. Testul va începe folosind nivelul de rezervă.</target>
+      </trans-unit>
+      <trans-unit id="i5tqjgg" resname="Please provide a name for every level.">
+        <source>Please provide a name for every level.</source>
+        <target>~Indică un nume pentru fiecare nivel.</target>
+      </trans-unit>
+      <trans-unit id="fah45fr" resname="Level &quot;%s&quot; must have at least 2 questions.">
+        <source>Level "%s" must have at least 2 questions.</source>
+        <target>~Nivelul „%s“ trebuie să aibă cel puțin 2 întrebări.</target>
+      </trans-unit>
+      <trans-unit id="s8gvgnr" resname="Please indicate the time the solution will be displayed.">
+        <source>Please indicate the time the solution will be displayed.</source>
+        <target>~Indică timpul în care va fi afișată soluția.</target>
+      </trans-unit>
+      <trans-unit id="r3rq61x" resname="Question %s: please mark at least one correct answer.">
+        <source>Question %s: please mark at least one correct answer.</source>
+        <target>~Întrebarea %s: marchează cel puțin un răspuns corect.</target>
+      </trans-unit>
+      <trans-unit id="59mnoqj" resname="Question %s: please provide the solution word or phrase.">
+        <source>Question %s: please provide the solution word or phrase.</source>
+        <target>~Întrebarea %s: furnizează cuvântul sau fraza soluție.</target>
+      </trans-unit>
+      <trans-unit id="odc4v2z" resname="Question %s: please provide the definition.">
+        <source>Question %s: please provide the definition.</source>
+        <target>~Întrebarea %s: furnizează definiția.</target>
+      </trans-unit>
+      <trans-unit id="0r81bit" resname="Question %s: please specify a unique order from 1 to %n for every option.">
+        <source>Question %s: please specify a unique order from 1 to %n for every option.</source>
+        <target>~Întrebarea %s: atribuie o ordine unică de la 1 la %n fiecărei opțiuni.</target>
+      </trans-unit>
+      <trans-unit id="52kewb2" resname="Audio URL">
+        <source>Audio URL</source>
+        <target>~URL audio</target>
+      </trans-unit>
+      <trans-unit id="rgy7dpr" resname="Show audio options">
+        <source>Show audio options</source>
+        <target>~Afișează opțiunile audio</target>
+      </trans-unit>
+      <trans-unit id="x7td0zt" resname="Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.">
+        <source>Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.</source>
+        <target>~Creează un test cu alegere multiplă a cărui dificultate se adaptează cursantului. Alege numărul de niveluri de dificultate (3, 4 sau 5) și atribuie câte unul fiecărei întrebări; testul urcă un nivel după două răspunsuri corecte la rând și coboară după două răspunsuri greșite la rând.</target>
+      </trans-unit>
+      <trans-unit id="8lvyhs2" resname="Number of levels">
+        <source>Number of levels</source>
+        <target>~Numărul de niveluri</target>
+      </trans-unit>
+      <trans-unit id="yxt96d5" resname="Level 1 name">
+        <source>Level 1 name</source>
+        <target>~Numele nivelului 1</target>
+      </trans-unit>
+      <trans-unit id="25kn9uq" resname="Easy">
+        <source>Easy</source>
+        <target>~Ușor</target>
+      </trans-unit>
+      <trans-unit id="3nbg90h" resname="Level 2 name">
+        <source>Level 2 name</source>
+        <target>~Numele nivelului 2</target>
+      </trans-unit>
+      <trans-unit id="vycpkzd" resname="Level 3 name">
+        <source>Level 3 name</source>
+        <target>~Numele nivelului 3</target>
+      </trans-unit>
+      <trans-unit id="9g0o7d6" resname="Hard">
+        <source>Hard</source>
+        <target>~Greu</target>
+      </trans-unit>
+      <trans-unit id="0lquubx" resname="Level 4 name">
+        <source>Level 4 name</source>
+        <target>~Numele nivelului 4</target>
+      </trans-unit>
+      <trans-unit id="u04q5f5" resname="Expert">
+        <source>Expert</source>
+        <target>~Expert</target>
+      </trans-unit>
+      <trans-unit id="3c2eaob" resname="Level 5 name">
+        <source>Level 5 name</source>
+        <target>~Numele nivelului 5</target>
+      </trans-unit>
+      <trans-unit id="ov2g552" resname="Master">
+        <source>Master</source>
+        <target>~Maestru</target>
+      </trans-unit>
+      <trans-unit id="irjnsvf" resname="Initial level">
+        <source>Initial level</source>
+        <target>~Nivel inițial</target>
+      </trans-unit>
+      <trans-unit id="tcbm1j2" resname="Set to 0 to disable the time limit.">
+        <source>Set to 0 to disable the time limit.</source>
+        <target>~Setează la 0 pentru a dezactiva limita de timp.</target>
+      </trans-unit>
+      <trans-unit id="hk84hfc" resname="Shuffle answer options at runtime">
+        <source>Shuffle answer options at runtime</source>
+        <target>~Amestecă opțiunile de răspuns la rulare</target>
+      </trans-unit>
+      <trans-unit id="lmpu5u9" resname="Case-sensitive answer matching (word type)">
+        <source>Case-sensitive answer matching (word type)</source>
+        <target>~Potrivire a răspunsurilor sensibilă la majuscule (tip cuvânt)</target>
+      </trans-unit>
+      <trans-unit id="cnllj2l" resname="Require correct accents (word type)">
+        <source>Require correct accents (word type)</source>
+        <target>~Solicită diacritice corecte (tip cuvânt)</target>
+      </trans-unit>
+      <trans-unit id="6w2e4b0" resname="Level filter">
+        <source>Level filter</source>
+        <target>~Filtru de nivel</target>
+      </trans-unit>
+      <trans-unit id="vxbco74" resname="Reload image">
+        <source>Reload image</source>
+        <target>~Reîncarcă imaginea</target>
+      </trans-unit>
+      <trans-unit id="0nubauq" resname="Adaptative Quiz">
+        <source>Adaptative Quiz</source>
+        <target>~Test adaptativ</target>
+      </trans-unit>
+      <trans-unit id="km38zbo" resname="Click on an option to choose your answer.">
+        <source>Click on an option to choose your answer.</source>
+        <target>~Fă clic pe o opțiune pentru a alege răspunsul.</target>
+      </trans-unit>
+      <trans-unit id="98q6lna" resname="Highest level reached">
+        <source>Highest level reached</source>
+        <target>~Cel mai înalt nivel atins</target>
+      </trans-unit>
+      <trans-unit id="xq9w36e" resname="Level up!">
+        <source>Level up!</source>
+        <target>~Ai urcat un nivel!</target>
+      </trans-unit>
+      <trans-unit id="gx9djz4" resname="Level down">
+        <source>Level down</source>
+        <target>~Ai coborât un nivel</target>
+      </trans-unit>
+      <trans-unit id="sizxffs" resname="Final report">
+        <source>Final report</source>
+        <target>~Raport final</target>
+      </trans-unit>
+      <trans-unit id="zaax4pm" resname="Excellent. You dominate the highest-level contents.">
+        <source>Excellent. You dominate the highest-level contents.</source>
+        <target>~Excelent. Stăpânești conținuturile de cel mai înalt nivel.</target>
+      </trans-unit>
+      <trans-unit id="36b3rpr" resname="Good job. You have achieved the intermediate level.">
+        <source>Good job. You have achieved the intermediate level.</source>
+        <target>~Bravo. Ai atins nivelul intermediar.</target>
+      </trans-unit>
+      <trans-unit id="kclcgi9" resname="You need a bit more practice. Review the basic contents.">
+        <source>You need a bit more practice. Review the basic contents.</source>
+        <target>~Ai nevoie de puțin mai mult exercițiu. Recapitulează conținuturile de bază.</target>
+      </trans-unit>
+      <trans-unit id="yc9yww6" resname="Pause audio">
+        <source>Pause audio</source>
+        <target>~Pune audio pe pauză</target>
+      </trans-unit>
+      <trans-unit id="8k7io7o" resname="Illustration">
+        <source>Illustration</source>
+        <target>~Ilustrație</target>
+      </trans-unit>
+      <trans-unit id="391iksq" resname="Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.">
+        <source>Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.</source>
+        <target>~Alege răspunsul corect pentru fiecare întrebare. Pentru a urca la nivelul următor trebuie să răspunzi corect la două întrebări la rând. Dacă greșești două la rând, vei coborî la nivelul anterior.</target>
+      </trans-unit>
+      <trans-unit id="ms9lvxg" resname="Time&apos;s up!">
+        <source>Time's up!</source>
+        <target>~Timpul a expirat!</target>
+      </trans-unit>
+      <trans-unit id="z4zclje" resname="Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.">
+        <source>Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.</source>
+        <target>~Creează %total% întrebări mixte pentru testul adaptativ %distribution% și din cele trei tipuri de întrebări acceptate. Fiecare linie trebuie să înceapă cu numărul tipului urmat de @, apoi nivelul și apoi restul câmpurilor separate cu #. Nu pune niciodată # în interiorul unui câmp. Cele trei forme de linie acceptate sunt: Tipul 0 (alegere multiplă): 0@Nivel#Soluție#Întrebare#OpțiuneaA#OpțiuneaB[#OpțiuneaC][#OpțiuneaD][#OpțiuneaE][#OpțiuneaF] — Soluția este o combinație de majuscule din literele A, B, C, D, E, F care identifică opțiunile corecte (de ex. A, AB, ACD, ABCDEF); folosește până la 6 litere și niciodată mai multe decât numărul de opțiuni; lasă soluția goală dacă nicio opțiune nu este corectă. Tipul 1 (sortare): 1@Nivel#Întrebare#Element1#Element2#Element3[#Element4][#Element5][#Element6] — furnizează între 3 și 6 elemente deja enumerate în ordinea corectă conform criteriului întrebării. Tipul 2 (cuvânt/definiție): 2@Nivel#Cuvânt#Definiție. Dificultatea trebuie să crească odată cu nivelul: %ladder% În interiorul fiecărui nivel trebuie să incluzi întrebări din toate cele trei tipuri (Tipul 0, Tipul 1 și Tipul 2): generează aproximativ %perLevel% întrebări pe nivel și asigură-te că fiecare nivel combină alegere multiplă (Tipul 0), sortare (Tipul 1) și cuvânt/definiție (Tipul 2). Nu pune toate de același tip împreună; alternează cele trei tipuri în interiorul fiecărui nivel.</target>
+      </trans-unit>
+      <trans-unit id="h6qk5u0" resname="Please render the circuit preview before saving.">
+        <source>Please render the circuit preview before saving.</source>
+        <target>~Generează previzualizarea circuitului înainte de salvare</target>
+      </trans-unit>
+      <trans-unit id="67oeim1" resname="Screenshot">
+        <source>Screenshot</source>
+        <target>~Captură de ecran</target>
+      </trans-unit>
+      <trans-unit id="egfkd32" resname="Current project screenshot preview">
+        <source>Current project screenshot preview</source>
+        <target>~Previzualizare captură de ecran a proiectului curent</target>
+      </trans-unit>
+      <trans-unit id="7gfncu2" resname="No screenshot yet. It will be auto-generated when you save or export.">
+        <source>No screenshot yet. It will be auto-generated when you save or export.</source>
+        <target>~Nu există încă o captură de ecran. Va fi generată automat la salvare sau export.</target>
+      </trans-unit>
+      <trans-unit id="j6qe17o" resname="Upload custom image">
+        <source>Upload custom image</source>
+        <target>~Încarcă imagine personalizată</target>
+      </trans-unit>
+      <trans-unit id="du7886u" resname="Screenshot must be smaller than 2 MB.">
+        <source>Screenshot must be smaller than 2 MB.</source>
+        <target>~Captura de ecran trebuie să fie mai mică de 2 MB.</target>
+      </trans-unit>
+      <trans-unit id="9ghh8cs" resname="Invalid image">
+        <source>Invalid image</source>
+        <target>~Imagine nevalidă</target>
+      </trans-unit>
+      <trans-unit id="fjtviff" resname="The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.">
+        <source>The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.</source>
+        <target>~Imaginea nu îndeplinește cerințele minime: raport de aspect 16:9 și cel puțin 600 de pixeli lățime.</target>
+      </trans-unit>
+      <trans-unit id="jhvmhtj" resname="Generate from content">
+        <source>Generate from content</source>
+        <target>~Generează din conținut</target>
+      </trans-unit>
+      <trans-unit id="32qsnol" resname="Not available">
+        <source>Not available</source>
+        <target>~Indisponibil</target>
+      </trans-unit>
+      <trans-unit id="6x5jja9" resname="Screenshot generation is not available.">
+        <source>Screenshot generation is not available.</source>
+        <target>~Generarea capturii de ecran nu este disponibilă.</target>
+      </trans-unit>
+      <trans-unit id="pa6zoby" resname="Generation failed">
+        <source>Generation failed</source>
+        <target>~Generare eșuată</target>
+      </trans-unit>
+      <trans-unit id="u8lue0h" resname="Could not generate screenshot from content. Try uploading an image instead.">
+        <source>Could not generate screenshot from content. Try uploading an image instead.</source>
+        <target>~Nu s-a putut genera captura din conținut. Încearcă să încarci o imagine în schimb.</target>
+      </trans-unit>
+      <trans-unit id="8c2d6qj" resname="Replace screenshot">
+        <source>Replace screenshot</source>
+        <target>~Înlocuiește captura de ecran</target>
+      </trans-unit>
+      <trans-unit id="3eqbaf1" resname="This will delete the current image. Do you want to continue?">
+        <source>This will delete the current image. Do you want to continue?</source>
+        <target>~Aceasta va șterge imaginea curentă. Dorești să continui?</target>
+      </trans-unit>
+      <trans-unit id="qziik0s" resname="Delete screenshot">
+        <source>Delete screenshot</source>
+        <target>~Șterge captura de ecran</target>
+      </trans-unit>
+      <trans-unit id="72zdvo8" resname="Delete the current image? This action cannot be undone.">
+        <source>Delete the current image? This action cannot be undone.</source>
+        <target>~Ștergi imaginea curentă? Această acțiune nu poate fi anulată.</target>
+      </trans-unit>
+      <trans-unit id="pxch4ab" resname="Recommendations">
+        <source>Recommendations</source>
+        <target>~Recomandări</target>
+      </trans-unit>
+      <trans-unit id="76w0thd" resname="Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.">
+        <source>Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.</source>
+        <target>~Folosește o imagine 16:9 (se recomandă 1280×720 px) care să reprezinte clar conținutul principal al resursei de învățare. Evită aglomerarea și textul mic și asigură un contrast bun pentru lizibilitate la dimensiuni mici.</target>
+      </trans-unit>
+      <trans-unit id="bt3odta" resname="The image will be used as a preview of this educational resource across different platforms.">
+        <source>The image will be used as a preview of this educational resource across different platforms.</source>
+        <target>~Imaginea va fi folosită ca previzualizare a acestei resurse educaționale pe diferite platforme.</target>
+      </trans-unit>
+      <trans-unit id="3is1mdt" resname="3D Molecule">
+        <source>3D Molecule</source>
+        <target>~Moleculă 3D</target>
+      </trans-unit>
+      <trans-unit id="riup14d" resname="3D Molecules">
+        <source>3D Molecules</source>
+        <target>~Molecule 3D</target>
+      </trans-unit>
+      <trans-unit id="4bv02yj" resname="Max. width (optional)">
+        <source>Max. width (optional)</source>
+        <target>~Lăț. max. (opțional)</target>
+      </trans-unit>
+      <trans-unit id="qohgl6u" resname="Max. height (optional)">
+        <source>Max. height (optional)</source>
+        <target>~Înălț. max. (opțional)</target>
+      </trans-unit>
+      <trans-unit id="uyzr3cq" resname="e.g. 800px, 50%, 40em, 30rem">
+        <source>e.g. 800px, 50%, 40em, 30rem</source>
+        <target>~ex. 800px, 50%, 40em, 30rem</target>
+      </trans-unit>
+      <trans-unit id="7icorgp" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
+        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
+        <target>~Lățimea max. trebuie să fie mai mare decât 0 și să folosească px, em, rem sau % (ex. 800px, 50%, 40em, 30rem).</target>
+      </trans-unit>
+      <trans-unit id="gxoq8hj" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
+        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
+        <target>~Înălțimea max. trebuie să fie mai mare decât 0 și să folosească px, em, rem sau % (ex. 600px, 70%, 30em, 20rem).</target>
+      </trans-unit>
+      <trans-unit id="fbslxqe" resname="Sorry, that&apos;s incorrect... The right answer is:">
+        <source>Sorry, that's incorrect... The right answer is:</source>
+        <target>~Ne pare rău, este incorect... Răspunsul corect este:</target>
+      </trans-unit>
+      <trans-unit id="wtov2pg" resname="Style installed">
+        <source>Style installed</source>
+        <target>~Stil instalat</target>
+      </trans-unit>
+      <trans-unit id="safz1qd" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>~Stilul a fost instalat cu succes.</target>
+      </trans-unit>
+      <trans-unit id="3xzv34q" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>~Se editează iDevice-ul. Alte acțiuni sunt dezactivate până când salvați sau renunțați.</target>
+      </trans-unit>
+      <trans-unit id="dgzirxb" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>~Ați terminat de editat iDevice-ul.</target>
+      </trans-unit>
+      <trans-unit id="wc9vz6h" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>~Salvați sau renunțați la iDevice-ul deschis înainte de a salva proiectul.</target>
+      </trans-unit>
+      <trans-unit id="gowl21n" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target>~Modificările de limbă pot necesita reîncărcarea sau redeschiderea eXeLearning pentru a actualiza întreaga interfață.</target>
+      </trans-unit>
+      <trans-unit id="d794hcn" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target>~Preferința de limbă a fost salvată. Este posibil ca unele texte ale interfeței să nu se actualizeze până când nu reîncărcați sau redeschideți eXeLearning. Salvați sau descărcați proiectul înainte de a reîncărca sau închide aplicația pentru a evita pierderea modificărilor.</target>
+      </trans-unit>
+      <trans-unit id="95dflc0" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target>~Doriți să salvați modificările înainte de a crea un fișier nou?</target>
+      </trans-unit>
+      <trans-unit id="y9c5p4t" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target>~Nu salva</target>
+      </trans-unit>
+      <trans-unit id="55qb83u" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target>~Unele modificări colaborative nu au fost încă salvate. Faceți clic pe Salvare înainte de a ieși pentru a evita pierderea lor.</target>
+      </trans-unit>
+      <trans-unit id="hw3akd4" resname="Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.">
+        <source>Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.</source>
+        <target>~Conținutul marcat ca fiind doar pentru profesori este ascuns în mod implicit în exporturi și previzualizări. Deschide-l cu ?exe-teacher=1 pentru a-l afișa.</target>
+      </trans-unit>
+      <trans-unit id="2k8fct7" resname="The file &quot;%1&quot; contains a large asset (%2).">
+        <source>The file "%1" contains a large asset (%2).</source>
+        <target>~Fișierul "%1" conține o resursă de dimensiuni mari (%2).</target>
+      </trans-unit>
+      <trans-unit id="0qnprjk" resname="Importing it may use a large amount of memory.">
+        <source>Importing it may use a large amount of memory.</source>
+        <target>~Importarea sa poate consuma multă memorie.</target>
+      </trans-unit>
+      <trans-unit id="a2z9ysp" resname="The desktop application can open assets up to %1.">
+        <source>The desktop application can open assets up to %1.</source>
+        <target>~Aplicația desktop poate deschide resurse de până la %1.</target>
+      </trans-unit>
+      <trans-unit id="9lzvnpg" resname="Protection against malformed or malicious archives remains active.">
+        <source>Protection against malformed or malicious archives remains active.</source>
+        <target>~Protecția împotriva arhivelor deteriorate sau rău intenționate rămâne activă.</target>
+      </trans-unit>
+      <trans-unit id="jr3avg7" resname="Import large file?">
+        <source>Import large file?</source>
+        <target>~Imporți un fișier mare?</target>
+      </trans-unit>
+      <trans-unit id="tjlr0mw" resname="The file &quot;%1&quot; (%2) is larger than the maximum this application can open (%3).">
+        <source>The file "%1" (%2) is larger than the maximum this application can open (%3).</source>
+        <target>~Fișierul "%1" (%2) depășește dimensiunea maximă pe care această aplicație o poate deschide (%3).</target>
+      </trans-unit>
+      <trans-unit id="0zkw6rn" resname="This project (%1) is larger than the maximum this application can open (%2).">
+        <source>This project (%1) is larger than the maximum this application can open (%2).</source>
+        <target>~Acest proiect (%1) depășește dimensiunea maximă pe care această aplicație o poate deschide (%2).</target>
+      </trans-unit>
+      <trans-unit id="o3wmw2p" resname="This project has too many files to open (%1 of a maximum %2).">
+        <source>This project has too many files to open (%1 of a maximum %2).</source>
+        <target>~Acest proiect are prea multe fișiere pentru a putea fi deschis (%1 dintr-un maxim de %2).</target>
+      </trans-unit>
+      <trans-unit id="i8tsgyf" resname="The project was not imported.">
+        <source>The project was not imported.</source>
+        <target>~Proiectul nu a fost importat.</target>
+      </trans-unit>
+      <trans-unit id="m2qpc8s" resname="To reduce its size, open the File Manager and:">
+        <source>To reduce its size, open the File Manager and:</source>
+        <target>~Pentru a-i reduce dimensiunea, deschide Managerul de fișiere și:</target>
+      </trans-unit>
+      <trans-unit id="0fwy6uu" resname="Sort by &quot;Largest first&quot; and review each asset&apos;s references.">
+        <source>Sort by "Largest first" and review each asset's references.</source>
+        <target>~Sortează după "Cele mai mari primele" și verifică referințele fiecărei resurse.</target>
+      </trans-unit>
+      <trans-unit id="433vch3" resname="Remove an unused older version of a large asset.">
+        <source>Remove an unused older version of a large asset.</source>
+        <target>~Șterge o versiune mai veche, nefolosită, a unei resurse mari.</target>
+      </trans-unit>
+      <trans-unit id="8gyfp92" resname="Optimise, replace, or remove the large file.">
+        <source>Optimise, replace, or remove the large file.</source>
+        <target>~Optimizează, înlocuiește sau șterge fișierul mare.</target>
+      </trans-unit>
+      <trans-unit id="2gzjtqv" resname="File too large to open">
+        <source>File too large to open</source>
+        <target>~Fișier prea mare pentru a fi deschis</target>
+      </trans-unit>
+      <trans-unit id="zzxigfy" resname="The asset &quot;%1&quot; (%2) exceeds the maximum size the desktop application can open (%3).">
+        <source>The asset "%1" (%2) exceeds the maximum size the desktop application can open (%3).</source>
+        <target>~Resursa "%1" (%2) depășește dimensiunea maximă pe care aplicația desktop o poate deschide (%3).</target>
+      </trans-unit>
+      <trans-unit id="642164b" resname="This project (%1) exceeds the maximum size the desktop application can open (%2).">
+        <source>This project (%1) exceeds the maximum size the desktop application can open (%2).</source>
+        <target>~Acest proiect (%1) depășește dimensiunea maximă pe care aplicația desktop o poate deschide (%2).</target>
+      </trans-unit>
+      <trans-unit id="yvfq4ct" resname="The resulting ELPX may not open in the desktop application.">
+        <source>The resulting ELPX may not open in the desktop application.</source>
+        <target>~Este posibil ca fișierul ELPX rezultat să nu poată fi deschis în aplicația desktop.</target>
+      </trans-unit>
+      <trans-unit id="8volti6" resname="Do you want to continue exporting anyway?">
+        <source>Do you want to continue exporting anyway?</source>
+        <target>~Vrei să continui exportul oricum?</target>
+      </trans-unit>
+      <trans-unit id="71ak8oq" resname="Large ELPX export">
+        <source>Large ELPX export</source>
+        <target>~Export ELPX de dimensiuni mari</target>
+      </trans-unit>
+      <trans-unit id="arohwab" resname="Export anyway">
+        <source>Export anyway</source>
+        <target>~Exportă oricum</target>
+      </trans-unit>
+      <trans-unit id="35jiqow" resname="Page title">
+        <source>Page title</source>
+        <target>~Titlul paginii</target>
+      </trans-unit>
+      <trans-unit id="uf0y4cf" resname="This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.">
+        <source>This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.</source>
+        <target>~Acest iDevice nu poate fi editat deoarece datele salvate sunt deteriorate. Conținutul existent a fost păstrat.</target>
+      </trans-unit>
+      <trans-unit id="natonzb" resname="Invalid iDevice data. The save was discarded.">
+        <source>Invalid iDevice data. The save was discarded.</source>
+        <target>~Date iDevice nevalide. Salvarea a fost anulată.</target>
+      </trans-unit>
+      <trans-unit id="5v2694j" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).">
+        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).</source>
+        <target>~Generează 5 întrebări cu variante multiple despre circuite electrice. O întrebare pe linie. Fiecare linie trebuie să conțină toate câmpurile separate prin #: o descriere scurtă, codul TikZ (folosind circuitikz) pentru schema circuitului, răspunsul corect sub formă de litere (de exemplu, A, AB), întrebarea și 2 până la 4 variante de răspuns. Nu folosi caracterul # în interiorul niciunui câmp. Nu adăuga întreruperi de linie în interiorul unei întrebări. IMPORTANT: codul TikZ trebuie să fie compatibil cu circuitikz versiunea 0.9.6. Folosește doar componente disponibile în această versiune: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diodă), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (cu t=A pentru ampermetru, t=V pentru voltmetru), and gate, or gate, not gate, nand gate, nor gate. NU folosi componente din circuitikz 1.0 sau mai nou, precum dipchip, qfpchip, muxdemux, flipflop, latch sau afișaje cu 7 segmente. Schema este redată de TikZJax, care încarcă doar pachetele LaTeX circuitikz, amsmath și amssymb; NU folosi comenzi din alte pachete. Scrie unitățile ca text simplu sau Unicode (de exemplu Ω, µ, V, A, W, F, H, Hz, kΩ, µF), niciodată ca macrocomenzi siunitx sau gensymb, precum \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} sau \\qty{...}{...}, și nu încadra niciodată o unitate între paranteze unghiulare (scrie 100 Ω, nu 100&lt;\\ohm&gt;).</target>
+      </trans-unit>
+      <trans-unit id="2ai5wv3" resname="Attachment">
+        <source>Attachment</source>
+        <target>~Atașament</target>
+      </trans-unit>
+      <trans-unit id="oot0wwg" resname="No files attached.">
+        <source>No files attached.</source>
+        <target>~Niciun fișier atașat.</target>
+      </trans-unit>
+      <trans-unit id="x93yt3b" resname="File unavailable">
+        <source>File unavailable</source>
+        <target>~Fișier indisponibil</target>
+      </trans-unit>
+      <trans-unit id="irj1e9o" resname="File attachments">
+        <source>File attachments</source>
+        <target>~Fișiere atașate</target>
+      </trans-unit>
+      <trans-unit id="dbv56q5" resname="Show file descriptions">
+        <source>Show file descriptions</source>
+        <target>~Afișează descrierile fișierelor</target>
+      </trans-unit>
+      <trans-unit id="2bfxuxm" resname="No files attached yet.">
+        <source>No files attached yet.</source>
+        <target>~Încă nu există fișiere atașate.</target>
+      </trans-unit>
+      <trans-unit id="wz41bq7" resname="Unknown file">
+        <source>Unknown file</source>
+        <target>~Fișier necunoscut</target>
+      </trans-unit>
+      <trans-unit id="9qlmvx0" resname="The attached file is missing. Re-add it from the Media Library.">
+        <source>The attached file is missing. Re-add it from the Media Library.</source>
+        <target>~Fișierul atașat lipsește. Adaugă-l din nou din Biblioteca media.</target>
+      </trans-unit>
+      <trans-unit id="29vvtlz" resname="The Media Library is not available.">
+        <source>The Media Library is not available.</source>
+        <target>~Biblioteca media nu este disponibilă.</target>
+      </trans-unit>
+      <trans-unit id="sfdbk93" resname="The file could not be uploaded.">
+        <source>The file could not be uploaded.</source>
+        <target>~Fișierul nu a putut fi încărcat.</target>
+      </trans-unit>
+      <trans-unit id="2uj370g" resname="File properties">
+        <source>File properties</source>
+        <target>~Proprietățile fișierului</target>
+      </trans-unit>
+      <trans-unit id="o63ujl7" resname="Please wait">
+        <source>Please wait</source>
+        <target>~Așteaptă, te rog</target>
+      </trans-unit>
+      <trans-unit id="yzos8rj" resname="Generating the circuit images, this may take a few minutes, please wait…">
+        <source>Generating the circuit images, this may take a few minutes, please wait…</source>
+        <target>~Se generează imaginile circuitelor; poate dura câteva minute, așteaptă…</target>
+      </trans-unit>
+      <trans-unit id="xu6y81n" resname="Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.">
+        <source>Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.</source>
+        <target>~Unele întrebări nu au putut fi adăugate deoarece circuitul lor nu a putut fi generat. Au fost păstrate în caseta de text ca să le poți corecta și încerca din nou.</target>
+      </trans-unit>
+      <trans-unit id="2qi9rfm" resname="Requires manual review">
+        <source>Requires manual review</source>
+        <target>~Necesită verificare manuală</target>
+      </trans-unit>
+      <trans-unit id="6xxjher" resname="Broken">
+        <source>Broken</source>
+        <target>~Defect</target>
+      </trans-unit>
+      <trans-unit id="q4thivq" resname="Listing links...">
+        <source>Listing links...</source>
+        <target>~Se listează linkurile...</target>
+      </trans-unit>
+      <trans-unit id="8a1u1p0" resname="Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.">
+        <source>Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.</source>
+        <target>~Din cauza restricțiilor de securitate ale navigatorului, această versiune de eXeLearning nu poate verifica automat linkurile externe. Deschide fiecare link pentru a-l verifica manual.</target>
+      </trans-unit>
+      <trans-unit id="yd7777v" resname="the status of these links could not be checked automatically; open them to confirm.">
+        <source>the status of these links could not be checked automatically; open them to confirm.</source>
+        <target>~Aceste linkuri nu au putut fi verificate automat.</target>
+      </trans-unit>
+      <trans-unit id="uzj2ltx" resname="A check mark means the server responded: some sites answer 200 even for pages that do not exist.">
+        <source>A check mark means the server responded: some sites answer 200 even for pages that do not exist.</source>
+        <target>~O bifă înseamnă că serverul a răspuns, dar unele site-uri răspund 200 chiar și pentru pagini care nu există.</target>
+      </trans-unit>
+      <trans-unit id="40mi6sg" resname="Links listed">
+        <source>Links listed</source>
+        <target>~Linkuri listate</target>
+      </trans-unit>
+      <trans-unit id="81jara4" resname="to review manually">
+        <source>to review manually</source>
+        <target>~de verificat manual</target>
+      </trans-unit>
+      <trans-unit id="rb8phqd" resname="to review">
+        <source>to review</source>
+        <target>~de verificat</target>
+      </trans-unit>
+      <trans-unit id="v0o4iey" resname="No links to export">
+        <source>No links to export</source>
+        <target>~Niciun link de exportat</target>
+      </trans-unit>
+      <trans-unit id="1s7oo7f" resname="External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.">
+        <source>External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.</source>
+        <target>~În această versiune de eXeLearning linkurile externe nu pot fi verificate automat: vei primi o listă de linkuri de verificat manual.</target>
+      </trans-unit>
+      <trans-unit id="zf0ku04" resname="Not checked automatically: open the link to review it">
+        <source>Not checked automatically: open the link to review it</source>
+        <target>~Neverificat automat; deschideți pentru verificare</target>
+      </trans-unit>
+      <trans-unit id="y8542f9" resname="Local or private address: open the link to review it manually">
+        <source>Local or private address: open the link to review it manually</source>
+        <target>~Adresă locală sau privată; deschideți pentru verificare</target>
+      </trans-unit>
+      <trans-unit id="klqips2" resname="Redirects to another site — open the link to verify it">
+        <source>Redirects to another site — open the link to verify it</source>
+        <target>~Redirecționează către alt site; deschideți pentru verificare</target>
+      </trans-unit>
+      <trans-unit id="pkgrpn8" resname="Could not be fully verified: open the link to confirm it">
+        <source>Could not be fully verified: open the link to confirm it</source>
+        <target>~Verificare incompletă; deschideți pentru verificare</target>
+      </trans-unit>
+      <trans-unit id="mliqr0z" resname="Redirects could not be followed: open the link to review it">
+        <source>Redirects could not be followed: open the link to review it</source>
+        <target>~Redirecționările nu au putut fi urmărite; deschideți pentru verificare</target>
+      </trans-unit>
+      <trans-unit id="sggcaxs" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~și încă %1</target>
+      </trans-unit>
+      <trans-unit id="j74ftlu" resname="Missing files">
+        <source>Missing files</source>
+        <target>~Fișiere lipsă</target>
+      </trans-unit>
+      <trans-unit id="nxr31oi" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>~Aceste activități fac referire la fișiere care nu sunt incluse în pachetul importat. Referințele au fost păstrate, așa că adăugarea din nou a fișierelor le va restaura.</target>
+      </trans-unit>
+      <trans-unit id="yiwn80c" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target>~Formulele sunt afișate chiar dacă această opțiune este dezactivată. Activați-o pentru a include biblioteca MathJax completă în exporturi. Aceasta adaugă meniul său contextual și funcțiile sale interactive.</target>
+      </trans-unit>
+      <trans-unit id="zf33oav" resname="Change password">
+        <source>Change password</source>
+        <target>~Schimbare parolă</target>
+      </trans-unit>
+      <trans-unit id="uxmcuvu" resname="Current password">
+        <source>Current password</source>
+        <target>~Parola actuală</target>
+      </trans-unit>
+      <trans-unit id="5bobb51" resname="New password">
+        <source>New password</source>
+        <target>~Parola nouă</target>
+      </trans-unit>
+      <trans-unit id="0kirkdf" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target>~Cel puțin 4 caractere. Parolele lungi care combină litere, cifre și simboluri sunt mai sigure.</target>
+      </trans-unit>
+      <trans-unit id="7qt2v14" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target>~Confirmă parola nouă</target>
+      </trans-unit>
+      <trans-unit id="3cfj1r6" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target>~Activități deteriorate</target>
+      </trans-unit>
+      <trans-unit id="8brt4c5" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target>~Datele acestor activități sunt deteriorate și nu au putut fi citite. Au fost importate nemodificate: ultimul lor conținut este încă afișat, dar nu pot fi editate decât după ce sunt create din nou.</target>
+      </trans-unit>
+      <trans-unit id="4q7n57t" resname="Import warnings">
+        <source>Import warnings</source>
+        <target>~Avertizări de import</target>
+      </trans-unit>
+      <trans-unit id="ppni83y" resname="Search icon">
+        <source>Search icon</source>
+        <target>~Caută pictogramă</target>
+      </trans-unit>
+      <trans-unit id="93a9udm" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target>~Alege o imagine din managerul de fișiere</target>
+      </trans-unit>
+      <trans-unit id="9o3wzg6" resname="Icon">
+        <source>Icon</source>
+        <target>~Pictogramă</target>
+      </trans-unit>
+      <trans-unit id="aujbna9" resname="Style icons">
+        <source>Style icons</source>
+        <target>~Pictogramele stilului</target>
+      </trans-unit>
+      <trans-unit id="svlzr0n" resname="General icons">
+        <source>General icons</source>
+        <target>~Pictograme generale</target>
+      </trans-unit>
+      <trans-unit id="6np6bae" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target>~Puterea parolei: prea scurtă</target>
+      </trans-unit>
+      <trans-unit id="wm3kh0w" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target>~Puterea parolei: slabă</target>
+      </trans-unit>
+      <trans-unit id="wjxetml" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target>~Puterea parolei: acceptabilă</target>
+      </trans-unit>
+      <trans-unit id="rjpsueq" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target>~Puterea parolei: bună</target>
+      </trans-unit>
+      <trans-unit id="ir2lwxm" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target>~Puterea parolei: puternică</target>
+      </trans-unit>
+      <trans-unit id="mcnk8zl" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target>~Parola actuală este incorectă</target>
+      </trans-unit>
+      <trans-unit id="vb842oo" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target>~Parola nouă nu poate fi goală.</target>
+      </trans-unit>
+      <trans-unit id="p79xbwy" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target>~Parolele nu coincid</target>
+      </trans-unit>
+      <trans-unit id="oy5jj7t" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target>~Parola a fost schimbată cu succes</target>
+      </trans-unit>
+      <trans-unit id="o1c5cfg" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target>~A apărut o eroare. Vă rugăm să încercați din nou.</target>
+      </trans-unit>
+      <trans-unit id="cv8e7s3" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target>~Acest cont nu permite schimbarea parolei.</target>
+      </trans-unit>
+      <trans-unit id="ejwji5s" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target>~Parola nouă nu este validă.</target>
+      </trans-unit>
+      <trans-unit id="roywrlb" resname="Huger text">
+        <source>Huger text</source>
+        <target>~Text gigantic</target>
+      </trans-unit>
+      <trans-unit id="0xy65fd" resname="To save the score, the activity needs at least one question.">
+        <source>To save the score, the activity needs at least one question.</source>
+        <target>~Pentru a salva scorul, activitatea are nevoie de cel puțin o întrebare.</target>
+      </trans-unit>
+      <trans-unit id="gn4tqfp" resname="Minimum score to pass">
+        <source>Minimum score to pass</source>
+        <target>~Punctaj minim de promovare</target>
+      </trans-unit>
+      <trans-unit id="1m9ar1l" resname="Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.">
+        <source>Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.</source>
+        <target>~Nota din 10 pe care elevii trebuie să o obțină pentru ca o activitate să fie considerată promovată. Toate iDevice-urile folosesc această valoare, cu excepția cazului în care își definesc una proprie.</target>
+      </trans-unit>
+      <trans-unit id="ehexdti" resname="Each SCORM activity must reach its minimum score">
+        <source>Each SCORM activity must reach its minimum score</source>
+        <target>~Fiecare activitate SCORM trebuie să atingă punctajul minim</target>
+      </trans-unit>
+      <trans-unit id="bb4lbbi" resname="A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.">
+        <source>A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.</source>
+        <target>~O pagină SCORM este promovată doar dacă toate activitățile ei ating punctajul minim. Dacă această opțiune nu este bifată, este suficient ca media ponderată a punctajelor să atingă media punctajelor minime, astfel încât o notă mare poate compensa una mică.</target>
+      </trans-unit>
+      <trans-unit id="tke2slc" resname="Edit access">
+        <source>Edit access</source>
+        <target>~Cine poate edita</target>
+      </trans-unit>
+      <trans-unit id="m2cpdnk" resname="Only invited people">
+        <source>Only invited people</source>
+        <target>~Doar persoanele invitate</target>
+      </trans-unit>
+      <trans-unit id="0cq5exa" resname="Anyone with the edit link">
+        <source>Anyone with the edit link</source>
+        <target>~Oricine are linkul de editare</target>
+      </trans-unit>
+      <trans-unit id="56e5cai" resname="Only the people added above can open and edit this resource.">
+        <source>Only the people added above can open and edit this resource.</source>
+        <target>~Doar persoanele autorizate pot deschide și edita această resursă.</target>
+      </trans-unit>
+      <trans-unit id="7gis65p" resname="Edit link">
+        <source>Edit link</source>
+        <target>~Link de editare</target>
+      </trans-unit>
+      <trans-unit id="46lb5r9" resname="Public read-only link">
+        <source>Public read-only link</source>
+        <target>~Link public (doar citire)</target>
+      </trans-unit>
+      <trans-unit id="3lhcjfz" resname="Disabled">
+        <source>Disabled</source>
+        <target>~Dezactivat</target>
+      </trans-unit>
+      <trans-unit id="4na0smx" resname="Enabled">
+        <source>Enabled</source>
+        <target>~Activat</target>
+      </trans-unit>
+      <trans-unit id="fcnwqdj" resname="This resource has no public read-only link.">
+        <source>This resource has no public read-only link.</source>
+        <target>~Această resursă nu are link public.</target>
+      </trans-unit>
+      <trans-unit id="p56byze" resname="Public link">
+        <source>Public link</source>
+        <target>~Link public</target>
+      </trans-unit>
+      <trans-unit id="94exrmp" resname="Regenerate link">
+        <source>Regenerate link</source>
+        <target>~Regenerează linkul</target>
+      </trans-unit>
+      <trans-unit id="xn37eg0" resname="Regenerate the public link? The previous link will stop working.">
+        <source>Regenerate the public link? The previous link will stop working.</source>
+        <target>~Regenerezi linkul public? Linkul anterior nu va mai funcționa.</target>
+      </trans-unit>
+      <trans-unit id="371xcm6" resname="Yes, regenerate">
+        <source>Yes, regenerate</source>
+        <target>~Da, regenerează</target>
+      </trans-unit>
+      <trans-unit id="qhfun0o" resname="Print options">
+        <source>Print options</source>
+        <target>~Opțiuni de imprimare</target>
+      </trans-unit>
+      <trans-unit id="aaen498" resname="Save as PDF">
+        <source>Save as PDF</source>
+        <target>~Salvează ca PDF</target>
+      </trans-unit>
+      <trans-unit id="4e01tt9" resname="Printing did not start. Printing may be disabled in this browser or on this device.">
+        <source>Printing did not start. Printing may be disabled in this browser or on this device.</source>
+        <target>~Imprimarea nu a pornit. Este posibil să fie dezactivată în acest browser sau pe dispozitiv.</target>
+      </trans-unit>
+      <trans-unit id="6feu89n" resname="The PDF could not be saved.">
+        <source>The PDF could not be saved.</source>
+        <target>~PDF-ul nu a putut fi salvat.</target>
+      </trans-unit>
+      <trans-unit id="5w45iyv" resname="All visible content will be printed.">
+        <source>All visible content will be printed.</source>
+        <target>~Se va imprima tot conținutul vizibil.</target>
+      </trans-unit>
+      <trans-unit id="kubdyp0" resname="You can choose which activities to include and whether to show hidden content.">
+        <source>You can choose which activities to include and whether to show hidden content.</source>
+        <target>~Poți alege ce activități să incluzi și dacă să afișezi conținutul ascuns.</target>
+      </trans-unit>
+      <trans-unit id="scy0blg" resname="You can choose whether to show hidden content.">
+        <source>You can choose whether to show hidden content.</source>
+        <target>~Poți alege dacă să afișezi conținutul ascuns.</target>
+      </trans-unit>
+      <trans-unit id="79ryw40" resname="Document">
+        <source>Document</source>
+        <target>~Document</target>
+      </trans-unit>
+      <trans-unit id="9mj2cry" resname="Show link URLs">
+        <source>Show link URLs</source>
+        <target>~Afișează URL-ul linkurilor</target>
+      </trans-unit>
+      <trans-unit id="b7l9sb3" resname="Print the content of minimized boxes">
+        <source>Print the content of minimized boxes</source>
+        <target>~Imprimă conținutul casetelor minimizate</target>
+      </trans-unit>
+      <trans-unit id="702rm55" resname="Print teacher-only content">
+        <source>Print teacher-only content</source>
+        <target>~Imprimă conținutul rezervat profesorilor</target>
+      </trans-unit>
+      <trans-unit id="5ltn0rr" resname="Loading preview...">
+        <source>Loading preview...</source>
+        <target>~Se încarcă previzualizarea...</target>
+      </trans-unit>
+      <trans-unit id="8gspenp" resname="Spell checker languages">
+        <source>Spell checker languages</source>
+        <target>~Limbile corectorului ortografic</target>
+      </trans-unit>
+      <trans-unit id="sthgfsm" resname="Choose languages">
+        <source>Choose languages</source>
+        <target>~Alege limbile</target>
+      </trans-unit>
+      <trans-unit id="sqpq732" resname="System default">
+        <source>System default</source>
+        <target>~Implicit al sistemului</target>
+      </trans-unit>
+      <trans-unit id="l2i3eow" resname="iDevice %1">
+        <source>iDevice %1</source>
+        <target>~iDevice %1</target>
+      </trans-unit>
+      <trans-unit id="exx50bz" resname="%1 on page &quot;%2&quot;">
+        <source>%1 on page "%2"</source>
+        <target>~%1 pe pagina „%2”</target>
+      </trans-unit>
+      <trans-unit id="678son4" resname="Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.">
+        <source>Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.</source>
+        <target>~Activitățile evaluabile folosesc punctajul minim în toate formatele de export. Opțiunea SCORM se aplică doar exporturilor compatibile cu SCORM.</target>
+      </trans-unit>
+      <trans-unit id="9tlsxdp" resname="Server unavailable">
+        <source>Server unavailable</source>
+        <target>~Server indisponibil</target>
+      </trans-unit>
+      <trans-unit id="wx70t26" resname="the server took too long to respond, try again later">
+        <source>the server took too long to respond, try again later</source>
+        <target>~serverul a răspuns prea greu, încearcă din nou mai târziu</target>
+      </trans-unit>
+      <trans-unit id="dtxfg4c" resname="too many requests to this site, try again later">
+        <source>too many requests to this site, try again later</source>
+        <target>~prea multe cereri către acest site, încearcă din nou mai târziu</target>
+      </trans-unit>
+      <trans-unit id="csjndeb" resname="server error, try again later">
+        <source>server error, try again later</source>
+        <target>~eroare de server, încearcă din nou mai târziu</target>
+      </trans-unit>
+      <trans-unit id="1fovht7" resname="the site did not answer in time or was busy; the link may still work, try again later.">
+        <source>the site did not answer in time or was busy; the link may still work, try again later.</source>
+        <target>~site-ul nu a răspuns la timp sau era ocupat; linkul poate funcționa totuși, încearcă din nou mai târziu.</target>
+      </trans-unit>
+      <trans-unit id="unuenze" resname="unavailable">
+        <source>unavailable</source>
+        <target>~indisponibil</target>
+      </trans-unit>
+      <trans-unit id="i250pl9" resname="Print iDevices">
+        <source>Print iDevices</source>
+        <target>~Imprimă iDevice-uri</target>
+      </trans-unit>
+      <trans-unit id="wyl3wlh" resname="Content without activities">
+        <source>Content without activities</source>
+        <target>~Conținut fără activități</target>
+      </trans-unit>
+      <trans-unit id="nbv2w5b" resname="Content with activities">
+        <source>Content with activities</source>
+        <target>~Conținut cu activități</target>
+      </trans-unit>
+      <trans-unit id="sd6my7y" resname="Content with activities in an appendix">
+        <source>Content with activities in an appendix</source>
+        <target>~Conținut cu activitățile într-o anexă</target>
+      </trans-unit>
+      <trans-unit id="yru9cko" resname="Activities only (no other content)">
+        <source>Activities only (no other content)</source>
+        <target>~Doar activitățile (fără restul conținutului)</target>
+      </trans-unit>
+      <trans-unit id="yfk6k6k" resname="What would you like to print?">
+        <source>What would you like to print?</source>
+        <target>~Ce vrei să imprimi?</target>
+      </trans-unit>
+      <trans-unit id="gqszxz4" resname="Shown when a printing mode that includes activities is selected.">
+        <source>Shown when a printing mode that includes activities is selected.</source>
+        <target>~Se afișează când alegi un mod de imprimare care include activități.</target>
+      </trans-unit>
+      <trans-unit id="9xwxwyl" resname="Title only">
+        <source>Title only</source>
+        <target>~Doar titlul</target>
+      </trans-unit>
+      <trans-unit id="u63ouj0" resname="Select at least one activity to print.">
+        <source>Select at least one activity to print.</source>
+        <target>~Selectează cel puțin o activitate de imprimat.</target>
+      </trans-unit>
+      <trans-unit id="a6hergy" resname="Requires multimedia">
+        <source>Requires multimedia</source>
+        <target>~Necesită multimedia</target>
+      </trans-unit>
+      <trans-unit id="4uunqtg" resname="Invalid or empty activity data">
+        <source>Invalid or empty activity data</source>
+        <target>~Date de activitate nevalide sau goale</target>
+      </trans-unit>
+      <trans-unit id="aovldu8" resname="Words that could not be placed">
+        <source>Words that could not be placed</source>
+        <target>~Cuvinte care nu au putut fi plasate</target>
+      </trans-unit>
+      <trans-unit id="y3h051f" resname="This project has no printable activities yet.">
+        <source>This project has no printable activities yet.</source>
+        <target>~Acest proiect nu are încă activități imprimabile.</target>
+      </trans-unit>
+      <trans-unit id="2f45gvb" resname="Left out of this worksheet">
+        <source>Left out of this worksheet</source>
+        <target>~Neincluse în această fișă</target>
+      </trans-unit>
+      <trans-unit id="lwl4sqj" resname="Not available in print">
+        <source>Not available in print</source>
+        <target>~Indisponibil în versiunea tipărită</target>
+      </trans-unit>
+      <trans-unit id="p1rqi5p" resname="Operation">
+        <source>Operation</source>
+        <target>~Operație</target>
+      </trans-unit>
+      <trans-unit id="l06o428" resname="Flip cards">
+        <source>Flip cards</source>
+        <target>~Carduri de memorie</target>
+      </trans-unit>
+      <trans-unit id="pet0wrr" resname="Electrical circuits">
+        <source>Electrical circuits</source>
+        <target>~Circuite electrice</target>
+      </trans-unit>
+      <trans-unit id="qqp5vco" resname="3D molecules">
+        <source>3D molecules</source>
+        <target>~Molecule 3D</target>
+      </trans-unit>
+      <trans-unit id="h5sxmre" resname="Select multimedia">
+        <source>Select multimedia</source>
+        <target>~Selectează fișiere media</target>
+      </trans-unit>
+      <trans-unit id="gh8tz4a" resname="Adaptative quiz">
+        <source>Adaptative quiz</source>
+        <target>~Test adaptativ</target>
+      </trans-unit>
+      <trans-unit id="9kviano" resname="Print iDevices is not available.">
+        <source>Print iDevices is not available.</source>
+        <target>~Imprimarea iDevice-urilor nu este disponibilă.</target>
+      </trans-unit>
+      <trans-unit id="r17p5pd" resname="Appendix">
+        <source>Appendix</source>
+        <target>~Anexă</target>
+      </trans-unit>
+      <trans-unit id="31chcj9" resname="See appendix, activity %s">
+        <source>See appendix, activity %s</source>
+        <target>~Vezi anexa, activitatea %s</target>
+      </trans-unit>
+      <trans-unit id="8hobfj4" resname="Not available in print.">
+        <source>Not available in print.</source>
+        <target>~Indisponibil în versiunea tipărită.</target>
+      </trans-unit>
+      <trans-unit id="lgfb9vo" resname="Anyone with this link can open and edit in real time.">
+        <source>Anyone with this link can open and edit in real time.</source>
+        <target>~Oricine are acest link poate deschide și edita în timp real.</target>
+      </trans-unit>
+      <trans-unit id="bo6de5g" resname="Anyone with this link can view this resource, but not edit it.">
+        <source>Anyone with this link can view this resource, but not edit it.</source>
+        <target>~Oricine are acest link poate vedea această resursă, dar nu o poate edita.</target>
+      </trans-unit>
+      <trans-unit id="qhx843g" resname="Public read-only link enabled">
+        <source>Public read-only link enabled</source>
+        <target>~Link public (doar citire) activat</target>
+      </trans-unit>
+      <trans-unit id="polyw3x" resname="Public read-only link disabled">
+        <source>Public read-only link disabled</source>
+        <target>~Link public (doar citire) dezactivat</target>
+      </trans-unit>
+      <trans-unit id="o11tvbz" resname="Failed to update the public read-only link">
+        <source>Failed to update the public read-only link</source>
+        <target>~Linkul public nu a putut fi actualizat</target>
+      </trans-unit>
+      <trans-unit id="itu2ony" resname="The public link has been regenerated. The previous link will stop working.">
+        <source>The public link has been regenerated. The previous link will stop working.</source>
+        <target>~Linkul public a fost regenerat. Linkul anterior nu va mai funcționa.</target>
+      </trans-unit>
+      <trans-unit id="ur874rt" resname="Failed to regenerate the public link">
+        <source>Failed to regenerate the public link</source>
+        <target>~Linkul public nu a putut fi regenerat</target>
+      </trans-unit>
+      <trans-unit id="p2hy81y" resname="Minimum score to pass the activity">
+        <source>Minimum score to pass the activity</source>
+        <target>~Punctaj minim de promovare a activității</target>
+      </trans-unit>
+      <trans-unit id="664f8h5" resname="Global value">
+        <source>Global value</source>
+        <target>~Valoare globală</target>
+      </trans-unit>
+      <trans-unit id="ltt5u89" resname="Customize">
+        <source>Customize</source>
+        <target>~Personalizează</target>
+      </trans-unit>
+      <trans-unit id="6g9mz7k" resname="Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.">
+        <source>Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.</source>
+        <target>~Valoare globală: activitatea folosește nota stabilită în proprietățile proiectului. Dacă o schimbi acolo, se schimbă și în această activitate.</target>
+      </trans-unit>
+      <trans-unit id="7w29gac" resname="Customize: the activity uses its own mark and ignores the project one.">
+        <source>Customize: the activity uses its own mark and ignores the project one.</source>
+        <target>~Personalizează: activitatea folosește propria notă și o ignoră pe cea a proiectului.</target>
+      </trans-unit>
+      <trans-unit id="7ahpwnp" resname="Grading">
+        <source>Grading</source>
+        <target>~Notare</target>
+      </trans-unit>
+      <trans-unit id="94utdmz" resname="The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.">
+        <source>The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.</source>
+        <target>~Activitatea nu trimite niciun punctaj către LMS, nici măcar când este exportată ca SCORM. Utilizatorul o poate rezolva și își poate vedea rezultatul, dar nimic nu se înregistrează pe platformă.</target>
+      </trans-unit>
+      <trans-unit id="4xy5m4w" resname="The progress report is not affected: it is kept in the learner&apos;s own browser and works whatever you choose here.">
+        <source>The progress report is not affected: it is kept in the learner's own browser and works whatever you choose here.</source>
+        <target>~Raportul de progres nu este afectat: se păstrează în browserul propriu și funcționează indiferent ce alegi aici.</target>
+      </trans-unit>
+      <trans-unit id="a09pg09" resname="The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.">
+        <source>The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.</source>
+        <target>~Activitatea își trimite singură punctajul, pe măsură ce se răspunde și din nou la final. Utilizatorul nu trebuie să apese nimic.</target>
+      </trans-unit>
+      <trans-unit id="m3fgv5n" resname="A learner who leaves halfway still has the work done so far recorded, because the score was already sent.">
+        <source>A learner who leaves halfway still has the work done so far recorded, because the score was already sent.</source>
+        <target>~Dacă cineva abandonează la jumătate, munca făcută până atunci rămâne înregistrată, pentru că punctajul fusese deja trimis.</target>
+      </trans-unit>
+      <trans-unit id="gb071aa" resname="Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.">
+        <source>Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.</source>
+        <target>~Nimic nu ajunge în LMS până nu se apasă butonul. Utilizatorul decide dacă și când i se înregistrează punctajul, așa că o activitate făcută fără a-l apăsa nu lasă nicio urmă pe platformă.</target>
+      </trans-unit>
+      <trans-unit id="n0rdja3" resname="Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.">
+        <source>Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.</source>
+        <target>~Apăsarea butonului publică punctajul obținut până atunci, dar nu închide activitatea: se poate continua și salva din nou.</target>
+      </trans-unit>
+      <trans-unit id="a5f1eu7" resname="The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.">
+        <source>The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.</source>
+        <target>~Greutatea stabilește cât contează această activitate în punctajul paginii, în comparație cu celelalte activități de pe aceeași pagină.</target>
+      </trans-unit>
+      <trans-unit id="2iox19a" resname="What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.">
+        <source>What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.</source>
+        <target>~Contează proporția dintre greutăți, nu numărul în sine. Dacă o pagină are o singură activitate, greutatea nu are niciun efect: ea valorează întregul punctaj.</target>
+      </trans-unit>
+      <trans-unit id="f0szvkx" resname="For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.">
+        <source>For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.</source>
+        <target>~De exemplu, trei activități cu greutățile 100, 100 și 50 contează 40%, 40% și 20% din punctajul paginii. Activitățile care nu își salvează punctajul rămân în afara calculului.</target>
+      </trans-unit>
+      <trans-unit id="9aofhr9" resname="Minimum score needed to pass this activity: %s">
+        <source>Minimum score needed to pass this activity: %s</source>
+        <target>~Punctaj minim necesar pentru a promova această activitate: %s</target>
+      </trans-unit>
+      <trans-unit id="ft6asl2" resname="Minimum score to pass: %s">
+        <source>Minimum score to pass: %s</source>
+        <target>~Punctaj minim de promovare: %s</target>
+      </trans-unit>
+      <trans-unit id="vdccjhs" resname="Each activity must reach its minimum score">
+        <source>Each activity must reach its minimum score</source>
+        <target>~Fiecare activitate trebuie să atingă punctajul minim</target>
+      </trans-unit>
+      <trans-unit id="q4fsvvg" resname="This block will create a link to download the .elpx file. Write some use instructions and customize your download link.">
+        <source>This block will create a link to download the .elpx file. Write some use instructions and customize your download link.</source>
+        <target>Acest bloc va crea un link pentru descărcarea fișierului .elpx. Scrie câteva instrucțiuni de utilizare și personalizează link-ul de descărcare.</target>
+      </trans-unit>
+      <trans-unit id="ifcism1" resname="Download .elpx file">
+        <source>Download .elpx file</source>
+        <target>Descarcă fișierul .elpx</target>
+      </trans-unit>
+      <trans-unit id="0yr5x20" resname="System default uses the operating system language. It is also used when no language is checked.">
+        <source>System default uses the operating system language. It is also used when no language is checked.</source>
+        <target>~Opțiunea implicită folosește limba sistemului de operare. Este folosită și când nu este bifată nicio limbă.</target>
       </trans-unit>
     </body>
   </file>

@@ -70,6 +70,7 @@ describe('UserPreferences', () => {
     vi.restoreAllMocks();
     delete globalThis.eXeLearning;
     delete globalThis._;
+    delete window.electronAPI;
     window.localStorage = originalLocalStorage;
   });
 
@@ -125,6 +126,90 @@ describe('UserPreferences', () => {
     });
   });
 
+  describe('desktop spell checker preferences', () => {
+    it('adds the available languages on Windows and Linux desktop builds', async () => {
+      for (const preference of Object.values(
+        globalThis.eXeLearning.app.api.parameters.userPreferencesConfig
+      )) {
+        preference.category = 'General settings';
+      }
+      globalThis.eXeLearning.app.locale = { lang: 'fr' };
+      window.electronAPI = {
+        getSpellCheckerSettings: vi.fn().mockResolvedValue({
+          supported: true,
+          availableLanguages: ['es', 'en-US'],
+          selectedLanguages: ['es'],
+          systemDefault: false,
+        }),
+      };
+
+      await userPreferences.load();
+
+      const frName = (code) => {
+        const name = new Intl.DisplayNames(['fr'], { type: 'language', languageDisplay: 'standard' }).of(code);
+        return name.charAt(0).toLocaleUpperCase('fr') + name.slice(1);
+      };
+      const preference = userPreferences.preferences.spellCheckerLanguages;
+      expect(preference).toEqual(expect.objectContaining({
+        type: 'multiselect',
+        category: 'General settings',
+        value: ['es'],
+        customLabel: 'Choose languages',
+        // Named in the interface language, with an initial capital
+        options: {
+          __system_default__: 'System default',
+          'en-US': frName('en-US'),
+          es: frName('es'),
+        },
+      }));
+      // Sorted by name ("Anglais" before "Espagnol"), not in the order Electron reports
+      expect(Object.keys(preference.options)).toEqual(['__system_default__', 'en-US', 'es']);
+      delete window.electronAPI;
+    });
+
+    it('keeps the spell checker uncategorized when fallback preferences have no categories', async () => {
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+      globalThis.eXeLearning.app.api.getApiParameters.mockResolvedValue({});
+      window.electronAPI = {
+        getSpellCheckerSettings: vi.fn().mockResolvedValue({
+          supported: true,
+          availableLanguages: ['en-US'],
+          selectedLanguages: ['en-US'],
+          systemDefault: false,
+        }),
+      };
+
+      await userPreferences.load();
+
+      expect(userPreferences.preferences.locale.category).toBeUndefined();
+      expect(userPreferences.preferences.spellCheckerLanguages.category).toBeUndefined();
+    });
+
+    it('continues saving other preferences when the desktop IPC save fails', async () => {
+      window.electronAPI = {
+        setSpellCheckerLanguages: vi.fn().mockRejectedValue(new Error('IPC unavailable')),
+      };
+      userPreferences.preferences = {
+        spellCheckerLanguages: { value: ['es'] },
+        advancedMode: { value: 'false' },
+      };
+      await userPreferences.apiSaveProperties({ spellCheckerLanguages: ['es'], advancedMode: 'true' });
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).toHaveBeenCalledWith({ advancedMode: 'true' });
+      expect(mockManager.reloadMode).toHaveBeenCalledWith('true');
+    });
+
+    it('does not add a selector when language selection is OS-controlled', async () => {
+      window.electronAPI = {
+        getSpellCheckerSettings: vi.fn().mockResolvedValue({ supported: false }),
+      };
+
+      await userPreferences.load();
+
+      expect(userPreferences.preferences.spellCheckerLanguages).toBeUndefined();
+      delete window.electronAPI;
+    });
+  });
+
   describe('setPreferences', () => {
     it('should update existing preferences and create new ones from template', () => {
       userPreferences.preferences = {
@@ -174,7 +259,9 @@ describe('UserPreferences', () => {
       const notice = document.getElementById('preferences-static-notice');
       expect(notice).not.toBeNull();
       expect(notice.className).toBe('alert alert-info');
-      expect(notice.textContent).toBe('Preferences will be applied after refreshing the page.');
+      expect(notice.textContent).toBe(
+        'Language changes may require reloading or reopening eXeLearning to update the whole interface.'
+      );
 
       // Cleanup
       document.body.removeChild(mockModal);
@@ -273,6 +360,9 @@ describe('UserPreferences', () => {
       const warning = document.getElementById('preferences-reload-warning');
       expect(warning).not.toBeNull();
       expect(warning.className).toBe('alert alert-warning');
+      expect(warning.textContent).toBe(
+        'The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.'
+      );
 
       // Cleanup
       document.body.removeChild(mockModal);
@@ -299,6 +389,29 @@ describe('UserPreferences', () => {
 
     it('should handle missing modal gracefully', () => {
       expect(() => userPreferences._showStaticReloadWarning()).not.toThrow();
+    });
+
+    it('should fall back to English text when translation function is unavailable', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      // Simulate the global translation helper not being defined
+      delete globalThis._;
+
+      userPreferences._showStaticReloadWarning();
+
+      const warning = document.getElementById('preferences-reload-warning');
+      expect(warning).not.toBeNull();
+      expect(warning.textContent).toBe(
+        'The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.'
+      );
+
+      // Cleanup
+      document.body.removeChild(mockModal);
     });
   });
 
@@ -355,6 +468,74 @@ describe('UserPreferences', () => {
       expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
     });
 
+    it('saves spell checker languages through Electron instead of localStorage', async () => {
+      window.electronAPI = { setSpellCheckerLanguages: vi.fn().mockResolvedValue({
+        systemDefault: false,
+        selectedLanguages: ['es', 'en-US'],
+      }) };
+      userPreferences.preferences = {
+        spellCheckerLanguages: { value: [] },
+        advancedMode: { value: 'false' },
+      };
+
+      await userPreferences.apiSaveProperties({
+        spellCheckerLanguages: ['es', 'en-US'],
+        advancedMode: 'true',
+      });
+
+      expect(window.electronAPI.setSpellCheckerLanguages).toHaveBeenCalledWith(['es', 'en-US']);
+      expect(userPreferences.preferences.spellCheckerLanguages.value).toEqual(['es', 'en-US']);
+      const saved = JSON.parse(localStorage.setItem.mock.calls.at(-1)[1]);
+      expect(saved.userPreferences.spellCheckerLanguages).toBeUndefined();
+      delete window.electronAPI;
+    });
+
+    it('warns when spell checker languages apply only to the current session', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      window.electronAPI = { setSpellCheckerLanguages: vi.fn().mockResolvedValue({
+        systemDefault: false,
+        selectedLanguages: ['es'],
+        applied: true,
+        persisted: false,
+      }) };
+      userPreferences.preferences = {
+        spellCheckerLanguages: { value: [] },
+      };
+
+      await userPreferences.apiSaveProperties({ spellCheckerLanguages: ['es'] });
+
+      expect(warn).toHaveBeenCalledWith(
+        '[UserPreferences] Spell checker languages were applied for this session but could not be persisted.'
+      );
+      warn.mockRestore();
+      delete window.electronAPI;
+    });
+
+    it('does not mutate the submitted preferences object', async () => {
+      window.electronAPI = { setSpellCheckerLanguages: vi.fn().mockResolvedValue({
+        systemDefault: false,
+        selectedLanguages: ['es'],
+        applied: true,
+        persisted: true,
+      }) };
+      userPreferences.preferences = {
+        spellCheckerLanguages: { value: [] },
+        advancedMode: { value: 'false' },
+      };
+      const submitted = {
+        spellCheckerLanguages: ['es'],
+        advancedMode: 'true',
+      };
+
+      await userPreferences.apiSaveProperties(submitted);
+
+      expect(submitted).toEqual({
+        spellCheckerLanguages: ['es'],
+        advancedMode: 'true',
+      });
+      delete window.electronAPI;
+    });
+
     it('should not call server API in static mode', async () => {
       userPreferences.preferences = {
         advancedMode: { value: 'false' }
@@ -392,15 +573,35 @@ describe('UserPreferences', () => {
       mockModal.appendChild(mockBody);
       document.body.appendChild(mockModal);
 
+      // Spy on window.location.reload to prove it is NOT triggered in static mode
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { reload: vi.fn() };
+
       await userPreferences.apiSaveProperties({
         locale: 'es'
       });
 
-      // Should show warning instead of reloading page
+      // Preference is still applied/saved
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'exe_user_preferences',
+        expect.any(String)
+      );
+      expect(mockManager.reloadLang).toHaveBeenCalledWith('es');
+
+      // Should show warning instead of reloading the page
       const warning = document.getElementById('preferences-reload-warning');
       expect(warning).not.toBeNull();
+      expect(warning.className).toBe('alert alert-warning');
+      expect(warning.textContent).toBe(
+        'The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.'
+      );
+
+      // No automatic reload in static/offline/Electron mode
+      expect(window.location.reload).not.toHaveBeenCalled();
 
       // Cleanup
+      window.location = originalLocation;
       document.body.removeChild(mockModal);
     });
   });
@@ -487,6 +688,68 @@ describe('UserPreferences', () => {
         expect.any(Error)
       );
       warnSpy.mockRestore();
+    });
+  });
+
+  describe('defaultTheme preference', () => {
+    it('round-trips defaultTheme through localStorage in static mode', async () => {
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+      // Seed userPreferences config with both keys (server-shaped config).
+      userPreferences.preferences = {
+        defaultTheme: { value: '' },
+        locale: { value: 'en' },
+      };
+
+      await userPreferences.apiSaveProperties({ defaultTheme: 'spectrum128k' });
+
+      // setItem must have been called with the new value
+      const savedCall = localStorage.setItem.mock.calls.find(c => c[0] === 'exe_user_preferences');
+      expect(savedCall).toBeDefined();
+      const saved = JSON.parse(savedCall[1]);
+      expect(saved.userPreferences.defaultTheme.value).toBe('spectrum128k');
+      // Local in-memory state is also updated
+      expect(userPreferences.preferences.defaultTheme.value).toBe('spectrum128k');
+      // Server endpoint must NOT have been called in static mode
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
+    });
+
+    it('persists defaultTheme via the server in cloud mode', async () => {
+      // server mode is the default in beforeEach
+      userPreferences.preferences = {
+        defaultTheme: { value: '' },
+        advancedMode: { value: 'true' },
+        locale: { value: 'en' },
+      };
+
+      await userPreferences.apiSaveProperties({ defaultTheme: 'spectrum128k' });
+
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).toHaveBeenCalledWith({
+        defaultTheme: 'spectrum128k',
+      });
+      expect(userPreferences.preferences.defaultTheme.value).toBe('spectrum128k');
+    });
+
+    it('reads defaultTheme back from localStorage on the next load', async () => {
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+      localStorage.setItem('exe_user_preferences', JSON.stringify({
+        userPreferences: {
+          defaultTheme: { value: 'spectrum128k' },
+          locale: { value: 'en' },
+        },
+      }));
+      // Server mode payload returned by getApiParameters must include the
+      // defaultTheme template so setPreferences can populate the value.
+      globalThis.eXeLearning.app.api.getApiParameters.mockResolvedValue({
+        userPreferencesConfig: {
+          defaultTheme: { value: '', type: 'select', title: 'Default style for new documents' },
+          locale: { value: 'en' },
+        },
+      });
+
+      await userPreferences.load();
+
+      expect(userPreferences.preferences.defaultTheme.value).toBe('spectrum128k');
     });
   });
 });

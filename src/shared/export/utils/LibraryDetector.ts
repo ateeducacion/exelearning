@@ -18,6 +18,7 @@
 
 import type { LibraryPattern, LibraryDetectionResult, LibraryDetectionOptions } from '../interfaces';
 import { LIBRARY_PATTERNS, BASE_LIBRARIES, SCORM_LIBRARIES } from '../constants';
+import { decryptDataGame } from './dataGameCipher';
 
 /**
  * LibraryDetector class
@@ -70,12 +71,42 @@ export class LibraryDetector {
         return this.finalizeDetection(options);
     }
 
-    private scanHtmlFragment(html: string | null | undefined, options: LibraryDetectionOptions): void {
+    /**
+     * Detect libraries across groups of fragments with group-specific exclusions.
+     * This allows nested JSON rich text to participate in HTML library detection
+     * without bypassing dedicated processing such as selective MathJax handling.
+     */
+    detectLibrariesFromFragmentGroups(
+        groups: Iterable<{
+            fragments: Iterable<string | null | undefined>;
+            excludedLibraries?: Iterable<string>;
+        }>,
+        options: LibraryDetectionOptions = {},
+    ): LibraryDetectionResult {
+        this.resetDetection();
+        for (const group of groups) {
+            const excludedLibraries = new Set(group.excludedLibraries || []);
+            for (const html of group.fragments) {
+                this.scanHtmlFragment(html, options, excludedLibraries);
+            }
+        }
+        return this.finalizeDetection(options);
+    }
+
+    private scanHtmlFragment(
+        html: string | null | undefined,
+        options: LibraryDetectionOptions,
+        excludedLibraries: ReadonlySet<string> = new Set(),
+    ): void {
         if (!html || typeof html !== 'string') {
             return;
         }
 
         for (const lib of LIBRARY_PATTERNS) {
+            if (excludedLibraries.has(lib.name)) {
+                continue;
+            }
+
             // Skip MathJax libraries if LaTeX was pre-rendered
             if (options.skipMathJax && (lib.name === 'exe_math' || lib.name === 'exe_math_datagame')) {
                 continue;
@@ -146,32 +177,11 @@ export class LibraryDetector {
         const match = html.match(/<div[^>]*class="[^"]*DataGame[^"]*"[^>]*>(.*?)<\/div>/s);
         if (!match) return false;
 
-        // Decrypt the content (same algorithm as Symfony)
-        const decrypted = this._decrypt(match[1]);
+        // Decrypt the content with the shared DataGame cipher
+        const decrypted = decryptDataGame(match[1]);
 
         // Check for LaTeX patterns
         return /\\\(|\\\[/.test(decrypted);
-    }
-
-    /**
-     * Decrypt XOR-encoded string (matches Symfony's decrypt method)
-     * @param str - Encrypted string
-     * @returns Decrypted string
-     */
-    private _decrypt(str: string): string {
-        if (!str || str === 'undefined' || str === 'null') return '';
-
-        try {
-            str = decodeURIComponent(str);
-            const key = 146;
-            let result = '';
-            for (let i = 0; i < str.length; i++) {
-                result += String.fromCharCode(key ^ str.charCodeAt(i));
-            }
-            return result;
-        } catch {
-            return '';
-        }
     }
 
     /**
@@ -265,6 +275,20 @@ export class LibraryDetector {
         options: LibraryDetectionOptions = {},
     ): { files: string[]; patterns: LibraryPattern[] } {
         const detected = this.detectLibrariesFromFragments(htmlFragments, options);
+        return this.buildRequiredFilesResult(detected, options);
+    }
+
+    /**
+     * Get required files from fragment groups with group-specific exclusions.
+     */
+    getAllRequiredFilesWithPatternsFromFragmentGroups(
+        groups: Iterable<{
+            fragments: Iterable<string | null | undefined>;
+            excludedLibraries?: Iterable<string>;
+        }>,
+        options: LibraryDetectionOptions = {},
+    ): { files: string[]; patterns: LibraryPattern[] } {
+        const detected = this.detectLibrariesFromFragmentGroups(groups, options);
         return this.buildRequiredFilesResult(detected, options);
     }
 

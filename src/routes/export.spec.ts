@@ -4,13 +4,16 @@
  *
  * Tests the unified export system that uses src/shared/export/ exporters
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, beforeAll, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { Elysia } from 'elysia';
+import { SignJWT } from 'jose';
 
+import * as Y from 'yjs';
 import {
     createExportRoutes,
+    populateYDocFromStructure,
     type ExportDependencies,
     type ExportSessionManagerDeps,
     type ExportFileHelperDeps,
@@ -20,6 +23,17 @@ import type { YjsExportStructure } from './types/request-payloads';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'export-test');
 const testSessionId = '20250116testexport';
+const OWNER_USER_ID = 42;
+const TEST_JWT_SECRET = 'dev_secret_change_me';
+
+async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
+    const secret = new TextEncoder().encode(TEST_JWT_SECRET);
+    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('1h')
+        .sign(secret);
+}
 
 // Mock session data store
 let mockSessions: Map<string, any>;
@@ -153,9 +167,99 @@ function createMockDependencies(): ExportDependencies {
     };
 }
 
+describe('populateYDocFromStructure block icons', () => {
+    const buildStructure = (block: {
+        iconName?: string;
+        icon?: { source: 'material' | 'asset' | 'theme' | 'none'; value: string };
+    }): YjsExportStructure => ({
+        meta: { title: 'T' },
+        pages: [
+            {
+                id: 'page-1',
+                pageName: 'Page 1',
+                parentId: null,
+                blocks: [{ id: 'block-1', blockName: 'B', ...block, components: [] }],
+            },
+        ],
+        navigation: [],
+    });
+
+    const readBlockIcon = (structure: YjsExportStructure): unknown => {
+        const ydoc = new Y.Doc();
+        populateYDocFromStructure(ydoc, structure);
+        const navigation = ydoc.getArray<Y.Map<unknown>>('navigation');
+        const pageMap = navigation.get(0);
+        const blocks = pageMap.get('blocks') as Y.Array<Y.Map<unknown>>;
+        return blocks.get(0).get('icon');
+    };
+
+    it('derives a material icon from a mi- iconName', () => {
+        expect(readBlockIcon(buildStructure({ iconName: 'mi-lightbulb' }))).toEqual({
+            source: 'material',
+            value: 'lightbulb',
+        });
+    });
+
+    it('derives an asset icon from an asset:// iconName (consistent with the other paths)', () => {
+        // The old export.ts copy mislabeled this as `theme`; it now matches
+        // the renderer / structure-binding behavior via the shared derivation.
+        expect(readBlockIcon(buildStructure({ iconName: 'asset://uuid/icon.png' }))).toEqual({
+            source: 'asset',
+            value: 'asset://uuid/icon.png',
+        });
+    });
+
+    it('derives a theme icon from a plain iconName', () => {
+        expect(readBlockIcon(buildStructure({ iconName: 'objectives' }))).toEqual({
+            source: 'theme',
+            value: 'objectives',
+        });
+    });
+
+    it('derives none when there is no iconName', () => {
+        expect(readBlockIcon(buildStructure({}))).toEqual({ source: 'none', value: '' });
+    });
+
+    it('lets an explicit block.icon win over the iconName derivation', () => {
+        expect(
+            readBlockIcon(buildStructure({ iconName: 'mi-lightbulb', icon: { source: 'theme', value: 'objectives' } })),
+        ).toEqual({ source: 'theme', value: 'objectives' });
+    });
+});
+
 describe('Export Routes', () => {
     let app: Elysia;
     let mockDeps: ExportDependencies;
+    let ownerToken: string;
+
+    /**
+     * Inject the owner JWT into requests unless the caller already supplied
+     * one (used by negative-auth tests). Mirrors the wrapper used in
+     * assets.spec.ts.
+     */
+    async function handleWith(target: Elysia, req: Request): Promise<Response> {
+        if (req.headers.has('authorization')) {
+            return target.handle(req);
+        }
+        const headerObj: Record<string, string> = {};
+        req.headers.forEach((v, k) => {
+            headerObj[k] = v;
+        });
+        headerObj.authorization = `Bearer ${ownerToken}`;
+        const init: RequestInit = { method: req.method, headers: headerObj };
+        if (req.body !== null) {
+            init.body = await req.arrayBuffer();
+        }
+        return target.handle(new Request(req.url, init));
+    }
+
+    async function handle(req: Request): Promise<Response> {
+        return handleWith(app, req);
+    }
+
+    beforeAll(async () => {
+        ownerToken = await signTestToken(OWNER_USER_ID);
+    });
 
     beforeEach(async () => {
         mockSessions = new Map();
@@ -172,8 +276,10 @@ describe('Export Routes', () => {
         // Create test session with structure (for unified export system)
         mockSessions.set(testSessionId, {
             id: testSessionId,
+            sessionId: testSessionId,
             fileName: 'test-project.elp',
             projectId: 1,
+            userId: OWNER_USER_ID,
             structure: mockParsedStructure, // Required for unified export
         });
 
@@ -189,7 +295,7 @@ describe('Export Routes', () => {
 
     describe('GET /api/export/formats', () => {
         it('should return list of export formats', async () => {
-            const res = await app.handle(new Request('http://localhost/api/export/formats'));
+            const res = await handle(new Request('http://localhost/api/export/formats'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -199,7 +305,7 @@ describe('Export Routes', () => {
         });
 
         it('should include HTML5 format', async () => {
-            const res = await app.handle(new Request('http://localhost/api/export/formats'));
+            const res = await handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             const html5 = body.formats.find((f: any) => f.id === 'html5');
@@ -209,7 +315,7 @@ describe('Export Routes', () => {
         });
 
         it('should include SCORM formats', async () => {
-            const res = await app.handle(new Request('http://localhost/api/export/formats'));
+            const res = await handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             const scorm12 = body.formats.find((f: any) => f.id === 'scorm12');
@@ -222,7 +328,7 @@ describe('Export Routes', () => {
         });
 
         it('should include EPUB3 format', async () => {
-            const res = await app.handle(new Request('http://localhost/api/export/formats'));
+            const res = await handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             const epub3 = body.formats.find((f: any) => f.id === 'epub3');
@@ -233,7 +339,7 @@ describe('Export Routes', () => {
         });
 
         it('should include IMS Content Package format', async () => {
-            const res = await app.handle(new Request('http://localhost/api/export/formats'));
+            const res = await handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             const ims = body.formats.find((f: any) => f.id === 'ims');
@@ -243,7 +349,7 @@ describe('Export Routes', () => {
         });
 
         it('should include ELP format', async () => {
-            const res = await app.handle(new Request('http://localhost/api/export/formats'));
+            const res = await handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             const elp = body.formats.find((f: any) => f.id === 'elp');
@@ -253,7 +359,7 @@ describe('Export Routes', () => {
         });
 
         it('should include required properties for each format', async () => {
-            const res = await app.handle(new Request('http://localhost/api/export/formats'));
+            const res = await handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             for (const format of body.formats) {
@@ -267,17 +373,13 @@ describe('Export Routes', () => {
 
     describe('GET /api/export/:odeSessionId/:exportType/download', () => {
         it('should return 404 for non-existent session', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/export/non-existent-session/html5/download'),
-            );
+            const res = await handle(new Request('http://localhost/api/export/non-existent-session/html5/download'));
 
             expect(res.status).toBe(404);
         });
 
         it('should return 400 for invalid export type', async () => {
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${testSessionId}/invalid-type/download`),
-            );
+            const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/invalid-type/download`));
 
             expect(res.status).toBe(400);
             const body = await res.json();
@@ -286,7 +388,7 @@ describe('Export Routes', () => {
         });
 
         it('should return ZIP file for HTML5 export', async () => {
-            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
+            const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
 
             expect(res.status).toBe(200);
             expect(res.headers.get('content-type')).toBe('application/zip');
@@ -295,14 +397,14 @@ describe('Export Routes', () => {
         });
 
         it('should include project name in filename', async () => {
-            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
+            const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
 
             const disposition = res.headers.get('content-disposition');
             expect(disposition).toContain('test-project');
         });
 
         it('should include content-length header', async () => {
-            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
+            const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
 
             expect(res.headers.get('content-length')).toBeDefined();
         });
@@ -310,7 +412,7 @@ describe('Export Routes', () => {
 
     describe('POST /api/export/:odeSessionId/:exportType/download', () => {
         it('should return 404 for non-existent session', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request('http://localhost/api/export/non-existent-session/html5/download', {
                     method: 'POST',
                     body: JSON.stringify({}),
@@ -322,7 +424,7 @@ describe('Export Routes', () => {
         });
 
         it('should return 400 for invalid export type', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request(`http://localhost/api/export/${testSessionId}/invalid/download`, {
                     method: 'POST',
                     body: JSON.stringify({}),
@@ -334,7 +436,7 @@ describe('Export Routes', () => {
         });
 
         it('should accept export options', async () => {
-            const res = await app.handle(
+            const res = await handle(
                 new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
                     method: 'POST',
                     body: JSON.stringify({ includeNavigation: true }),
@@ -346,11 +448,9 @@ describe('Export Routes', () => {
         });
 
         it('should return same format as GET', async () => {
-            const getRes = await app.handle(
-                new Request(`http://localhost/api/export/${testSessionId}/scorm12/download`),
-            );
+            const getRes = await handle(new Request(`http://localhost/api/export/${testSessionId}/scorm12/download`));
 
-            const postRes = await app.handle(
+            const postRes = await handle(
                 new Request(`http://localhost/api/export/${testSessionId}/scorm12/download`, {
                     method: 'POST',
                     body: JSON.stringify({}),
@@ -362,6 +462,81 @@ describe('Export Routes', () => {
         });
     });
 
+    describe('path-traversal hardening (C2)', () => {
+        // A traversal odeSessionId (decoded from %2F by Elysia) must be rejected
+        // with 400 BEFORE any filesystem path is built, so an attacker cannot
+        // coerce getOdeSessionTempDir/getOdeSessionDistDir into escaping FILES_DIR.
+        const traversalId = '..%2F..%2F..%2Ftmp%2Fpwned';
+
+        it('should reject a traversal odeSessionId with 400 (GET) and write nothing outside FILES_DIR', async () => {
+            const pwnedPath = path.join(testDir, '..', '..', '..', 'tmp', 'pwned.zip');
+
+            const res = await handle(new Request(`http://localhost/api/export/${traversalId}/html5/download`));
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Invalid session id');
+            // No ZIP was written outside the intended base directory.
+            expect(await fs.pathExists(pwnedPath)).toBe(false);
+        });
+
+        it('should reject a traversal odeSessionId with 400 (POST) and write nothing outside FILES_DIR', async () => {
+            const pwnedPath = path.join(testDir, '..', '..', '..', 'tmp', 'pwned.zip');
+
+            const res = await handle(
+                new Request(`http://localhost/api/export/${traversalId}/html5/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Invalid session id');
+            expect(await fs.pathExists(pwnedPath)).toBe(false);
+        });
+
+        it('should reject a plain (non-encoded) traversal odeSessionId with 400', async () => {
+            const res = await handle(new Request('http://localhost/api/export/..%2Fevil/html5/download'));
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Invalid session id');
+        });
+
+        it('should still accept a legitimate timestamp session id', async () => {
+            // testSessionId ('20250116testexport') is a normal id and must keep working.
+            const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should still accept a legitimate UUID session id', async () => {
+            const uuidSessionId = 'aaa54536-d8d2-4a7b-bf6d-c809321ccc2a';
+            mockSessions.set(uuidSessionId, {
+                id: uuidSessionId,
+                sessionId: uuidSessionId,
+                fileName: 'uuid-project.elp',
+                userId: OWNER_USER_ID,
+                structure: mockParsedStructure,
+            });
+            await fs.ensureDir(path.join(testDir, 'tmp', uuidSessionId));
+            await fs.ensureDir(path.join(testDir, 'dist', uuidSessionId));
+            await fs.writeFile(
+                path.join(testDir, 'tmp', uuidSessionId, 'content.xml'),
+                '<?xml version="1.0"?><ode></ode>',
+            );
+
+            const res = await handle(new Request(`http://localhost/api/export/${uuidSessionId}/html5/download`));
+
+            expect(res.status).toBe(200);
+        });
+    });
+
     describe('export type validation', () => {
         // Types fully implemented in unified export system
         // All export types are now implemented in the unified export system
@@ -369,16 +544,14 @@ describe('Export Routes', () => {
 
         for (const type of implementedTypes) {
             it(`should accept and export type: ${type}`, async () => {
-                const res = await app.handle(
-                    new Request(`http://localhost/api/export/${testSessionId}/${type}/download`),
-                );
+                const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/${type}/download`));
 
                 expect(res.status).toBe(200);
             });
         }
 
         it('should reject unknown export types', async () => {
-            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/pdf/download`));
+            const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/pdf/download`));
 
             expect(res.status).toBe(400);
         });
@@ -394,7 +567,8 @@ describe('Export Routes', () => {
 
             const failingApp = new Elysia().use(createExportRoutes(failingDeps));
 
-            const res = await failingApp.handle(
+            const res = await handleWith(
+                failingApp,
                 new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
             );
 
@@ -413,7 +587,8 @@ describe('Export Routes', () => {
 
             const failingApp = new Elysia().use(createExportRoutes(failingDeps));
 
-            const res = await failingApp.handle(
+            const res = await handleWith(
+                failingApp,
                 new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
                     method: 'POST',
                     body: JSON.stringify({}),
@@ -438,7 +613,8 @@ describe('Export Routes', () => {
 
             const throwingApp = new Elysia().use(createExportRoutes(throwingDeps));
 
-            const res = await throwingApp.handle(
+            const res = await handleWith(
+                throwingApp,
                 new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
             );
 
@@ -459,7 +635,8 @@ describe('Export Routes', () => {
 
             const throwingApp = new Elysia().use(createExportRoutes(throwingDeps));
 
-            const res = await throwingApp.handle(
+            const res = await handleWith(
+                throwingApp,
                 new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
                     method: 'POST',
                     body: JSON.stringify({}),
@@ -484,7 +661,8 @@ describe('Export Routes', () => {
 
             const throwingApp = new Elysia().use(createExportRoutes(throwingDeps));
 
-            const res = await throwingApp.handle(
+            const res = await handleWith(
+                throwingApp,
                 new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
             );
 
@@ -506,9 +684,7 @@ describe('Export Routes', () => {
             await fs.ensureDir(path.join(testDir, 'tmp', noContentSessionId));
             await fs.ensureDir(path.join(testDir, 'dist', noContentSessionId));
 
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${noContentSessionId}/html5/download`),
-            );
+            const res = await handle(new Request(`http://localhost/api/export/${noContentSessionId}/html5/download`));
 
             expect(res.status).toBe(500);
             const body = await res.json();
@@ -525,7 +701,8 @@ describe('Export Routes', () => {
 
             const readFailApp = new Elysia().use(createExportRoutes(readFailDeps));
 
-            const res = await readFailApp.handle(
+            const res = await handleWith(
+                readFailApp,
                 new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
             );
 
@@ -544,7 +721,8 @@ describe('Export Routes', () => {
 
             const readFailApp = new Elysia().use(createExportRoutes(readFailDeps));
 
-            const res = await readFailApp.handle(
+            const res = await handleWith(
+                readFailApp,
                 new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
                     method: 'POST',
                     body: JSON.stringify({}),
@@ -575,7 +753,7 @@ describe('Export Routes', () => {
 
             // The findProjectByUuid will return null (no project found)
             // This should trigger the fallback to ElpxImporter (content.xml)
-            const res = await app.handle(new Request(`http://localhost/api/export/${odeIdSessionId}/html5/download`));
+            const res = await handle(new Request(`http://localhost/api/export/${odeIdSessionId}/html5/download`));
 
             expect(res.status).toBe(200);
         });
@@ -594,9 +772,7 @@ describe('Export Routes', () => {
 
             // The findProjectByUuid will return null (no project found)
             // And there's no session.structure to fall back to
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${noFallbackSessionId}/html5/download`),
-            );
+            const res = await handle(new Request(`http://localhost/api/export/${noFallbackSessionId}/html5/download`));
 
             expect(res.status).toBe(500);
             const body = await res.json();
@@ -608,7 +784,7 @@ describe('Export Routes', () => {
     describe('unified export system integration', () => {
         it('should use YjsDocumentAdapter from shared export system', async () => {
             // This test verifies that the route uses the injected export system
-            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
+            const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
 
             expect(res.status).toBe(200);
             // The mock exporter returns a valid ZIP header
@@ -633,9 +809,7 @@ describe('Export Routes', () => {
             await fs.writeFile(path.join(noStructureTempDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
             await fs.ensureDir(path.join(testDir, 'dist', noStructureSessionId));
 
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${noStructureSessionId}/html5/download`),
-            );
+            const res = await handle(new Request(`http://localhost/api/export/${noStructureSessionId}/html5/download`));
 
             // Should still return success because mock importer handles it
             expect(res.status).toBe(200);
@@ -673,7 +847,7 @@ describe('Export Routes', () => {
                 navigation: [{ id: 'nav-1', navText: 'Primera Página' }],
             };
 
-            const res = await app.handle(
+            const res = await handle(
                 new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
                     method: 'POST',
                     body: JSON.stringify({ structure: yjsStructure }),
@@ -728,7 +902,7 @@ describe('Export Routes', () => {
                 navigation: [],
             };
 
-            const res = await app.handle(
+            const res = await handle(
                 new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
                     method: 'POST',
                     body: JSON.stringify({ structure: yjsStructure }),
@@ -761,7 +935,7 @@ describe('Export Routes', () => {
                 navigation: [],
             };
 
-            const res = await app.handle(
+            const res = await handle(
                 new Request(`http://localhost/api/export/${yjsOnlySessionId}/html5/download`, {
                     method: 'POST',
                     body: JSON.stringify({ structure: yjsStructure }),
@@ -775,9 +949,7 @@ describe('Export Routes', () => {
 
     describe('elpx-page export type', () => {
         it('should accept elpx-page export type', async () => {
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${testSessionId}/elpx-page/download`),
-            );
+            const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/elpx-page/download`));
 
             expect(res.status).toBe(200);
         });
@@ -800,7 +972,7 @@ describe('Export Routes', () => {
             await fs.writeFile(path.join(elpFileTempDir, 'project.elp'), zipHeader);
             await fs.ensureDir(path.join(testDir, 'dist', elpFileSessionId));
 
-            const res = await app.handle(new Request(`http://localhost/api/export/${elpFileSessionId}/html5/download`));
+            const res = await handle(new Request(`http://localhost/api/export/${elpFileSessionId}/html5/download`));
 
             expect(res.status).toBe(200);
         });
@@ -821,9 +993,7 @@ describe('Export Routes', () => {
             await fs.writeFile(path.join(elpxFileTempDir, 'project.elpx'), zipHeader);
             await fs.ensureDir(path.join(testDir, 'dist', elpxFileSessionId));
 
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${elpxFileSessionId}/html5/download`),
-            );
+            const res = await handle(new Request(`http://localhost/api/export/${elpxFileSessionId}/html5/download`));
 
             expect(res.status).toBe(200);
         });
@@ -848,7 +1018,7 @@ describe('Export Routes', () => {
             );
             await fs.ensureDir(path.join(testDir, 'dist', legacySessionId));
 
-            const res = await app.handle(new Request(`http://localhost/api/export/${legacySessionId}/html5/download`));
+            const res = await handle(new Request(`http://localhost/api/export/${legacySessionId}/html5/download`));
 
             expect(res.status).toBe(200);
         });
@@ -873,9 +1043,7 @@ describe('Export Routes', () => {
             await fs.writeFile(path.join(resourcesDir, 'style.css'), 'body { color: red; }');
             await fs.ensureDir(path.join(testDir, 'dist', resourcesSessionId));
 
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${resourcesSessionId}/html5/download`),
-            );
+            const res = await handle(new Request(`http://localhost/api/export/${resourcesSessionId}/html5/download`));
 
             expect(res.status).toBe(200);
         });
@@ -904,7 +1072,8 @@ describe('Export Routes', () => {
 
             const dbApp = new Elysia().use(createExportRoutes(dbDeps));
 
-            const res = await dbApp.handle(
+            const res = await handleWith(
+                dbApp,
                 new Request(`http://localhost/api/export/${dbAssetSessionId}/html5/download`),
             );
 
@@ -947,7 +1116,8 @@ describe('Export Routes', () => {
 
             const emptyYjsApp = new Elysia().use(createExportRoutes(emptyYjsDeps));
 
-            const res = await emptyYjsApp.handle(
+            const res = await handleWith(
+                emptyYjsApp,
                 new Request(`http://localhost/api/export/${emptyYjsSessionId}/html5/download`),
             );
 
@@ -980,7 +1150,8 @@ describe('Export Routes', () => {
 
             const nullYjsApp = new Elysia().use(createExportRoutes(nullYjsDeps));
 
-            const res = await nullYjsApp.handle(
+            const res = await handleWith(
+                nullYjsApp,
                 new Request(`http://localhost/api/export/${nullYjsSessionId}/html5/download`),
             );
 
@@ -1010,7 +1181,8 @@ describe('Export Routes', () => {
 
             const noProjectApp = new Elysia().use(createExportRoutes(noProjectDeps));
 
-            const res = await noProjectApp.handle(
+            const res = await handleWith(
+                noProjectApp,
                 new Request(`http://localhost/api/export/${noProjectSessionId}/html5/download`),
             );
 
@@ -1045,7 +1217,8 @@ describe('Export Routes', () => {
 
             const allFailApp = new Elysia().use(createExportRoutes(allFailDeps));
 
-            const res = await allFailApp.handle(
+            const res = await handleWith(
+                allFailApp,
                 new Request(`http://localhost/api/export/${allFailSessionId}/html5/download`),
             );
 
@@ -1078,7 +1251,8 @@ describe('Export Routes', () => {
 
             const nullNoFallbackApp = new Elysia().use(createExportRoutes(nullNoFallbackDeps));
 
-            const res = await nullNoFallbackApp.handle(
+            const res = await handleWith(
+                nullNoFallbackApp,
                 new Request(`http://localhost/api/export/${nullNoFallbackId}/html5/download`),
             );
 
@@ -1108,7 +1282,8 @@ describe('Export Routes', () => {
 
             const noProjectNoFallbackApp = new Elysia().use(createExportRoutes(noProjectNoFallbackDeps));
 
-            const res = await noProjectNoFallbackApp.handle(
+            const res = await handleWith(
+                noProjectNoFallbackApp,
                 new Request(`http://localhost/api/export/${noProjectNoFallbackId}/html5/download`),
             );
 
@@ -1116,5 +1291,46 @@ describe('Export Routes', () => {
             const body = await res.json();
             expect(body.error).toContain('No project structure');
         });
+    });
+});
+
+describe('populateYDocFromStructure - stable identifiers (#1786)', () => {
+    it('forwards odeIdentifier / odeVersionId / scormIdentifier from the client payload', async () => {
+        const Y = await import('yjs');
+        const { populateYDocFromStructure } = await import('./export');
+        const ydoc = new Y.Doc();
+        populateYDocFromStructure(ydoc, {
+            meta: {
+                title: 'Stable identifiers',
+                language: 'en',
+                theme: 'base',
+                odeIdentifier: '20251201123456ABCDEF',
+                odeVersionId: '20251201123456FEDCBA',
+                scormIdentifier: 'CUSTOM-SCORM-ID',
+            },
+            pages: [],
+            navigation: [],
+        });
+        const meta = ydoc.getMap('metadata');
+        expect(meta.get('odeIdentifier')).toBe('20251201123456ABCDEF');
+        expect(meta.get('odeVersionId')).toBe('20251201123456FEDCBA');
+        expect(meta.get('scormIdentifier')).toBe('CUSTOM-SCORM-ID');
+        ydoc.destroy();
+    });
+
+    it('leaves stable identifiers unset when the client omits them (export-side fallback path)', async () => {
+        const Y = await import('yjs');
+        const { populateYDocFromStructure } = await import('./export');
+        const ydoc = new Y.Doc();
+        populateYDocFromStructure(ydoc, {
+            meta: { title: 'No stable ids', language: 'en', theme: 'base' },
+            pages: [],
+            navigation: [],
+        });
+        const meta = ydoc.getMap('metadata');
+        expect(meta.get('odeIdentifier')).toBeUndefined();
+        expect(meta.get('odeVersionId')).toBeUndefined();
+        expect(meta.get('scormIdentifier')).toBeUndefined();
+        ydoc.destroy();
     });
 });

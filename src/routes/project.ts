@@ -5,6 +5,7 @@
  * Uses Dependency Injection pattern for testability
  */
 import { Elysia } from 'elysia';
+import { getJwtSecret } from './auth';
 import * as fsDefault from 'fs-extra';
 import * as pathDefault from 'path';
 
@@ -13,7 +14,7 @@ import {
     getSession as getSessionDefault,
     updateSession as updateSessionDefault,
     deleteSession as deleteSessionDefault,
-    getAllSessions as getAllSessionsDefault,
+    getSessionsByUser as getSessionsByUserDefault,
     generateSessionId as generateSessionIdDefault,
 } from '../services/session-manager';
 
@@ -24,25 +25,85 @@ import {
     readFileAsString as readFileAsStringDefault,
     appendFile as appendFileDefault,
     getFilesDir as getFilesDirDefault,
-    getProjectAssetsDir as getProjectAssetsDirDefault,
+    resolveAssetStoragePath as resolveAssetStoragePathDefault,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathDefault,
 } from '../services/file-helper';
+import { buildAssetStoragePath } from '../utils/asset-paths';
 
 // yjs-persistence functions no longer used here - endpoints moved to routes/yjs.ts
 
 import * as queriesDefault from '../db/queries';
 import { db as dbDefault } from '../db/client';
-import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import {
     extractLinksFromIdevices,
+    validateLink,
     validateLinksStream,
+    toBrokenLinkInfo,
+    type BrokenLinkInfo,
     type ExtractedLink,
     type IdeviceContent,
 } from '../services/link-validator';
-import { getSettingString } from '../services/app-settings';
+import type { LookupFn } from '../utils/ssrf-guard';
+import {
+    getSettingString,
+    isPublicViewFeatureEnabled as isPublicViewFeatureEnabledDefault,
+} from '../services/app-settings';
 import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
+import { getPreferenceValue } from '../db/queries/preferences';
+
+/**
+ * Resolves the dirName of the theme that should be baked into a brand-new
+ * project, applying the agreed precedence:
+ *
+ *   1. The user's "defaultTheme" preference, when set AND when the referenced
+ *      theme still exists in the themes table and is enabled.
+ *   2. The admin-wide global default theme stored in app_settings.
+ *   3. The hard-coded fallback "base".
+ *
+ * Exported so it can be unit-tested without booting an Elysia app, and so the
+ * create-quick handler is just glue on top of a small, predictable function.
+ *
+ * Failures from query layers (missing tables, etc.) are swallowed so that
+ * callers always get a usable theme name back.
+ */
+export async function resolveDefaultThemeForNewProject(
+    db: Kysely<Database>,
+    userId: number,
+    deps: {
+        getDefaultTheme: typeof getDefaultThemeDefault;
+        findThemeByDirName: typeof findThemeByDirName;
+        getPreferenceValue: typeof getPreferenceValue;
+    } = {
+        getDefaultTheme: getDefaultThemeDefault,
+        findThemeByDirName,
+        getPreferenceValue,
+    },
+): Promise<string> {
+    let themeDirName = 'base';
+    try {
+        const globalDefault = await deps.getDefaultTheme(db);
+        themeDirName = globalDefault.dirName;
+    } catch {
+        // app_settings may not exist yet (pre-migration); ignore
+    }
+    try {
+        const userPref = await deps.getPreferenceValue(db, userId, 'defaultTheme');
+        if (userPref) {
+            const themeRecord = await deps.findThemeByDirName(db, userPref);
+            if (themeRecord && themeRecord.is_enabled === 1) {
+                themeDirName = userPref;
+            }
+        }
+    } catch {
+        // users_preferences/themes may not exist yet (pre-migration); ignore
+    }
+    return themeDirName;
+}
 import { getAppVersion } from '../utils/version';
+import { buildSiteThemeUrl } from '../utils/site-theme-url';
+import { isSafePathSegment, isWithinBase } from '../utils/safe-path';
 import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
@@ -50,7 +111,36 @@ import {
 import { createBlankYjsDocument } from '../services/yjs-initializer';
 import { logActivity } from '../services/activity-logger';
 import type { Kysely } from 'kysely';
-import type { Database, Project, User } from '../db/types';
+import type { Database, Project, User, Theme } from '../db/types';
+
+/**
+ * Build the `defaultTheme` payload returned to the client when a project is
+ * created. A site theme (admin-uploaded, enabled, non-builtin) gets a
+ * cache-busted `/site-files/themes/...` URL (consistent with config.ts /
+ * themes.ts); anything else falls back to the bundled base theme URL.
+ *
+ * Pure helper extracted from the create route so both branches stay testable.
+ */
+export function buildDefaultThemePayload(
+    themeRecord: Theme | undefined,
+    themeDirName: string,
+    version: string,
+): { dirName: string; displayName: string; url: string; type: 'base' | 'site' } {
+    if (themeRecord && themeRecord.is_enabled === 1 && themeRecord.is_builtin === 0) {
+        return {
+            dirName: themeRecord.dir_name,
+            displayName: themeRecord.display_name,
+            url: buildSiteThemeUrl(version, themeRecord.dir_name, themeRecord.updated_at),
+            type: 'site',
+        };
+    }
+    return {
+        dirName: themeDirName,
+        displayName: themeRecord?.display_name || themeDirName,
+        url: `/files/perm/themes/base/${themeDirName}`,
+        type: 'base',
+    };
+}
 import type {
     ProjectUploadChunkRequest,
     ProjectPropertiesRequest,
@@ -75,7 +165,7 @@ export interface SessionManagerDeps {
     getSession: typeof getSessionDefault;
     updateSession: typeof updateSessionDefault;
     deleteSession: typeof deleteSessionDefault;
-    getAllSessions: typeof getAllSessionsDefault;
+    getSessionsByUser: typeof getSessionsByUserDefault;
     generateSessionId: typeof generateSessionIdDefault;
 }
 
@@ -89,7 +179,8 @@ export interface FileHelperDeps {
     readFileAsString: typeof readFileAsStringDefault;
     appendFile: typeof appendFileDefault;
     getFilesDir: typeof getFilesDirDefault;
-    getProjectAssetsDir: typeof getProjectAssetsDirDefault;
+    resolveAssetStoragePath: typeof resolveAssetStoragePathDefault;
+    tryResolveAssetStoragePath: typeof tryResolveAssetStoragePathDefault;
 }
 
 /**
@@ -104,6 +195,10 @@ export interface QueriesDeps {
     findProjectsAsCollaborator: typeof queriesDefault.findProjectsAsCollaborator;
     updateProjectVisibility: typeof queriesDefault.updateProjectVisibility;
     updateProjectVisibilityByUuid: typeof queriesDefault.updateProjectVisibilityByUuid;
+    setPublicViewEnabled: typeof queriesDefault.setPublicViewEnabled;
+    setPublicViewEnabledByUuid: typeof queriesDefault.setPublicViewEnabledByUuid;
+    regeneratePublicViewId: typeof queriesDefault.regeneratePublicViewId;
+    regeneratePublicViewIdByUuid: typeof queriesDefault.regeneratePublicViewIdByUuid;
     getProjectCollaborators: typeof queriesDefault.getProjectCollaborators;
     addCollaborator: typeof queriesDefault.addCollaborator;
     removeCollaborator: typeof queriesDefault.removeCollaborator;
@@ -139,6 +234,27 @@ export interface AccessNotifierDeps {
 }
 
 /**
+ * Installation-wide settings read by the project routes
+ */
+export interface ProjectSettingsDeps {
+    isPublicViewFeatureEnabled: typeof isPublicViewFeatureEnabledDefault;
+}
+
+/**
+ * Link-validation overrides forwarded to the SSRF-hardened validateLink().
+ *
+ * Production leaves these undefined (real DNS + fetch). Tests inject a hermetic
+ * DNS resolver / fetch so the brokenlinks endpoint never performs real network
+ * I/O — otherwise a real lookup of a non-existent external host can hang past the
+ * test timeout and flake CI.
+ */
+export interface LinkValidationDeps {
+    lookupFn?: LookupFn;
+    fetchImpl?: typeof fetch;
+    timeout?: number;
+}
+
+/**
  * All dependencies for project routes
  */
 export interface ProjectDependencies {
@@ -150,6 +266,8 @@ export interface ProjectDependencies {
     queries?: QueriesDeps;
     utils?: UtilsDeps;
     accessNotifier?: AccessNotifierDeps;
+    linkValidation?: LinkValidationDeps;
+    settings?: ProjectSettingsDeps;
 }
 
 // Default dependencies
@@ -158,7 +276,7 @@ const defaultSessionManager: SessionManagerDeps = {
     getSession: getSessionDefault,
     updateSession: updateSessionDefault,
     deleteSession: deleteSessionDefault,
-    getAllSessions: getAllSessionsDefault,
+    getSessionsByUser: getSessionsByUserDefault,
     generateSessionId: generateSessionIdDefault,
 };
 
@@ -169,7 +287,8 @@ const defaultFileHelper: FileHelperDeps = {
     readFileAsString: readFileAsStringDefault,
     appendFile: appendFileDefault,
     getFilesDir: getFilesDirDefault,
-    getProjectAssetsDir: getProjectAssetsDirDefault,
+    resolveAssetStoragePath: resolveAssetStoragePathDefault,
+    tryResolveAssetStoragePath: tryResolveAssetStoragePathDefault,
 };
 
 const defaultQueries: QueriesDeps = {
@@ -181,6 +300,10 @@ const defaultQueries: QueriesDeps = {
     findProjectsAsCollaborator: queriesDefault.findProjectsAsCollaborator,
     updateProjectVisibility: queriesDefault.updateProjectVisibility,
     updateProjectVisibilityByUuid: queriesDefault.updateProjectVisibilityByUuid,
+    setPublicViewEnabled: queriesDefault.setPublicViewEnabled,
+    setPublicViewEnabledByUuid: queriesDefault.setPublicViewEnabledByUuid,
+    regeneratePublicViewId: queriesDefault.regeneratePublicViewId,
+    regeneratePublicViewIdByUuid: queriesDefault.regeneratePublicViewIdByUuid,
     getProjectCollaborators: queriesDefault.getProjectCollaborators,
     addCollaborator: queriesDefault.addCollaborator,
     removeCollaborator: queriesDefault.removeCollaborator,
@@ -209,6 +332,10 @@ const defaultAccessNotifier: AccessNotifierDeps = {
     notifyCollaboratorRemoved: notifyCollaboratorRemovedDefault,
 };
 
+const defaultSettings: ProjectSettingsDeps = {
+    isPublicViewFeatureEnabled: isPublicViewFeatureEnabledDefault,
+};
+
 const defaultDependencies: ProjectDependencies = {
     db: dbDefault,
     fs: fsDefault,
@@ -218,7 +345,10 @@ const defaultDependencies: ProjectDependencies = {
     queries: defaultQueries,
     utils: defaultUtils,
     accessNotifier: defaultAccessNotifier,
+    settings: defaultSettings,
 };
+
+const PUBLIC_VIEW_DISABLED_DETAIL = 'Public read-only links are disabled on this site';
 
 // Get default project visibility from environment
 async function getDefaultProjectVisibility(db: Kysely<Database>): Promise<'public' | 'private'> {
@@ -232,13 +362,16 @@ async function getDefaultProjectVisibility(db: Kysely<Database>): Promise<'publi
 
 /**
  * Serialize project sharing information for API response
- * Includes owner with role='owner' and collaborators with role='editor'
+ * Includes owner with role='owner' and collaborators with role='editor'.
+ * When the public viewer is disabled for the installation, the public link
+ * is reported as unavailable and its id is withheld.
  */
 function serializeProjectSharing(
     project: Project,
     owner: User | null | undefined,
     collaborators: User[],
     currentUserId: number | undefined,
+    publicViewAvailable: boolean,
     createGravatarUrl: (
         email: string | null | undefined,
         initials?: string | null,
@@ -276,6 +409,9 @@ function serializeProjectSharing(
         uuid: project.uuid,
         title: project.title,
         visibility: project.visibility || 'private',
+        publicViewAvailable,
+        publicViewId: publicViewAvailable ? (project.public_view_id ?? null) : null,
+        publicViewEnabled: publicViewAvailable && Boolean(project.public_view_enabled),
         owner: owner ? { id: owner.id, email: owner.email } : null,
         collaborators: collabsList,
         isOwner: currentUserId ? project.owner_id === currentUserId : false,
@@ -283,11 +419,6 @@ function serializeProjectSharing(
         updatedAt: project.updated_at,
     };
 }
-
-// Get JWT secret
-const getJwtSecret = () => {
-    return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
-};
 
 // ============================================================================
 // Factory Functions
@@ -304,7 +435,8 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
     const db = deps.db; // Shadow global db
 
     // Session manager functions
-    const { createSession, getSession, deleteSession, getAllSessions } = deps.sessionManager ?? defaultSessionManager;
+    const { createSession, getSession, deleteSession, getSessionsByUser } =
+        deps.sessionManager ?? defaultSessionManager;
 
     // File helper functions
     const { getOdeSessionTempDir, getContentXmlPath, fileExists, readFileAsString, appendFile, getFilesDir } =
@@ -315,7 +447,6 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
 
     return (
         new Elysia({ prefix: '/api/project' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
@@ -356,9 +487,16 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
             // Session Management
             // =====================================================
 
-            // GET /api/project/sessions - List all sessions
-            .get('/sessions', () => {
-                const sessions = getAllSessions();
+            // GET /api/project/sessions - List the caller's own sessions
+            .get('/sessions', ({ set, currentUser }) => {
+                // Sessions expose project UUIDs and titles across tenants, so this
+                // listing must be authenticated and scoped to the caller (mirrors the
+                // already-hardened upload-chunk/create-quick handlers in this group).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
+                const sessions = getSessionsByUser(currentUser.id);
                 return {
                     count: sessions.length,
                     sessions: sessions.map(s => ({
@@ -370,10 +508,16 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 };
             })
 
-            // GET /api/project/sessions/:id - Get session details
-            .get('/sessions/:id', ({ params, set }) => {
+            // GET /api/project/sessions/:id - Get session details (owner only)
+            .get('/sessions/:id', ({ params, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
                 const session = getSession(params.id);
-                if (!session) {
+                // 404 (not 403) for foreign sessions so this cannot be used as an
+                // existence oracle for other users' sessions.
+                if (!session || session.userId !== currentUser.id) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'Session not found' };
                 }
@@ -388,10 +532,14 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 };
             })
 
-            // DELETE /api/project/sessions/:id - Delete a session
-            .delete('/sessions/:id', async ({ params, set }) => {
+            // DELETE /api/project/sessions/:id - Delete a session (owner only)
+            .delete('/sessions/:id', async ({ params, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
                 const session = getSession(params.id);
-                if (!session) {
+                if (!session || session.userId !== currentUser.id) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'Session not found' };
                 }
@@ -407,7 +555,14 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
             // =====================================================
 
             // POST /api/project/upload-chunk - Upload a file chunk
-            .post('/upload-chunk', async ({ body, set }) => {
+            .post('/upload-chunk', async ({ body, set, currentUser }) => {
+                // This fallback upload endpoint writes attacker-controlled bytes
+                // to disk, so it must require authentication like every other
+                // state-changing handler in this group.
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'error: authentication required', success: false };
+                }
                 try {
                     const { odeFilePart, odeFileName, odeSessionId } = body as ProjectUploadChunkRequest;
 
@@ -419,12 +574,27 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                         };
                     }
 
+                    // odeSessionId becomes a directory segment; reject anything
+                    // that is not a single safe segment (UUIDs and legacy
+                    // timestamp ids both qualify) so it cannot escape FILES_DIR.
+                    if (!isSafePathSegment(odeSessionId)) {
+                        set.status = 400;
+                        return { responseMessage: 'error: invalid odeSessionId', success: false };
+                    }
+
                     // Get or create session temp directory
                     const tempDir = getOdeSessionTempDir(odeSessionId);
                     await fs.ensureDir(tempDir);
 
-                    // Build target file path
+                    // Build target file path. odeFileName is a user-chosen name
+                    // (may contain spaces/unicode), so instead of restricting the
+                    // charset we assert the resolved path stays inside tempDir,
+                    // rejecting traversal like '../../etc/cron.d/x'.
                     const targetPath = path.join(tempDir, odeFileName);
+                    if (!isWithinBase(tempDir, targetPath)) {
+                        set.status = 400;
+                        return { responseMessage: 'error: invalid odeFileName', success: false };
+                    }
 
                     // Get the chunk data
                     let chunkBuffer: Buffer;
@@ -518,14 +688,9 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     saved_once: 0,
                 });
 
-                // Get global default theme early so we can use it for Yjs document initialization
-                let themeDirName = 'base';
-                try {
-                    const globalDefault = await getDefaultThemeDefault(db);
-                    themeDirName = globalDefault.dirName;
-                } catch {
-                    // Silently ignore if tables don't exist yet
-                }
+                // Resolve the theme to bake into the initial Yjs document.
+                // Precedence: user's "defaultTheme" preference > admin global default > 'base'.
+                const themeDirName = await resolveDefaultThemeForNewProject(db, userId);
 
                 // Create initial Yjs document with blank structure (prevents duplicate page race condition)
                 if (upsertSnapshot) {
@@ -552,33 +717,16 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
 
                 console.log(`[Project] Created new project ${projectRecord.uuid} with title "${title}"`);
 
-                // Get global default theme (can be base or site)
+                // Compute the defaultTheme payload returned to the client. Reuses the
+                // already-resolved themeDirName (which already considers the user
+                // preference) so the response stays consistent with what we baked into
+                // the Yjs document.
                 let defaultTheme: { dirName: string; displayName: string; url: string; type: 'base' | 'site' } | null =
                     null;
                 try {
-                    const globalDefault = await getDefaultThemeDefault(db);
                     const version = getAppVersion();
-
-                    if (globalDefault.type === 'site') {
-                        // Get site theme details
-                        const siteTheme = await findThemeByDirName(db, globalDefault.dirName);
-                        if (siteTheme?.is_enabled) {
-                            defaultTheme = {
-                                dirName: siteTheme.dir_name,
-                                displayName: siteTheme.display_name,
-                                url: `/${version}/site-files/themes/${siteTheme.dir_name}`,
-                                type: 'site',
-                            };
-                        }
-                    } else {
-                        // Base theme - use base path
-                        defaultTheme = {
-                            dirName: globalDefault.dirName,
-                            displayName: globalDefault.dirName, // Will be resolved by frontend
-                            url: `/files/perm/themes/base/${globalDefault.dirName}`,
-                            type: 'base',
-                        };
-                    }
+                    const themeRecord = await findThemeByDirName(db, themeDirName);
+                    defaultTheme = buildDefaultThemePayload(themeRecord, themeDirName, version);
                 } catch {
                     // Silently ignore if tables don't exist yet - defaults to 'base' theme on frontend
                 }
@@ -627,7 +775,16 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
             })
 
             // DELETE /api/project/cleanup-import - Cleanup temp import file after ElpxImporter is done
-            .delete('/cleanup-import', async ({ query }) => {
+            .delete('/cleanup-import', async ({ query, set, currentUser }) => {
+                // This destructive, path-parameterized file delete must require
+                // authentication like its twin upload-chunk handler; otherwise an
+                // anonymous caller could delete another user's in-flight import
+                // temp files under FILES_DIR/tmp.
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, message: 'Authentication required' };
+                }
+
                 const importPath = query.path as string;
 
                 if (!importPath) {
@@ -644,7 +801,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     const resolvedPath = path.resolve(fullPath);
                     const allowedBase = path.resolve(path.join(filesDir, 'tmp'));
 
-                    if (!resolvedPath.startsWith(allowedBase)) {
+                    if (!isWithinBase(allowedBase, resolvedPath)) {
                         console.warn(`[Project] Cleanup blocked: path outside allowed directory: ${resolvedPath}`);
                         return { success: false, message: 'Invalid path' };
                     }
@@ -683,7 +840,14 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
     const { getSession, updateSession, generateSessionId } = deps.sessionManager ?? defaultSessionManager;
 
     // File helper functions
-    const { getOdeSessionTempDir, getFilesDir, getProjectAssetsDir } = deps.fileHelper ?? defaultFileHelper;
+    const { getOdeSessionTempDir, getFilesDir, resolveAssetStoragePath, tryResolveAssetStoragePath } =
+        deps.fileHelper ?? defaultFileHelper;
+
+    // Optional link-validation overrides (hermetic DNS/fetch for tests; empty in production)
+    const linkValidation = deps.linkValidation ?? {};
+
+    // Installation-wide settings
+    const { isPublicViewFeatureEnabled } = deps.settings ?? defaultSettings;
 
     // Query functions
     const {
@@ -694,6 +858,10 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
         findProjectsAsCollaborator,
         updateProjectVisibility,
         updateProjectVisibilityByUuid,
+        setPublicViewEnabled,
+        setPublicViewEnabledByUuid,
+        regeneratePublicViewId,
+        regeneratePublicViewIdByUuid,
         getProjectCollaborators,
         addCollaborator,
         removeCollaborator,
@@ -716,7 +884,6 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
     return (
         new Elysia()
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
@@ -844,10 +1011,24 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
                 }
 
+                // Sharing info exposes owner/collaborator emails (PII). Require
+                // authentication and project access; previously this endpoint was
+                // unauthenticated and enumerable by sequential numeric id (M1).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const project = await findProjectById(db, projectId);
                 if (!project) {
                     set.status = 404;
                     return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+
+                const sharingAccess = await checkProjectAccess(db, project, currentUser.id);
+                if (!sharingAccess.hasAccess) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Access denied' };
                 }
 
                 const owner = await findUserById(db, project.owner_id);
@@ -855,7 +1036,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 return {
                     responseMessage: 'OK',
-                    project: serializeProjectSharing(project, owner, collabs, currentUser?.id),
+                    project: serializeProjectSharing(
+                        project,
+                        owner,
+                        collabs,
+                        currentUser?.id,
+                        await isPublicViewFeatureEnabled(db),
+                    ),
                 };
             })
 
@@ -901,7 +1088,91 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     notifyVisibilityChanged(project.uuid, project.owner_id, collaboratorIds);
                 }
 
-                return { responseMessage: 'OK' };
+                return { responseMessage: 'OK', visibility };
+            })
+
+            // PATCH /api/projects/:projectId/public-view - Enable/disable the public read-only link
+            .patch('/api/projects/:projectId/public-view', async ({ params, body, set, currentUser }) => {
+                const projectId = parseInt(params.projectId, 10);
+                const { enabled } = body as { enabled?: boolean };
+
+                if (isNaN(projectId)) {
+                    set.status = 400;
+                    return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
+                }
+
+                if (typeof enabled !== 'boolean') {
+                    set.status = 400;
+                    return { responseMessage: 'INVALID_PAYLOAD', detail: 'enabled must be a boolean' };
+                }
+
+                const project = await findProjectById(db, projectId);
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
+                }
+
+                // Turning the link off stays allowed so owners can always revoke it.
+                if (enabled && !(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
+                }
+
+                const updated = await setPublicViewEnabled(db, projectId, enabled);
+
+                return {
+                    responseMessage: 'OK',
+                    publicViewEnabled: Boolean(updated?.public_view_enabled),
+                    publicViewId: updated?.public_view_id ?? null,
+                };
+            })
+
+            // POST /api/projects/:projectId/public-view/regenerate - Regenerate the public link id
+            .post('/api/projects/:projectId/public-view/regenerate', async ({ params, set, currentUser }) => {
+                const projectId = parseInt(params.projectId, 10);
+
+                if (isNaN(projectId)) {
+                    set.status = 400;
+                    return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
+                }
+
+                const project = await findProjectById(db, projectId);
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
+                }
+
+                if (!(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
+                }
+
+                const updated = await regeneratePublicViewId(db, projectId);
+
+                return {
+                    responseMessage: 'OK',
+                    publicViewId: updated?.public_view_id ?? null,
+                };
             })
 
             // POST /api/projects/:projectId/collaborators - Add collaborator
@@ -1123,16 +1394,23 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             .get('/api/projects/uuid/:uuid/sharing', async ({ params, set, currentUser }) => {
                 const uuid = params.uuid;
 
+                // Sharing info exposes owner/collaborator emails (PII). Require
+                // authentication before resolving/creating or returning it (M1).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
+                // The uuid names on-disk session directories later on, so it must be a single safe segment.
+                if (!isSafePathSegment(uuid)) {
+                    set.status = 400;
+                    return { responseMessage: 'BAD_REQUEST', detail: 'Invalid project uuid' };
+                }
+
                 let project = await findProjectByUuid(db, uuid);
 
                 // If project doesn't exist in DB, create it with current user as owner
                 if (!project) {
-                    // Require authentication to create project
-                    if (!currentUser) {
-                        set.status = 401;
-                        return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
-                    }
-
                     // Create the project in DB with current user as owner
                     project = await createProjectWithUuid(db, uuid, {
                         title: 'Untitled',
@@ -1142,6 +1420,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     });
 
                     console.log(`[Project] Created project ${uuid} for user ${currentUser.id} via sharing endpoint`);
+                } else {
+                    // Existing project: caller must have access to see its sharing/PII.
+                    const sharingAccess = await checkProjectAccess(db, project, currentUser.id);
+                    if (!sharingAccess.hasAccess) {
+                        set.status = 403;
+                        return { responseMessage: 'FORBIDDEN', detail: 'Access denied' };
+                    }
                 }
 
                 const owner = await findUserById(db, project.owner_id);
@@ -1149,7 +1434,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 return {
                     responseMessage: 'OK',
-                    project: serializeProjectSharing(project, owner, collabs, currentUser?.id),
+                    project: serializeProjectSharing(
+                        project,
+                        owner,
+                        collabs,
+                        currentUser?.id,
+                        await isPublicViewFeatureEnabled(db),
+                    ),
                 };
             })
 
@@ -1190,7 +1481,81 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     notifyVisibilityChanged(uuid, project.owner_id, collaboratorIds);
                 }
 
-                return { responseMessage: 'OK' };
+                return { responseMessage: 'OK', visibility };
+            })
+
+            // PATCH /api/projects/uuid/:uuid/public-view - Enable/disable the public read-only link by UUID
+            .patch('/api/projects/uuid/:uuid/public-view', async ({ params, body, set, currentUser }) => {
+                const uuid = params.uuid;
+                const { enabled } = body as { enabled?: boolean };
+
+                if (typeof enabled !== 'boolean') {
+                    set.status = 400;
+                    return { responseMessage: 'INVALID_PAYLOAD', detail: 'enabled must be a boolean' };
+                }
+
+                const project = await findProjectByUuid(db, uuid);
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
+                }
+
+                // Turning the link off stays allowed so owners can always revoke it.
+                if (enabled && !(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
+                }
+
+                const updated = await setPublicViewEnabledByUuid(db, uuid, enabled);
+
+                return {
+                    responseMessage: 'OK',
+                    publicViewEnabled: Boolean(updated?.public_view_enabled),
+                    publicViewId: updated?.public_view_id ?? null,
+                };
+            })
+
+            // POST /api/projects/uuid/:uuid/public-view/regenerate - Regenerate the public link id by UUID
+            .post('/api/projects/uuid/:uuid/public-view/regenerate', async ({ params, set, currentUser }) => {
+                const uuid = params.uuid;
+
+                const project = await findProjectByUuid(db, uuid);
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change this' };
+                }
+
+                if (!(await isPublicViewFeatureEnabled(db))) {
+                    set.status = 403;
+                    return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
+                }
+
+                const updated = await regeneratePublicViewIdByUuid(db, uuid);
+
+                return {
+                    responseMessage: 'OK',
+                    publicViewId: updated?.public_view_id ?? null,
+                };
             })
 
             // POST /api/projects/uuid/:uuid/collaborators - Add collaborator by UUID
@@ -1330,10 +1695,25 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             .post('/api/projects/uuid/:uuid/duplicate', async ({ params, set, currentUser }) => {
                 const uuid = params.uuid;
 
+                // Require authentication and access to the SOURCE project before
+                // copying its content. Previously any caller (even unauthenticated)
+                // could clone an arbitrary private project into their own account
+                // and then read/export it (IDOR, C4).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
+
                 const project = await findProjectByUuid(db, uuid);
                 if (!project) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'Project not found' };
+                }
+
+                const duplicateAccess = await checkProjectAccess(db, project, currentUser.id);
+                if (!duplicateAccess.hasAccess) {
+                    set.status = 403;
+                    return { error: 'Forbidden', message: 'Access denied' };
                 }
 
                 // Generate new UUID for the duplicate
@@ -1356,8 +1736,6 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 const sourceAssets = await findAllAssetsForProject(db, project.id);
 
                 if (sourceAssets.length > 0) {
-                    const targetAssetsDir = getProjectAssetsDir(duplicateProject.uuid);
-
                     for (const asset of sourceAssets) {
                         if (!asset.client_id) continue;
 
@@ -1366,20 +1744,29 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                         // alternate/legacy Yjs shapes or historical content fragments.
                         const duplicatedClientId = asset.client_id;
 
-                        // Copy physical file if it exists
+                        // Copy physical file if it exists. The stored path is
+                        // FILES_DIR-relative (legacy absolute values are handled
+                        // by the resolver); the copy is stored with a relative
+                        // sharded path under the new project's directory.
                         if (asset.storage_path) {
                             try {
-                                const sourceExists = await fs.pathExists(asset.storage_path);
-                                if (sourceExists) {
-                                    const targetFile = path.join(targetAssetsDir, duplicatedClientId, asset.filename);
+                                const sourcePath = tryResolveAssetStoragePath(asset.storage_path);
+                                const sourceExists = sourcePath ? await fs.pathExists(sourcePath) : false;
+                                if (sourcePath && sourceExists) {
+                                    const targetStoragePath = buildAssetStoragePath(
+                                        duplicateProject.uuid,
+                                        duplicatedClientId,
+                                        asset.filename,
+                                    );
+                                    const targetFile = resolveAssetStoragePath(targetStoragePath);
                                     await fs.ensureDir(path.dirname(targetFile));
-                                    await fs.copy(asset.storage_path, targetFile);
+                                    await fs.copy(sourcePath, targetFile);
 
                                     // Create new asset record with new client_id
                                     await createAsset(db, {
                                         project_id: duplicateProject.id,
                                         filename: asset.filename,
-                                        storage_path: targetFile,
+                                        storage_path: targetStoragePath,
                                         mime_type: asset.mime_type,
                                         file_size: asset.file_size,
                                         client_id: duplicatedClientId,
@@ -1460,10 +1847,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 // Delete project (cascades to assets, yjs_documents, etc.)
                 await hardDeleteProject(db, project.id);
 
-                // Clean up session files if they exist
-                const sessionPath = getOdeSessionTempDir(uuid);
+                // Clean up session files if they exist (getOdeSessionTempDir throws for unsafe uuids)
                 try {
-                    await fs.remove(sessionPath);
+                    await fs.remove(getOdeSessionTempDir(uuid));
                 } catch {
                     // Ignore cleanup errors
                 }
@@ -1616,7 +2002,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // GET /api/odes/current-users - Get users currently working on ODE
-            .get('/api/odes/current-users', ({ query }) => {
+            .get('/api/odes/current-users', ({ query, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const odeSessionId = query.odeSessionId as string | undefined;
 
                 // In single-user mode, return empty array or minimal info
@@ -1648,7 +2038,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/current-users - Register user working on ODE (for collaboration)
-            .post('/api/odes/current-users', ({ body }) => {
+            .post('/api/odes/current-users', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as OdeCurrentUserRequest;
                 // In stateless mode, just acknowledge
                 return {
@@ -1659,7 +2053,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // DELETE /api/odes/current-users - Unregister user from ODE (for collaboration)
-            .delete('/api/odes/current-users', () => {
+            .delete('/api/odes/current-users', ({ currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 // In stateless mode, just acknowledge
                 return {
                     success: true,
@@ -1668,7 +2066,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/check-before-leave - Check if safe to leave (no other users editing)
-            .post('/api/odes/check-before-leave', ({ body }) => {
+            .post('/api/odes/check-before-leave', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as CheckBeforeLeaveRequest;
                 const odeSessionId = data.odeSessionId;
 
@@ -1688,7 +2090,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/odes/session/close - Close an ODE session (called during logout)
-            .post('/api/odes/session/close', ({ body }) => {
+            .post('/api/odes/session/close', ({ body, currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Authentication required' };
+                }
                 const data = body as CloseSessionRequest;
                 const odeSessionId = data.odeSessionId;
 
@@ -1708,177 +2114,28 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // =====================================================
 
             // POST /api/ode-management/odes/session/brokenlinks - Validate links in content
-            .post('/api/ode-management/odes/session/brokenlinks', async ({ body }) => {
+            .post('/api/ode-management/odes/session/brokenlinks', async ({ body, set, currentUser }) => {
+                // Server-side link validation issues outbound requests; require
+                // authentication so it cannot be abused unauthenticated (H1). The
+                // shared validateLink() is SSRF-hardened (rejects internal hosts).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const data = body as UsedFilesRequest;
-                const idevices = data.idevices || [];
+                const idevices = (data.idevices || []) as IdeviceContent[];
                 const filesDir = getFilesDir();
 
-                interface BrokenLinkInfo {
-                    brokenLinks: string;
-                    nTimesBrokenLinks: number | null;
-                    brokenLinksError: string | null;
-                    pageNamesBrokenLinks: string;
-                    blockNamesBrokenLinks: string;
-                    typeComponentSyncBrokenLinks: string;
-                    orderComponentSyncBrokenLinks: string;
-                }
-
-                interface ExtractedLink {
-                    url: string;
-                    count: number;
-                }
-
-                // Extract links from HTML
-                const extractLinks = (html: string): ExtractedLink[] => {
-                    if (!html) return [];
-                    const regex = /(href|src)="([^"]*)"/gi;
-                    const links: ExtractedLink[] = [];
-                    let match: RegExpExecArray | null;
-                    while ((match = regex.exec(html)) !== null) {
-                        links.push({ url: match[2], count: 1 });
-                    }
-                    return links;
-                };
-
-                // Clean and count links
-                const cleanAndCountLinks = (links: ExtractedLink[]): ExtractedLink[] => {
-                    const urlCounts = new Map<string, number>();
-                    for (const link of links) {
-                        const cleanUrl = link.url.replace(/"/g, '');
-                        urlCounts.set(cleanUrl, (urlCounts.get(cleanUrl) || 0) + 1);
-                    }
-                    return Array.from(urlCounts.entries()).map(([url, count]) => ({ url, count }));
-                };
-
-                // Remove invalid links
-                const removeInvalidLinks = (links: ExtractedLink[]): ExtractedLink[] => {
-                    return links.filter(link => {
-                        if (!link.url || link.url.trim() === '') return false;
-                        if (link.url.startsWith('#')) return false;
-                        if (link.url.startsWith('javascript:')) return false;
-                        if (link.url.startsWith('data:')) return false;
-                        return true;
-                    });
-                };
-
-                // Deduplicate links
-                const deduplicateLinks = (links: ExtractedLink[]): ExtractedLink[] => {
-                    const uniqueLinks = new Map<string, ExtractedLink>();
-                    for (const link of links) {
-                        const existing = uniqueLinks.get(link.url);
-                        if (!existing || link.count > existing.count) {
-                            uniqueLinks.set(link.url, link);
-                        }
-                    }
-                    return Array.from(uniqueLinks.values());
-                };
-
-                // Validate a single link
-                const validateLink = async (url: string): Promise<string | null> => {
-                    // Internal page links (exe-node:) - consider valid
-                    if (url.startsWith('exe-node:')) {
-                        return null;
-                    }
-
-                    // Internal file links (files/...)
-                    if (url.startsWith('files/') || url.startsWith('files\\')) {
-                        try {
-                            const relativePath = url.substring(6);
-                            const fullPath = path.join(filesDir, relativePath);
-                            if (await fs.pathExists(fullPath)) {
-                                return null;
-                            }
-                            return '404';
-                        } catch {
-                            return '500';
-                        }
-                    }
-
-                    // Skip relative URLs that aren't files/
-                    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('//')) {
-                        return null;
-                    }
-
-                    // External link validation
-                    try {
-                        let normalizedUrl = url;
-                        if (url.startsWith('//')) {
-                            normalizedUrl = 'https:' + url;
-                        }
-
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-                        try {
-                            let response = await fetch(normalizedUrl, {
-                                method: 'HEAD',
-                                signal: controller.signal,
-                                redirect: 'follow',
-                                headers: {
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                                },
-                            });
-
-                            clearTimeout(timeoutId);
-
-                            // If HEAD returns 405, try GET
-                            if (response.status === 405) {
-                                const controller2 = new AbortController();
-                                const timeoutId2 = setTimeout(() => controller2.abort(), 10000);
-                                response = await fetch(normalizedUrl, {
-                                    method: 'GET',
-                                    signal: controller2.signal,
-                                    redirect: 'follow',
-                                    headers: {
-                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                                        Range: 'bytes=0-0',
-                                    },
-                                });
-                                clearTimeout(timeoutId2);
-                            }
-
-                            // 301 is not broken
-                            if (response.status === 301) return null;
-                            if (response.ok) return null;
-                            return String(response.status);
-                        } catch (fetchError: unknown) {
-                            clearTimeout(timeoutId);
-                            const err = fetchError as { name?: string; message?: string; cause?: { code?: string } };
-                            if (err.name === 'AbortError') return 'Timeout';
-                            const cause = err.cause;
-                            if (cause?.code === 'ENOTFOUND') return 'Could not resolve host';
-                            if (cause?.code === 'ECONNREFUSED') return 'Connection refused';
-                            return err.message || 'Network error';
-                        }
-                    } catch {
-                        return 'URL using bad/illegal format';
-                    }
-                };
-
+                // Single source of truth: reuse the shared link-validator service
+                // (extraction + SSRF-safe validation) instead of a duplicated copy.
+                const links = extractLinksFromIdevices(idevices);
                 const allBrokenLinks: BrokenLinkInfo[] = [];
 
-                for (const idevice of idevices) {
-                    if (!idevice.html) continue;
-
-                    let links = extractLinks(idevice.html);
-                    links = cleanAndCountLinks(links);
-                    links = removeInvalidLinks(links);
-                    links = deduplicateLinks(links);
-
-                    for (const link of links) {
-                        const validationError = await validateLink(link.url);
-
-                        if (validationError) {
-                            allBrokenLinks.push({
-                                brokenLinks: link.url,
-                                nTimesBrokenLinks: link.count,
-                                brokenLinksError: validationError,
-                                pageNamesBrokenLinks: idevice.pageName || '',
-                                blockNamesBrokenLinks: idevice.blockName || '',
-                                typeComponentSyncBrokenLinks: idevice.ideviceType || '',
-                                orderComponentSyncBrokenLinks: String(idevice.order ?? ''),
-                            });
-                        }
+                for (const link of links) {
+                    const validationError = await validateLink(link.url, { filesDir, ...linkValidation });
+                    if (validationError) {
+                        allBrokenLinks.push(toBrokenLinkInfo(link, validationError));
                     }
                 }
 
@@ -1907,7 +2164,12 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/ode-management/odes/session/brokenlinks/extract - Extract links without validating (fast)
-            .post('/api/ode-management/odes/session/brokenlinks/extract', async ({ body }) => {
+            .post('/api/ode-management/odes/session/brokenlinks/extract', async ({ body, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const data = body as UsedFilesRequest;
                 const idevices = (data.idevices || []) as IdeviceContent[];
 
@@ -1921,32 +2183,52 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/ode-management/odes/session/brokenlinks/validate-stream - Validate links via SSE
-            .post('/api/ode-management/odes/session/brokenlinks/validate-stream', async function* ({ body }) {
-                const data = body as { links: ExtractedLink[] };
-                const links = data.links || [];
-                const filesDir = getFilesDir();
+            .post(
+                '/api/ode-management/odes/session/brokenlinks/validate-stream',
+                async function* ({ body, set, currentUser }) {
+                    if (!currentUser) {
+                        set.status = 401;
+                        return;
+                    }
 
-                // Stream validation results as SSE events
-                for await (const result of validateLinksStream(links, { filesDir, batchSize: 5 })) {
+                    const data = body as { links: ExtractedLink[] };
+                    const links = data.links || [];
+                    const filesDir = getFilesDir();
+
+                    // Stream validation results as SSE events
+                    for await (const result of validateLinksStream(links, {
+                        filesDir,
+                        batchSize: 5,
+                        ...linkValidation,
+                    })) {
+                        yield {
+                            event: 'link-validated',
+                            data: JSON.stringify(result),
+                        };
+                    }
+
+                    // Signal completion
                     yield {
-                        event: 'link-validated',
-                        data: JSON.stringify(result),
+                        event: 'done',
+                        data: JSON.stringify({ complete: true, totalValidated: links.length }),
                     };
-                }
-
-                // Signal completion
-                yield {
-                    event: 'done',
-                    data: JSON.stringify({ complete: true, totalValidated: links.length }),
-                };
-            })
+                },
+            )
 
             // =====================================================
             // Utilities: Resources Report (usedfiles)
             // =====================================================
 
             // POST /api/ode-management/odes/session/usedfiles - Get used files report
-            .post('/api/ode-management/odes/session/usedfiles', async ({ body }) => {
+            .post('/api/ode-management/odes/session/usedfiles', async ({ body, set, currentUser }) => {
+                // Server-side file existence/size lookups must require authentication
+                // so this report cannot be abused as an unauthenticated file oracle,
+                // mirroring the brokenlinks handler above (security audit).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const data = body as UsedFilesRequest;
                 const idevices = data.idevices || [];
                 const assetMetadata = data.assetMetadata || {};
@@ -2056,6 +2338,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                         // Remove "files/" prefix for filesystem path
                         const relativePath = filePath.startsWith('files/') ? filePath.substring(6) : filePath;
+                        // Reject traversal escaping FILES_DIR (same existence/size
+                        // oracle class as the brokenlinks validator); skip silently.
+                        if (!isWithinBase(filesDir, relativePath)) {
+                            return null;
+                        }
                         const fullPath = path.join(filesDir, relativePath);
 
                         // Check if file exists

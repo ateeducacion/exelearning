@@ -12,8 +12,12 @@ import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
 import { buildContentDisposition } from '../shared/http/headers';
+import { deriveBlockIcon } from '../shared/block-icon';
+import { isSafePathSegment } from '../utils/safe-path';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
+import { withJwtAuth } from '../utils/route-auth';
+import { hasRole, ROLES, requireAuth } from '../utils/guards';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -59,6 +63,7 @@ import { db as defaultDb } from '../db/client';
 import { findProjectByUuid as findProjectByUuidDefault } from '../db/queries';
 import { DatabaseAssetProvider as DatabaseAssetProviderDefault } from '../shared/export/providers/DatabaseAssetProvider';
 import { CombinedAssetProvider as CombinedAssetProviderDefault } from '../shared/export/providers/CombinedAssetProvider';
+import { getAppVersion } from '../utils/version';
 
 // ============================================================================
 // Types and Interfaces for Dependency Injection
@@ -220,6 +225,15 @@ export function populateYDocFromStructure(ydoc: Y.Doc, structure: YjsExportStruc
     if (meta.extraHeadContent) metadata.set('extraHeadContent', meta.extraHeadContent);
     if (meta.footer) metadata.set('footer', meta.footer);
 
+    // Stable identifiers (#1786) -- only write when the client supplied them so
+    // a browser export carrying a stable project identity reaches BaseExporter
+    // with the same odeId/scormId. Without these, the server-side export path
+    // falls back to a fresh generateOdeId() and the LMS sees a new course on
+    // every re-upload.
+    if (meta.odeIdentifier) metadata.set('odeIdentifier', meta.odeIdentifier);
+    if (meta.odeVersionId) metadata.set('odeVersionId', meta.odeVersionId);
+    if (meta.scormIdentifier) metadata.set('scormIdentifier', meta.scormIdentifier);
+
     // Set navigation (pages with blocks)
     const navigation = ydoc.getArray('navigation');
 
@@ -245,6 +259,7 @@ export function populateYDocFromStructure(ydoc: Y.Doc, structure: YjsExportStruc
             blockMap.set('id', block.id);
             blockMap.set('blockName', block.blockName || '');
             blockMap.set('iconName', block.iconName || '');
+            blockMap.set('icon', block.icon || deriveBlockIcon(block.iconName));
 
             // Block properties
             if (block.properties) {
@@ -572,6 +587,9 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // even when addMathJax is disabled.
             const latexRenderer = new ServerLatexPreRendererDefault();
             const exportOptionsWithHooks = {
+                // Stamp the SCORM 1.2 runtime with the release doing the exporting, so a
+                // package can always name the runtime it carries. A caller-supplied value wins.
+                runtimeVersion: getAppVersion(),
                 ...options,
                 preRenderLatex: async (html: string) => latexRenderer.preRender(html),
                 preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
@@ -607,14 +625,37 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
     // Routes
     // ========================================================================
 
+    /**
+     * Authorisation rule used by both GET and POST download handlers.
+     * - Anonymous requests are rejected with 401.
+     * - For a real (in-memory) session, the caller must own it or be an admin.
+     * - For "Yjs-only" virtual sessions (where the caller supplies the
+     *   structure in the request body) we only require authentication; the
+     *   caller is exporting data they supplied themselves.
+     */
+    function authorizeExport(
+        session: ProjectSession | undefined,
+        jwtPayload: { sub?: number; roles?: string[] } | null | undefined,
+    ): { ok: true } | { ok: false; status: 401 | 403; message: string } {
+        const authErr = requireAuth(jwtPayload as any);
+        if (authErr) return { ok: false, status: authErr.status, message: authErr.message };
+        if (hasRole(jwtPayload!.roles, ROLES.ADMIN)) return { ok: true };
+        if (session && session.userId !== undefined && session.userId !== Number(jwtPayload!.sub)) {
+            return { ok: false, status: 403, message: 'Access denied' };
+        }
+        return { ok: true };
+    }
+
     return (
         new Elysia({ prefix: '/api/export' })
+            .use(withJwtAuth())
 
             // =====================================================
             // Get Available Formats
             // =====================================================
 
             // GET /api/export/formats - List available export formats
+            // Public: the list of supported formats is static metadata.
             .get('/formats', () => {
                 return {
                     success: true,
@@ -627,10 +668,23 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // =====================================================
 
             // GET /api/export/:odeSessionId/:exportType/download - Download export
-            .get('/:odeSessionId/:exportType/download', async ({ params, set }) => {
+            .get('/:odeSessionId/:exportType/download', async ({ params, set, jwtPayload }) => {
                 const { odeSessionId, exportType } = params;
 
+                // Reject path-traversal session ids before any filesystem path is built.
+                // Real ids are UUIDs or YYYYMMDDHHmmss + alphanumerics, all of which pass.
+                if (!isSafePathSegment(odeSessionId, { allowDots: true })) {
+                    set.status = 400;
+                    return { success: false, error: 'Invalid session id' };
+                }
+
                 const session = getSession(odeSessionId);
+                const authz = authorizeExport(session, jwtPayload);
+                if (!authz.ok) {
+                    set.status = authz.status;
+                    return { success: false, error: authz.message };
+                }
+
                 if (!session) {
                     set.status = 404;
                     return { success: false, error: 'Session not found' };
@@ -679,11 +733,23 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // =====================================================
 
             // POST /api/export/:odeSessionId/:exportType/download - Download export with options
-            .post('/:odeSessionId/:exportType/download', async ({ params, body, set }) => {
+            .post('/:odeSessionId/:exportType/download', async ({ params, body, set, jwtPayload }) => {
                 const { odeSessionId, exportType } = params;
                 const options = body as ExportOptionsRequest;
 
+                // Reject path-traversal session ids before any filesystem path is built.
+                // Real ids are UUIDs or YYYYMMDDHHmmss + alphanumerics, all of which pass.
+                if (!isSafePathSegment(odeSessionId, { allowDots: true })) {
+                    set.status = 400;
+                    return { success: false, error: 'Invalid session id' };
+                }
+
                 let session = getSession(odeSessionId);
+                const authz = authorizeExport(session, jwtPayload);
+                if (!authz.ok) {
+                    set.status = authz.status;
+                    return { success: false, error: authz.message };
+                }
 
                 // For Yjs-only sessions (yjs-*), create a virtual session if structure is provided
                 if (!session && options.structure) {

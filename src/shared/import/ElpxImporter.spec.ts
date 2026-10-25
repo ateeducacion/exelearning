@@ -8,9 +8,11 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 
-import { ElpxImporter } from './ElpxImporter';
+import { ElpxImporter, ZipLimitError, DEFAULT_ZIP_LIMITS, inspectZipArchive } from './ElpxImporter';
 import { FileSystemAssetHandler } from './FileSystemAssetHandler';
 import type { Logger } from './interfaces';
+import { YjsDocumentAdapter } from '../export/adapters/YjsDocumentAdapter';
+import { generateOdeXml } from '../export/generators/OdeXmlGenerator';
 
 // Silent logger for tests
 const silentLogger: Logger = {
@@ -340,6 +342,354 @@ describe('ElpxImporter', () => {
 
             ydoc.destroy();
         });
+
+        /**
+         * #2223. `missing-asset-refs.elpx` is a Classify activity whose package
+         * carries no `content/resources/` at all, so its eight references have
+         * nothing to resolve against and reach the editor as raw placeholders.
+         */
+        it('should report the activities whose asset references the package cannot satisfy', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/missing-asset-refs.elpx');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            expect(result.assets).toBe(0);
+            expect(result.missingAssets).toHaveLength(1);
+            expect(result.missingAssets![0].ideviceType).toBe('classify');
+            expect(result.missingAssets![0].paths.sort()).toEqual([
+                'ardilla.svg',
+                'chipmunk_name.mp3',
+                'leon.svg',
+                'lion_name.mp3',
+                'rabbit.svg',
+                'rabbit_name.mp3',
+                'tiger_name.mp3',
+                'tigre.svg',
+            ]);
+
+            ydoc.destroy();
+        });
+
+        /**
+         * #2376. eXe 3 stamped the text iDevice's form fields on every activity
+         * it converted from a 2.x package, HTML copy included. On an html-type
+         * activity nothing reads that payload and saving never rewrites it, so
+         * it is a frozen older generation of the activity. Its references must
+         * not be reported, and it must not travel into the next export.
+         */
+        const buildSingleComponentPackage = (ideviceType: string, htmlView: string, jsonProperties: string) =>
+            new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<userPreferences></userPreferences>
+<odeResources></odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Stale template</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page-1</odePageId><odeParentPageId></odeParentPageId>
+    <pageName>Page</pageName><odeNavStructureOrder>0</odeNavStructureOrder>
+    <odeNavStructureProperties></odeNavStructureProperties>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>page-1</odePageId><odeBlockId>block-1</odeBlockId>
+        <blockName>Block</blockName><iconName></iconName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odePagStructureProperties></odePagStructureProperties>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>page-1</odePageId><odeBlockId>block-1</odeBlockId>
+            <odeIdeviceId>component-1</odeIdeviceId>
+            <odeIdeviceTypeName>${ideviceType}</odeIdeviceTypeName>
+            <htmlView><![CDATA[${htmlView}]]></htmlView>
+            <jsonProperties><![CDATA[${jsonProperties}]]></jsonProperties>
+            <odeComponentsOrder>0</odeComponentsOrder>
+            <odeComponentsProperties></odeComponentsProperties>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`);
+
+        const STALE_TEXT_TEMPLATE = JSON.stringify({
+            ideviceId: 'component-1',
+            textInfoDurationInput: '',
+            textInfoParticipantsInput: '',
+            textInfoDurationTextInput: 'Duration:',
+            textInfoParticipantsTextInput: 'Grouping:',
+            textTextarea:
+                '<div class="mapa-IDevice"><audio src="{{context_path}}/20250605150704XBOPVK/do.mp3"></audio></div>',
+            textFeedbackInput: 'Show Feedback',
+            textFeedbackTextarea: '',
+        });
+
+        const importSingleComponent = async (ideviceType: string, htmlView: string, jsonProperties: string) => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            const result = await importer.importFromZipContents({
+                'content.xml': buildSingleComponentPackage(ideviceType, htmlView, jsonProperties),
+            });
+            const page = ydoc.getArray('navigation').get(0) as Y.Map<unknown>;
+            const block = (page.get('blocks') as Y.Array<unknown>).get(0) as Y.Map<unknown>;
+            const component = (block.get('components') as Y.Array<unknown>).get(0) as Y.Map<unknown>;
+            return { result, jsonProperties: component.get('jsonProperties') as string | undefined, ydoc };
+        };
+
+        it('drops the eXe 3 text template stranded on an html-type activity and does not report its references', async () => {
+            const { result, jsonProperties, ydoc } = await importSingleComponent(
+                'map',
+                '<div class="mapa-IDevice"><p>Piano with no audio any more</p></div>',
+                STALE_TEXT_TEMPLATE,
+            );
+
+            expect(result.missingAssets).toEqual([]);
+            expect(jsonProperties).toBe('{}');
+
+            ydoc.destroy();
+        });
+
+        it('still reports references that survive in the html-type activity itself', async () => {
+            const { result, ydoc } = await importSingleComponent(
+                'map',
+                '<div class="mapa-IDevice"><img src="{{context_path}}/20250605150704XBOPVK/piano.png"></div>',
+                STALE_TEXT_TEMPLATE,
+            );
+
+            expect(result.missingAssets).toEqual([
+                { componentId: 'component-1', ideviceType: 'map', paths: ['20250605150704XBOPVK/piano.png'] },
+            ]);
+
+            ydoc.destroy();
+        });
+
+        it('keeps the template on a text activity, whose editor reads textTextarea', async () => {
+            const { result, jsonProperties, ydoc } = await importSingleComponent(
+                'FreeTextIdevice',
+                '<div class="exe-text"><audio src="{{context_path}}/20250605150704XBOPVK/do.mp3"></audio></div>',
+                STALE_TEXT_TEMPLATE,
+            );
+
+            expect(JSON.parse(jsonProperties as string).textTextarea).toContain('do.mp3');
+            expect(result.missingAssets).toEqual([
+                { componentId: 'component-1', ideviceType: 'FreeTextIdevice', paths: ['20250605150704XBOPVK/do.mp3'] },
+            ]);
+
+            ydoc.destroy();
+        });
+
+        it('keeps the template when the activity has no htmlView to fall back on', async () => {
+            const { jsonProperties, ydoc } = await importSingleComponent('map', '', STALE_TEXT_TEMPLATE);
+
+            expect(JSON.parse(jsonProperties as string).textTextarea).toContain('do.mp3');
+
+            ydoc.destroy();
+        });
+
+        it('should leave the report empty when every asset reference resolves', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            expect(result.missingAssets).toEqual([]);
+
+            ydoc.destroy();
+        });
+
+        it('should preserve escaped script-like text in text iDevice JSON properties', async () => {
+            const textTextarea =
+                'Text with the word &lt;script&gt; as plain text. Content after the marker must remain visible.';
+            const jsonProperties = JSON.stringify({ textTextarea });
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<userPreferences>
+  <userPreference>
+    <key>theme</key>
+    <value>base</value>
+  </userPreference>
+</userPreferences>
+<odeResources></odeResources>
+<odeProperties>
+  <odeProperty>
+    <key>pp_title</key>
+    <value>Script Literal Test</value>
+  </odeProperty>
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page-1</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odeNavStructureProperties></odeNavStructureProperties>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>page-1</odePageId>
+        <odeBlockId>block-1</odeBlockId>
+        <blockName>Text</blockName>
+        <iconName></iconName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odePagStructureProperties></odePagStructureProperties>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>page-1</odePageId>
+            <odeBlockId>block-1</odeBlockId>
+            <odeIdeviceId>component-1</odeIdeviceId>
+            <odeIdeviceTypeName>FreeTextIdevice</odeIdeviceTypeName>
+            <htmlView><![CDATA[${textTextarea}]]></htmlView>
+            <jsonProperties><![CDATA[${jsonProperties}]]></jsonProperties>
+            <odeComponentsOrder>0</odeComponentsOrder>
+            <odeComponentsProperties>
+              <odeComponentsProperty>
+                <key>visibility</key>
+                <value>true</value>
+              </odeComponentsProperty>
+            </odeComponentsProperties>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            await importer.importFromZipContents({
+                'content.xml': new TextEncoder().encode(contentXml),
+            });
+
+            const navigation = ydoc.getArray('navigation');
+            const page = navigation.get(0) as Y.Map<unknown>;
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            const block = blocks.get(0) as Y.Map<unknown>;
+            const components = block.get('components') as Y.Array<unknown>;
+            const component = components.get(0) as Y.Map<unknown>;
+            const importedProps = JSON.parse(component.get('jsonProperties') as string) as { textTextarea: string };
+
+            expect(importedProps.textTextarea).toBe(textTextarea);
+            expect(importedProps.textTextarea).toContain('&lt;script&gt;');
+            expect(importedProps.textTextarea).toContain('Content after the marker must remain visible.');
+            expect(importedProps.textTextarea).not.toContain('<script>');
+
+            ydoc.destroy();
+        });
+    });
+
+    describe('damaged jsonProperties preservation (#2190)', () => {
+        // The verbatim payload persisted inside test/fixtures/damaged-trueorfalse-json.elpx:
+        // the #2177 corruption shape, where lost escape backslashes leave raw quotes
+        // inside a JSON string. It must never parse.
+        const DAMAGED_RAW =
+            '{"ideviceId":"idevice-damaged-malformed","typeGame":"TrueOrFalse","questionsData":[{"baseText":"<audio controls="controls" src=""><a href="">audio.webm</a></audio>","answer":"True"}]}';
+
+        const getComponentById = (ydoc: Y.Doc, componentId: string): Y.Map<unknown> | null => {
+            const navigation = ydoc.getArray('navigation');
+            for (let p = 0; p < navigation.length; p++) {
+                const page = navigation.get(p) as Y.Map<unknown>;
+                const blocks = page.get('blocks') as Y.Array<unknown>;
+                for (let b = 0; b < blocks.length; b++) {
+                    const block = blocks.get(b) as Y.Map<unknown>;
+                    const components = block.get('components') as Y.Array<unknown>;
+                    for (let c = 0; c < components.length; c++) {
+                        const comp = components.get(c) as Y.Map<unknown>;
+                        if (comp.get('id') === componentId) return comp;
+                    }
+                }
+            }
+            return null;
+        };
+
+        it('preserves the raw payload of a damaged activity and reports it', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/damaged-trueorfalse-json.elpx');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // The rest of the project imports normally.
+            expect(result.pages).toBe(1);
+            expect(result.blocks).toBe(3);
+            expect(result.components).toBe(3);
+
+            // The damaged payload survives byte for byte instead of becoming {} —
+            // and it is genuinely unparseable, which is what lets the workarea
+            // detect it and block editing (#2178).
+            const damaged = getComponentById(ydoc, 'idevice-damaged-malformed');
+            expect(damaged?.get('jsonProperties')).toBe(DAMAGED_RAW);
+            expect(() => JSON.parse(DAMAGED_RAW)).toThrow();
+
+            // The import result names the affected activity for the notice.
+            expect(result.malformedProperties).toEqual([
+                { componentId: 'idevice-damaged-malformed', ideviceType: 'trueorfalse' },
+            ]);
+
+            // Valid siblings are unaffected: empty stays empty, the text block parses.
+            expect(getComponentById(ydoc, 'idevice-damaged-empty')?.get('jsonProperties')).toBe('{}');
+            const textProps = JSON.parse(
+                getComponentById(ydoc, 'idevice-after-damaged')?.get('jsonProperties') as string,
+            ) as { textTextarea: string };
+            expect(textProps.textTextarea).toContain('after the damaged activities');
+
+            ydoc.destroy();
+        });
+
+        it('leaves the report empty when every payload parses', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            expect(result.malformedProperties).toEqual([]);
+
+            ydoc.destroy();
+        });
+
+        it('keeps the damaged payload through an export round-trip instead of normalizing it to {}', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/damaged-trueorfalse-json.elpx');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // Export the imported document the way a save does: through the
+            // shared adapter + content.xml generator.
+            const manager = {
+                getMetadata: () => ydoc.getMap('metadata'),
+                getNavigation: () => ydoc.getArray('navigation'),
+                projectId: 'roundtrip-test',
+            };
+            const adapter = new YjsDocumentAdapter(manager as never);
+            const contentXml = generateOdeXml(adapter.getMetadata(), adapter.getNavigation());
+            expect(contentXml).toContain(DAMAGED_RAW);
+
+            // Re-importing the exported XML must still carry the original data.
+            const ydoc2 = new Y.Doc();
+            const importer2 = new ElpxImporter(ydoc2, null, silentLogger);
+            await importer2.importFromZipContents({
+                'content.xml': new TextEncoder().encode(contentXml),
+            });
+            expect(getComponentById(ydoc2, 'idevice-damaged-malformed')?.get('jsonProperties')).toBe(DAMAGED_RAW);
+
+            ydoc.destroy();
+            ydoc2.destroy();
+        });
     });
 
     describe('top-level directory wrapper', () => {
@@ -435,6 +785,267 @@ describe('ElpxImporter', () => {
         });
     });
 
+    describe('ZIP-bomb decompression limits', () => {
+        // Build a valid eXeLearning archive (content.xml + a controllable payload entry)
+        // so we exercise the real importer decode path, not a generic failure.
+        const minimalContentXml = '<?xml version="1.0" encoding="UTF-8"?><odeProperties></odeProperties>';
+
+        it('exposes generous, overridable defaults above realistic .elp sizes', () => {
+            // Largest shipped fixtures decompress to ~42 MB / ~1440 entries / ~3.4 MB max entry.
+            // Defaults must comfortably exceed those so legitimate imports never trip the guard.
+            expect(DEFAULT_ZIP_LIMITS.maxTotalBytes).toBeGreaterThanOrEqual(100 * 1024 * 1024);
+            expect(DEFAULT_ZIP_LIMITS.maxEntryBytes).toBeGreaterThanOrEqual(50 * 1024 * 1024);
+            expect(DEFAULT_ZIP_LIMITS.maxEntries).toBeGreaterThanOrEqual(2000);
+        });
+
+        it('rejects a per-entry decompression bomb without inflating it', async () => {
+            const fflate = await import('fflate');
+
+            // A 2 MB run of zeros compresses to a few KB (a strong bomb ratio). With a
+            // 1 MB per-entry cap the importer must refuse it BEFORE inflation. fflate
+            // reads originalSize from the central directory in the filter callback, so
+            // the payload is never materialised — the absolute size is irrelevant to the
+            // guard, only originalSize > cap matters, so a small payload exercises the
+            // same code path while keeping zipSync at milliseconds.
+            const bombPayload = new Uint8Array(2 * 1024 * 1024);
+            const zip = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'bomb.bin': bombPayload,
+                },
+                { level: 6 },
+            );
+            // Sanity: the crafted archive really is tiny on disk (the DoS vector).
+            expect(zip.length).toBeLessThan(64 * 1024);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxEntryBytes: 1 * 1024 * 1024,
+            });
+
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(/too large when decompressed/);
+
+            ydoc.destroy();
+        });
+
+        it('rejects when the cumulative decompressed size exceeds the cap', async () => {
+            const fflate = await import('fflate');
+
+            // Several individually-acceptable entries that together blow the total cap.
+            // Each entry's originalSize is read from the central directory, so small
+            // zeroed chunks keep zipSync at milliseconds while still tripping the guard.
+            const chunk = new Uint8Array(1 * 1024 * 1024); // 1 MB each (compresses small)
+            const entries: Record<string, Uint8Array> = {
+                'content.xml': new TextEncoder().encode(minimalContentXml),
+            };
+            for (let i = 0; i < 5; i++) {
+                entries[`pad-${i}.bin`] = chunk;
+            }
+            const zip = fflate.zipSync(entries, { level: 6 });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxEntryBytes: 2 * 1024 * 1024, // each 1 MB entry passes
+                maxTotalBytes: 4 * 1024 * 1024, // but the 5 MB sum does not
+            });
+
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(/maximum total decompressed size/);
+
+            ydoc.destroy();
+        });
+
+        it('rejects when the archive exceeds the maximum entry count', async () => {
+            const fflate = await import('fflate');
+
+            const entries: Record<string, Uint8Array> = {
+                'content.xml': new TextEncoder().encode(minimalContentXml),
+            };
+            for (let i = 0; i < 20; i++) {
+                entries[`tiny-${i}.txt`] = new Uint8Array([0]);
+            }
+            const zip = fflate.zipSync(entries, { level: 6 });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxEntries: 5,
+            });
+
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
+            await expect(importer.importFromBuffer(zip)).rejects.toThrow(/maximum allowed number of entries/);
+
+            ydoc.destroy();
+        });
+
+        it('applies the same guard to the nested-ELP decompression path', async () => {
+            const fflate = await import('fflate');
+
+            // Inner ELP carries the bomb; the outer ZIP wraps it as a single .elp entry,
+            // exercising the nested-ELP branch in importFromBuffer. A 2 MB zeroed payload
+            // over a 1 MB cap trips the same guard as a huge one (originalSize is read
+            // from the central directory, never inflated) while staying fast.
+            const innerBomb = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'bomb.bin': new Uint8Array(2 * 1024 * 1024),
+                },
+                { level: 6 },
+            );
+            const outerZip = fflate.zipSync({ 'project.elp': innerBomb }, { level: 6 });
+            expect(outerZip.length).toBeLessThan(64 * 1024);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxEntryBytes: 1 * 1024 * 1024,
+            });
+
+            await expect(importer.importFromBuffer(outerZip)).rejects.toThrow(ZipLimitError);
+            await expect(importer.importFromBuffer(outerZip)).rejects.toThrow(/nested ELP file/);
+
+            ydoc.destroy();
+        });
+
+        it('rejects oversized pre-extracted contents in importFromZipContents', async () => {
+            const zipContents: Record<string, Uint8Array> = {
+                'content.xml': new TextEncoder().encode(minimalContentXml),
+                'huge.bin': new Uint8Array(8 * 1024 * 1024),
+            };
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxEntryBytes: 4 * 1024 * 1024,
+            });
+
+            await expect(importer.importFromZipContents(zipContents)).rejects.toThrow(ZipLimitError);
+
+            ydoc.destroy();
+        });
+
+        it('still imports a normal small ELP under default limits', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            // Default limits (no override) — the legitimate fixture must import cleanly.
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+            expect(result.pages).toBeGreaterThan(0);
+            expect(result.components).toBeGreaterThan(0);
+
+            ydoc.destroy();
+        });
+
+        it('lets a generous custom cap admit a legitimately large fixture', async () => {
+            // todos-los-idevices.elp decompresses to ~42 MB / ~1437 entries. With caps
+            // set just above those real figures it must still import, proving the guard
+            // does not penalise large-but-legitimate packages.
+            const elpPath = path.join(process.cwd(), 'test/fixtures/todos-los-idevices.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, {
+                maxTotalBytes: 100 * 1024 * 1024,
+                maxEntryBytes: 20 * 1024 * 1024,
+                maxEntries: 5000,
+            });
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+            expect(result.pages).toBeGreaterThan(0);
+
+            ydoc.destroy();
+        });
+    });
+
+    describe('preflight inspection and runtime policy', () => {
+        const minimalContentXml = '<?xml version="1.0" encoding="UTF-8"?><odeProperties></odeProperties>';
+
+        it('inspectZipArchive reports entry metadata without enforcing limits or inflating', async () => {
+            const fflate = await import('fflate');
+            // A 3 MB run of zeros compresses tiny; inspection reads the declared
+            // originalSize from the central directory, so it never inflates.
+            const zip = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'big.bin': new Uint8Array(3 * 1024 * 1024),
+                },
+                { level: 6 },
+            );
+            expect(zip.length).toBeLessThan(64 * 1024);
+
+            const inspection = inspectZipArchive(zip, 'archive');
+
+            expect(inspection.entryCount).toBe(2);
+            expect(inspection.totalBytes).toBe(3 * 1024 * 1024 + minimalContentXml.length);
+            expect(inspection.largestEntry?.name).toBe('big.bin');
+            expect(inspection.largestEntry?.size).toBe(3 * 1024 * 1024);
+        });
+
+        it('rejects an invalid limits override at construction time', () => {
+            const ydoc = new Y.Doc();
+            expect(() => new ElpxImporter(ydoc, null, silentLogger, { maxEntryBytes: -1 })).toThrow();
+            expect(() => new ElpxImporter(ydoc, null, silentLogger, { maxEntryBytes: Number.NaN })).toThrow();
+            expect(() => new ElpxImporter(ydoc, null, silentLogger, { maxEntries: 2.5 })).toThrow();
+            ydoc.destroy();
+        });
+
+        it('throws a structured ZipLimitError identifying the offending entry', async () => {
+            const fflate = await import('fflate');
+            const zip = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'video.mp4': new Uint8Array(2 * 1024 * 1024),
+                },
+                { level: 6 },
+            );
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, { maxEntryBytes: 1 * 1024 * 1024 });
+
+            let caught: ZipLimitError | null = null;
+            try {
+                await importer.importFromBuffer(zip);
+            } catch (err) {
+                caught = err as ZipLimitError;
+            }
+            expect(caught).toBeInstanceOf(ZipLimitError);
+            expect(caught?.details.kind).toBe('entry-size');
+            expect(caught?.details.entryName).toBe('video.mp4');
+            expect(caught?.details.actualValue).toBe(2 * 1024 * 1024);
+            expect(caught?.details.limitValue).toBe(1 * 1024 * 1024);
+            ydoc.destroy();
+        });
+
+        it('accepts, under a larger runtime override, an entry the conservative cap rejects', async () => {
+            const fflate = await import('fflate');
+            // 2 MB entry: rejected by a 1 MB conservative cap, accepted by a 4 MB
+            // desktop-style cap. This is the core of the #2193 fix: the same
+            // archive succeeds only because an explicit larger policy is injected.
+            const zip = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'video.mp4': new Uint8Array(2 * 1024 * 1024),
+                },
+                { level: 6 },
+            );
+
+            const rejectDoc = new Y.Doc();
+            const conservative = new ElpxImporter(rejectDoc, null, silentLogger, { maxEntryBytes: 1 * 1024 * 1024 });
+            await expect(conservative.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
+            rejectDoc.destroy();
+
+            const acceptDoc = new Y.Doc();
+            const desktop = new ElpxImporter(acceptDoc, null, silentLogger, {
+                maxEntryBytes: 4 * 1024 * 1024,
+                maxTotalBytes: 8 * 1024 * 1024,
+            });
+            const result = await desktop.importFromBuffer(zip);
+            expect(result.assets).toBeGreaterThanOrEqual(0);
+            acceptDoc.destroy();
+        });
+    });
+
     describe('legacy ID remapping', () => {
         it('should remap legacy page IDs and preserve hierarchy mapping', () => {
             const ydoc = new Y.Doc();
@@ -512,6 +1123,63 @@ describe('ElpxImporter', () => {
             expect(block.blockId).toBe(block.id);
             expect(component.id).not.toBe('idevice-2');
             expect(component.ideviceId).toBe(component.id);
+
+            ydoc.destroy();
+        });
+
+        it('should extract scrambled-list properties from legacy htmlView', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-4',
+                    title: 'Root',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'scrambled-list',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-2',
+                                    type: 'scrambled-list',
+                                    title: 'Scrambled',
+                                    icon: 'scrambled-list',
+                                    position: 0,
+                                    htmlView:
+                                        '<div class="exe-sortableList">' +
+                                        '<div class="exe-sortableList-instructions"><p>Order items</p></div>' +
+                                        '<ul class="exe-sortableList-list">' +
+                                        '<li>One</li><li><strong>Two</strong></li><li>Three</li>' +
+                                        '</ul>' +
+                                        '<p class="exe-sortableList-buttonText">Check legacy</p>' +
+                                        '<p class="exe-sortableList-rightText"><em>Right</em></p>' +
+                                        '<p class="exe-sortableList-wrongText">Wrong</p>' +
+                                        '</div>',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+            const component = pageStructures[0].blocks[0].components[0];
+
+            expect(component.properties.options).toEqual(['One', '<strong>Two</strong>', 'Three']);
+            expect(component.properties.instructions).toBe('<p>Order items</p>');
+            expect(component.properties.buttonText).toBe('Check legacy');
+            expect(component.properties.rightText).toBe('Right');
+            expect(component.properties.showSolutions).toBe(true);
+            expect(component.properties.attemptsNumber).toBe(1);
 
             ydoc.destroy();
         });
@@ -797,9 +1465,11 @@ describe('ElpxImporter - Legacy Format', () => {
             await importer.importFromBuffer(new Uint8Array(elpBuffer));
 
             const metadata = ydoc.getMap('metadata');
-            // Legacy files should have default addMathJax and globalFont
+            // Legacy files should have default addMathJax, globalFont and pass score options
             expect(metadata.get('addMathJax')).toBe(false);
             expect(metadata.get('globalFont')).toBe('default');
+            expect(metadata.get('passScore')).toBe(5);
+            expect(metadata.get('passScoreEveryActivity')).toBe(false);
             // Should have language
             expect(metadata.get('language')).toBeTruthy();
 
@@ -1168,6 +1838,7 @@ describe('ElpxImporter - Legacy Format', () => {
             // Legacy files use defaults for new fields
             expect(metadata.get('addMathJax')).toBe(false);
             expect(metadata.get('globalFont')).toBe('default');
+            expect(metadata.get('passScore')).toBe(5);
 
             ydoc.destroy();
         });
@@ -1502,6 +2173,104 @@ describe('ElpxImporter - findAssetUrlForPath coverage', () => {
 
             // Should contain asset:// URL
             expect(htmlView).toContain('asset://');
+
+            ydoc.destroy();
+        });
+
+        it('should convert images embedded in a legacy dropdown (ListaIdevice) form to asset:// URLs', async () => {
+            // Regression for legacy "Actividad desplegable" (ListaIdevice → form):
+            // the image lives inside the question HTML stored in an iDevice
+            // PROPERTY (questionsData[].baseText), not in htmlView. It must still
+            // be rewritten to an asset:// URL, otherwise the picture renders
+            // broken and only its alt text is shown.
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Test"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.listaidevice.ListaIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Dropdown"/>
+              <string role="key" value="_content"/>
+              <instance class="exe.engine.listaidevice.ListaField" reference="4">
+                <dictionary>
+                  <string role="key" value="_encodedContent"/>
+                  <unicode value="&lt;p&gt;&lt;img src=&quot;dropimg.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                  <string role="key" value="content_w_resourcePaths"/>
+                  <unicode value="&lt;p&gt;&lt;img src=&quot;resources/dropimg.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                  <string role="key" value="otras"/>
+                  <unicode value="wrong1|wrong2"/>
+                </dictionary>
+              </instance>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            // Image stored at root level (legacy format)
+            const imageData = new Uint8Array([137, 80, 78, 71]); // PNG header
+            const zipContents: Record<string, Uint8Array> = {
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'dropimg.png': imageData,
+            };
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromZipContents(zipContents);
+            expect(result.assets).toBeGreaterThanOrEqual(1);
+
+            // Collect every string stored under the imported navigation tree
+            // (iDevice properties are serialised into the jsonProperties string).
+            const collectStrings = (obj: unknown): string[] => {
+                if (typeof obj === 'string') return [obj];
+                if (obj instanceof Y.Text) return [obj.toString()];
+                if (obj instanceof Y.Map) {
+                    const out: string[] = [];
+                    obj.forEach(v => out.push(...collectStrings(v)));
+                    return out;
+                }
+                if (obj instanceof Y.Array) {
+                    const out: string[] = [];
+                    obj.forEach(v => out.push(...collectStrings(v)));
+                    return out;
+                }
+                if (obj && typeof obj === 'object') {
+                    return Object.values(obj).flatMap(collectStrings);
+                }
+                return [];
+            };
+
+            const navigation = ydoc.getArray('navigation');
+            const questionProps = collectStrings(navigation).filter(s => s.includes('questionsData'));
+
+            // The dropdown must have been imported as a form with questionsData
+            expect(questionProps.length).toBeGreaterThan(0);
+            const parsed = JSON.parse(questionProps[0]) as { questionsData: { baseText: string }[] };
+            const baseText = parsed.questionsData[0].baseText;
+
+            // Gap markers must survive, and the embedded image must be rewritten
+            // to an asset:// URL rather than left as a bare or resources/ path.
+            expect(baseText).toContain('<u>right</u>');
+            expect(baseText).toContain('asset://');
+            expect(baseText).not.toContain('src="dropimg.png"');
+            expect(baseText).not.toContain('src="resources/dropimg.png"');
 
             ydoc.destroy();
         });
@@ -1898,7 +2667,7 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
         }
     });
 
-    it('should remap exe-node: cross-page anchor links when importing anchors.zip', async () => {
+    it('should keep exe-node: cross-page anchor links pointing at the imported pages when importing anchors.zip', async () => {
         const elpPath = path.join(process.cwd(), 'test/fixtures/anchors.zip');
         const elpBuffer = await fs.readFile(elpPath);
 
@@ -1911,13 +2680,13 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
         const navigation = ydoc.getArray('navigation');
         expect(navigation.length).toBe(3); // aaa, bbb, ccc
 
-        // Collect new page IDs and the HTML content of components
-        const newPageIds: string[] = [];
+        // Collect imported page IDs and the HTML content of components
+        const importedPageIds: string[] = [];
         const allHtmlContent: string[] = [];
 
         for (let i = 0; i < navigation.length; i++) {
             const page = navigation.get(i) as Y.Map<unknown>;
-            newPageIds.push((page.get('id') as string) || (page.get('pageId') as string));
+            importedPageIds.push((page.get('id') as string) || (page.get('pageId') as string));
 
             const blocks = page.get('blocks') as Y.Array<unknown>;
             for (let j = 0; j < (blocks?.length ?? 0); j++) {
@@ -1931,22 +2700,28 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
             }
         }
 
-        // The original IDs from anchors.zip should NOT appear in any content
-        const originalIds = [
-            '4576a60f-11d1-4414-88f7-6df2d6aaece0',
-            'page-1771919082417-f0hpww2cx',
-            'page-1771919084984-kxe6oqn9a',
-        ];
-
         const combinedHtml = allHtmlContent.join('\n');
 
-        for (const origId of originalIds) {
-            expect(combinedHtml).not.toContain(`exe-node:${origId}`);
-        }
+        // After the v4 ID preservation fix, internal exe-node: links should
+        // continue to point at the (preserved) imported page IDs. At least one
+        // of the imported page IDs must appear as the target of an exe-node link.
+        const hasResolvedLink = importedPageIds.some(id => combinedHtml.includes(`exe-node:${id}`));
+        expect(hasResolvedLink).toBe(true);
 
-        // At least one of the new page IDs should be referenced in the HTML
-        const hasRemappedLink = newPageIds.some(id => combinedHtml.includes(`exe-node:${id}`));
-        expect(hasRemappedLink).toBe(true);
+        // No dangling exe-node: link should reference an ID that is not in
+        // the imported navigation (collision-only remap still applies in
+        // merge-mode imports, but this fixture is a fresh import).
+        // Match every char the importer's boundary considers part of an id
+        // (mirrors the (?![A-Za-z0-9_-]) lookahead in remapInternalPageLinks).
+        const linkPattern = /exe-node:([a-zA-Z0-9_-]+)/g;
+        const referencedIds = new Set<string>();
+        let m: RegExpExecArray | null;
+        while ((m = linkPattern.exec(combinedHtml)) !== null) {
+            referencedIds.add(m[1]);
+        }
+        for (const refId of referencedIds) {
+            expect(importedPageIds).toContain(refId);
+        }
 
         ydoc.destroy();
     });
@@ -2007,7 +2782,9 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
 
         const pageB = navigation.get(1) as Y.Map<unknown>;
         const newPageBId = (pageB.get('id') ?? pageB.get('pageId')) as string;
-        expect(newPageBId).not.toBe('original-page-bbb');
+        // After the v4 ID preservation fix, a fresh import keeps the original
+        // <odePageId> verbatim, so the imported Page B id equals the XML id.
+        expect(newPageBId).toBe('original-page-bbb');
 
         // Get the component HTML from page A
         const pageA = navigation.get(0) as Y.Map<unknown>;
@@ -2017,9 +2794,8 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
         const comp = components.get(0) as Y.Map<unknown>;
         const html = comp.get('htmlView') as string;
 
-        // Link must use new page ID and preserve the fragment
+        // Link must reference the imported page id and preserve the fragment.
         expect(html).toContain(`exe-node:${newPageBId}#my-anchor`);
-        expect(html).not.toContain('exe-node:original-page-bbb');
 
         ydoc.destroy();
     });
@@ -2251,5 +3027,982 @@ describe('ElpxImporter - exe-node link remapping on import', () => {
 
             ydoc.destroy();
         });
+    });
+
+    describe('odeResources preservation', () => {
+        it('should populate metadata.odeIdentifier and metadata.odeVersionId from <odeResources> on v4 import', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>20251201123456ABCDEF</value></odeResource>
+  <odeResource><key>odeVersionId</key><value>20251201123456FEDCBA</value></odeResource>
+  <odeResource><key>exe_version</key><value>4.0.0</value></odeResource>
+</odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>OdeResources Preservation</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('odeIdentifier')).toBe('20251201123456ABCDEF');
+            expect(metadata.get('odeVersionId')).toBe('20251201123456FEDCBA');
+
+            ydoc.destroy();
+        });
+
+        it('should tolerate missing <odeResources> block on v4 import', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            // v4-style content.xml WITHOUT odeResources
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>No OdeResources</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const odeId = metadata.get('odeIdentifier');
+            const odeVersionId = metadata.get('odeVersionId');
+            // Either undefined or empty string — export-side fallback will fill them in.
+            expect(odeId === undefined || odeId === '').toBe(true);
+            expect(odeVersionId === undefined || odeVersionId === '').toBe(true);
+
+            ydoc.destroy();
+        });
+
+        it('should still populate metadata.odeIdentifier when <odeProperties> is absent (DTD edge case)', async () => {
+            // The DTD makes <odeProperties> optional. A valid v4 content.xml
+            // may carry <odeResources> alone. Stable identifiers must reach the
+            // Y.Doc metadata regardless of whether <odeProperties> exists.
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>20251201123456ABCDEF</value></odeResource>
+  <odeResource><key>odeVersionId</key><value>20251201123456FEDCBA</value></odeResource>
+  <odeResource><key>exe_version</key><value>4.0.0</value></odeResource>
+</odeResources>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('odeIdentifier')).toBe('20251201123456ABCDEF');
+            expect(metadata.get('odeVersionId')).toBe('20251201123456FEDCBA');
+
+            ydoc.destroy();
+        });
+
+        it('should round-trip scormIdentifier through <odeResources> (#1786)', async () => {
+            // The user-set SCORM override survives ELPX download-and-reopen so
+            // re-exports keep using the same manifest@identifier the LMS expects.
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>20251201123456ABCDEF</value></odeResource>
+  <odeResource><key>odeVersionId</key><value>20251201123456FEDCBA</value></odeResource>
+  <odeResource><key>scormIdentifier</key><value>LMS-COURSE-XYZ</value></odeResource>
+  <odeResource><key>exe_version</key><value>4.0.0</value></odeResource>
+</odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>SCORM ID round-trip</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({ 'content.xml': encoder.encode(contentXml) });
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('scormIdentifier')).toBe('LMS-COURSE-XYZ');
+
+            ydoc.destroy();
+        });
+
+        it('should populate odeIdentifier even when odeVersionId is missing (partial odeResources)', async () => {
+            // Partial resources -- importer keeps odeId, leaves odeVersionId
+            // unset so the exporter's fallback generates a fresh value.
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>20251201123456ABCDEF</value></odeResource>
+</odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Partial</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({ 'content.xml': encoder.encode(contentXml) });
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('odeIdentifier')).toBe('20251201123456ABCDEF');
+            const versionId = metadata.get('odeVersionId');
+            expect(versionId === undefined || versionId === '').toBe(true);
+
+            ydoc.destroy();
+        });
+
+        it('should tolerate empty <odeResources> block on v4 import', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources></odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Empty OdeResources</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const odeId = metadata.get('odeIdentifier');
+            const odeVersionId = metadata.get('odeVersionId');
+            expect(odeId === undefined || odeId === '').toBe(true);
+            expect(odeVersionId === undefined || odeVersionId === '').toBe(true);
+
+            ydoc.destroy();
+        });
+
+        it('should generate odeIdentifier and odeVersionId once on legacy v3 import', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/old_tema-10-ejemplo.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            const metadata = ydoc.getMap('metadata');
+            const odeId = metadata.get('odeIdentifier') as string;
+            const odeVersionId = metadata.get('odeVersionId') as string;
+            expect(typeof odeId).toBe('string');
+            expect(typeof odeVersionId).toBe('string');
+            expect(odeId).toMatch(/^\d{14}[A-Z0-9]{6}$/);
+            expect(odeVersionId).toMatch(/^\d{14}[A-Z0-9]{6}$/);
+
+            ydoc.destroy();
+        });
+
+        it('should round-trip odeId and odeVersionId through import -> generateOdeXml -> re-parse', async () => {
+            const fflate = await import('fflate');
+            const encoder = new TextEncoder();
+            const { generateOdeXml } = await import('../export/generators/OdeXmlGenerator');
+
+            const inputOdeId = '20251201123456ABCDEF';
+            const inputOdeVersionId = '20251201123456FEDCBA';
+
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeId</key><value>${inputOdeId}</value></odeResource>
+  <odeResource><key>odeVersionId</key><value>${inputOdeVersionId}</value></odeResource>
+  <odeResource><key>exe_version</key><value>4.0.0</value></odeResource>
+</odeResources>
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Round Trip</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-a</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const zipData = fflate.zipSync({
+                'content.xml': encoder.encode(contentXml),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(zipData);
+
+            const metadata = ydoc.getMap('metadata');
+            const exportedXml = generateOdeXml(
+                {
+                    title: 'Round Trip',
+                    author: '',
+                    language: 'en',
+                    theme: 'base',
+                    odeIdentifier: metadata.get('odeIdentifier') as string,
+                    odeVersionId: metadata.get('odeVersionId') as string,
+                },
+                [],
+            );
+
+            const odeIdMatch = exportedXml.match(/<key>odeId<\/key>\s*<value>([^<]+)<\/value>/);
+            const odeVersionIdMatch = exportedXml.match(/<key>odeVersionId<\/key>\s*<value>([^<]+)<\/value>/);
+            expect(odeIdMatch).not.toBeNull();
+            expect(odeVersionIdMatch).not.toBeNull();
+            expect(odeIdMatch![1]).toBe(inputOdeId);
+            expect(odeVersionIdMatch![1]).toBe(inputOdeVersionId);
+
+            ydoc.destroy();
+        });
+    });
+});
+
+describe('ElpxImporter - id preservation across v4 import', () => {
+    // Minimal v4 content.xml with two sibling root pages, each with one block + one iDevice.
+    // IDs use the canonical "Format A" shape produced by the workarea.
+    const PAGE_A = 'page-mp0fppwf-71v64kl4r';
+    const PAGE_B = 'page-mp0fppwf-71v64kl4s';
+    const BLOCK_A = 'block-mp0fppwf-blkaaaaaa';
+    const BLOCK_B = 'block-mp0fppwf-blkbbbbbb';
+    const IDEVICE_A = 'idevice-mp0fppwf-idvaaaaaa';
+    const IDEVICE_B = 'idevice-mp0fppwf-idvbbbbbb';
+
+    const buildV4ContentXml = (pageAId = PAGE_A, pageBId = PAGE_B): string => `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>ID Preservation Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>${pageAId}</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page A</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>${pageAId}</odePageId>
+        <odeBlockId>${BLOCK_A}</odeBlockId>
+        <blockName>BlockA</blockName>
+        <iconName></iconName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>${pageAId}</odePageId>
+            <odeBlockId>${BLOCK_A}</odeBlockId>
+            <odeIdeviceId>${IDEVICE_A}</odeIdeviceId>
+            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+            <htmlView><![CDATA[<p>Hello A with <a href="exe-node:${pageBId}">link</a></p>]]></htmlView>
+            <jsonProperties><![CDATA[{"ideviceId":"${IDEVICE_A}","textTextarea":"<p>Hello A</p>"}]]></jsonProperties>
+            <odeComponentsOrder>0</odeComponentsOrder>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+  <odeNavStructure>
+    <odePageId>${pageBId}</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page B</pageName>
+    <odeNavStructureOrder>1</odeNavStructureOrder>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>${pageBId}</odePageId>
+        <odeBlockId>${BLOCK_B}</odeBlockId>
+        <blockName>BlockB</blockName>
+        <iconName></iconName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>${pageBId}</odePageId>
+            <odeBlockId>${BLOCK_B}</odeBlockId>
+            <odeIdeviceId>${IDEVICE_B}</odeIdeviceId>
+            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+            <htmlView><![CDATA[<p>Hello B</p>]]></htmlView>
+            <jsonProperties><![CDATA[{"ideviceId":"${IDEVICE_B}","textTextarea":"<p>Hello B</p>"}]]></jsonProperties>
+            <odeComponentsOrder>0</odeComponentsOrder>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+    it('fresh-import preserves <odePageId> values verbatim', async () => {
+        const zipContents: Record<string, Uint8Array> = {
+            'content.xml': new TextEncoder().encode(buildV4ContentXml()),
+        };
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        await importer.importFromZipContents(zipContents, { clearExisting: true });
+
+        const navigation = ydoc.getArray('navigation');
+        expect(navigation.length).toBe(2);
+
+        const importedIds = new Set<string>();
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            importedIds.add(page.get('id') as string);
+            // pageId mirror field must also match
+            expect(page.get('pageId')).toBe(page.get('id'));
+        }
+        expect(importedIds.has(PAGE_A)).toBe(true);
+        expect(importedIds.has(PAGE_B)).toBe(true);
+
+        ydoc.destroy();
+    });
+
+    it('fresh-import preserves <odeBlockId> and <odeIdeviceId> values verbatim', async () => {
+        const zipContents: Record<string, Uint8Array> = {
+            'content.xml': new TextEncoder().encode(buildV4ContentXml()),
+        };
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        await importer.importFromZipContents(zipContents, { clearExisting: true });
+
+        const navigation = ydoc.getArray('navigation');
+        // Locate Page A by its preserved id
+        let pageA: Y.Map<unknown> | null = null;
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            if (page.get('id') === PAGE_A) {
+                pageA = page;
+                break;
+            }
+        }
+        expect(pageA).not.toBeNull();
+
+        const blocks = pageA!.get('blocks') as Y.Array<unknown>;
+        expect(blocks.length).toBe(1);
+        const block = blocks.get(0) as Y.Map<unknown>;
+        expect(block.get('id')).toBe(BLOCK_A);
+        expect(block.get('blockId')).toBe(BLOCK_A);
+
+        const components = block.get('components') as Y.Array<unknown>;
+        expect(components.length).toBe(1);
+        const component = components.get(0) as Y.Map<unknown>;
+        expect(component.get('id')).toBe(IDEVICE_A);
+        expect(component.get('ideviceId')).toBe(IDEVICE_A);
+
+        ydoc.destroy();
+    });
+
+    it('merge-mode collision remaps the page id and updates exe-node: links', async () => {
+        const ydoc = new Y.Doc();
+        const navigation = ydoc.getArray('navigation');
+
+        // Pre-populate the navigation with a page that collides with PAGE_B
+        ydoc.transact(() => {
+            const existing = new Y.Map();
+            existing.set('id', PAGE_B);
+            existing.set('pageId', PAGE_B);
+            existing.set('pageName', 'Pre-existing');
+            existing.set('title', 'Pre-existing');
+            existing.set('parentId', null);
+            existing.set('order', 0);
+            existing.set('blocks', new Y.Array());
+            navigation.push([existing]);
+        });
+
+        const zipContents: Record<string, Uint8Array> = {
+            'content.xml': new TextEncoder().encode(buildV4ContentXml()),
+        };
+
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromZipContents(zipContents, { clearExisting: false });
+
+        // navigation now has: pre-existing page + 2 imported pages
+        expect(navigation.length).toBe(3);
+
+        // Find the imported pages (skip the pre-existing one at index 0)
+        const importedAId = (navigation.get(1) as Y.Map<unknown>).get('id') as string;
+        const importedBId = (navigation.get(2) as Y.Map<unknown>).get('id') as string;
+
+        // Page A had no collision -> preserved verbatim
+        expect(importedAId).toBe(PAGE_A);
+
+        // Page B collided -> must have been regenerated
+        expect(importedBId).not.toBe(PAGE_B);
+        expect(importedBId.startsWith('page-')).toBe(true);
+
+        // The internal link inside Page A's iDevice that pointed at PAGE_B must
+        // have been rewritten to the new imported B id (not the pre-existing one).
+        const importedA = navigation.get(1) as Y.Map<unknown>;
+        const blocks = importedA.get('blocks') as Y.Array<unknown>;
+        const block = blocks.get(0) as Y.Map<unknown>;
+        const components = block.get('components') as Y.Array<unknown>;
+        const component = components.get(0) as Y.Map<unknown>;
+        const htmlView = component.get('htmlView') as string;
+
+        expect(htmlView).toContain(`exe-node:${importedBId}`);
+        expect(htmlView).not.toContain(`exe-node:${PAGE_B}"`);
+
+        ydoc.destroy();
+    });
+
+    it('legacy v3 contentv3.xml path still regenerates page IDs', async () => {
+        // Legacy IDs are short non-namespaced strings; they collide trivially across
+        // documents, so the v3 path must keep regenerating. This pins the v3/v4 boundary.
+        const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Legacy"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+        const zipContents: Record<string, Uint8Array> = {
+            'contentv3.xml': new TextEncoder().encode(legacyXml),
+        };
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromZipContents(zipContents, { clearExisting: true });
+
+        const navigation = ydoc.getArray('navigation');
+        expect(navigation.length).toBeGreaterThan(0);
+        const page = navigation.get(0) as Y.Map<unknown>;
+        const id = page.get('id') as string;
+
+        // The legacy parser uses ids like "page-1" / "node-..." internally;
+        // the importer must replace them with freshly generated namespaced ids.
+        expect(id.startsWith('page-')).toBe(true);
+        // Generated ids include the timestamp segment, so the id is longer than "page-1".
+        expect(id.length).toBeGreaterThan('page-1'.length + 4);
+
+        ydoc.destroy();
+    });
+});
+
+describe('ElpxImporter - remapInternalPageLinks prefix-collision safety', () => {
+    it('does not partially remap when one page id is a prefix of another (page-1 vs page-10)', async () => {
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        // Two pages with prefix-colliding short ids; page-1 carries a link to page-10.
+        // After a merge-mode collision both ids get remapped via idRemap. The link
+        // must remap to the new <page-10> id verbatim -- not to the new <page-1> id
+        // plus a trailing "0", which is what a naive alternation regex produces.
+        const buildContent = () => `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Prefix collision</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-1</odePageId>
+  <pageName>Page 1</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-1</odeBlockId>
+      <blockName>Text</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>idevice-1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+          <htmlView>&lt;p&gt;&lt;a href="exe-node:page-10"&gt;Go to page 10&lt;/a&gt;&lt;/p&gt;</htmlView>
+          <odeComponentOrder>0</odeComponentOrder>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+<odeNavStructure>
+  <odePageId>page-10</odePageId>
+  <pageName>Page 10</pageName>
+  <odeNavStructureOrder>1</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zipData = fflate.zipSync({ 'content.xml': encoder.encode(buildContent()) });
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        // First import preserves page-1 and page-10 verbatim (fresh doc, no collision).
+        await importer.importFromBuffer(zipData, { clearExisting: true });
+        // Second import collides on both ids -> both get remapped, link must follow.
+        await importer.importFromBuffer(zipData, { clearExisting: false });
+
+        const navigation = ydoc.getArray('navigation');
+        const idsByName = new Map<string, string>();
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            idsByName.set((page.get('pageName') ?? page.get('title')) as string, page.get('id') as string);
+        }
+        // Sanity: first import kept the originals, second created two new ids -> 4 pages.
+        expect(navigation.length).toBe(4);
+
+        // Find the htmlView that originated from the SECOND import (its links must
+        // have been remapped). It's on the remapped "Page 1" -- not on the original.
+        let remappedLink: string | null = null;
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            const pageId = page.get('id') as string;
+            if (pageId === 'page-1') continue; // skip the originals from first import
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            for (let j = 0; j < (blocks?.length ?? 0); j++) {
+                const block = blocks.get(j) as Y.Map<unknown>;
+                const components = block.get('components') as Y.Array<unknown>;
+                for (let k = 0; k < (components?.length ?? 0); k++) {
+                    const comp = components.get(k) as Y.Map<unknown>;
+                    const html = comp.get('htmlView') as string | undefined;
+                    if (html?.includes('exe-node:')) {
+                        remappedLink = html;
+                    }
+                }
+            }
+        }
+        expect(remappedLink).not.toBeNull();
+
+        // Find the second-import id for page-10 (not equal to the original "page-10").
+        const newPage10Ids: string[] = [];
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            const id = page.get('id') as string;
+            const name = page.get('pageName') as string;
+            if (name === 'Page 10' && id !== 'page-10') newPage10Ids.push(id);
+        }
+        expect(newPage10Ids.length).toBe(1);
+        const newPage10 = newPage10Ids[0];
+
+        // Bug pinned: the link must point at the new page-10 id, exactly.
+        expect(remappedLink).toContain(`exe-node:${newPage10}`);
+        // ...and must NOT contain a partial remap leaving a stray "0" tail.
+        // A naive alternation regex would produce e.g. exe-node:<new-page-1>0.
+        const stray = /exe-node:[a-z0-9-]+0(?![a-z0-9-])/i;
+        const matches = remappedLink!.match(stray);
+        if (matches) {
+            const m = matches[0];
+            // Acceptable only if it equals the legitimate newPage10 link itself.
+            expect(m).toBe(`exe-node:${newPage10}`);
+        }
+
+        ydoc.destroy();
+    });
+
+    it('rewrites embedded ideviceId in jsonProperties when the component is regenerated on collision', async () => {
+        // Many iDevices serialise their own id inside jsonProperties (text/quiz
+        // self-reference). When merge-mode forces the component to regenerate
+        // its id, the JSON payload must follow -- otherwise the workarea would
+        // try to resolve the old id and silently fail.
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>JSON remap</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-jp-1</odePageId>
+  <pageName>Page</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-jp-1</odeBlockId>
+      <blockName>Block</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>idevice-jp-1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+          <htmlView>&lt;p&gt;hi&lt;/p&gt;</htmlView>
+          <jsonProperties>{"ideviceId":"idevice-jp-1","textTextarea":"&lt;p&gt;hi&lt;/p&gt;"}</jsonProperties>
+          <odeComponentOrder>0</odeComponentOrder>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zip = fflate.zipSync({ 'content.xml': encoder.encode(xml) });
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        // First import keeps idevice-jp-1 verbatim (fresh doc, no collision).
+        await importer.importFromBuffer(zip, { clearExisting: true });
+        // Second import collides on idevice-jp-1 -> regenerate.
+        await importer.importFromBuffer(zip, { clearExisting: false });
+
+        const nav = ydoc.getArray('navigation');
+        // Locate the second-import copy of the component (its outer id is NOT
+        // 'idevice-jp-1' because it was regenerated).
+        let newCompId: string | null = null;
+        let jsonProps: string | null = null;
+        for (let i = 0; i < nav.length; i++) {
+            const page = nav.get(i) as Y.Map<unknown>;
+            if (page.get('id') === 'page-jp-1') continue; // skip first-import originals
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            if (!blocks?.length) continue;
+            const block = blocks.get(0) as Y.Map<unknown>;
+            const comps = block.get('components') as Y.Array<unknown>;
+            const comp = comps.get(0) as Y.Map<unknown>;
+            const compId = comp.get('id') as string;
+            if (compId !== 'idevice-jp-1') {
+                newCompId = compId;
+                jsonProps = comp.get('jsonProperties') as string;
+            }
+        }
+        expect(newCompId).not.toBeNull();
+        expect(jsonProps).not.toBeNull();
+        const parsed = JSON.parse(jsonProps as string);
+        // Embedded ideviceId now points at the FRESH id, not the stale XML one.
+        expect(parsed.ideviceId).toBe(newCompId);
+        expect(parsed.ideviceId).not.toBe('idevice-jp-1');
+
+        ydoc.destroy();
+    });
+
+    it('handles multi-level prefix nesting (page-1, page-10, page-100) without stray remaps', async () => {
+        // Three ids where each is a prefix of the next. Belt-and-suspenders:
+        // descending-length sort puts page-100 before page-10 before page-1 in
+        // the alternation; the (?![A-Za-z0-9_-]) lookahead would still reject a
+        // shorter match inside a longer id even if the sort regressed.
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Triple prefix</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>page-1</odePageId>
+  <pageName>Page 1</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-multi-1</odeBlockId>
+      <blockName>Text</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>idevice-multi-1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+          <htmlView>&lt;p&gt;&lt;a href="exe-node:page-100"&gt;to 100&lt;/a&gt; &lt;a href="exe-node:page-10"&gt;to 10&lt;/a&gt;&lt;/p&gt;</htmlView>
+          <odeComponentOrder>0</odeComponentOrder>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+<odeNavStructure>
+  <odePageId>page-10</odePageId>
+  <pageName>Page 10</pageName>
+  <odeNavStructureOrder>1</odeNavStructureOrder>
+</odeNavStructure>
+<odeNavStructure>
+  <odePageId>page-100</odePageId>
+  <pageName>Page 100</pageName>
+  <odeNavStructureOrder>2</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zip = fflate.zipSync({ 'content.xml': encoder.encode(xml) });
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromBuffer(zip, { clearExisting: true });
+        // Second import forces full remap of all three ids.
+        await importer.importFromBuffer(zip, { clearExisting: false });
+
+        const nav = ydoc.getArray('navigation');
+        // Map "Page N" -> the FRESH id (the one that's not equal to the original).
+        const fresh = new Map<string, string>();
+        for (let i = 0; i < nav.length; i++) {
+            const page = nav.get(i) as Y.Map<unknown>;
+            const id = page.get('id') as string;
+            const name = page.get('pageName') as string;
+            if (id !== `page-${name.replace('Page ', '')}`) fresh.set(name, id);
+        }
+        expect(fresh.size).toBe(3);
+
+        // Find the remapped htmlView on the second-import copy of page-1.
+        let remapped: string | null = null;
+        for (let i = 0; i < nav.length; i++) {
+            const page = nav.get(i) as Y.Map<unknown>;
+            if (page.get('pageName') !== 'Page 1') continue;
+            if (page.get('id') === 'page-1') continue; // skip the original (first import)
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            const block = blocks.get(0) as Y.Map<unknown>;
+            const comps = block.get('components') as Y.Array<unknown>;
+            const html = (comps.get(0) as Y.Map<unknown>).get('htmlView') as string;
+            remapped = html;
+        }
+        expect(remapped).not.toBeNull();
+
+        // Each link must point at the EXACT fresh id of its target page --
+        // no stray "0" or "00" tail from a shorter-prefix partial match.
+        expect(remapped).toContain(`exe-node:${fresh.get('Page 100')}`);
+        expect(remapped).toContain(`exe-node:${fresh.get('Page 10')}`);
+        expect(remapped).not.toContain(`exe-node:${fresh.get('Page 1')}0`);
+        expect(remapped).not.toContain(`exe-node:${fresh.get('Page 10')}0`);
+
+        ydoc.destroy();
+    });
+
+    describe('legacy UDL iDevice with reference-based fields (issue #2159)', () => {
+        let udlTestDir: string;
+
+        beforeEach(() => {
+            udlTestDir = path.join('/tmp', `elp-udl-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+            if (!existsSync(udlTestDir)) {
+                mkdirSync(udlTestDir, { recursive: true });
+            }
+        });
+
+        afterEach(() => {
+            if (existsSync(udlTestDir)) {
+                rmSync(udlTestDir, { recursive: true, force: true });
+            }
+        });
+
+        // Collect every imported component together with its owning page title.
+        function collectComponents(ydoc: Y.Doc): { pageTitle: string; type: string; htmlView: string }[] {
+            const out: { pageTitle: string; type: string; htmlView: string }[] = [];
+            const nav = ydoc.getArray('navigation');
+            for (let i = 0; i < nav.length; i++) {
+                const page = nav.get(i) as Y.Map<unknown>;
+                const pageTitle = (page.get('title') as string) || '';
+                const blocks = page.get('blocks') as Y.Array<unknown> | undefined;
+                if (!blocks) continue;
+                for (let b = 0; b < blocks.length; b++) {
+                    const block = blocks.get(b) as Y.Map<unknown>;
+                    const comps = block.get('components') as Y.Array<unknown> | undefined;
+                    if (!comps) continue;
+                    for (let c = 0; c < comps.length; c++) {
+                        const comp = comps.get(c) as Y.Map<unknown>;
+                        out.push({
+                            pageTitle,
+                            type: (comp.get('type') as string) || '',
+                            htmlView: (comp.get('htmlView') as string) || '',
+                        });
+                    }
+                }
+            }
+            return out;
+        }
+
+        it('imports the Diario node with its own content, not another node duplicated', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/old_epvelp_udl.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(udlTestDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+            expect(result.pages).toBeGreaterThan(0);
+            expect(result.components).toBeGreaterThan(0);
+
+            const components = collectComponents(ydoc);
+            const allHtml = components.map(c => c.htmlView).join('\n');
+
+            // Field 33 content. Before the fix, DefaultHandler overwrote it with the
+            // content of an unrelated field (36), so this text was never imported.
+            expect(allHtml).toContain('Ides cubrir os apartados da Fase 2');
+
+            // The component holding field 33 content must not also carry field 36 content
+            // (the duplication reported in the issue).
+            const withField33 = components.filter(c => c.htmlView.includes('Ides cubrir os apartados da Fase 2'));
+            expect(withField33.length).toBeGreaterThan(0);
+            for (const comp of withField33) {
+                expect(comp.htmlView).not.toContain('Agora que xa sabedes cal é o reto');
+                expect(comp.type).toBe('udl-content');
+            }
+
+            ydoc.destroy();
+        });
+    });
+});
+
+describe('ElpxImporter - pass score', () => {
+    const buildContentXml = (passScoreProperty: string): string => `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Pass Score Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+${passScoreProperty}
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page-1</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odePagStructures></odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+    const importMetadata = async (property: string, key: string): Promise<unknown> => {
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        await importer.importFromZipContents(
+            { 'content.xml': new TextEncoder().encode(buildContentXml(property)) },
+            { clearExisting: true },
+        );
+
+        const value = ydoc.getMap('metadata').get(key);
+        ydoc.destroy();
+        return value;
+    };
+    const importPassScore = (property: string) => importMetadata(property, 'passScore');
+    const importEveryActivity = (property: string) => importMetadata(property, 'passScoreEveryActivity');
+
+    it('reads pp_passScore as a number', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>7.5</value></odeProperty>')).toBe(
+            7.5,
+        );
+    });
+
+    it('keeps a stored zero rather than treating it as unset', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>0</value></odeProperty>')).toBe(0);
+    });
+
+    it('clamps a value outside the 0-10 domain', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>42</value></odeProperty>')).toBe(10);
+    });
+
+    it('falls back to the default when the file predates the property', async () => {
+        expect(await importPassScore('')).toBe(5);
+    });
+
+    it('falls back to the default when the stored value is not a number', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>abc</value></odeProperty>')).toBe(5);
+    });
+
+    it.each([
+        ['true', true],
+        ['false', false],
+    ])('reads pp_passScoreEveryActivity "%s"', async (stored, expected) => {
+        expect(
+            await importEveryActivity(
+                `  <odeProperty><key>pp_passScoreEveryActivity</key><value>${stored}</value></odeProperty>`,
+            ),
+        ).toBe(expected);
+    });
+
+    it('leaves the every-activity rule off when the file predates it', async () => {
+        expect(await importEveryActivity('')).toBe(false);
     });
 });

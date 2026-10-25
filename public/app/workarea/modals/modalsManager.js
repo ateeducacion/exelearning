@@ -1,8 +1,6 @@
 import ModalAlert from './modals/generic/modalAlert.js';
 import ModalConfirm from './modals/generic/modalConfirm.js';
 import ModalInfo from './modals/generic/modalInfo.js';
-import ModalUploadGoogleDrive from './modals/pages/modalUploadGoogleDrive.js';
-import ModalUploadDropbox from './modals/pages/modalUploadDropbox.js';
 import ModalFileManager from './modals/pages/modalFileManager.js';
 import ModalOdeBrokenLinks from './modals/pages/modalOdeBrokenLinks.js';
 import ModalOdeUsedFiles from './modals/pages/modalOdeUsedFiles.js';
@@ -15,6 +13,7 @@ import ModalLegalNotes from './modals/pages/modalLegalNotes.js';
 import ModalAbout from './modals/pages/modalAbout.js';
 import ModalEasterEgg from './modals/pages/modalEasterEgg.js';
 import ModalProperties from './modals/pages/modalProperties.js';
+import ModalChangePassword from './modals/pages/modalChangePassword.js';
 import ModalOpenUserOdeFiles from './modals/pages/modalOpenUserOdeFiles.js';
 import ModalTemplateSelection from './modals/pages/modalTemplateSelection.js';
 import ModalSessionLogout from './modals/pages/modalSessionLogout.js';
@@ -30,8 +29,6 @@ export default class ModalsManagement {
         this.alert = null;
         this.info = null;
         this.confirm = null;
-        this.uploadtodrive = null;
-        this.uploadtodropbox = null;
         this.filemanager = null;
         this.stylemanager = null;
         this.idevicemanager = null;
@@ -44,6 +41,7 @@ export default class ModalsManagement {
         this.about = null;
         this.easteregg = null;
         this.properties = null;
+        this.changepassword = null;
         this.openuserodefiles = null;
         this.templateselection = null;
         this.sessionlogout = null;
@@ -61,8 +59,6 @@ export default class ModalsManagement {
         this.alert = new ModalAlert(this);
         this.info = new ModalInfo(this);
         this.confirm = new ModalConfirm(this);
-        this.uploadtodrive = new ModalUploadGoogleDrive(this);
-        this.uploadtodropbox = new ModalUploadDropbox(this);
         this.filemanager = new ModalFileManager(this);
         this.stylemanager = new ModalStyleManager(this);
         this.idevicemanager = new ModalIdeviceManager(this);
@@ -75,6 +71,7 @@ export default class ModalsManagement {
         this.about = new ModalAbout(this);
         this.easteregg = new ModalEasterEgg(this);
         this.properties = new ModalProperties(this);
+        this.changepassword = new ModalChangePassword(this);
         this.openuserodefiles = new ModalOpenUserOdeFiles(this);
         this.templateselection = new ModalTemplateSelection(this);
         this.sessionlogout = new ModalSessionLogout(this);
@@ -92,8 +89,6 @@ export default class ModalsManagement {
         this.alert.behaviour();
         this.info.behaviour();
         this.confirm.behaviour();
-        this.uploadtodrive.behaviour();
-        this.uploadtodropbox.behaviour();
         this.filemanager.behaviour();
         this.stylemanager.behaviour();
         this.idevicemanager.behaviour();
@@ -106,6 +101,7 @@ export default class ModalsManagement {
         this.about.behaviour();
         this.easteregg.behaviour();
         this.properties.behaviour();
+        this.changepassword.behaviour();
         this.openuserodefiles.behaviour();
         this.templateselection.behaviour();
         this.sessionlogout.behaviour();
@@ -125,8 +121,6 @@ export default class ModalsManagement {
             this.alert,
             this.info,
             this.confirm,
-            this.uploadtodrive,
-            this.uploadtodropbox,
             this.filemanager,
             this.stylemanager,
             this.idevicemanager,
@@ -139,6 +133,7 @@ export default class ModalsManagement {
             this.about,
             this.easteregg,
             this.properties,
+            this.changepassword,
             this.openuserodefiles,
             this.templateselection,
             this.sessionlogout,

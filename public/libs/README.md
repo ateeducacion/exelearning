@@ -11,20 +11,14 @@
 *   ORM: Kysely
     *   Copyright: Sami Koskimäki
     *   License: MIT
-*   Package: @babel/core
-    *   Copyright: The Babel Team
-    *   License: MIT
-*   Package: @babel/preset-env
-    *   Copyright: The Babel Team
-    *   License: MIT
 *   Package: @biomejs/biome
     *   Copyright: Emanuele Stoppa
     *   License: MIT OR Apache-2.0
+*   Package: @codecov/bundle-analyzer
+    *   Copyright: Codecov
+    *   License: MIT
 *   Package: @electron/notarize
     *   Copyright: Samuel Attard
-    *   License: MIT
-*   Package: @elysiajs/cookie
-    *   Copyright: saltyAom
     *   License: MIT
 *   Package: @elysiajs/cors
     *   Copyright: saltyAom
@@ -38,14 +32,29 @@
 *   Package: @elysiajs/swagger
     *   Copyright: saltyAom
     *   License: MIT
+*   Package: @material-symbols/svg-400
+    *   Copyright: Google LLC
+    *   License: Apache-2.0
+*   Package: @mathjax/mathjax-dsfont-font-extension
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
+*   Package: @mathjax/mathjax-mhchem-font-extension
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
+*   Package: @mathjax/mathjax-newcm-font
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
+*   Package: @mathjax/src
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
 *   Package: @playwright/test
     *   Copyright: Microsoft Corporation
     *   License: Apache-2.0
 *   Package: @sinclair/typebox
     *   Copyright: sinclairzx81
     *   License: MIT
-*   Package: @types/bcryptjs
-    *   Copyright: Microsoft Corporation
+*   Package: @types/css-tree
+    *   Copyright: Erik Källén, Jason Kratzer
     *   License: MIT
 *   Package: @types/fs-extra
     *   Copyright: Alan Agius, midknight41, Brendan Forster
@@ -59,9 +68,6 @@
 *   Package: @types/nunjucks
     *   Copyright: Matthew Burstein
     *   License: MIT
-*   Package: @types/uuid
-    *   Copyright: Microsoft Corporation
-    *   License: MIT
 *   Package: @types/ws
     *   Copyright: Paul Loyd, Margus Lamp, Philippe D'Alva
     *   License: MIT
@@ -69,23 +75,35 @@
     *   Copyright: Anthony Fu
     *   License: MIT
 *   Package: @vitest/ui
-    *   Copyright: 2021-Present VoidZero Inc. and Vitest contributors
+    *   Copyright: VoidZero Inc. and Vitest contributors
     *   License: MIT
 *   Package: @xmldom/xmldom
-    *   Copyright: - present Christopher J. Brody and other contributors, as listed in: https://github.com/xmldom/xmldom/graphs/contributors
+    *   Copyright: Christopher J. Brody and other contributors
+    *   License: MIT
+*   Package: abcjs
+    *   Copyright: Paul Rosen
     *   License: MIT
 *   Package: bcryptjs
     *   Copyright: Daniel Wirtz
     *   License: BSD-3-Clause
-*   Package: blockly
-    *   Copyright: Google LLC and Blockly contributors
-    *   License: Apache-2.0
+*   Package: bootstrap
+    *   Copyright: The Bootstrap Authors
+    *   License: MIT
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
     *   License: MIT
+*   Package: css-tree
+    *   Copyright: Roman Dvornov
+    *   License: MIT
+*   Package: dompurify
+    *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
+    *   License: (MPL-2.0 OR Apache-2.0)
 *   Package: dotenv
-    *   Copyright: 2015, Scott Motte
+    *   Copyright: Scott Motte
     *   License: BSD-2-Clause
+*   Package: edicuatex
+    *   Copyright: Juan José de Haro
+    *   License: AGPL-3.0-or-later
 *   Package: electron
     *   Copyright: Electron Community
     *   License: MIT
@@ -98,14 +116,26 @@
 *   Package: esbuild
     *   Copyright: Evan Wallace
     *   License: MIT
+*   Package: fabric
+    *   Copyright: Juriy Zaytsev
+    *   License: MIT
 *   Package: fast-xml-parser
     *   Copyright: Amit Gupta
+    *   License: MIT
+*   Package: fflate
+    *   Copyright: Arjun Barrett
     *   License: MIT
 *   Package: fs-extra
     *   Copyright: JP Richardson
     *   License: MIT
+*   Package: fzstd
+    *   Copyright: Arjun Barrett
+    *   License: MIT
 *   Package: happy-dom
     *   Copyright: David Ortner
+    *   License: MIT
+*   Package: html2canvas
+    *   Copyright: Niklas von Hertzen
     *   License: MIT
 *   Package: http-proxy-middleware
     *   Copyright: Steven Chim
@@ -113,11 +143,20 @@
 *   Package: i18n
     *   Copyright: Marcus Spiegel
     *   License: MIT
+*   Package: interactjs
+    *   Copyright: Taye Adeyemi
+    *   License: MIT
 *   Package: ioredis
     *   Copyright: Zihua Li
     *   License: MIT
 *   Package: jose
     *   Copyright: Filip Skokan
+    *   License: MIT
+*   Package: jquery
+    *   Copyright: OpenJS Foundation and other contributors
+    *   License: MIT
+*   Package: jquery-ui
+    *   Copyright: OpenJS Foundation and other contributors
     *   License: MIT
 *   Package: jsdom
     *   Copyright: Elijah Insua, Domenic Denicola, Sebastian Mayr
@@ -134,8 +173,8 @@
 *   Package: lib0
     *   Copyright: Kevin Jahns
     *   License: MIT
-*   Package: mathjax-full
-    *   Copyright: owner or entity authorized by
+*   Package: mathjax
+    *   Copyright: MathJax Consortium
     *   License: Apache-2.0
 *   Package: mermaid
     *   Copyright: Knut Sveidqvist
@@ -149,15 +188,21 @@
 *   Package: nunjucks
     *   Copyright: James Long
     *   License: BSD-2-Clause
+*   Package: parse5
+    *   Copyright: Ivan Nikulin
+    *   License: MIT
 *   Package: pdfjs-dist
-    *   Copyright: owner or entity authorized by
+    *   Copyright: Mozilla Foundation
     *   License: Apache-2.0
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
     *   License: MIT
-*   Package: tikzjax
-    *   Copyright: Jim Fowler (kisonecat)
-    *   License: LPPL-1.3c
+*   Package: scorm-again
+    *   Copyright: Jonathan Putney
+    *   License: MIT
+*   Package: showdown
+    *   Copyright: Estevão Santos
+    *   License: MIT
 *   Package: typescript
     *   Copyright: Microsoft Corp.
     *   License: Apache-2.0
@@ -185,9 +230,6 @@
 
 ## Client-side libraries
 
-*   Files: /public/app/common/edicuatex/\* (except js/DOMPurify/*)
-    *   Copyright: Juan José de Haro
-    *   License: CC-BY-SA-4.0
 *   Files: /public/app/common/edicuatex/js/DOMPurify\*
     *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
     *   License: Apache License 2.0 / Mozilla Public License Version 2.0
@@ -226,6 +268,9 @@
 *   Files: /public/app/common/mindmaps/\*
     *   Copyright: David Richard
     *   License: AGPL V3
+    *   Note: [mindmaps](https://www.mindmaps.app/) is included in eXeLearning
+        with the developer's consent. For a different use of mindmaps, read
+        its LICENSE file or contact its author.
 *   File: /public/app/common/scorm/SCORM\_API\_wrapper.js
     *   Copyright: Philip Hutchison
     *   License: MIT
@@ -246,17 +291,51 @@
 *   Files: /public/files/perm/idevices/\*/export/html2canvas.js
     *   Copyright: Niklas von Hertzen
     *   License: MIT
+*   Files: /public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.{js,css}
+    *   Copyright: Andre Rinas
+    *   License: MIT
+    *   Note: eXeLearning-patched fork of SimpleLightbox 2.10.3 (array `captionsData`, title/author/license caption links, SDWEB CSS block). Kept in git, outside the npm vendor pipeline, until the patch is ported to an upstream release.
+*   File: public/files/perm/idevices/base/3dmol/3dmol-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/electrical-circuits/electrical-circuits-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/fonts/* (Open Sans Font)
     *   Copyright: The Open Sans Project Authors. Designed by Steve Matteson
     *   License: SIL Open Font License version 1.1
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/images/\*
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/lomloe/lomloe-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/magnifier/export/mojomagnify.js
+    *   Copyright: Jacob Seidelin and other contributors
+    *   License: MIT
+*   File: public/files/perm/idevices/base/markdown-text/markdown-text-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/scrambled-list/export/scrambled-list.js and /public/files/perm/idevices/base/interactive-video/export/interactive-video.js
     *   HTML5 Sortable jQuery Plugin copyright: Ali Farhadi (maintained by Alexandru Badiu and Lukas Oppermann)
     *   License: MIT
-*   Files: /public/files/perm/idevices/base/magnifier/export/mojomagnify.js
-    *   Copyright: Jacob Seidelin and other contributors
+*   File: public/files/perm/idevices/base/slide/slide-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/three-d-viewer/three-d-viewer-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/three-d-viewer/export/three.module.min.js, ./OrbitControls.js and ./STLLoader.js
+    *   Three.js (Three.js Authors)
+    *   License: MIT
+*   File: /public/files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js
+    *   model-viewer (Google)
+    *   License: Apache License 2.0
+*   File: public/files/perm/idevices/base/three-sixty-viewer/three-sixty-viewer-icon.svg
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/three-sixty-viewer/export/three.min.js and ./OrbitControls.js
+    *   Three.js (Three.js Authors)
     *   License: MIT
 *   Files: /public/files/perm/themes/flux/fonts/* (Fredoka Font)
     *   Copyright: Milena Brandao
@@ -288,6 +367,11 @@
 *   Files: /public/libs/fflate/\*
     *   Copyright: 101arrowz
     *   License: MIT
+*   Files: /public/libs/fzstd/\*
+    *   Copyright: 101arrowz
+    *   License: MIT
+    *   Note: also vendored (byte-identical) by the LOMLOE/DigCompEdu dataset
+        compression work; the static build uses it to decode zstd payloads.
 *   File: /public/libs/interact/\*
     *   Copyright: Taye Adeyemi
     *   License: MIT
@@ -305,9 +389,6 @@
     *   License: MIT
 *   Files: /public/libs/showdown/* (Showdown v2)
     *   Copyright: ShowdownJS
-    *   License: MIT
-*   Files: /public/libs/simplelightbox/\*
-    *   Copyright: Andre Rinas
     *   License: MIT
 *   Files: /public/libs/tinymce\_5/\*
     *   Copyright: Tiny Technologies Inc.
@@ -342,6 +423,21 @@
 *   Files: /public/style/workarea/fonts/\Inter*
     *   Copyright: The Inter Project Authors. Designed by Rasmus Andersson
     *   License: SIL Open Font License version 1.1
-*   Files: /public/files/perm/idevices/base/3dmol/export/3Dmol-min.js and /public/files/perm/idevices/base/3dmol/edition/3Dmol-min.js
+*   File: /public/files/perm/idevices/base/3dmol/export/3Dmol-min.js (3Dmol.js)
     *   Copyright: 2014, University of Pittsburgh and contributors
-    *   License: BSD-3-Clause (https://github.com/3dmol/3Dmol.js/blob/master/LICENSE)
+    *   License: BSD-3-Clause
+*   Files: /public/files/perm/idevices/base/electrical-circuits/edition/tikzjax.js
+    *   Copyright: Jim Fowler (kisonecat)
+    *   License: LPPL-1.3c
+*   Files: /public/files/perm/idevices/base/electrical-circuits/edition/fonts/*.ttf and /public/files/perm/idevices/base/electrical-circuits/export/fonts/*.ttf (BaKoMa Fonts Collection)
+    *   Copyright: 1994, 1995, Basil K. Malyshev
+    *   License: BaKoMa Fonts Licence
+*   Package: circuitikz
+    *   Copyright: Massimo Redaelli, Stefan Erhardt, Stefan Lindner, Romano Giannetti
+    *   License: LPPL / GPL
+*   Package: amsmath
+    *   Copyright: American Mathematical Society and LaTeX3 Project
+    *   License: LPPL-1.3c
+*   Package: amssymb / amsfonts
+    *   Copyright: American Mathematical Society
+    *   License: SIL Open Font License

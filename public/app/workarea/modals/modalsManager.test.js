@@ -2,8 +2,6 @@ import ModalsManagement from './modalsManager.js';
 import ModalAlert from './modals/generic/modalAlert.js';
 import ModalConfirm from './modals/generic/modalConfirm.js';
 import ModalInfo from './modals/generic/modalInfo.js';
-import ModalUploadGoogleDrive from './modals/pages/modalUploadGoogleDrive.js';
-import ModalUploadDropbox from './modals/pages/modalUploadDropbox.js';
 import ModalFileManager from './modals/pages/modalFileManager.js';
 import ModalOdeBrokenLinks from './modals/pages/modalOdeBrokenLinks.js';
 import ModalOdeUsedFiles from './modals/pages/modalOdeUsedFiles.js';
@@ -16,6 +14,7 @@ import ModalLegalNotes from './modals/pages/modalLegalNotes.js';
 import ModalAbout from './modals/pages/modalAbout.js';
 import ModalEasterEgg from './modals/pages/modalEasterEgg.js';
 import ModalProperties from './modals/pages/modalProperties.js';
+import ModalChangePassword from './modals/pages/modalChangePassword.js';
 import ModalOpenUserOdeFiles from './modals/pages/modalOpenUserOdeFiles.js';
 import ModalTemplateSelection from './modals/pages/modalTemplateSelection.js';
 import ModalSessionLogout from './modals/pages/modalSessionLogout.js';
@@ -29,8 +28,6 @@ import { GlobalSearchModal } from '../../search/index.js';
 vi.mock('./modals/generic/modalAlert.js');
 vi.mock('./modals/generic/modalConfirm.js');
 vi.mock('./modals/generic/modalInfo.js');
-vi.mock('./modals/pages/modalUploadGoogleDrive.js');
-vi.mock('./modals/pages/modalUploadDropbox.js');
 vi.mock('./modals/pages/modalFileManager.js');
 vi.mock('./modals/pages/modalOdeBrokenLinks.js');
 vi.mock('./modals/pages/modalOdeUsedFiles.js');
@@ -43,6 +40,7 @@ vi.mock('./modals/pages/modalLegalNotes.js');
 vi.mock('./modals/pages/modalAbout.js');
 vi.mock('./modals/pages/modalEasterEgg.js');
 vi.mock('./modals/pages/modalProperties.js');
+vi.mock('./modals/pages/modalChangePassword.js');
 vi.mock('./modals/pages/modalOpenUserOdeFiles.js');
 vi.mock('./modals/pages/modalTemplateSelection.js');
 vi.mock('./modals/pages/modalSessionLogout.js');
@@ -93,8 +91,6 @@ describe('ModalsManagement', () => {
       expect(ModalAlert).toHaveBeenCalledWith(modalsManager);
       expect(ModalInfo).toHaveBeenCalledWith(modalsManager);
       expect(ModalConfirm).toHaveBeenCalledWith(modalsManager);
-      expect(ModalUploadGoogleDrive).toHaveBeenCalledWith(modalsManager);
-      expect(ModalUploadDropbox).toHaveBeenCalledWith(modalsManager);
       expect(ModalFileManager).toHaveBeenCalledWith(modalsManager);
       expect(ModalStyleManager).toHaveBeenCalledWith(modalsManager);
       expect(ModalIdeviceManager).toHaveBeenCalledWith(modalsManager);
@@ -133,7 +129,7 @@ describe('ModalsManagement', () => {
     it('should return an array of all modals', () => {
       modalsManager.init();
       const list = modalsManager.list();
-      expect(list).toHaveLength(24); // GlobalSearch is 24th
+      expect(list).toHaveLength(23); // GlobalSearch is last
       expect(list).toContain(modalsManager.alert);
       expect(list).toContain(modalsManager.share);
       expect(list).toContain(modalsManager.printpreview);

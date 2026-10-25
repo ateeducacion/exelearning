@@ -100,11 +100,19 @@ class ComponentImporter {
       blockData.id = newBlockId;
       blockData.blockId = newBlockId;
 
-      // Generate new IDs for components
+      // Generate new IDs for components. When jsonProperties carries an
+      // embedded ideviceId (text/quiz iDevices store it for self-reference),
+      // rewrite it to the fresh id so the Y.Map field and the JSON payload
+      // stay in sync. See #1786.
       for (const comp of blockData.components) {
+        const originalCompId = comp.id;
         const newCompId = this.generateId('idevice');
         comp.id = newCompId;
         comp.ideviceId = newCompId;
+        if (originalCompId && comp.properties && typeof comp.properties === 'object'
+            && comp.properties.ideviceId === originalCompId) {
+          comp.properties.ideviceId = newCompId;
+        }
       }
 
       // Insert block into target page
@@ -271,7 +279,13 @@ class ComponentImporter {
       properties = this.convertAssetPathsInObject(properties);
     }
 
-    return {
+    // Parse component-level structure properties (visibility, teacherOnly, cssClass).
+    // These live in <odeComponentsProperties> as <odeComponentsProperty> key/value
+    // pairs (NOT in jsonProperties). Without this, a re-imported .block/.idevice
+    // lost "Visible in export", "Teacher only" and custom CSS classes (issue #1991).
+    const structureProperties = this.parseComponentStructureProperties(compNode);
+
+    const compData = {
       id: compId,
       ideviceId: compId,
       ideviceType: ideviceType,
@@ -281,6 +295,43 @@ class ComponentImporter {
       htmlView: htmlView,
       properties: properties,
     };
+
+    if (structureProperties) {
+      compData.structureProperties = structureProperties;
+    }
+
+    return compData;
+  }
+
+  /**
+   * Parse component structure properties from an <odeComponent> element.
+   *
+   * Reads the <odeComponentsProperty> key/value pairs inside
+   * <odeComponentsProperties>. Returns undefined when none are present so callers
+   * can skip creating an empty properties map.
+   *
+   * @param {Element} compNode - odeComponent element
+   * @returns {Object|undefined} Map of structure property key -> string value
+   */
+  parseComponentStructureProperties(compNode) {
+    const container = compNode.querySelector('odeComponentsProperties');
+    if (!container) {
+      return undefined;
+    }
+
+    const propNodes = container.querySelectorAll('odeComponentsProperty');
+    if (!propNodes || propNodes.length === 0) {
+      return undefined;
+    }
+
+    const structureProperties = {};
+    for (const propNode of propNodes) {
+      const key = this.getTextContent(propNode, 'key');
+      if (!key) continue;
+      structureProperties[key] = this.getTextContent(propNode, 'value') || '';
+    }
+
+    return Object.keys(structureProperties).length > 0 ? structureProperties : undefined;
   }
 
   /**
@@ -428,6 +479,20 @@ class ComponentImporter {
       compMap.set('jsonProperties', JSON.stringify(compData.properties));
     }
 
+    // Store component-level structure properties (visibility, teacherOnly,
+    // cssClass) in the dedicated `properties` Y.Map, matching the full-page
+    // import path (createComponentMapFromApi) so the workarea and later exports
+    // pick them up (issue #1991).
+    if (compData.structureProperties && Object.keys(compData.structureProperties).length > 0) {
+      const propsMap = new this.Y.Map();
+      for (const [key, value] of Object.entries(compData.structureProperties)) {
+        if (value !== undefined && value !== null) {
+          propsMap.set(key, value);
+        }
+      }
+      compMap.set('properties', propsMap);
+    }
+
     return compMap;
   }
 
@@ -466,13 +531,22 @@ class ComponentImporter {
   }
 
   /**
-   * Generate a unique ID
+   * Generate a unique ID.
+   *
+   * Mirrors src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+   *
    * @param {string} prefix - ID prefix
    * @returns {string}
    */
   generateId(prefix) {
+    if (!prefix) {
+      throw new Error('generateId: prefix is required');
+    }
     const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substr(2, 9);
+    // Pad to a fixed 9-char suffix: `toString(36)` yields a variable-length
+    // tail, so without this the suffix is occasionally 8 chars. Mirrors
+    // src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+    const random = Math.random().toString(36).substring(2, 11).padEnd(9, '0');
     return `${prefix}-${timestamp}-${random}`;
   }
 }

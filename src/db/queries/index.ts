@@ -18,6 +18,8 @@ export {
     findOrCreateExternalUser,
     updateApiToken,
     findFirstUser,
+    updateUserRoles,
+    updateUserPassword,
 } from './users';
 
 // Project queries
@@ -26,6 +28,13 @@ export {
     findProjectById,
     findProjectByUuid,
     findProjectByPlatformId,
+    findOwnedProjectByPlatformBinding,
+    findProjectByPublicViewId,
+    generatePublicViewId,
+    setPublicViewEnabled,
+    setPublicViewEnabledByUuid,
+    regeneratePublicViewId,
+    regeneratePublicViewIdByUuid,
     findProjectWithOwner,
     findProjectByUuidWithOwner,
     getProjectCollaborators,
@@ -90,6 +99,7 @@ export {
     createSnapshot,
     updateSnapshot,
     upsertSnapshot,
+    replaceSnapshotIfVersion,
     deleteSnapshot,
     snapshotExists,
     findUpdatesByProjectId,
@@ -98,6 +108,7 @@ export {
     deleteAllUpdates,
     deleteUpdatesBefore,
     getLatestVersion,
+    getDocumentVersion,
     countUpdates,
     documentExists,
     saveFullState,

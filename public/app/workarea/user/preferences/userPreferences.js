@@ -1,3 +1,10 @@
+import {
+    SYSTEM_DEFAULT,
+    getSpellCheckerLanguageOptions,
+    getSpellCheckerPreferenceCategory,
+    spellCheckerSettingsToValue,
+} from './spellCheckerPreferences.js';
+
 export default class UserPreferences {
     constructor(manager) {
         this.manager = manager;
@@ -53,6 +60,37 @@ export default class UserPreferences {
             // Static mode: load from localStorage via adapter
             await this.loadStaticPreferences();
         }
+
+        await this.loadSpellCheckerPreferences();
+    }
+
+    async loadSpellCheckerPreferences() {
+        const getSettings = window.electronAPI?.getSpellCheckerSettings;
+        if (!getSettings) return;
+
+        try {
+            const settings = await getSettings();
+            if (!settings?.supported) return;
+
+            const category = getSpellCheckerPreferenceCategory(this.preferences);
+            const uiLocale = eXeLearning.app.locale?.lang || eXeLearning.config?.locale;
+            this.preferences.spellCheckerLanguages = {
+                title: _('Spell checker languages'),
+                help: _(
+                    'System default uses the operating system language. It is also used when no language is checked.'
+                ),
+                ...(category !== undefined ? { category } : {}),
+                value: spellCheckerSettingsToValue(settings),
+                type: 'multiselect',
+                customLabel: _('Choose languages'),
+                options: {
+                    [SYSTEM_DEFAULT]: _('System default'),
+                    ...getSpellCheckerLanguageOptions(settings.availableLanguages, uiLocale),
+                },
+            };
+        } catch (error) {
+            console.warn('[UserPreferences] Error loading spell checker preferences:', error);
+        }
     }
 
     /**
@@ -99,7 +137,8 @@ export default class UserPreferences {
     }
 
     /**
-     * Add notice for static mode users that preferences require page refresh
+     * Add notice for static mode users that changing the language may require
+     * reloading or reopening the app to update the whole interface.
      * @private
      */
     _addStaticModeNotice() {
@@ -114,7 +153,9 @@ export default class UserPreferences {
         notice.id = 'preferences-static-notice';
         notice.className = 'alert alert-info';
         notice.setAttribute('role', 'alert');
-        notice.textContent = _('Preferences will be applied after refreshing the page.');
+        notice.textContent = _(
+            'Language changes may require reloading or reopening eXeLearning to update the whole interface.'
+        );
 
         // Insert at the beginning of the body
         body.prepend(notice);
@@ -197,6 +238,26 @@ export default class UserPreferences {
      *
      */
     async apiSaveProperties(preferences) {
+        // The modal owns the submitted object; keep it intact for callers and tests.
+        preferences = { ...preferences };
+        const spellCheckerLanguages = preferences.spellCheckerLanguages;
+        if (spellCheckerLanguages !== undefined) {
+            try {
+                const settings = await window.electronAPI?.setSpellCheckerLanguages?.(spellCheckerLanguages);
+                if (settings && this.preferences.spellCheckerLanguages) {
+                    this.preferences.spellCheckerLanguages.value = spellCheckerSettingsToValue(settings);
+                }
+                if (settings?.applied && settings.persisted === false) {
+                    console.warn(
+                        '[UserPreferences] Spell checker languages were applied for this session but could not be persisted.'
+                    );
+                }
+            } catch (error) {
+                console.warn('[UserPreferences] Error saving spell checker preferences:', error);
+            }
+            delete preferences.spellCheckerLanguages;
+        }
+
         // Update array of preferences
         for (let [key, value] of Object.entries(preferences)) {
             this.preferences[key].value = value;
@@ -249,8 +310,8 @@ export default class UserPreferences {
         if (!body) return;
 
         const message = typeof _ === 'function'
-            ? _('Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.')
-            : 'Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.';
+            ? _('The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.')
+            : 'The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.';
 
         let warning = body.querySelector('#preferences-reload-warning');
         if (!warning) {

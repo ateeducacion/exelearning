@@ -8,12 +8,21 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// The resolver patches Element.prototype.getAttribute on import. Every re-import
+// (vi.resetModules() + await import) installs another layer on top of the previous
+// one, and each layer owns a separate resolvedCache. Stacked layers feed each
+// other's return value back through the asset://<->blob:// mapping, which produces
+// results no single layer would ever return. Capture the pristine method once and
+// restore it between tests so each test exercises exactly one layer.
+const nativeGetAttribute = Element.prototype.getAttribute;
+
 describe('AssetUrlResolver', () => {
   let mockAssetManager;
   let mockAssetWebSocketHandler;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    Element.prototype.getAttribute = nativeGetAttribute;
 
     // Mock console methods
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -33,6 +42,7 @@ describe('AssetUrlResolver', () => {
     delete window.eXeLearningAssetResolver;
     delete window.jQuery;
     delete window.eXeLearning;
+    Element.prototype.getAttribute = nativeGetAttribute;
     vi.restoreAllMocks();
   });
 
@@ -253,8 +263,11 @@ describe('AssetUrlResolver', () => {
       });
 
       it('populates cache so getAttribute can return blob URL for asset:// href (SimpleLightbox support)', async () => {
-        // This test verifies the behavior for SimpleLightbox and similar libraries
-        // When they read the href of an anchor, they should get the resolved blob:// URL
+        // This test verifies the behavior for SimpleLightbox and similar libraries.
+        // When they read the href of an anchor *in the live document*, they should
+        // get the resolved blob:// URL. The anchor must be connected: detached
+        // anchors are parsing wrappers reading back stored HTML and must keep the
+        // persistent asset:// URL instead (see issue #2186).
         const assetUrl = 'asset://cached-uuid-test/lightbox-image.jpg';
         const blobUrl = 'blob:http://localhost/cached-blob-test';
         mockAssetManager.resolveAssetURL.mockResolvedValue(blobUrl);
@@ -263,13 +276,99 @@ describe('AssetUrlResolver', () => {
         const resolved = await resolver.resolve(assetUrl);
         expect(resolved).toBe(blobUrl);
 
-        // Now create an anchor with the asset:// href
+        // Now create an anchor with the asset:// href, live in the document
         const a = document.createElement('a');
         a.setAttribute('href', assetUrl);
+        document.body.appendChild(a);
 
-        // When reading the href, should get the cached blob URL
-        const result = a.getAttribute('href');
-        expect(result).toBe(blobUrl);
+        try {
+          // When reading the href, should get the cached blob URL
+          const result = a.getAttribute('href');
+          expect(result).toBe(blobUrl);
+        } finally {
+          a.remove();
+        }
+      });
+    });
+
+    describe('anchor href reads on detached wrappers (issue #2186)', () => {
+      const assetUrl = 'asset://2d982eb3-cow/COW2.jpg';
+      const blobUrl = 'blob:app://localhost/ephemeral-blob-uuid';
+
+      beforeEach(async () => {
+        // Populate resolvedCache the way page-view rendering does before editing
+        mockAssetManager.resolveAssetURL.mockResolvedValue(blobUrl);
+        await resolver.resolve(assetUrl);
+      });
+
+      it('returns the persistent asset:// URL for a detached anchor even when cached', () => {
+        // Reproduces how game iDevices read their media refs back: the stored
+        // HTML is parsed into a *detached* wrapper and hrefs are read from it.
+        // See public/files/perm/idevices/base/classify/edition/classify.js:681.
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `<a href="${assetUrl}" class="js-hidden clasifica-LinkImages">0</a>`;
+        const anchor = wrapper.querySelector('a');
+
+        expect(anchor.isConnected).toBe(false);
+        expect(anchor.getAttribute('href')).toBe(assetUrl);
+      });
+
+      it('returns the cached blob URL for a connected anchor (lightbox keeps working)', () => {
+        const anchor = document.createElement('a');
+        anchor.setAttribute('href', assetUrl);
+        document.body.appendChild(anchor);
+
+        try {
+          expect(anchor.isConnected).toBe(true);
+          expect(anchor.getAttribute('href')).toBe(blobUrl);
+        } finally {
+          anchor.remove();
+        }
+      });
+
+      it('returns asset:// for a detached anchor whose asset is not cached', () => {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = '<a href="asset://uncached-uuid/photo.jpg">1</a>';
+
+        expect(wrapper.querySelector('a').getAttribute('href')).toBe(
+          'asset://uncached-uuid/photo.jpg'
+        );
+      });
+
+      it('still maps blob href back to asset:// via data-asset-url when detached', () => {
+        // Branch 2 (persistence) stays ungated: a detached anchor carrying a
+        // resolved blob href must still report the persistent asset:// URL.
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `<a href="${blobUrl}" data-asset-url="${assetUrl}">0</a>`;
+
+        expect(wrapper.querySelector('a').getAttribute('href')).toBe(assetUrl);
+      });
+
+      it('still maps blob href back to asset:// via data-asset-url when connected', () => {
+        const anchor = document.createElement('a');
+        anchor.setAttribute('data-asset-url', assetUrl);
+        anchor.setAttribute('href', blobUrl);
+        document.body.appendChild(anchor);
+
+        try {
+          expect(anchor.getAttribute('href')).toBe(assetUrl);
+        } finally {
+          anchor.remove();
+        }
+      });
+
+      it('reads back every link anchor of a stored game iDevice as asset://', () => {
+        // Full classify-style read-back: the value written on save must be the
+        // same persistent reference that was stored, never a blob: URL.
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML =
+          `<a href="${assetUrl}" class="js-hidden clasifica-LinkImages">0</a>` +
+          `<a href="${assetUrl}" class="js-hidden clasifica-LinkAudios">1</a>`;
+
+        const hrefs = [...wrapper.querySelectorAll('a')].map((a) => a.getAttribute('href'));
+
+        expect(hrefs).toEqual([assetUrl, assetUrl]);
+        expect(hrefs.some((href) => href.startsWith('blob:'))).toBe(false);
       });
     });
 
@@ -633,6 +732,21 @@ describe('AssetUrlResolver', () => {
   });
 
   describe('getAttribute interception', () => {
+    beforeEach(async () => {
+      vi.resetModules();
+
+      window.jQuery = function() {
+        return { each: vi.fn(), length: 0 };
+      };
+      window.jQuery.fn = { attr: vi.fn(), prop: vi.fn() };
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: mockAssetManager } } },
+      };
+
+      delete window.eXeLearningAssetResolver;
+      await import('./asset_url_resolver.js');
+    });
+
     it('returns asset URL when data-asset-url exists and src is blob URL', () => {
       const img = document.createElement('img');
       img.setAttribute('data-asset-url', 'asset://uuid-123/image.png');
@@ -2250,6 +2364,124 @@ describe('AssetUrlResolver', () => {
       expect(link.getAttribute('target')).toBe('_blank');
 
       document.body.removeChild(link);
+    });
+
+    describe('Electron blob download (single save dialog, issue #1875)', () => {
+      let fetchMock;
+
+      afterEach(() => {
+        delete window.electronAPI;
+        delete global.fetch;
+        delete window.fetch;
+      });
+
+      function setupElectron(saveBufferAs) {
+        window.electronAPI = { saveBufferAs };
+        const buffer = new Uint8Array([1, 2, 3, 4]).buffer;
+        fetchMock = vi.fn(() =>
+          Promise.resolve({ arrayBuffer: () => Promise.resolve(buffer) }),
+        );
+        global.fetch = fetchMock;
+        window.fetch = fetchMock;
+      }
+
+      it('routes non-image blob downloads through saveBufferAs to avoid the double dialog', async () => {
+        const blobUrl = 'blob:app://localhost/a61add6d-a090-4e22-883e-2da07a032e50';
+        const assetId = 'rar12345-def6-7890-abcd-ef1234567890';
+        const saveBufferAs = vi.fn(() => Promise.resolve('/tmp/archive.rar'));
+        setupElectron(saveBufferAs);
+        window.__currentProjectId = 'project-xyz';
+
+        const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+        assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+        assetManager.getAssetMetadata = vi.fn(() => ({
+          filename: 'archive.rar',
+          mime: 'application/vnd.rar',
+        }));
+
+        const link = document.createElement('a');
+        link.setAttribute('href', blobUrl);
+        document.body.appendChild(link);
+
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+
+        // The default <a download> navigation is suppressed so Electron's
+        // will-download handler never fires a second native dialog.
+        expect(event.defaultPrevented).toBe(true);
+
+        // Note: each test re-imports the module, accumulating click listeners
+        // on the shared document, so we assert "called" rather than an exact
+        // count. In the real app the IIFE registers a single listener.
+        await vi.waitFor(() => expect(saveBufferAs).toHaveBeenCalled());
+        expect(fetchMock).toHaveBeenCalledWith(blobUrl);
+        const [bytes, projectKey, filename] = saveBufferAs.mock.calls[0];
+        expect(bytes).toBeInstanceOf(Uint8Array);
+        expect(projectKey).toBe('project-xyz');
+        expect(filename).toBe('archive.rar');
+
+        document.body.removeChild(link);
+        delete window.__currentProjectId;
+      });
+
+      it('falls back to a default project key when none is set and logs save failures', async () => {
+        const blobUrl = 'blob:app://localhost/b71add6d-a090-4e22-883e-2da07a032e51';
+        const assetId = 'rar67890-def6-7890-abcd-ef1234567890';
+        const saveBufferAs = vi.fn(() => Promise.reject(new Error('user cancelled')));
+        setupElectron(saveBufferAs);
+        delete window.__currentProjectId;
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+        assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+        assetManager.getAssetMetadata = vi.fn(() => ({
+          filename: 'data.zip',
+          mime: 'application/zip',
+        }));
+
+        const link = document.createElement('a');
+        link.setAttribute('href', blobUrl);
+        document.body.appendChild(link);
+
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        await vi.waitFor(() => expect(saveBufferAs).toHaveBeenCalled());
+        expect(saveBufferAs.mock.calls[0][1]).toBe('asset-download');
+        await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled());
+        expect(errorSpy.mock.calls[0][0]).toContain('saveBufferAs failed');
+
+        errorSpy.mockRestore();
+        document.body.removeChild(link);
+      });
+
+      it('does not route image blob links through saveBufferAs (lightbox/new tab)', () => {
+        const blobUrl = 'blob:app://localhost/99cf3174-a4ae-4c3b-9f2b-0972b94b8f03';
+        const assetId = 'img12345-def6-7890-abcd-ef1234567890';
+        const saveBufferAs = vi.fn(() => Promise.resolve('/tmp/photo.jpg'));
+        setupElectron(saveBufferAs);
+
+        const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+        assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+        assetManager.getAssetMetadata = vi.fn(() => ({
+          filename: 'photo.jpg',
+          mime: 'image/jpeg',
+        }));
+
+        const link = document.createElement('a');
+        link.setAttribute('href', blobUrl);
+        document.body.appendChild(link);
+
+        const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+        link.dispatchEvent(event);
+
+        expect(saveBufferAs).not.toHaveBeenCalled();
+        expect(event.defaultPrevented).toBe(false);
+        expect(link.getAttribute('target')).toBe('_blank');
+
+        document.body.removeChild(link);
+      });
     });
 
     it('skips links inside TinyMCE editors', () => {

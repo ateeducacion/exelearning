@@ -9,6 +9,7 @@
  * - Required file validation (config.xml for themes, content.xml for templates)
  */
 import * as fflateModule from 'fflate';
+import { safeUnzipSync } from '../utils/safe-unzip';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
@@ -74,6 +75,7 @@ export const SUPPORTED_LOCALES = [
     'eo',
     'nl',
     'pl',
+    'ro',
     'ru',
     'zh',
     'ja',
@@ -81,8 +83,20 @@ export const SUPPORTED_LOCALES = [
     'ar',
 ];
 
-// Base theme names that cannot be overwritten
-export const BASE_THEME_NAMES = ['base', 'neo', 'flux', 'nova', 'zen'];
+// Base theme names that cannot be overwritten (one per directory in public/files/perm/themes/base/)
+export const BASE_THEME_NAMES = [
+    'base',
+    'cedec',
+    'educablue',
+    'etwinning',
+    'flux',
+    'intef',
+    'kids',
+    'neo',
+    'nova',
+    'universal',
+    'zen',
+];
 
 // ============================================================================
 // Factory Function
@@ -158,7 +172,7 @@ export function createAdminUploadValidator(deps: AdminUploadValidatorDeps = {}):
         try {
             // Unzip to inspect contents
             const uint8Data = new Uint8Array(buffer);
-            const unzipped = fflate.unzipSync(uint8Data);
+            const unzipped = safeUnzipSync(uint8Data, { fflate });
             const entries = Object.keys(unzipped);
 
             // Validate path security
@@ -207,7 +221,7 @@ export function createAdminUploadValidator(deps: AdminUploadValidatorDeps = {}):
         try {
             // Unzip to inspect contents
             const uint8Data = new Uint8Array(buffer);
-            const unzipped = fflate.unzipSync(uint8Data);
+            const unzipped = safeUnzipSync(uint8Data, { fflate });
             const entries = Object.keys(unzipped);
 
             // Validate path security
@@ -234,31 +248,36 @@ export function createAdminUploadValidator(deps: AdminUploadValidatorDeps = {}):
     };
 
     /**
-     * Extract theme to target directory
+     * Extract theme to target directory.
+     *
+     * Defends against Zip Slip: every ZIP entry path is normalized (backslashes
+     * to forward slashes, since on POSIX `\` is a valid filename character that
+     * archive crafters can abuse) and resolved against the target directory.
+     * Any entry whose resolved path falls outside the target directory is
+     * rejected before any write happens.
      */
     const extractTheme = async (buffer: Buffer, targetDir: string): Promise<string[]> => {
         const uint8Data = new Uint8Array(buffer);
-        const unzipped = fflate.unzipSync(uint8Data);
+        const unzipped = safeUnzipSync(uint8Data, { fflate });
         const extractedFiles: string[] = [];
 
-        // Ensure target directory exists
         await fs.ensureDir(targetDir);
+        const resolvedTargetDir = path.resolve(targetDir);
 
-        // Extract all files
         for (const [relativePath, data] of Object.entries(unzipped)) {
-            // Skip directories (they end with /)
+            const safeRelativePath = relativePath.replace(/\\/g, '/');
+            const targetPath = path.resolve(resolvedTargetDir, safeRelativePath);
+
+            if (targetPath !== resolvedTargetDir && !targetPath.startsWith(resolvedTargetDir + path.sep)) {
+                throw new Error(`Security error: theme entry escapes target directory: ${relativePath}`);
+            }
+
             if (relativePath.endsWith('/')) {
-                await fs.ensureDir(path.join(targetDir, relativePath));
+                await fs.ensureDir(targetPath);
                 continue;
             }
 
-            // Build target path
-            const targetPath = path.join(targetDir, relativePath);
-
-            // Ensure parent directory exists
             await fs.ensureDir(path.dirname(targetPath));
-
-            // Write file
             await fs.writeFile(targetPath, Buffer.from(data));
             extractedFiles.push(relativePath);
         }

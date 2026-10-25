@@ -177,11 +177,22 @@ describe('Admin Upload Validator', () => {
             expect(SUPPORTED_LOCALES).toContain('es');
             expect(SUPPORTED_LOCALES).toContain('fr');
             expect(SUPPORTED_LOCALES).toContain('de');
+            expect(SUPPORTED_LOCALES).toContain('ro');
         });
 
         test('BASE_THEME_NAMES should include default themes', () => {
             expect(BASE_THEME_NAMES).toContain('base');
             expect(BASE_THEME_NAMES).toContain('neo');
+        });
+
+        test('BASE_THEME_NAMES should list every bundled theme directory', () => {
+            const baseThemesDir = path.join(process.cwd(), 'public', 'files', 'perm', 'themes', 'base');
+            const bundled = fs
+                .readdirSync(baseThemesDir, { withFileTypes: true })
+                .filter(entry => entry.isDirectory())
+                .map(entry => entry.name)
+                .sort();
+            expect([...BASE_THEME_NAMES].sort()).toEqual(bundled);
         });
     });
 
@@ -345,6 +356,37 @@ describe('Admin Upload Validator', () => {
 
             expect(extractedFiles).toContain('icons/logo.png');
             expect(await fs.pathExists(path.join(testDir, 'icons'))).toBe(true);
+        });
+
+        test('should reject entries that traverse out of the target directory', async () => {
+            const zipData = fflate.zipSync({
+                '../escape.txt': fflate.strToU8('pwned'),
+            });
+
+            await expect(validator.extractTheme(Buffer.from(zipData), testDir)).rejects.toThrow();
+
+            const escapedPath = path.join(path.dirname(testDir), 'escape.txt');
+            expect(await fs.pathExists(escapedPath)).toBe(false);
+        });
+
+        test('should reject entries with absolute paths', async () => {
+            const zipData = fflate.zipSync({
+                '/tmp/admin-validator-zipslip-absolute.txt': fflate.strToU8('pwned'),
+            });
+
+            await expect(validator.extractTheme(Buffer.from(zipData), testDir)).rejects.toThrow();
+            expect(await fs.pathExists('/tmp/admin-validator-zipslip-absolute.txt')).toBe(false);
+        });
+
+        test('should reject entries that use backslash separators to escape', async () => {
+            const zipData = fflate.zipSync({
+                '..\\escape-backslash.txt': fflate.strToU8('pwned'),
+            });
+
+            await expect(validator.extractTheme(Buffer.from(zipData), testDir)).rejects.toThrow();
+
+            const escapedPath = path.join(path.dirname(testDir), 'escape-backslash.txt');
+            expect(await fs.pathExists(escapedPath)).toBe(false);
         });
     });
 

@@ -12,6 +12,10 @@ import * as path from 'path';
 import { db } from '../db/client';
 import { getEnabledSiteThemes, getDefaultTheme, getBaseThemes } from '../db/queries/themes';
 import type { Theme } from '../db/types';
+import { buildSiteThemeUrl } from '../utils/site-theme-url';
+import { prefixPath } from '../utils/basepath.util';
+import { isSafePathSegment, safeJoin, isWithinBase } from '../utils/safe-path';
+import { sortThemeIcons, type ThemeIcon } from '../shared/parsers/theme-parser';
 
 // Base path for themes (bundled with the app)
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
@@ -80,18 +84,6 @@ const ICON_EXTENSIONS = ['svg', 'png', 'gif', 'jpg', 'jpeg', 'webp'];
 const ICON_EXTENSION_REGEX = /\.(svg|png|gif|jpe?g|webp)$/i;
 
 /**
- * Theme icon structure expected by the frontend
- * The `id` field is the baseName WITHOUT extension (e.g., "share")
- * The `value` field contains the full URL with extension (e.g., "/v3.1/.../share.svg")
- */
-interface ThemeIcon {
-    id: string;
-    title: string;
-    type: string;
-    value: string;
-}
-
-/**
  * Theme configuration interface
  */
 interface ThemeConfig {
@@ -115,6 +107,10 @@ interface ThemeConfig {
     icons: Record<string, ThemeIcon>;
     valid: boolean;
     isDefault?: boolean;
+    // Cache-buster timestamp (ms). Set for site themes from themes.updated_at so
+    // the client can key its persistent (IndexedDB) and bundle caches per
+    // re-upload. null/undefined for base themes (which version with the app).
+    updatedAt?: number | null;
 }
 
 /**
@@ -182,7 +178,8 @@ function scanThemeIcons(themePath: string, themeUrl: string): Record<string, The
         };
     }
 
-    return icons;
+    // readdirSync order is filesystem-dependent; the picker relies on this order (#2411)
+    return sortThemeIcons(icons);
 }
 
 /**
@@ -204,16 +201,19 @@ function parseThemeConfig(
 
         const version = getAppVersion();
 
-        // Build URL paths with version for cache busting
+        // Build URL paths with version for cache busting.
+        // prefixPath() ensures BASE_PATH is prepended when configured, so URLs
+        // are correct behind a reverse proxy that only mounts the BASE_PATH
+        // namespace (see issue #1802).
         let themeBasePath: string;
         if (customUrlPrefix) {
-            themeBasePath = `/${version}${customUrlPrefix}/${themeId}`;
+            themeBasePath = prefixPath(`/${version}${customUrlPrefix}/${themeId}`);
         } else {
-            themeBasePath = `/${version}/files/perm/themes/base/${themeId}`;
+            themeBasePath = prefixPath(`/${version}/files/perm/themes/base/${themeId}`);
         }
 
         const previewPath =
-            type === 'base' ? `/${version}/style/${themeId}/preview.png` : `${themeBasePath}/preview.png`;
+            type === 'base' ? prefixPath(`/${version}/style/${themeId}/preview.png`) : `${themeBasePath}/preview.png`;
 
         // Scan for CSS files
         const cssFiles = scanThemeFiles(themePath, '.css');
@@ -296,8 +296,11 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
     const siteThemesPath = getSiteThemesPath();
     const themePath = path.join(siteThemesPath, siteTheme.dir_name);
 
-    // Build URL paths - site themes are served from FILES_DIR
-    const themeUrl = `/${version}/site-files/themes/${siteTheme.dir_name}`;
+    // Build URL paths - site themes are served from FILES_DIR.
+    // Embed the theme's updated_at as a cache-buster so a re-uploaded theme
+    // forces clients to drop the cached CSS/icons on the next page load, and
+    // prefix BASE_PATH so URLs remain valid behind a subdirectory proxy.
+    const themeUrl = prefixPath(buildSiteThemeUrl(version, siteTheme.dir_name, siteTheme.updated_at));
 
     // Scan for CSS, JS, and icons
     const cssFiles = deps.fs.existsSync(themePath) ? scanThemeFiles(themePath, '.css') : ['style.css'];
@@ -334,6 +337,7 @@ function siteThemeToConfig(siteTheme: Theme): ThemeConfig {
         js,
         icons,
         valid: true,
+        updatedAt: siteTheme.updated_at ?? null,
     };
 }
 
@@ -404,16 +408,24 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
     .get('/api/themes/installed/:themeId', ({ params, set }) => {
         const { themeId } = params;
 
+        // Theme ids are slugs ([a-z0-9_-]); reject any traversal/separator before
+        // it reaches `path.join`. Elysia decodes `%2F` to a real separator, so an
+        // unvalidated id would allow reading config.xml-like files outside the base.
+        if (!isSafePathSegment(themeId)) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Theme ${themeId} not found` };
+        }
+
         // Check base themes first
-        let configPath = path.join(THEMES_BASE_PATH, themeId, 'config.xml');
-        let themePath = path.join(THEMES_BASE_PATH, themeId);
+        let configPath = safeJoin(THEMES_BASE_PATH, themeId, 'config.xml');
+        let themePath = safeJoin(THEMES_BASE_PATH, themeId);
         let type: 'base' | 'site' = 'base';
 
         if (!deps.fs.existsSync(configPath)) {
             // Check site themes
             const siteThemesPath = getSiteThemesPath();
-            configPath = path.join(siteThemesPath, themeId, 'config.xml');
-            themePath = path.join(siteThemesPath, themeId);
+            configPath = safeJoin(siteThemesPath, themeId, 'config.xml');
+            themePath = safeJoin(siteThemesPath, themeId);
             type = 'site';
         }
 
@@ -439,18 +451,34 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
     .get('/api/resources/theme/:themeName/bundle', async ({ params, set }) => {
         const { themeName } = params;
 
+        // Theme names are slugs ([a-z0-9_-]); reject any traversal/separator before
+        // it reaches `path.join`. Without this, an attacker could escape the base
+        // (Elysia decodes `%2F` to a real separator) and have the recursive scan
+        // below read arbitrary files (e.g. .env, the DB) the process can access.
+        if (!isSafePathSegment(themeName)) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Theme ${themeName} not found` };
+        }
+
         // Check base themes first
-        let themePath = path.join(THEMES_BASE_PATH, themeName);
+        let baseDir = THEMES_BASE_PATH;
+        let themePath = safeJoin(baseDir, themeName);
         let found = deps.fs.existsSync(themePath);
 
         if (!found) {
             // Check site themes
-            const siteThemesPath = getSiteThemesPath();
-            themePath = path.join(siteThemesPath, themeName);
+            baseDir = getSiteThemesPath();
+            themePath = safeJoin(baseDir, themeName);
             found = deps.fs.existsSync(themePath);
         }
 
         if (!found) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Theme ${themeName} not found` };
+        }
+
+        // Defence in depth: never recurse outside the resolved theme directory.
+        if (!isWithinBase(baseDir, themePath)) {
             set.status = 404;
             return { error: 'Not Found', message: `Theme ${themeName} not found` };
         }
@@ -460,6 +488,8 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
 
         function scanDir(dirPath: string, prefix = ''): void {
             if (!deps.fs.existsSync(dirPath)) return;
+            // Guard against symlinks/entries that would escape the theme directory.
+            if (!isWithinBase(themePath, dirPath)) return;
 
             const entries = deps.fs.readdirSync(dirPath, { withFileTypes: true });
             for (const entry of entries) {
@@ -488,19 +518,35 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
     .get('/api/themes/:themeId/download', async ({ params, set }) => {
         const { themeId } = params;
 
+        // Theme ids are slugs ([a-z0-9_-]); reject any traversal/separator before
+        // it reaches `path.join`. Without this, an attacker could escape the base
+        // (Elysia decodes `%2F` to a real separator) and have `createZipBuffer`
+        // recursively read and exfiltrate arbitrary directories.
+        if (!isSafePathSegment(themeId)) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Theme ${themeId} not found` };
+        }
+
         // Check base themes first
-        let themePath = path.join(THEMES_BASE_PATH, themeId);
+        let baseDir = THEMES_BASE_PATH;
+        let themePath = safeJoin(baseDir, themeId);
         let found = deps.fs.existsSync(themePath);
         let themeName = themeId;
 
         if (!found) {
             // Check site themes
-            const siteThemesPath = getSiteThemesPath();
-            themePath = path.join(siteThemesPath, themeId);
+            baseDir = getSiteThemesPath();
+            themePath = safeJoin(baseDir, themeId);
             found = deps.fs.existsSync(themePath);
         }
 
         if (!found) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Theme ${themeId} not found` };
+        }
+
+        // Defence in depth: never zip a directory that escaped the theme base.
+        if (!isWithinBase(baseDir, themePath)) {
             set.status = 404;
             return { error: 'Not Found', message: `Theme ${themeId} not found` };
         }

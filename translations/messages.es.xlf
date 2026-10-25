@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="es" datatype="plaintext" original="file.ext">
-    <header>
-      <tool tool-id="symfony" tool-name="Symfony"/>
-    </header>
     <body>
       <trans-unit id="cBwQM6_" resname="Permissions error">
         <source>Permissions error</source>
@@ -2057,10 +2054,6 @@
         <source>Huge text</source>
         <target>Texto enorme</target>
       </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Extra large text">
-        <source>Extra large text</source>
-        <target>Texto gigante</target>
-      </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
         <target>Negrita de pizarra</target>
@@ -3729,14 +3722,6 @@
         <source>Info</source>
         <target>Información</target>
       </trans-unit>
-      <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
-        <source>Show or hide the node's children</source>
-        <target>Mostrar u ocultar páginas hijas</target>
-      </trans-unit>
-      <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
-        <source>Start working on a new mind map</source>
-        <target>Crea un nuevo mapa mental</target>
-      </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
         <target>Error al subir el archivo</target>
@@ -3857,10 +3842,6 @@
         <source>Project properties</source>
         <target>Propiedades del proyecto</target>
       </trans-unit>
-      <trans-unit id="W7h4Kea" resname="Share link">
-        <source>Share link</source>
-        <target>Enlace para compartir</target>
-      </trans-unit>
       <trans-unit id="Uom6tJO" resname="Information and presentation">
         <source>Information and presentation</source>
         <target>Información y presentación</target>
@@ -3953,10 +3934,6 @@
         <source>New file</source>
         <target>Archivo nuevo</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>Crear un archivo nuevo sin guardar</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>Guardando el proyecto...</target>
@@ -3977,17 +3954,9 @@
         <source>Please enter the project title:</source>
         <target>Escribe el título del proyecto:</target>
       </trans-unit>
-      <trans-unit id="cPW6CJ0" resname="Google Drive error">
-        <source>Google Drive error</source>
-        <target>Error al conectar con Google Drive</target>
-      </trans-unit>
       <trans-unit id="KEhkI6s" resname="Unknown">
         <source>Unknown</source>
         <target>Desconocido</target>
-      </trans-unit>
-      <trans-unit id="crz7e6x" resname="Dropbox error">
-        <source>Dropbox error</source>
-        <target>Error al conectar con Dropbox</target>
       </trans-unit>
       <trans-unit id="d2WU0Ah" resname="Error opening">
         <source>Error opening</source>
@@ -4397,22 +4366,6 @@
         <source>Upload</source>
         <target>Cargar</target>
       </trans-unit>
-      <trans-unit id="JcEtEhk" resname="Upload to Dropbox">
-        <source>Upload to Dropbox</source>
-        <target>Subir a Dropbox</target>
-      </trans-unit>
-      <trans-unit id="JOFdorq" resname="Select the Dropbox directory where the project will be uploaded:">
-        <source>Select the Dropbox directory where the project will be uploaded:</source>
-        <target>Selecciona el directorio de destino en Dropbox:</target>
-      </trans-unit>
-      <trans-unit id="9a1eDpd" resname="Upload to Google Drive">
-        <source>Upload to Google Drive</source>
-        <target>Subir a Google Drive</target>
-      </trans-unit>
-      <trans-unit id="HMP7DeK" resname="Select the Google Drive directory where the project will be uploaded:">
-        <source>Select the Google Drive directory where the project will be uploaded:</source>
-        <target>Selecciona el directorio de destino en Google Drive:</target>
-      </trans-unit>
       <trans-unit id="9Mm2eRT" resname="An error occurred while saving block's properties in database">
         <source>An error occurred while saving block's properties in database</source>
         <target>Se ha producido un error al guardar las propiedades de la caja</target>
@@ -4552,10 +4505,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>No se puede añadir un iDevice en la página de Propiedades</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>Problema al añadir iDevice</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -6033,14 +5982,6 @@
         <source>This content was created with eXeLearning, your free and open source editor to create educational resources.</source>
         <target>Este contenido fue creado con eXeLearning, el editor libre y de fuente abierta diseñado para crear recursos educativos.</target>
       </trans-unit>
-      <trans-unit id="V7aVH8i" resname="Download .elp file">
-        <source>Download .elp file</source>
-        <target>Descargar el archivo .elp</target>
-      </trans-unit>
-      <trans-unit id="dap6H5j" resname="This block will create a link to download the elp file. Write some use instructions and customize your download link.">
-        <source>This block will create a link to download the elp file. Write some use instructions and customize your download link.</source>
-        <target>Este bloque creará un enlace para la descarga del archivo .elp. Escribe unas instrucciones de uso y configura el enlace de descarga.</target>
-      </trans-unit>
       <trans-unit id="vaXcPZz" resname="Download link">
         <source>Download link</source>
         <target>Enlace de descarga</target>
@@ -6393,10 +6334,6 @@
         <source>No questions in the form</source>
         <target>El formulario no tiene preguntas</target>
       </trans-unit>
-      <trans-unit id="DCmDkZO" resname="Set the pass mark">
-        <source>Set the pass mark</source>
-        <target>Especifica la nota de aprobado</target>
-      </trans-unit>
       <trans-unit id="jkH6U0E" resname="Include a button to display the answers">
         <source>Include a button to display the answers</source>
         <target>Incluir un botón para mostrar las respuestas</target>
@@ -6620,14 +6557,6 @@
       <trans-unit id="kVirQpc" resname="Border color">
         <source>Border color</source>
         <target>Color borde</target>
-      </trans-unit>
-      <trans-unit id="yWj5Kfm" resname="Save score button">
-        <source>Save score button</source>
-        <target>Botón de guardar la puntuación</target>
-      </trans-unit>
-      <trans-unit id=".Rk8uO0" resname="The button will only be displayed when exporting as SCORM and while editing in eXeLearning.">
-        <source>The button will only be displayed when exporting as SCORM and while editing in eXeLearning.</source>
-        <target>Este botón solo se mostrará en la exportación a SCORM y cuando se esté editando con eXeLearning.</target>
       </trans-unit>
       <trans-unit id="LjhASK4" resname="Provide a valid GeoGebra URL or activity ID.">
         <source>Provide a valid GeoGebra URL or activity ID.</source>
@@ -7512,10 +7441,6 @@
       <trans-unit id="pY9ORr8" resname="Absolute error">
         <source>Absolute error</source>
         <target>Error absoluto</target>
-      </trans-unit>
-      <trans-unit id="DpYu48b" resname="% right to see the feedback">
-        <source>% right to see the feedback</source>
-        <target>% correcto para ver la retroalimentación</target>
       </trans-unit>
       <trans-unit id="ye8G32n" resname="Please specify the number of operations">
         <source>Please specify the number of operations</source>
@@ -10737,102 +10662,6 @@
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
         <target>Cambia el texto de las pestañas añadiendo un título a cada Encabezado 2 con la opción "Insertar/Editar atributos": </target>
       </trans-unit>
-      <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
-        <source>From Wikipedia, the free encyclopedia.</source>
-        <target>Desde Wikipedia, la enciclopedia libre.</target>
-      </trans-unit>
-      <trans-unit id="178jFkN" resname="Redirected from">
-        <source>Redirected from</source>
-        <target>Redirigido desde</target>
-      </trans-unit>
-      <trans-unit id="D.N0TPy" resname="Wikipedia does not have an article with this exact name.">
-        <source>Wikipedia does not have an article with this exact name.</source>
-        <target>Wikipedia no tiene un artículo con este nombre exacto.</target>
-      </trans-unit>
-      <trans-unit id="vWtWulw" resname="search for">
-        <source>search for</source>
-        <target>buscar para</target>
-      </trans-unit>
-      <trans-unit id="ReLHScr" resname="in Wikipedia">
-        <source>in Wikipedia</source>
-        <target>en Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="uLQ19JQ" resname="to check for alternative titles or spellings.">
-        <source>to check for alternative titles or spellings.</source>
-        <target>para buscar títulos alternativos o ortografías.</target>
-      </trans-unit>
-      <trans-unit id="Uy3s6Ik" resname="Wikipedia Article">
-        <source>Wikipedia Article</source>
-        <target>Artículo de Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="8RTGAQT" resname="Article">
-        <source>Article</source>
-        <target>Artículo</target>
-      </trans-unit>
-      <trans-unit id="NR2RdXC" resname="English">
-        <source>English</source>
-        <target>Inglés</target>
-      </trans-unit>
-      <trans-unit id="VNPyy5F" resname="Basque">
-        <source>Basque</source>
-        <target>Vasco</target>
-      </trans-unit>
-      <trans-unit id="6xS7ahk" resname="Catalan">
-        <source>Catalan</source>
-        <target>Catalán</target>
-      </trans-unit>
-      <trans-unit id="dY9PyfQ" resname="Chinese">
-        <source>Chinese</source>
-        <target>Chino</target>
-      </trans-unit>
-      <trans-unit id="AdxkL_L" resname="Dutch">
-        <source>Dutch</source>
-        <target>Holandés</target>
-      </trans-unit>
-      <trans-unit id="pMwerq8" resname="French">
-        <source>French</source>
-        <target>Francés</target>
-      </trans-unit>
-      <trans-unit id="_PBILaW" resname="Galician">
-        <source>Galician</source>
-        <target>Gallego</target>
-      </trans-unit>
-      <trans-unit id="HqedDt2" resname="German">
-        <source>German</source>
-        <target>Alemán</target>
-      </trans-unit>
-      <trans-unit id="xuAMUN9" resname="Italian">
-        <source>Italian</source>
-        <target>Italiano</target>
-      </trans-unit>
-      <trans-unit id="1PzOojp" resname="Japanese">
-        <source>Japanese</source>
-        <target>Japonés</target>
-      </trans-unit>
-      <trans-unit id=".af6ZfV" resname="Magyar">
-        <source>Magyar</source>
-        <target>Húngaro</target>
-      </trans-unit>
-      <trans-unit id="ZYhMxlL" resname="Polish">
-        <source>Polish</source>
-        <target>Polaco</target>
-      </trans-unit>
-      <trans-unit id="jJYRmbQ" resname="Portuguese">
-        <source>Portuguese</source>
-        <target>Portugués</target>
-      </trans-unit>
-      <trans-unit id="b0hwZlf" resname="Slovenian">
-        <source>Slovenian</source>
-        <target>Esloveno</target>
-      </trans-unit>
-      <trans-unit id="YHU6HyX" resname="Spanish">
-        <source>Spanish</source>
-        <target>Español</target>
-      </trans-unit>
-      <trans-unit id="OCwplzN" resname="Swedish">
-        <source>Swedish</source>
-        <target>Sueco</target>
-      </trans-unit>
       <trans-unit id="zJxoJ__" resname="Emphasis">
         <source>Emphasis</source>
         <target>Destacado</target>
@@ -10956,6 +10785,10 @@
       <trans-unit id="OToz6k0" resname="Help us spreading eXeLearning. Checking this option, a &quot;Made with eXeLearning&quot; link will be displayed in your pages.">
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>Ayúdanos a difundir eXeLearning. Si marcas esta opción se incluirá un "Hecho con eXeLearning" en tus páginas.</target>
+      </trans-unit>
+      <trans-unit id="MwExe01" resname="Made with eXeLearning">
+        <source>Made with eXeLearning</source>
+        <target>Creado con eXeLearning</target>
       </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
@@ -11253,10 +11086,6 @@
         <source>Changelog</source>
         <target>Registro de cambios</target>
       </trans-unit>
-      <trans-unit id="rFqGW9s" resname="Upload to Drive">
-        <source>Upload to Drive</source>
-        <target>Subir a Drive</target>
-      </trans-unit>
       <trans-unit id="6C92oaM" resname="System">
         <source>System</source>
         <target>Sistema</target>
@@ -11435,7 +11264,7 @@
       </trans-unit>
       <trans-unit id="MF5bsM." resname="URL:">
         <source>URL:</source>
-        <target>~URL:</target>
+        <target>URL:</target>
       </trans-unit>
       <trans-unit id="r.t2gAo" resname="Add point">
         <source>Add point</source>
@@ -11567,7 +11396,7 @@
       </trans-unit>
       <trans-unit id="SIDjSV." resname="iDevice">
         <source>iDevice</source>
-        <target>~iDevice</target>
+        <target>iDevice</target>
       </trans-unit>
       <trans-unit id="byLNU96" resname="Import (.elpx...)">
         <source>Import (.elpx...)</source>
@@ -11663,7 +11492,7 @@
       </trans-unit>
       <trans-unit id="cjVsZ.0" resname="You can only import data from text or XML files for “connect with arrows” matching games.">
         <source>You can only import data from text or XML files for “connect with arrows” matching games.</source>
-        <target>~Solo puedes importar datos de archivos de texto o XML para los juegos de asociación "conectar con flechas"</target>
+        <target>Solo puedes importar datos de archivos de texto o XML para los juegos de asociación "conectar con flechas"</target>
       </trans-unit>
       <trans-unit id="xnR2kT7" resname="Are you sure you want to continue without including an Image Description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.">
         <source>Are you sure you want to continue without including an Image Description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.</source>
@@ -11943,7 +11772,7 @@
       </trans-unit>
       <trans-unit id="OPaeP39" resname="A word to guess is missing">
         <source>A word to guess is missing</source>
-        <target>~Falta una palabra para adivinar</target>
+        <target>Falta una palabra para adivinar</target>
       </trans-unit>
       <trans-unit id="9m_71xP" resname="A hint or definition is missing">
         <source>A hint or definition is missing</source>
@@ -12253,10 +12082,6 @@
         <source>Send to %s</source>
         <target>Enviar a %s</target>
       </trans-unit>
-      <trans-unit id="finish_001" resname="Finish">
-        <source>Finish</source>
-        <target>Finalizar</target>
-      </trans-unit>
       <trans-unit id="gs_001" resname="Search pages and content...">
         <source>Search pages and content...</source>
         <target>Buscar páginas y contenido...</target>
@@ -12527,7 +12352,7 @@
       </trans-unit>
       <trans-unit id="a6n646a" resname="Savings">
         <source>Savings</source>
-        <target>~Ahorro</target>
+        <target>~Espacio ahorrado</target>
       </trans-unit>
       <trans-unit id="zxtrs36" resname="Selected">
         <source>Selected</source>
@@ -12577,22 +12402,6 @@
         <source>People with access</source>
         <target>Personas con acceso</target>
       </trans-unit>
-      <trans-unit id="np5d824" resname="General access">
-        <source>General access</source>
-        <target>Acceso general</target>
-      </trans-unit>
-      <trans-unit id="xoppz0j" resname="Restricted (Private)">
-        <source>Restricted (Private)</source>
-        <target>Restringido (Privado)</target>
-      </trans-unit>
-      <trans-unit id="inm7std" resname="Anyone with the link (Public)">
-        <source>Anyone with the link (Public)</source>
-        <target>Cualquier persona con el enlace (Público)</target>
-      </trans-unit>
-      <trans-unit id="0ct29xt" resname="Anyone who has the link can view and edit in real time">
-        <source>Anyone who has the link can view and edit in real time</source>
-        <target>Cualquier persona con el enlace puede ver y editar en tiempo real</target>
-      </trans-unit>
       <trans-unit id="4wslwjv" resname="Print preview">
         <source>Print preview</source>
         <target>Vista previa de impresión</target>
@@ -12632,18 +12441,6 @@
       <trans-unit id="22512dt" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
         <target>Escribe la palabra o frase correcta y haz clic en el botón "Responder".</target>
-      </trans-unit>
-      <trans-unit id="ikv86op" resname="Timeout">
-        <source>Timeout</source>
-        <target>Tiempo de espera agotado</target>
-      </trans-unit>
-      <trans-unit id="xkuovks" resname="Network error">
-        <source>Network error</source>
-        <target>Error de red</target>
-      </trans-unit>
-      <trans-unit id="4e799ch" resname="Invalid URL">
-        <source>Invalid URL</source>
-        <target>URL no válida</target>
       </trans-unit>
       <trans-unit id="cqvxeac" resname="Session Expired">
         <source>Session Expired</source>
@@ -12707,7 +12504,7 @@
       </trans-unit>
       <trans-unit id="hwm5oht" resname="Being edited by">
         <source>Being edited by</source>
-        <target>Editado por</target>
+        <target>Lo está editando</target>
       </trans-unit>
       <trans-unit id="je1wrjm" resname="Content will appear when saved">
         <source>Content will appear when saved</source>
@@ -12756,10 +12553,6 @@
       <trans-unit id="upc4vmi" resname="An error occurred while cloning the block">
         <source>An error occurred while cloning the block</source>
         <target>Error al clonar la caja</target>
-      </trans-unit>
-      <trans-unit id="seescvf" resname="Being edited by">
-        <source>Being edited by</source>
-        <target>Está siendo editado por</target>
       </trans-unit>
       <trans-unit id="2cu3jlq" resname="An error occurred while creating the page">
         <source>An error occurred while creating the page</source>
@@ -12831,7 +12624,7 @@
       </trans-unit>
       <trans-unit id="chf576h" resname="PDF">
         <source>PDF</source>
-        <target>~PDF</target>
+        <target>PDF</target>
       </trans-unit>
       <trans-unit id="uzgvsfn" resname="Other">
         <source>Other</source>
@@ -13021,10 +12814,6 @@
         <source>Error validating links</source>
         <target>Error al validar los enlaces</target>
       </trans-unit>
-      <trans-unit id="8dgslnr" resname="No broken links to export">
-        <source>No broken links to export</source>
-        <target>No se han encontrado enlaces rotos</target>
-      </trans-unit>
       <trans-unit id="sf50eoq" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
         <target>Clic para abrir el recurso en una nueva ventana</target>
@@ -13063,7 +12852,7 @@
       </trans-unit>
       <trans-unit id="cgvk17k" resname="No projects have been shared with you yet.">
         <source>No projects have been shared with you yet.</source>
-        <target>~Aún no se han compartido proyectos contigo.</target>
+        <target>Aún no se han compartido proyectos contigo.</target>
       </trans-unit>
       <trans-unit id="3ax99cq" resname="Shared by">
         <source>Shared by</source>
@@ -13071,7 +12860,7 @@
       </trans-unit>
       <trans-unit id="98q7e8x" resname="Clone to my projects">
         <source>Clone to my projects</source>
-        <target>~Guardar una copia en mis proyectos</target>
+        <target>Guardar una copia en mis proyectos</target>
       </trans-unit>
       <trans-unit id="16pqks5" resname="Select all">
         <source>Select all</source>
@@ -13311,7 +13100,7 @@
       </trans-unit>
       <trans-unit id="eoeiet1" resname="N/A">
         <source>N/A</source>
-        <target>~N/A</target>
+        <target>N/A</target>
       </trans-unit>
       <trans-unit id="ad44w3y" resname="Already optimized">
         <source>Already optimized</source>
@@ -13391,7 +13180,7 @@
       </trans-unit>
       <trans-unit id="ezww2if" resname="Storage not available">
         <source>Storage not available</source>
-        <target>~Espacio de almacenamiento no disponible</target>
+        <target>Espacio de almacenamiento no disponible</target>
       </trans-unit>
       <trans-unit id="p0yrxjd" resname="Invalid style package">
         <source>Invalid style package</source>
@@ -13400,10 +13189,6 @@
       <trans-unit id="u5hihba" resname="config.xml not found in ZIP">
         <source>config.xml not found in ZIP</source>
         <target>config.xml no encontrado en el ZIP</target>
-      </trans-unit>
-      <trans-unit id="yhpip7m" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>Este estilo no se puede descargar</target>
       </trans-unit>
       <trans-unit id="1cmko1n" resname="Style already exists">
         <source>Style already exists</source>
@@ -13484,14 +13269,6 @@
       <trans-unit id="8ruvmgd" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>Serán redirigidos automáticamente a la página de nivel superior.</target>
-      </trans-unit>
-      <trans-unit id="iurj6dx" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>Las preferencias se aplicarán después de actualizar la página.</target>
-      </trans-unit>
-      <trans-unit id="o3ca8sd" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>Es necesario recargar la página para aplicar los cambios. Descarga tu proyecto primero para no perder trabajo. Luego recarga la página.</target>
       </trans-unit>
       <trans-unit id="70f9sl7" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -13701,18 +13478,6 @@
         <source>Your access to this project has been revoked.</source>
         <target>Tu acceso a este proyecto ha sido revocado.</target>
       </trans-unit>
-      <trans-unit id="c4ss3sv" resname="Mind map saved">
-        <source>Mind map saved</source>
-        <target>Mapa mental guardado</target>
-      </trans-unit>
-      <trans-unit id="8cvldcd" resname="source">
-        <source>source</source>
-        <target>origen</target>
-      </trans-unit>
-      <trans-unit id="t6jxuw3" resname="target">
-        <source>target</source>
-        <target>destino</target>
-      </trans-unit>
       <trans-unit id="8ccwksk" resname="Create new formula toolbar">
         <source>Create new formula toolbar</source>
         <target>Crear nueva barra de fórmulas</target>
@@ -13727,7 +13492,7 @@
       </trans-unit>
       <trans-unit id="xbi4d4k" resname="Start from empty set">
         <source>Start from empty set</source>
-        <target>~Empezar desde cero</target>
+        <target>Empezar desde cero</target>
       </trans-unit>
       <trans-unit id="n9w0ozo" resname="Start with minimal example">
         <source>Start with minimal example</source>
@@ -13755,11 +13520,11 @@
       </trans-unit>
       <trans-unit id="38o4kfy" resname="Rename set">
         <source>Rename set</source>
-        <target>~Renombrar conjunto</target>
+        <target>Renombrar conjunto</target>
       </trans-unit>
       <trans-unit id="5u9usz9" resname="Set name">
         <source>Set name</source>
-        <target>~Nombre del conjunto</target>
+        <target>Nombre del conjunto</target>
       </trans-unit>
       <trans-unit id="7n95bs3" resname="Starter example">
         <source>Starter example</source>
@@ -13795,7 +13560,7 @@
       </trans-unit>
       <trans-unit id="83a17ve" resname="Your set is empty. Start by adding a category.">
         <source>Your set is empty. Start by adding a category.</source>
-        <target>~Tu conjunto está vacío. Empieza añadiendo una categoría.</target>
+        <target>Tu conjunto está vacío. Empieza añadiendo una categoría.</target>
       </trans-unit>
       <trans-unit id="b21sloz" resname="Add first category">
         <source>Add first category</source>
@@ -13831,7 +13596,7 @@
       </trans-unit>
       <trans-unit id="7ex2xus" resname="YouTube videos cannot be embedded in preview mode. ">
         <source>YouTube videos cannot be embedded in preview mode. </source>
-        <target>~Los vídeos de YouTube no se pueden mostrar en visualización previa. </target>
+        <target>Los vídeos de YouTube no se pueden mostrar en visualización previa. </target>
       </trans-unit>
       <trans-unit id="ok3zotu" resname="Invalid file content">
         <source>Invalid file content</source>
@@ -13871,7 +13636,7 @@
       </trans-unit>
       <trans-unit id="n4bswt6" resname="No indicators were selected for this activity.">
         <source>No indicators were selected for this activity.</source>
-        <target>~No se seleccionaron indicadores para esta actividad.</target>
+        <target>No se seleccionaron indicadores para esta actividad.</target>
       </trans-unit>
       <trans-unit id="mdzix4p" resname="DigCompEdu summary">
         <source>DigCompEdu summary</source>
@@ -13899,7 +13664,7 @@
       </trans-unit>
       <trans-unit id="mo9jgw1" resname="DigCompEdu framework">
         <source>DigCompEdu framework</source>
-        <target>~Marco DigCompEdu</target>
+        <target>Marco DigCompEdu</target>
       </trans-unit>
       <trans-unit id="i19jv8j" resname="Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.">
         <source>Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.</source>
@@ -13991,7 +13756,7 @@
       </trans-unit>
       <trans-unit id="nzaudxb" resname="Selection summary preview">
         <source>Selection summary preview</source>
-        <target>~Vista previa de la selección</target>
+        <target>Vista previa de la selección</target>
       </trans-unit>
       <trans-unit id="2ln05c2" resname="Examples:">
         <source>Examples:</source>
@@ -14067,7 +13832,7 @@
       </trans-unit>
       <trans-unit id="f8dtp2c" resname="0 iDevices">
         <source>0 iDevices</source>
-        <target>~0 iDevices</target>
+        <target>0 iDevices</target>
       </trans-unit>
       <trans-unit id="6w07ya1" resname="Proprietary license">
         <source>Proprietary license</source>
@@ -14083,11 +13848,11 @@
       </trans-unit>
       <trans-unit id="e8vgmo5" resname="%1 iDevices">
         <source>%1 iDevices</source>
-        <target>~%1 iDevices</target>
+        <target>%1 iDevices</target>
       </trans-unit>
       <trans-unit id="aaugony" resname="creative commons: cc0 1.0">
         <source>creative commons: cc0 1.0</source>
-        <target>~Creative Commons: CC0 1.0 Universal (dominio público)</target>
+        <target>Creative Commons: CC0 1.0 Universal (dominio público)</target>
       </trans-unit>
       <trans-unit id="kl4jih6" resname="Skip to content">
         <source>Skip to content</source>
@@ -14124,10 +13889,6 @@
       <trans-unit id="4uiedjj" resname="Close without saving">
         <source>Close without saving</source>
         <target>Cerrar sin guardar</target>
-      </trans-unit>
-      <trans-unit id="oggmabv" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
-        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
-        <target>No se pudo comprobar: el contenido HTTP está bloqueado en páginas HTTPS.</target>
       </trans-unit>
       <trans-unit id="sb4p2ku" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>
@@ -14224,6 +13985,2026 @@
       <trans-unit id="mgwpyfz" resname="Your score will be automatically saved after each change.">
         <source>Your score will be automatically saved after each change.</source>
         <target>Tu puntuación se guardará automáticamente después de cada cambio.</target>
+      </trans-unit>
+      <trans-unit id="lvaz0vg" resname="Use the default style of the site">
+        <source>Use the default style of the site</source>
+        <target>Usa el estilo predeterminado de la aplicación</target>
+      </trans-unit>
+      <trans-unit id="f4i1w6y" resname="Pick a style that will be preselected when you create a new project. Overrides the site default.">
+        <source>Pick a style that will be preselected when you create a new project. Overrides the site default.</source>
+        <target>Elige un estilo por defecto para los proyectos nuevos. Tiene preferencia sobre el valor predeterminado de la aplicación.</target>
+      </trans-unit>
+      <trans-unit id="ohipltp" resname="Toggle mobile preview">
+        <source>Toggle mobile preview</source>
+        <target>Vista previa móvil (alternar)</target>
+      </trans-unit>
+      <trans-unit id="nj5ybl1" resname="Open from folder">
+        <source>Open from folder</source>
+        <target>Abrir desde carpeta</target>
+      </trans-unit>
+      <trans-unit id="psuosog" resname="Save to folder">
+        <source>Save to folder</source>
+        <target>Guardar en carpeta</target>
+      </trans-unit>
+      <trans-unit id="2sgd74p" resname="3D Model">
+        <source>3D Model</source>
+        <target>Modelo 3D</target>
+      </trans-unit>
+      <trans-unit id="qukxhms" resname="3D Models">
+        <source>3D Models</source>
+        <target>Modelos 3D</target>
+      </trans-unit>
+      <trans-unit id="dm5eshd" resname="The selected folder is not a valid eXeLearning project.">
+        <source>The selected folder is not a valid eXeLearning project.</source>
+        <target>La carpeta seleccionada no contiene un proyecto eXeLearning válido.</target>
+      </trans-unit>
+      <trans-unit id="kzifd4f" resname="Not supported">
+        <source>Not supported</source>
+        <target>No compatible</target>
+      </trans-unit>
+      <trans-unit id="tuxwx0m" resname="Opening a project from a folder is not available in this browser.">
+        <source>Opening a project from a folder is not available in this browser.</source>
+        <target>Este navegador no permite abrir desde carpeta.</target>
+      </trans-unit>
+      <trans-unit id="b08ewhj" resname="Folder save requires the Yjs export pipeline.">
+        <source>Folder save requires the Yjs export pipeline.</source>
+        <target>Guardar en carpeta requiere el canal de exportación Yjs.</target>
+      </trans-unit>
+      <trans-unit id="rariy04" resname="Generating folder project...">
+        <source>Generating folder project...</source>
+        <target>Generando proyecto en carpeta...</target>
+      </trans-unit>
+      <trans-unit id="wqvk2yq" resname="Saving to a folder is not available in this browser.">
+        <source>Saving to a folder is not available in this browser.</source>
+        <target>Este navegador no permite guardar en carpeta.</target>
+      </trans-unit>
+      <trans-unit id="5rzz6dl" resname="Folder saved.">
+        <source>Folder saved.</source>
+        <target>Carpeta guardada.</target>
+      </trans-unit>
+      <trans-unit id="mw1z036" resname="An error occurred while exporting the project: ">
+        <source>An error occurred while exporting the project: </source>
+        <target>Se produjo un error al exportar el proyecto: </target>
+      </trans-unit>
+      <trans-unit id="1e7zp3q" resname="Sending to the platform...">
+        <source>Sending to the platform...</source>
+        <target>Enviando a la plataforma...</target>
+      </trans-unit>
+      <trans-unit id="r3o6tv7" resname="Could not send the project to the platform: ">
+        <source>Could not send the project to the platform: </source>
+        <target>No se pudo enviar el proyecto a la plataforma: </target>
+      </trans-unit>
+      <trans-unit id="sev2yh8" resname="TikZ code">
+        <source>TikZ code</source>
+        <target>Código TikZ</target>
+      </trans-unit>
+      <trans-unit id="80xmvs2" resname="One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.">
+        <source>One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.</source>
+        <target>Una pregunta por línea. Campos separados por #. Descripción: texto corto que describe el circuito. Código TikZ: código circuitikz para el diagrama. Solución: cualquier combinación de A, B, C y D (p. ej.: A, AC, BD). Pregunta: el texto de la pregunta. Luego 2 a 4 opciones de respuesta.</target>
+      </trans-unit>
+      <trans-unit id="iwt5vu8" resname="Simple resistor circuit">
+        <source>Simple resistor circuit</source>
+        <target>Circuito de resistencia simple</target>
+      </trans-unit>
+      <trans-unit id="m8fwbjo" resname="What is the resistance value?">
+        <source>What is the resistance value?</source>
+        <target>¿Cuál es el valor de la resistencia?</target>
+      </trans-unit>
+      <trans-unit id="8lran7e" resname="Battery and lamp circuit">
+        <source>Battery and lamp circuit</source>
+        <target>Circuito con batería y lámpara</target>
+      </trans-unit>
+      <trans-unit id="5fy4ezh" resname="What happens when the switch is closed?">
+        <source>What happens when the switch is closed?</source>
+        <target>¿Qué sucede cuando se cierra el interruptor?</target>
+      </trans-unit>
+      <trans-unit id="lik1ifs" resname="Nothing">
+        <source>Nothing</source>
+        <target>Nada</target>
+      </trans-unit>
+      <trans-unit id="hbaa26r" resname="The lamp turns on">
+        <source>The lamp turns on</source>
+        <target>La lámpara se enciende</target>
+      </trans-unit>
+      <trans-unit id="a0mf4rv" resname="The battery drains">
+        <source>The battery drains</source>
+        <target>La batería se agota</target>
+      </trans-unit>
+      <trans-unit id="17n6nvs" resname="Drop an .elpx file here to open it">
+        <source>Drop an .elpx file here to open it</source>
+        <target>Suelta un archivo .elpx aquí para abrirlo</target>
+      </trans-unit>
+      <trans-unit id="kt2lxqs" resname="360° panorama viewer">
+        <source>360° panorama viewer</source>
+        <target>Visor panorama 360°</target>
+      </trans-unit>
+      <trans-unit id="dzo1xdm" resname="Scene">
+        <source>Scene</source>
+        <target>Escena</target>
+      </trans-unit>
+      <trans-unit id="sq5gakz" resname="Hotspot">
+        <source>Hotspot</source>
+        <target>Punto interactivo</target>
+      </trans-unit>
+      <trans-unit id="wzxz1bf" resname="Initial view">
+        <source>Initial view</source>
+        <target>Vista inicial</target>
+      </trans-unit>
+      <trans-unit id="tqgd8vz" resname="Yaw">
+        <source>Yaw</source>
+        <target>~Yaw (giro horizontal)</target>
+      </trans-unit>
+      <trans-unit id="u32rw83" resname="Pitch">
+        <source>Pitch</source>
+        <target>~Pitch (inclinación vertical)</target>
+      </trans-unit>
+      <trans-unit id="60q136s" resname="Field of view">
+        <source>Field of view</source>
+        <target>~Campo de visión</target>
+      </trans-unit>
+      <trans-unit id="wueel8e" resname="Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.">
+        <source>Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.</source>
+        <target>Añade imágenes 360° equirectangulares (relación 2:1) o desmarca “Imagen de panorama 360°” para usar una foto plana normal. El visor usa WebGL para las escenas 360°.</target>
+      </trans-unit>
+      <trans-unit id="8y3b8zw" resname="Scenes">
+        <source>Scenes</source>
+        <target>Escenas</target>
+      </trans-unit>
+      <trans-unit id="mvgzvde" resname="Add scene">
+        <source>Add scene</source>
+        <target>Añadir escena</target>
+      </trans-unit>
+      <trans-unit id="6vlse9r" resname="Active scene">
+        <source>Active scene</source>
+        <target>Escena activa</target>
+      </trans-unit>
+      <trans-unit id="jvkacqg" resname="Panorama image">
+        <source>Panorama image</source>
+        <target>Imagen panorámica</target>
+      </trans-unit>
+      <trans-unit id="1yvgka5" resname="Choose image…">
+        <source>Choose image…</source>
+        <target>Elegir imagen…</target>
+      </trans-unit>
+      <trans-unit id="lc57qd2" resname="No image selected">
+        <source>No image selected</source>
+        <target>Ninguna imagen seleccionada</target>
+      </trans-unit>
+      <trans-unit id="nez9pi8" resname="Clear">
+        <source>Clear</source>
+        <target>Borrar</target>
+      </trans-unit>
+      <trans-unit id="qyi5yt8" resname="360° panorama image">
+        <source>360° panorama image</source>
+        <target>Imagen panorámica 360°</target>
+      </trans-unit>
+      <trans-unit id="ljobs97" resname="Uncheck for a regular flat photo (no 360° effect).">
+        <source>Uncheck for a regular flat photo (no 360° effect).</source>
+        <target>Desmarca para usar una foto plana normal (sin efecto 360°).</target>
+      </trans-unit>
+      <trans-unit id="4yzvn5u" resname="Hotspots">
+        <source>Hotspots</source>
+        <target>Puntos interactivos</target>
+      </trans-unit>
+      <trans-unit id="yhljxbr" resname="Click on the image to place a hotspot, or drag an existing hotspot to move it.">
+        <source>Click on the image to place a hotspot, or drag an existing hotspot to move it.</source>
+        <target>Haz clic en la imagen para colocar un punto interactivo, o arrastra uno existente para moverlo.</target>
+      </trans-unit>
+      <trans-unit id="tfqh5mg" resname="Click on the panorama to place a hotspot, or drag an existing hotspot to move it.">
+        <source>Click on the panorama to place a hotspot, or drag an existing hotspot to move it.</source>
+        <target>Haz clic en el panorama para colocar un punto interactivo, o arrastra uno existente para moverlo.</target>
+      </trans-unit>
+      <trans-unit id="c9c403x" resname="Place hotspot by clicking">
+        <source>Place hotspot by clicking</source>
+        <target>Colocar punto interactivo haciendo clic</target>
+      </trans-unit>
+      <trans-unit id="2qzc5dj" resname="…or add at current view">
+        <source>…or add at current view</source>
+        <target>~…o añadir en la vista actual</target>
+      </trans-unit>
+      <trans-unit id="8ssfwpu" resname="Controls">
+        <source>Controls</source>
+        <target>Controles</target>
+      </trans-unit>
+      <trans-unit id="u4o8sqd" resname="Auto-rotate">
+        <source>Auto-rotate</source>
+        <target>Rotación automática</target>
+      </trans-unit>
+      <trans-unit id="uqfgo87" resname="Speed">
+        <source>Speed</source>
+        <target>Velocidad</target>
+      </trans-unit>
+      <trans-unit id="iq9hcpw" resname="Allow zoom">
+        <source>Allow zoom</source>
+        <target>Permitir zoom</target>
+      </trans-unit>
+      <trans-unit id="sb63pke" resname="Show fullscreen button">
+        <source>Show fullscreen button</source>
+        <target>Mostrar botón de pantalla completa</target>
+      </trans-unit>
+      <trans-unit id="df4n09u" resname="Show hotspot labels">
+        <source>Show hotspot labels</source>
+        <target>Mostrar etiquetas de puntos interactivos</target>
+      </trans-unit>
+      <trans-unit id="iwi4qb2" resname="Show navigation arrows">
+        <source>Show navigation arrows</source>
+        <target>Mostrar flechas de navegación</target>
+      </trans-unit>
+      <trans-unit id="4nkntxs" resname="Select an image to see a live preview.">
+        <source>Select an image to see a live preview.</source>
+        <target>Selecciona una imagen para ver una vista previa.</target>
+      </trans-unit>
+      <trans-unit id="ksuougp" resname="Scene actions">
+        <source>Scene actions</source>
+        <target>~Acciones de escena</target>
+      </trans-unit>
+      <trans-unit id="vdyq0rr" resname="Set as start scene">
+        <source>Set as start scene</source>
+        <target>Establecer como escena inicial</target>
+      </trans-unit>
+      <trans-unit id="v72hz1e" resname="Duplicate scene">
+        <source>Duplicate scene</source>
+        <target>Duplicar escena</target>
+      </trans-unit>
+      <trans-unit id="3r70qz6" resname="Remove scene">
+        <source>Remove scene</source>
+        <target>Eliminar escena</target>
+      </trans-unit>
+      <trans-unit id="zu5d30k" resname="No hotspots in this scene yet.">
+        <source>No hotspots in this scene yet.</source>
+        <target>Aún no hay puntos interactivos en esta escena.</target>
+      </trans-unit>
+      <trans-unit id="8oxmo0l" resname="Label">
+        <source>Label</source>
+        <target>Etiqueta</target>
+      </trans-unit>
+      <trans-unit id="64uippn" resname="Remove hotspot">
+        <source>Remove hotspot</source>
+        <target>Eliminar punto interactivo</target>
+      </trans-unit>
+      <trans-unit id="nf31ea8" resname="Action">
+        <source>Action</source>
+        <target>Acción</target>
+      </trans-unit>
+      <trans-unit id="vqdhp3d" resname="Go to scene">
+        <source>Go to scene</source>
+        <target>Ir a escena</target>
+      </trans-unit>
+      <trans-unit id="jf8qs8e" resname="External link">
+        <source>External link</source>
+        <target>Enlace externo</target>
+      </trans-unit>
+      <trans-unit id="flf8p8a" resname="Target scene">
+        <source>Target scene</source>
+        <target>Escena de destino</target>
+      </trans-unit>
+      <trans-unit id="q7nlc70" resname="Video URL">
+        <source>Video URL</source>
+        <target>URL del vídeo</target>
+      </trans-unit>
+      <trans-unit id="k7vap31" resname="Choose video…">
+        <source>Choose video…</source>
+        <target>Seleccionar vídeo…</target>
+      </trans-unit>
+      <trans-unit id="pwd3sbx" resname="Paste a YouTube, Vimeo or Educamadrid Mediateca page URL to embed it, or choose an uploaded video file.">
+        <source>Paste a YouTube, Vimeo or Educamadrid Mediateca page URL to embed it, or choose an uploaded video file.</source>
+        <target>Pega la URL de una página de YouTube, Vimeo o Mediateca de Educamadrid para incrustarlo, o elige un archivo de vídeo subido.</target>
+      </trans-unit>
+      <trans-unit id="w933yhl" resname="Open in a new tab">
+        <source>Open in a new tab</source>
+        <target>Abrir en una pestaña nueva</target>
+      </trans-unit>
+      <trans-unit id="t21wkkm" resname="Loading 3D preview…">
+        <source>Loading 3D preview…</source>
+        <target>Cargando vista previa 3D…</target>
+      </trans-unit>
+      <trans-unit id="gh39e6v" resname="Drag to move">
+        <source>Drag to move</source>
+        <target>Arrastra para mover</target>
+      </trans-unit>
+      <trans-unit id="0sw3zos" resname="Pan navigation">
+        <source>Pan navigation</source>
+        <target>Navegación panorámica</target>
+      </trans-unit>
+      <trans-unit id="ubjaqi2" resname="Pan left">
+        <source>Pan left</source>
+        <target>Desplazar a la izquierda</target>
+      </trans-unit>
+      <trans-unit id="ygtiu5p" resname="Pan up">
+        <source>Pan up</source>
+        <target>Desplazar hacia arriba</target>
+      </trans-unit>
+      <trans-unit id="0ptdl5j" resname="Pan down">
+        <source>Pan down</source>
+        <target>Desplazar hacia abajo</target>
+      </trans-unit>
+      <trans-unit id="kh00b2c" resname="Pan right">
+        <source>Pan right</source>
+        <target>Desplazar a la derecha</target>
+      </trans-unit>
+      <trans-unit id="8x86rd5" resname="3D Viewer">
+        <source>3D Viewer</source>
+        <target>Visor 3D</target>
+      </trans-unit>
+      <trans-unit id="lyrfm0n" resname="Exit fullscreen">
+        <source>Exit fullscreen</source>
+        <target>Salir de pantalla completa</target>
+      </trans-unit>
+      <trans-unit id="au6wxtc" resname="Select a 3D model to preview">
+        <source>Select a 3D model to preview</source>
+        <target>Selecciona un modelo 3D para previsualizar</target>
+      </trans-unit>
+      <trans-unit id="uvm5yog" resname="Rotate model">
+        <source>Rotate model</source>
+        <target>Rotar modelo</target>
+      </trans-unit>
+      <trans-unit id="dcgqli3" resname="Rotate left">
+        <source>Rotate left</source>
+        <target>Rotar a la izquierda</target>
+      </trans-unit>
+      <trans-unit id="ucam538" resname="Tilt up">
+        <source>Tilt up</source>
+        <target>Inclinar hacia arriba</target>
+      </trans-unit>
+      <trans-unit id="0sff523" resname="Tilt down">
+        <source>Tilt down</source>
+        <target>Inclinar hacia abajo</target>
+      </trans-unit>
+      <trans-unit id="hd5d9sv" resname="Rotate right">
+        <source>Rotate right</source>
+        <target>Rotar a la derecha</target>
+      </trans-unit>
+      <trans-unit id="ipt7kub" resname="Select a GLB, GLTF or STL file">
+        <source>Select a GLB, GLTF or STL file</source>
+        <target>Selecciona un archivo GLB, GLTF o STL</target>
+      </trans-unit>
+      <trans-unit id="ni8k3zo" resname="Describe the 3D model for accessibility">
+        <source>Describe the 3D model for accessibility</source>
+        <target>Describe el modelo 3D para accesibilidad</target>
+      </trans-unit>
+      <trans-unit id="w4hdzme" resname="Describe the 3D model for screen readers and accessibility">
+        <source>Describe the 3D model for screen readers and accessibility</source>
+        <target>Describe el modelo 3D para lectores de pantalla y accesibilidad</target>
+      </trans-unit>
+      <trans-unit id="2ogc3fm" resname="Display Options">
+        <source>Display Options</source>
+        <target>Opciones de visualización</target>
+      </trans-unit>
+      <trans-unit id="jy36sxt" resname="Choose background color">
+        <source>Choose background color</source>
+        <target>Elegir color de fondo</target>
+      </trans-unit>
+      <trans-unit id="0cwx8ec" resname="STL model color">
+        <source>STL model color</source>
+        <target>Color del modelo STL</target>
+      </trans-unit>
+      <trans-unit id="qavkm0w" resname="Choose STL model color">
+        <source>Choose STL model color</source>
+        <target>Elegir color del modelo STL</target>
+      </trans-unit>
+      <trans-unit id="i1hrt4r" resname="Only used for STL files; ignored for GLB/GLTF (materials come from the model).">
+        <source>Only used for STL files; ignored for GLB/GLTF (materials come from the model).</source>
+        <target>Solo se usa para archivos STL; se ignora en GLB/GLTF (los materiales provienen del modelo).</target>
+      </trans-unit>
+      <trans-unit id="3jlmi5e" resname="Enable camera controls">
+        <source>Enable camera controls</source>
+        <target>Activar controles de cámara</target>
+      </trans-unit>
+      <trans-unit id="q3nn445" resname="Auto-rotate model">
+        <source>Auto-rotate model</source>
+        <target>Rotar modelo automáticamente</target>
+      </trans-unit>
+      <trans-unit id="on2152q" resname="Show navigation controls (fullscreen + arrows)">
+        <source>Show navigation controls (fullscreen + arrows)</source>
+        <target>Mostrar controles de navegación (pantalla completa + flechas)</target>
+      </trans-unit>
+      <trans-unit id="vlknyjo" resname="Mutually exclusive with auto-rotate.">
+        <source>Mutually exclusive with auto-rotate.</source>
+        <target>Incompatible con la rotación automática.</target>
+      </trans-unit>
+      <trans-unit id="nszcxr1" resname="Animation">
+        <source>Animation</source>
+        <target>Animación</target>
+      </trans-unit>
+      <trans-unit id="ql6wv6p" resname="Play animation">
+        <source>Play animation</source>
+        <target>Reproducir animación</target>
+      </trans-unit>
+      <trans-unit id="yphb1qw" resname="Animation paused">
+        <source>Animation paused</source>
+        <target>Animación pausada</target>
+      </trans-unit>
+      <trans-unit id="cb18aqd" resname="Playing animation">
+        <source>Playing animation</source>
+        <target>Reproduciendo animación</target>
+      </trans-unit>
+      <trans-unit id="mprit8k" resname="Please select a 3D model file">
+        <source>Please select a 3D model file</source>
+        <target>Por favor, selecciona un archivo de modelo 3D</target>
+      </trans-unit>
+      <trans-unit id="qoz3w9t" resname="Please select a valid 3D model file (GLB, GLTF, or STL)">
+        <source>Please select a valid 3D model file (GLB, GLTF, or STL)</source>
+        <target>Por favor, selecciona un archivo de modelo 3D válido (GLB, GLTF o STL)</target>
+      </trans-unit>
+      <trans-unit id="ajk6f1e" resname="Loading editor…">
+        <source>Loading editor…</source>
+        <target>Cargando el editor…</target>
+      </trans-unit>
+      <trans-unit id="m24nag1" resname="Could not load the slide editor. Please reload the page.">
+        <source>Could not load the slide editor. Please reload the page.</source>
+        <target>No se pudo cargar el editor de diapositivas. Por favor, recarga la página.</target>
+      </trans-unit>
+      <trans-unit id="9w52de2" resname="Markdown text">
+        <source>Markdown text</source>
+        <target>Texto Markdown</target>
+      </trans-unit>
+      <trans-unit id="prb5uia" resname="Markdown content">
+        <source>Markdown content</source>
+        <target>Contenido Markdown</target>
+      </trans-unit>
+      <trans-unit id="z38ewen" resname="Electrical Circuits">
+        <source>Electrical Circuits</source>
+        <target>Circuitos eléctricos</target>
+      </trans-unit>
+      <trans-unit id="zsp4vh5" resname="Please write the question">
+        <source>Please write the question</source>
+        <target>Por favor, escribe la pregunta</target>
+      </trans-unit>
+      <trans-unit id="e878ymg" resname="Please complete all options">
+        <source>Please complete all options</source>
+        <target>Completa todas las opciones</target>
+      </trans-unit>
+      <trans-unit id="4wt4moz" resname="Please write the word/phrase">
+        <source>Please write the word/phrase</source>
+        <target>Por favor, escribe la palabra/frase</target>
+      </trans-unit>
+      <trans-unit id="ogwhnrc" resname="The selected file is not a valid game">
+        <source>The selected file is not a valid game</source>
+        <target>El archivo seleccionado no contiene un juego válido</target>
+      </trans-unit>
+      <trans-unit id="goak55n" resname="Please indicate the time to display the solution">
+        <source>Please indicate the time to display the solution</source>
+        <target>Indica el tiempo para mostrar la solución</target>
+      </trans-unit>
+      <trans-unit id="ohjb39t" resname="Please provide the word or phrase">
+        <source>Please provide the word or phrase</source>
+        <target>Proporciona la palabra o frase</target>
+      </trans-unit>
+      <trans-unit id="tlo5xx8" resname="Create quiz activities based on electrical circuit diagrams drawn with TikZ.">
+        <source>Create quiz activities based on electrical circuit diagrams drawn with TikZ.</source>
+        <target>Crea actividades de cuestionario basadas en diagramas de circuitos eléctricos dibujados con TikZ.</target>
+      </trans-unit>
+      <trans-unit id="r8jzoyr" resname="&amp;percnt; right to see the feedback">
+        <source>&amp;percnt; right to see the feedback</source>
+        <target>&amp;percnt; de aciertos para ver el feedback</target>
+      </trans-unit>
+      <trans-unit id="d09ps3c" resname="% Questions">
+        <source>% Questions</source>
+        <target>% Preguntas</target>
+      </trans-unit>
+      <trans-unit id="j3npxd1" resname="No circuit">
+        <source>No circuit</source>
+        <target>Sin circuito</target>
+      </trans-unit>
+      <trans-unit id="onsoy2d" resname="Circuit code (TikZ)">
+        <source>Circuit code (TikZ)</source>
+        <target>Código del circuito (TikZ)</target>
+      </trans-unit>
+      <trans-unit id="62m9toa" resname="Preview circuit">
+        <source>Preview circuit</source>
+        <target>Vista previa del circuito</target>
+      </trans-unit>
+      <trans-unit id="nwbxbd9" resname="You answered all the questions.">
+        <source>You answered all the questions.</source>
+        <target>Has respondido todas las preguntas.</target>
+      </trans-unit>
+      <trans-unit id="vrbtnwu" resname="You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.">
+        <source>You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.</source>
+        <target>Necesitas al menos &amp;percnt;s&amp;percnt; de respuestas correctas para obtener la información. Por favor, inténtalo de nuevo.</target>
+      </trans-unit>
+      <trans-unit id="fum4vm1" resname="The score can not be saved because this page is not part of a SCORM package.">
+        <source>The score can not be saved because this page is not part of a SCORM package.</source>
+        <target>La puntuación no se puede guardar porque esta página no forma parte de un paquete SCORM.</target>
+      </trans-unit>
+      <trans-unit id="gbfjg49" resname="You can only save the score once">
+        <source>You can only save the score once</source>
+        <target>Solo puedes guardar la puntuación una vez</target>
+      </trans-unit>
+      <trans-unit id="z8e9act" resname="Please start the activity before saving your score.">
+        <source>Please start the activity before saving your score.</source>
+        <target>Inicia la actividad antes de guardar tu puntuación.</target>
+      </trans-unit>
+      <trans-unit id="ngtvkwz" resname="Electrical Circuits Quiz">
+        <source>Electrical Circuits Quiz</source>
+        <target>Cuestionario de circuitos eléctricos</target>
+      </trans-unit>
+      <trans-unit id="8qbirhq" resname="Observe the electrical circuit and answer the questions.">
+        <source>Observe the electrical circuit and answer the questions.</source>
+        <target>Observa el circuito eléctrico y responde las preguntas.</target>
+      </trans-unit>
+      <trans-unit id="92pr1ok" resname="What type of circuit is shown?">
+        <source>What type of circuit is shown?</source>
+        <target>¿Qué tipo de circuito se muestra?</target>
+      </trans-unit>
+      <trans-unit id="xzmsrhm" resname="Series circuit">
+        <source>Series circuit</source>
+        <target>Circuito en serie</target>
+      </trans-unit>
+      <trans-unit id="2mv50lh" resname="Parallel circuit">
+        <source>Parallel circuit</source>
+        <target>Circuito en paralelo</target>
+      </trans-unit>
+      <trans-unit id="ensqcmj" resname="Mixed circuit">
+        <source>Mixed circuit</source>
+        <target>Circuito mixto</target>
+      </trans-unit>
+      <trans-unit id="l5ey6pf" resname="Open circuit">
+        <source>Open circuit</source>
+        <target>Circuito abierto</target>
+      </trans-unit>
+      <trans-unit id="fcs06zn" resname="Circuit with a battery connected in series with two resistors">
+        <source>Circuit with a battery connected in series with two resistors</source>
+        <target>Circuito con una batería conectada en serie con dos resistencias</target>
+      </trans-unit>
+      <trans-unit id="och6kxr" resname="3Dmol">
+        <source>3Dmol</source>
+        <target>~3Dmol</target>
+      </trans-unit>
+      <trans-unit id="6ct26ta" resname="Please upload a valid 3D model file">
+        <source>Please upload a valid 3D model file</source>
+        <target>Selecciona un archivo de modelo 3D válido</target>
+      </trans-unit>
+      <trans-unit id="t4sjmdv" resname="Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz">
+        <source>Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</source>
+        <target>Formato de modelo 3D no compatible. Formatos compatibles: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</target>
+      </trans-unit>
+      <trans-unit id="aw35jvt" resname="Could not render the selected 3D model">
+        <source>Could not render the selected 3D model</source>
+        <target>No se pudo renderizar el modelo 3D seleccionado</target>
+      </trans-unit>
+      <trans-unit id="czl669t" resname="Large model file. This may affect performance.">
+        <source>Large model file. This may affect performance.</source>
+        <target>Archivo de modelo muy grande. Esto puede afectar al rendimiento.</target>
+      </trans-unit>
+      <trans-unit id="5c1ri51" resname="3D model">
+        <source>3D model</source>
+        <target>Modelo 3D</target>
+      </trans-unit>
+      <trans-unit id="ll1mq1l" resname="No 3D model">
+        <source>No 3D model</source>
+        <target>Sin modelo 3D</target>
+      </trans-unit>
+      <trans-unit id="v3nizpp" resname="Camera enabled">
+        <source>Camera enabled</source>
+        <target>Cámara activada</target>
+      </trans-unit>
+      <trans-unit id="r04x67l" resname="Click to disable">
+        <source>Click to disable</source>
+        <target>Haz clic para desactivar</target>
+      </trans-unit>
+      <trans-unit id="kp9q9wa" resname="Camera disabled">
+        <source>Camera disabled</source>
+        <target>Cámara desactivada</target>
+      </trans-unit>
+      <trans-unit id="k31a02u" resname="Click to enable">
+        <source>Click to enable</source>
+        <target>Clic para activar</target>
+      </trans-unit>
+      <trans-unit id="e5d7hq8" resname="Dark background">
+        <source>Dark background</source>
+        <target>Fondo oscuro</target>
+      </trans-unit>
+      <trans-unit id="y8psyln" resname="Click to switch to light">
+        <source>Click to switch to light</source>
+        <target>Clic para cambiar a claro</target>
+      </trans-unit>
+      <trans-unit id="qqru5im" resname="Light background">
+        <source>Light background</source>
+        <target>Fondo claro</target>
+      </trans-unit>
+      <trans-unit id="zw8jc43" resname="Click to switch to dark">
+        <source>Click to switch to dark</source>
+        <target>Clic para cambiar a oscuro</target>
+      </trans-unit>
+      <trans-unit id="2439b3h" resname="Atom legend visible">
+        <source>Atom legend visible</source>
+        <target>Leyenda de átomos visible</target>
+      </trans-unit>
+      <trans-unit id="r3xw8tm" resname="Click to hide">
+        <source>Click to hide</source>
+        <target>Clic para ocultar</target>
+      </trans-unit>
+      <trans-unit id="9c18pkf" resname="Atom legend hidden">
+        <source>Atom legend hidden</source>
+        <target>Leyenda de átomos oculta</target>
+      </trans-unit>
+      <trans-unit id="3vfne83" resname="Click to show">
+        <source>Click to show</source>
+        <target>Clic para mostrar</target>
+      </trans-unit>
+      <trans-unit id="b6m3lay" resname="Create quiz activities based on interactive 3D models.">
+        <source>Create quiz activities based on interactive 3D models.</source>
+        <target>Crea actividades de cuestionario basadas en modelos 3D interactivos.</target>
+      </trans-unit>
+      <trans-unit id="1m7k0nh" resname="3D model preview">
+        <source>3D model preview</source>
+        <target>Vista previa del modelo 3D</target>
+      </trans-unit>
+      <trans-unit id="l06pch6" resname="Molecule style">
+        <source>Molecule style</source>
+        <target>Estilo de molécula</target>
+      </trans-unit>
+      <trans-unit id="6hv70bu" resname="Smaller">
+        <source>Smaller</source>
+        <target>Más pequeño</target>
+      </trans-unit>
+      <trans-unit id="kn5c3xo" resname="Bigger">
+        <source>Bigger</source>
+        <target>Más grande</target>
+      </trans-unit>
+      <trans-unit id="p16nfu6" resname="Reset camera view">
+        <source>Reset camera view</source>
+        <target>Restablecer vista de cámara</target>
+      </trans-unit>
+      <trans-unit id="cfuhi6t" resname="Save initial view">
+        <source>Save initial view</source>
+        <target>Guardar vista inicial</target>
+      </trans-unit>
+      <trans-unit id="el4q9dt" resname="Download image">
+        <source>Download image</source>
+        <target>Descargar imagen</target>
+      </trans-unit>
+      <trans-unit id="ig1dmwl" resname="3D model file">
+        <source>3D model file</source>
+        <target>Archivo de modelo 3D</target>
+      </trans-unit>
+      <trans-unit id="wktngc7" resname="Preview model">
+        <source>Preview model</source>
+        <target>Vista previa del modelo</target>
+      </trans-unit>
+      <trans-unit id="p0ye0d6" resname="Line">
+        <source>Line</source>
+        <target>Línea</target>
+      </trans-unit>
+      <trans-unit id="9jell8d" resname="Cross">
+        <source>Cross</source>
+        <target>~Cruz</target>
+      </trans-unit>
+      <trans-unit id="v7o560y" resname="Stick">
+        <source>Stick</source>
+        <target>~Varilla</target>
+      </trans-unit>
+      <trans-unit id="qhqf8me" resname="Sphere">
+        <source>Sphere</source>
+        <target>Esfera</target>
+      </trans-unit>
+      <trans-unit id="op4v4pu" resname="Cartoon">
+        <source>Cartoon</source>
+        <target>~Cartoon</target>
+      </trans-unit>
+      <trans-unit id="mvioty2" resname="Surface">
+        <source>Surface</source>
+        <target>Superficie</target>
+      </trans-unit>
+      <trans-unit id="qbe92dy" resname="Toggle background">
+        <source>Toggle background</source>
+        <target>Alternar fondo</target>
+      </trans-unit>
+      <trans-unit id="p3lrsu1" resname="3D Model Quiz">
+        <source>3D Model Quiz</source>
+        <target>Cuestionario de Modelo 3D</target>
+      </trans-unit>
+      <trans-unit id="dpd9hj5" resname="Chemical composition">
+        <source>Chemical composition</source>
+        <target>Composición química</target>
+      </trans-unit>
+      <trans-unit id="jqpro57" resname="Observe the 3D model and answer the questions.">
+        <source>Observe the 3D model and answer the questions.</source>
+        <target>Observa el modelo 3D y responde las preguntas.</target>
+      </trans-unit>
+      <trans-unit id="i1f5sm8" resname="You can rotate the 3D model by clicking on it and dragging.">
+        <source>You can rotate the 3D model by clicking on it and dragging.</source>
+        <target>Puedes rotar el modelo 3D haciendo clic en él y arrastrando.</target>
+      </trans-unit>
+      <trans-unit id="yv4gq39" resname="What is the central atom in the model?">
+        <source>What is the central atom in the model?</source>
+        <target>¿Cuál es el átomo central en el modelo?</target>
+      </trans-unit>
+      <trans-unit id="szgcuqf" resname="How many hydroxyl groups (–OH) does a glucose molecule have?">
+        <source>How many hydroxyl groups (–OH) does a glucose molecule have?</source>
+        <target>¿Cuántos grupos hidroxilo (–OH) tiene una molécula de glucosa?</target>
+      </trans-unit>
+      <trans-unit id="2pdo1pz" resname="Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.">
+        <source>Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.</source>
+        <target>La glucosa (C₆H₁₂O₆) es el monosacárido más abundante y la principal fuente de energía celular. Rota el modelo para explorar su estructura.</target>
+      </trans-unit>
+      <trans-unit id="lnbesl5" resname="Default style for new documents">
+        <source>Default style for new documents</source>
+        <target>Estilo predeterminado para los documentos nuevos</target>
+      </trans-unit>
+      <trans-unit id="1nfg9dp" resname="Only STL files use this color; the current file is not STL">
+        <source>Only STL files use this color; the current file is not STL</source>
+        <target>Solo los archivos STL usan este color; el archivo actual no es STL</target>
+      </trans-unit>
+      <trans-unit id="pmuy721" resname="Please select the correct answer for each question">
+        <source>Please select the correct answer for each question</source>
+        <target>Selecciona la respuesta correcta para cada pregunta</target>
+      </trans-unit>
+      <trans-unit id="l6ik80x" resname="Enter TikZ circuit code…">
+        <source>Enter TikZ circuit code…</source>
+        <target>Introduce el código TikZ del circuito…</target>
+      </trans-unit>
+      <trans-unit id="k087h4u" resname="Legal framework:">
+        <source>Legal framework:</source>
+        <target>Marco legal:</target>
+      </trans-unit>
+      <trans-unit id="6j83p4q" resname="Specification:">
+        <source>Specification:</source>
+        <target>Concreción:</target>
+      </trans-unit>
+      <trans-unit id="46cvqp1" resname="This dataset is not available yet. It will be added in an upcoming version.">
+        <source>This dataset is not available yet. It will be added in an upcoming version.</source>
+        <target>Este conjunto de datos no está disponible todavía. Se añadirá en una próxima versión.</target>
+      </trans-unit>
+      <trans-unit id="m9m1sgg" resname="Curriculum elements selector">
+        <source>Curriculum elements selector</source>
+        <target>Selector de elementos curriculares</target>
+      </trans-unit>
+      <trans-unit id="p2dt9xp" resname="Loading curriculum data…">
+        <source>Loading curriculum data…</source>
+        <target>Cargando datos curriculares…</target>
+      </trans-unit>
+      <trans-unit id="c9z6r1l" resname="Filter…">
+        <source>Filter…</source>
+        <target>Filtrar…</target>
+      </trans-unit>
+      <trans-unit id="bwnkox9" resname="Basic knowledge">
+        <source>Basic knowledge</source>
+        <target>Saberes Básicos</target>
+      </trans-unit>
+      <trans-unit id="h9nzaer" resname="Select a subject">
+        <source>Select a subject</source>
+        <target>Selecciona una materia</target>
+      </trans-unit>
+      <trans-unit id="lutnulc" resname="No elements selected yet.">
+        <source>No elements selected yet.</source>
+        <target>Aún no hay elementos seleccionados.</target>
+      </trans-unit>
+      <trans-unit id="wndr0f4" resname="Summary preview">
+        <source>Summary preview</source>
+        <target>Vista previa del resumen</target>
+      </trans-unit>
+      <trans-unit id="o2442gu" resname="Curriculum foundations summary">
+        <source>Curriculum foundations summary</source>
+        <target>Resumen de la fundamentación curricular</target>
+      </trans-unit>
+      <trans-unit id="k0uv1sm" resname="Reset all selections? Changes will be lost.">
+        <source>Reset all selections? Changes will be lost.</source>
+        <target>¿Restablecer toda la selección? Se perderán los cambios.</target>
+      </trans-unit>
+      <trans-unit id="jdxlvn6" resname="Select stage and level">
+        <source>Select stage and level</source>
+        <target>Selecciona etapa y nivel</target>
+      </trans-unit>
+      <trans-unit id="8ejokau" resname="No results">
+        <source>No results</source>
+        <target>Sin resultados</target>
+      </trans-unit>
+      <trans-unit id="8ylohic" resname="No basic knowledge for this subject.">
+        <source>No basic knowledge for this subject.</source>
+        <target>No hay saberes básicos para esta materia.</target>
+      </trans-unit>
+      <trans-unit id="wgifamy" resname="No specific competencies for this subject.">
+        <source>No specific competencies for this subject.</source>
+        <target>No hay competencias específicas para esta materia.</target>
+      </trans-unit>
+      <trans-unit id="gh43bq2" resname="Partial">
+        <source>Partial</source>
+        <target>Parcial</target>
+      </trans-unit>
+      <trans-unit id="s1yuuvx" resname="Key Comp.">
+        <source>Key Comp.</source>
+        <target>Comp. Clave</target>
+      </trans-unit>
+      <trans-unit id="41vnf67" resname="Operational descriptors">
+        <source>Operational descriptors</source>
+        <target>Descriptores operativos</target>
+      </trans-unit>
+      <trans-unit id="28k3v3y" resname="No curriculum elements selected.">
+        <source>No curriculum elements selected.</source>
+        <target>No hay elementos curriculares seleccionados.</target>
+      </trans-unit>
+      <trans-unit id="rqkbrkw" resname="LOMLOE Curriculum Foundations">
+        <source>LOMLOE Curriculum Foundations</source>
+        <target>Fundamentación Curricular LOMLOE</target>
+      </trans-unit>
+      <trans-unit id="8w700kk" resname="Foundations">
+        <source>Foundations</source>
+        <target>Fundamentación</target>
+      </trans-unit>
+      <trans-unit id="t8ojxtu" resname="Selected elements">
+        <source>Selected elements</source>
+        <target>Elementos seleccionados</target>
+      </trans-unit>
+      <trans-unit id="61sqisa" resname="criteria">
+        <source>criteria</source>
+        <target>criterios</target>
+      </trans-unit>
+      <trans-unit id="gbquwk2" resname="knowledge">
+        <source>knowledge</source>
+        <target>saberes</target>
+      </trans-unit>
+      <trans-unit id="ktnyrj2" resname="Specific Competencies">
+        <source>Specific Competencies</source>
+        <target>Competencias Específicas</target>
+      </trans-unit>
+      <trans-unit id="9f4g2uj" resname="Spec. Comp.">
+        <source>Spec. Comp.</source>
+        <target>Comp. Específica</target>
+      </trans-unit>
+      <trans-unit id="gwobvbw" resname="Key Competencies">
+        <source>Key Competencies</source>
+        <target>Competencias Clave</target>
+      </trans-unit>
+      <trans-unit id="ix3yucf" resname="Eval. Criteria">
+        <source>Eval. Criteria</source>
+        <target>Criterios de Eval.</target>
+      </trans-unit>
+      <trans-unit id="agvzjam" resname="partial">
+        <source>partial</source>
+        <target>parcial</target>
+      </trans-unit>
+      <trans-unit id="25v6xdx" resname="Error loading data: ">
+        <source>Error loading data: </source>
+        <target>Error al cargar los datos: </target>
+      </trans-unit>
+      <trans-unit id="a4fgw1h" resname="Only .elpx, .elp or .zip project files can be opened by dragging them here.">
+        <source>Only .elpx, .elp or .zip project files can be opened by dragging them here.</source>
+        <target>Arrastrando, solo se pueden abrir archivos .elpx, .elp o .zip.</target>
+      </trans-unit>
+      <trans-unit id="jdx6zgy" resname="Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).">
+        <source>Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).</source>
+        <target>Nivel: 0 (bajo), 1 (medio), 2 (alto), 3 (experto) o 4 (maestro).</target>
+      </trans-unit>
+      <trans-unit id="mljfph8" resname="Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).">
+        <source>Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).</source>
+        <target>Nivel: 0 (bajo), 1 (medio), 2 (alto) o 3 (experto).</target>
+      </trans-unit>
+      <trans-unit id="1emymxq" resname="Level: 0 (low), 1 (medium) or 2 (high).">
+        <source>Level: 0 (low), 1 (medium) or 2 (high).</source>
+        <target>Nivel: 0 (bajo), 1 (medio) o 2 (alto).</target>
+      </trans-unit>
+      <trans-unit id="47tp4en" resname="OptionE">
+        <source>OptionE</source>
+        <target>OpciónE</target>
+      </trans-unit>
+      <trans-unit id="62uaswa" resname="OptionF">
+        <source>OptionF</source>
+        <target>OpciónF</target>
+      </trans-unit>
+      <trans-unit id="1acvfl9" resname="Which of the following are prime numbers?">
+        <source>Which of the following are prime numbers?</source>
+        <target>¿Cuáles de los siguientes son números primos?</target>
+      </trans-unit>
+      <trans-unit id="g99fnx0" resname="Sort from largest to smallest">
+        <source>Sort from largest to smallest</source>
+        <target>Ordena de mayor a menor</target>
+      </trans-unit>
+      <trans-unit id="74agtyy" resname="Elephant">
+        <source>Elephant</source>
+        <target>Elefante</target>
+      </trans-unit>
+      <trans-unit id="iqsbfzc" resname="Mouse">
+        <source>Mouse</source>
+        <target>Ratón</target>
+      </trans-unit>
+      <trans-unit id="csb4c85" resname="Which of these are transcendental numbers?">
+        <source>Which of these are transcendental numbers?</source>
+        <target>¿Cuáles de estos son números trascendentales?</target>
+      </trans-unit>
+      <trans-unit id="cjuoa7l" resname="Liouville constant">
+        <source>Liouville constant</source>
+        <target>Constante de Liouville</target>
+      </trans-unit>
+      <trans-unit id="iyy9eox" resname="Champernowne constant">
+        <source>Champernowne constant</source>
+        <target>Constante de Champernowne</target>
+      </trans-unit>
+      <trans-unit id="6cz6nbc" resname="Sort these chemical elements from lowest to highest atomic number">
+        <source>Sort these chemical elements from lowest to highest atomic number</source>
+        <target>Ordena estos elementos químicos de menor a mayor número atómico</target>
+      </trans-unit>
+      <trans-unit id="8845liv" resname="Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:">
+        <source>Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:</source>
+        <target>Se aceptan tres tipos de preguntas. Cada línea debe comenzar con el número de tipo, seguido de @, el nivel y el resto de los campos separados con #:</target>
+      </trans-unit>
+      <trans-unit id="ryaxg56" resname="Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.">
+        <source>Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.</source>
+        <target>Tipo 0 (opción múltiple): 0@Nivel#Solución#Pregunta#OpciónA#OpciónB[#OpciónC][#OpciónD][#OpciónE][#OpciónF]. La solución es una combinación en mayúsculas de A, B, C, D, E, F que identifica las opciones correctas (p. ej. A, AB, ACD, ABCDEF). Usa hasta 6 letras y nunca más que el número de opciones. Deja Solución vacía si ninguna opción es correcta.</target>
+      </trans-unit>
+      <trans-unit id="bsg9x5d" resname="Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.">
+        <source>Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.</source>
+        <target>Tipo 1 (ordenar): 1@Nivel#Pregunta#Elemento1#Elemento2#Elemento3[#Elemento4][#Elemento5][#Elemento6]. Proporciona entre 3 y 6 elementos ya listados en el orden correcto según el criterio de la pregunta.</target>
+      </trans-unit>
+      <trans-unit id="y8gbt0s" resname="Type 2 (word/definition): 2@Level#Word#Definition.">
+        <source>Type 2 (word/definition): 2@Level#Word#Definition.</source>
+        <target>Tipo 2 (palabra/definición): 2@Nivel#Palabra#Definición.</target>
+      </trans-unit>
+      <trans-unit id="6x7dwom" resname="Do not include the # character inside any field.">
+        <source>Do not include the # character inside any field.</source>
+        <target>No incluyas el carácter # dentro de ningún campo.</target>
+      </trans-unit>
+      <trans-unit id="w2mmdzt" resname="balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)">
+        <source>balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)</source>
+        <target>distribuidas entre los 5 niveles (0=bajo, 1=medio, 2=alto, 3=experto, 4=maestro)</target>
+      </trans-unit>
+      <trans-unit id="rovss5g" resname="balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)">
+        <source>balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)</source>
+        <target>distribuidas entre los 4 niveles (0=bajo, 1=medio, 2=alto, 3=experto)</target>
+      </trans-unit>
+      <trans-unit id="8f39g4h" resname="balanced across the 3 levels (0=low, 1=medium, 2=high)">
+        <source>balanced across the 3 levels (0=low, 1=medium, 2=high)</source>
+        <target>distribuidas entre los 3 niveles (0=bajo, 1=medio, 2=alto)</target>
+      </trans-unit>
+      <trans-unit id="i5pmhs8" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.</source>
+        <target>El nivel 0 debe contener las preguntas más fáciles (hechos básicos y recuerdo simple); cada nivel siguiente debe ser estrictamente más difícil que el anterior (más razonamiento, opciones más largas o complicadas, vocabulario más abstracto), y el nivel 4 (maestro) debe contener las preguntas más difíciles.</target>
+      </trans-unit>
+      <trans-unit id="7yagwjj" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.</source>
+        <target>El nivel 0 debe contener las preguntas más fáciles (hechos básicos y recuerdo simple); cada nivel siguiente debe ser estrictamente más difícil que el anterior (más razonamiento, opciones más largas o complicadas, vocabulario más abstracto), y el nivel 3 (experto) debe contener las preguntas más difíciles.</target>
+      </trans-unit>
+      <trans-unit id="k3bc3ex" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.</source>
+        <target>El nivel 0 debe contener las preguntas más fáciles (hechos básicos y recuerdo simple); cada nivel siguiente debe ser estrictamente más difícil que el anterior (más razonamiento, opciones más largas o complicadas, vocabulario más abstracto), y el nivel 2 (alto) debe contener las preguntas más difíciles.</target>
+      </trans-unit>
+      <trans-unit id="ye1tglk" resname="Your browser is not compatible with this type of activity.">
+        <source>Your browser is not compatible with this type of activity.</source>
+        <target>Tu navegador no es compatible con este tipo de actividad.</target>
+      </trans-unit>
+      <trans-unit id="6gp0yoh" resname="You must add at least one question.">
+        <source>You must add at least one question.</source>
+        <target>Debes añadir al menos una pregunta.</target>
+      </trans-unit>
+      <trans-unit id="e0fkml2" resname="You must have at least one question.">
+        <source>You must have at least one question.</source>
+        <target>Debes tener al menos una pregunta.</target>
+      </trans-unit>
+      <trans-unit id="a7buscg" resname="Question %s: the question text cannot be empty.">
+        <source>Question %s: the question text cannot be empty.</source>
+        <target>Pregunta %s: el texto de la pregunta no puede estar vacío.</target>
+      </trans-unit>
+      <trans-unit id="gw389lv" resname="Question %s: please fill in all answer options.">
+        <source>Question %s: please fill in all answer options.</source>
+        <target>Pregunta %s: rellena todas las opciones de respuesta.</target>
+      </trans-unit>
+      <trans-unit id="zge47su" resname="Question %s: please mark which option is the correct answer.">
+        <source>Question %s: please mark which option is the correct answer.</source>
+        <target>Pregunta %s: indica cuál es la opción correcta.</target>
+      </trans-unit>
+      <trans-unit id="jx9sa9g" resname="You must add at least %s questions.">
+        <source>You must add at least %s questions.</source>
+        <target>Debes añadir al menos %s preguntas.</target>
+      </trans-unit>
+      <trans-unit id="7cgngu0" resname="Warning: the selected initial level has no questions. The quiz will start using the fallback level.">
+        <source>Warning: the selected initial level has no questions. The quiz will start using the fallback level.</source>
+        <target>Aviso: el nivel inicial seleccionado no tiene preguntas. El cuestionario empezará usando el nivel de reserva.</target>
+      </trans-unit>
+      <trans-unit id="amq9f1k" resname="Please provide a name for every level.">
+        <source>Please provide a name for every level.</source>
+        <target>Indica un nombre para cada nivel.</target>
+      </trans-unit>
+      <trans-unit id="tj089ng" resname="Level &quot;%s&quot; must have at least 2 questions.">
+        <source>Level "%s" must have at least 2 questions.</source>
+        <target>El nivel «%s» debe tener al menos 2 preguntas.</target>
+      </trans-unit>
+      <trans-unit id="nvsg3qs" resname="Please indicate the time the solution will be displayed.">
+        <source>Please indicate the time the solution will be displayed.</source>
+        <target>Indica el tiempo que se mostrará la solución.</target>
+      </trans-unit>
+      <trans-unit id="kljnd0p" resname="Question %s: please mark at least one correct answer.">
+        <source>Question %s: please mark at least one correct answer.</source>
+        <target>Pregunta %s: marca al menos una respuesta correcta.</target>
+      </trans-unit>
+      <trans-unit id="jkr3hea" resname="Question %s: please provide the solution word or phrase.">
+        <source>Question %s: please provide the solution word or phrase.</source>
+        <target>Pregunta %s: proporciona la palabra o frase solución.</target>
+      </trans-unit>
+      <trans-unit id="3yatyut" resname="Question %s: please provide the definition.">
+        <source>Question %s: please provide the definition.</source>
+        <target>Pregunta %s: proporciona la definición.</target>
+      </trans-unit>
+      <trans-unit id="6xjdvpe" resname="Question %s: please specify a unique order from 1 to %n for every option.">
+        <source>Question %s: please specify a unique order from 1 to %n for every option.</source>
+        <target>Pregunta %s: asigna un orden único del 1 al %n a cada opción.</target>
+      </trans-unit>
+      <trans-unit id="ee3h8t5" resname="Audio URL">
+        <source>Audio URL</source>
+        <target>URL de audio</target>
+      </trans-unit>
+      <trans-unit id="u2li9t3" resname="Show audio options">
+        <source>Show audio options</source>
+        <target>Mostrar opciones de audio</target>
+      </trans-unit>
+      <trans-unit id="3mhfjuh" resname="Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.">
+        <source>Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.</source>
+        <target>Crea un cuestionario de opción múltiple cuya dificultad se adapta al alumno. Elige el número de niveles de dificultad (3, 4 o 5) y asigna uno a cada pregunta; el cuestionario sube un nivel tras dos respuestas correctas seguidas y baja tras dos incorrectas seguidas.</target>
+      </trans-unit>
+      <trans-unit id="b8tag7w" resname="Number of levels">
+        <source>Number of levels</source>
+        <target>Número de niveles</target>
+      </trans-unit>
+      <trans-unit id="d5deugv" resname="Level 1 name">
+        <source>Level 1 name</source>
+        <target>Nombre del nivel 1</target>
+      </trans-unit>
+      <trans-unit id="o1ig8ga" resname="Easy">
+        <source>Easy</source>
+        <target>Fácil</target>
+      </trans-unit>
+      <trans-unit id="s46veyy" resname="Level 2 name">
+        <source>Level 2 name</source>
+        <target>Nombre del nivel 2</target>
+      </trans-unit>
+      <trans-unit id="s5o7x52" resname="Level 3 name">
+        <source>Level 3 name</source>
+        <target>Nombre del nivel 3</target>
+      </trans-unit>
+      <trans-unit id="ajccxkh" resname="Hard">
+        <source>Hard</source>
+        <target>Difícil</target>
+      </trans-unit>
+      <trans-unit id="hny3xxh" resname="Level 4 name">
+        <source>Level 4 name</source>
+        <target>Nombre del nivel 4</target>
+      </trans-unit>
+      <trans-unit id="zxj6fv5" resname="Expert">
+        <source>Expert</source>
+        <target>Experto</target>
+      </trans-unit>
+      <trans-unit id="ppz622l" resname="Level 5 name">
+        <source>Level 5 name</source>
+        <target>Nombre del nivel 5</target>
+      </trans-unit>
+      <trans-unit id="x8z8i4c" resname="Master">
+        <source>Master</source>
+        <target>Maestro</target>
+      </trans-unit>
+      <trans-unit id="ezcdgzv" resname="Initial level">
+        <source>Initial level</source>
+        <target>Nivel inicial</target>
+      </trans-unit>
+      <trans-unit id="9zucexn" resname="Set to 0 to disable the time limit.">
+        <source>Set to 0 to disable the time limit.</source>
+        <target>Pon 0 para desactivar el límite de tiempo.</target>
+      </trans-unit>
+      <trans-unit id="bi9t332" resname="Shuffle answer options at runtime">
+        <source>Shuffle answer options at runtime</source>
+        <target>Mezclar las opciones de respuesta durante la ejecución</target>
+      </trans-unit>
+      <trans-unit id="6dwkolc" resname="Case-sensitive answer matching (word type)">
+        <source>Case-sensitive answer matching (word type)</source>
+        <target>Distinguir mayúsculas y minúsculas (tipo palabra)</target>
+      </trans-unit>
+      <trans-unit id="kjxtzk4" resname="Require correct accents (word type)">
+        <source>Require correct accents (word type)</source>
+        <target>Exigir tildes correctas (tipo palabra)</target>
+      </trans-unit>
+      <trans-unit id="j0vfwyv" resname="Level filter">
+        <source>Level filter</source>
+        <target>Filtro de nivel</target>
+      </trans-unit>
+      <trans-unit id="1fz24m8" resname="Reload image">
+        <source>Reload image</source>
+        <target>Recargar imagen</target>
+      </trans-unit>
+      <trans-unit id="fiz0f0t" resname="Adaptative Quiz">
+        <source>Adaptative Quiz</source>
+        <target>Cuestionario adaptativo</target>
+      </trans-unit>
+      <trans-unit id="qw3ohae" resname="Click on an option to choose your answer.">
+        <source>Click on an option to choose your answer.</source>
+        <target>Haz clic en una opción para elegir tu respuesta.</target>
+      </trans-unit>
+      <trans-unit id="10nsva5" resname="Highest level reached">
+        <source>Highest level reached</source>
+        <target>Nivel más alto alcanzado</target>
+      </trans-unit>
+      <trans-unit id="b3quzo5" resname="Level up!">
+        <source>Level up!</source>
+        <target>¡Subes de nivel!</target>
+      </trans-unit>
+      <trans-unit id="qs78tco" resname="Level down">
+        <source>Level down</source>
+        <target>Bajas de nivel</target>
+      </trans-unit>
+      <trans-unit id="3qa3yfi" resname="Final report">
+        <source>Final report</source>
+        <target>Informe final</target>
+      </trans-unit>
+      <trans-unit id="5sar9jk" resname="Excellent. You dominate the highest-level contents.">
+        <source>Excellent. You dominate the highest-level contents.</source>
+        <target>Excelente. Dominas los contenidos de mayor nivel.</target>
+      </trans-unit>
+      <trans-unit id="flfp52g" resname="Good job. You have achieved the intermediate level.">
+        <source>Good job. You have achieved the intermediate level.</source>
+        <target>Bien hecho. Has alcanzado el nivel intermedio.</target>
+      </trans-unit>
+      <trans-unit id="h12jx18" resname="You need a bit more practice. Review the basic contents.">
+        <source>You need a bit more practice. Review the basic contents.</source>
+        <target>Necesitas un poco más de práctica. Repasa los contenidos básicos.</target>
+      </trans-unit>
+      <trans-unit id="qixvabh" resname="Pause audio">
+        <source>Pause audio</source>
+        <target>Pausar audio</target>
+      </trans-unit>
+      <trans-unit id="w7e3swh" resname="Illustration">
+        <source>Illustration</source>
+        <target>Ilustración</target>
+      </trans-unit>
+      <trans-unit id="a7grbax" resname="Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.">
+        <source>Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.</source>
+        <target>Elige la respuesta correcta para cada pregunta. Para subir al siguiente nivel debes responder correctamente dos preguntas seguidas. Si fallas dos seguidas, bajarás al nivel anterior.</target>
+      </trans-unit>
+      <trans-unit id="fuwmogw" resname="Time&apos;s up!">
+        <source>Time's up!</source>
+        <target>¡Se acabó el tiempo!</target>
+      </trans-unit>
+      <trans-unit id="bk2v9qd" resname="Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.">
+        <source>Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.</source>
+        <target>Crea %total% preguntas mixtas de cuestionario adaptativo %distribution% y de los tres tipos de pregunta admitidos. Cada línea debe comenzar con el número de tipo seguido de @, luego el nivel y después el resto de los campos separados con #. Nunca pongas # dentro de un campo. Las tres formas de línea admitidas son: Tipo 0 (opción múltiple): 0@Nivel#Solución#Pregunta#OpciónA#OpciónB[#OpciónC][#OpciónD][#OpciónE][#OpciónF] — La solución es una combinación en mayúsculas de las letras A, B, C, D, E, F que identifica las opciones correctas (p. ej. A, AB, ACD, ABCDEF); usa hasta 6 letras y nunca más que el número de opciones; deja la solución vacía si ninguna opción es correcta. Tipo 1 (ordenar): 1@Nivel#Pregunta#Elemento1#Elemento2#Elemento3[#Elemento4][#Elemento5][#Elemento6] — proporciona entre 3 y 6 elementos ya listados en el orden correcto según el criterio de la pregunta. Tipo 2 (palabra/definición): 2@Nivel#Palabra#Definición. La dificultad debe aumentar con el nivel: %ladder% Dentro de cada nivel debes incluir preguntas de los tres tipos (Tipo 0, Tipo 1 y Tipo 2): genera alrededor de %perLevel% preguntas por nivel y asegúrate de que cada nivel combine seleccionar (Tipo 0), ordenar (Tipo 1) y palabra/definición (Tipo 2). No pongas todas del mismo tipo juntas; intercala los tres tipos dentro de cada nivel.</target>
+      </trans-unit>
+      <trans-unit id="ag6ihe1" resname="Please render the circuit preview before saving.">
+        <source>Please render the circuit preview before saving.</source>
+        <target>Genera la vista previa del circuito antes de guardar</target>
+      </trans-unit>
+      <trans-unit id="z8ugq75" resname="Screenshot">
+        <source>Screenshot</source>
+        <target>Captura de pantalla</target>
+      </trans-unit>
+      <trans-unit id="9psg4cy" resname="Current project screenshot preview">
+        <source>Current project screenshot preview</source>
+        <target>Vista previa de la captura del proyecto actual</target>
+      </trans-unit>
+      <trans-unit id="dot7hzc" resname="No screenshot yet. It will be auto-generated when you save or export.">
+        <source>No screenshot yet. It will be auto-generated when you save or export.</source>
+        <target>Aún no hay captura de pantalla. Se generará automáticamente al guardar o exportar.</target>
+      </trans-unit>
+      <trans-unit id="030c86c" resname="Upload custom image">
+        <source>Upload custom image</source>
+        <target>Subir imagen personalizada</target>
+      </trans-unit>
+      <trans-unit id="wix31pp" resname="Screenshot must be smaller than 2 MB.">
+        <source>Screenshot must be smaller than 2 MB.</source>
+        <target>La captura de pantalla debe tener un tamaño inferior a 2 MB.</target>
+      </trans-unit>
+      <trans-unit id="tza6h1a" resname="Invalid image">
+        <source>Invalid image</source>
+        <target>Imagen no válida</target>
+      </trans-unit>
+      <trans-unit id="ryr4omd" resname="The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.">
+        <source>The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.</source>
+        <target>La imagen no cumple los requisitos mínimos: relación de aspecto 16:9 y al menos 600 píxeles de ancho.</target>
+      </trans-unit>
+      <trans-unit id="6219smb" resname="Generate from content">
+        <source>Generate from content</source>
+        <target>Generar desde el contenido</target>
+      </trans-unit>
+      <trans-unit id="uk3h68y" resname="Not available">
+        <source>Not available</source>
+        <target>No disponible</target>
+      </trans-unit>
+      <trans-unit id="8wr6ns3" resname="Screenshot generation is not available.">
+        <source>Screenshot generation is not available.</source>
+        <target>La generación de capturas de pantalla no está disponible.</target>
+      </trans-unit>
+      <trans-unit id="8uu47r1" resname="Generation failed">
+        <source>Generation failed</source>
+        <target>Error en la generación</target>
+      </trans-unit>
+      <trans-unit id="zdz83z7" resname="Could not generate screenshot from content. Try uploading an image instead.">
+        <source>Could not generate screenshot from content. Try uploading an image instead.</source>
+        <target>No se pudo generar la captura desde el contenido. Intenta subir una imagen en su lugar.</target>
+      </trans-unit>
+      <trans-unit id="xcvh4sd" resname="Replace screenshot">
+        <source>Replace screenshot</source>
+        <target>Reemplazar captura de pantalla</target>
+      </trans-unit>
+      <trans-unit id="fm4oo08" resname="This will delete the current image. Do you want to continue?">
+        <source>This will delete the current image. Do you want to continue?</source>
+        <target>Esto eliminará la imagen actual. ¿Quieres continuar?</target>
+      </trans-unit>
+      <trans-unit id="cxju9z0" resname="Delete screenshot">
+        <source>Delete screenshot</source>
+        <target>Eliminar captura de pantalla</target>
+      </trans-unit>
+      <trans-unit id="s82hb3v" resname="Delete the current image? This action cannot be undone.">
+        <source>Delete the current image? This action cannot be undone.</source>
+        <target>¿Eliminar la imagen actual? Esta acción no se puede deshacer.</target>
+      </trans-unit>
+      <trans-unit id="q0xbg0a" resname="Recommendations">
+        <source>Recommendations</source>
+        <target>Recomendaciones</target>
+      </trans-unit>
+      <trans-unit id="zjymnxt" resname="Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.">
+        <source>Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.</source>
+        <target>Usa una imagen 16:9 (se recomiendan 1280×720 px) que represente claramente el contenido principal del recurso educativo. Evita el desorden y el texto pequeño, y asegura un buen contraste para su legibilidad en tamaños reducidos.</target>
+      </trans-unit>
+      <trans-unit id="prdopse" resname="The image will be used as a preview of this educational resource across different platforms.">
+        <source>The image will be used as a preview of this educational resource across different platforms.</source>
+        <target>La imagen se usará como vista previa de este recurso educativo en diferentes plataformas.</target>
+      </trans-unit>
+      <trans-unit id="927fxwd" resname="3D Molecule">
+        <source>3D Molecule</source>
+        <target>Molécula 3D</target>
+      </trans-unit>
+      <trans-unit id="ukl6iar" resname="3D Molecules">
+        <source>3D Molecules</source>
+        <target>Moléculas 3D</target>
+      </trans-unit>
+      <trans-unit id="2u64vv1" resname="Max. width (optional)">
+        <source>Max. width (optional)</source>
+        <target>Ancho máx. (opcional)</target>
+      </trans-unit>
+      <trans-unit id="yqdv18m" resname="Max. height (optional)">
+        <source>Max. height (optional)</source>
+        <target>Alto máx. (opcional)</target>
+      </trans-unit>
+      <trans-unit id="2p1dwxn" resname="e.g. 800px, 50%, 40em, 30rem">
+        <source>e.g. 800px, 50%, 40em, 30rem</source>
+        <target>p. ej. 800px, 50%, 40em, 30rem</target>
+      </trans-unit>
+      <trans-unit id="nr6x6of" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
+        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
+        <target>El ancho máx. debe ser mayor que 0 y usar px, em, rem o % (p. ej. 800px, 50%, 40em, 30rem).</target>
+      </trans-unit>
+      <trans-unit id="ajr6w22" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
+        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
+        <target>El alto máx. debe ser mayor que 0 y usar px, em, rem o % (p. ej. 600px, 70%, 30em, 20rem).</target>
+      </trans-unit>
+      <trans-unit id="hr9o37u" resname="Sorry, that&apos;s incorrect... The right answer is:">
+        <source>Sorry, that's incorrect... The right answer is:</source>
+        <target>Es incorrecto... La respuesta correcta es:</target>
+      </trans-unit>
+      <trans-unit id="pp50ey7" resname="Style installed">
+        <source>Style installed</source>
+        <target>Estilo instalado</target>
+      </trans-unit>
+      <trans-unit id="batjqg7" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>El estilo se ha instalado correctamente.</target>
+      </trans-unit>
+      <trans-unit id="5jyhkfi" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>Editando el iDevice. El resto de acciones están desactivadas hasta que guardes o descartes los cambios.</target>
+      </trans-unit>
+      <trans-unit id="8dfqdag" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>Has terminado de editar el iDevice.</target>
+      </trans-unit>
+      <trans-unit id="m0oo2pp" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>Guarda o descarta el iDevice abierto antes de guardar el proyecto.</target>
+      </trans-unit>
+      <trans-unit id="86q528f" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target>Los cambios de idioma pueden requerir recargar o volver a abrir eXeLearning para actualizar toda la interfaz.</target>
+      </trans-unit>
+      <trans-unit id="v97r0bg" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target>La preferencia de idioma ha sido guardada. Es posible que algunos textos de la interfaz no se actualicen hasta que recargues o vuelvas a abrir eXeLearning. Guarda o descarga tu proyecto antes de recargar o cerrar la aplicación para evitar perder cambios.</target>
+      </trans-unit>
+      <trans-unit id="vnnvf3t" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target>¿Guardar cambios antes de crear un nuevo archivo?</target>
+      </trans-unit>
+      <trans-unit id="9659by0" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target>No guardar</target>
+      </trans-unit>
+      <trans-unit id="6a6veiw" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target>Algunos cambios colaborativos aún no se han guardado. Haz clic en Guardar antes de salir para no perderlos.</target>
+      </trans-unit>
+      <trans-unit id="6zosd9q" resname="Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.">
+        <source>Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.</source>
+        <target>El contenido marcado como solo para el profesorado está oculto de forma predeterminada en las exportaciones y las vistas previas. Ábrelo con ?exe-teacher=1 para mostrarlo.</target>
+      </trans-unit>
+      <trans-unit id="eoewin8" resname="The file &quot;%1&quot; contains a large asset (%2).">
+        <source>The file "%1" contains a large asset (%2).</source>
+        <target>El archivo "%1" contiene un recurso de gran tamaño (%2).</target>
+      </trans-unit>
+      <trans-unit id="t062fc8" resname="Importing it may use a large amount of memory.">
+        <source>Importing it may use a large amount of memory.</source>
+        <target>Importarlo puede consumir una gran cantidad de memoria.</target>
+      </trans-unit>
+      <trans-unit id="07c7y2o" resname="The desktop application can open assets up to %1.">
+        <source>The desktop application can open assets up to %1.</source>
+        <target>La aplicación de escritorio puede abrir recursos de hasta %1.</target>
+      </trans-unit>
+      <trans-unit id="id3quhe" resname="Protection against malformed or malicious archives remains active.">
+        <source>Protection against malformed or malicious archives remains active.</source>
+        <target>La protección frente a archivos comprimidos malformados o maliciosos sigue activa.</target>
+      </trans-unit>
+      <trans-unit id="cl8n0qm" resname="Import large file?">
+        <source>Import large file?</source>
+        <target>¿Importar un archivo grande?</target>
+      </trans-unit>
+      <trans-unit id="cyw9p09" resname="The file &quot;%1&quot; (%2) is larger than the maximum this application can open (%3).">
+        <source>The file "%1" (%2) is larger than the maximum this application can open (%3).</source>
+        <target>El archivo "%1" (%2) supera el tamaño máximo que esta aplicación puede abrir (%3).</target>
+      </trans-unit>
+      <trans-unit id="gz95to3" resname="This project (%1) is larger than the maximum this application can open (%2).">
+        <source>This project (%1) is larger than the maximum this application can open (%2).</source>
+        <target>Este proyecto (%1) supera el tamaño máximo que esta aplicación puede abrir (%2).</target>
+      </trans-unit>
+      <trans-unit id="yew2jf0" resname="This project has too many files to open (%1 of a maximum %2).">
+        <source>This project has too many files to open (%1 of a maximum %2).</source>
+        <target>Este proyecto tiene demasiados archivos para poder abrirse (%1 de un máximo de %2).</target>
+      </trans-unit>
+      <trans-unit id="nln6rc8" resname="The project was not imported.">
+        <source>The project was not imported.</source>
+        <target>El proyecto no se ha importado.</target>
+      </trans-unit>
+      <trans-unit id="k8iza5t" resname="To reduce its size, open the File Manager and:">
+        <source>To reduce its size, open the File Manager and:</source>
+        <target>Para reducir su tamaño, abre el Gestor de archivos y:</target>
+      </trans-unit>
+      <trans-unit id="zk8fw9d" resname="Sort by &quot;Largest first&quot; and review each asset&apos;s references.">
+        <source>Sort by "Largest first" and review each asset's references.</source>
+        <target>Ordena por "Más grandes primero" y revisa las referencias de cada recurso.</target>
+      </trans-unit>
+      <trans-unit id="jau1yrr" resname="Remove an unused older version of a large asset.">
+        <source>Remove an unused older version of a large asset.</source>
+        <target>Elimina una versión anterior sin usar de un recurso de gran tamaño.</target>
+      </trans-unit>
+      <trans-unit id="wt1wz72" resname="Optimise, replace, or remove the large file.">
+        <source>Optimise, replace, or remove the large file.</source>
+        <target>Optimiza, sustituye o elimina el archivo de gran tamaño.</target>
+      </trans-unit>
+      <trans-unit id="wvipsv4" resname="File too large to open">
+        <source>File too large to open</source>
+        <target>Archivo demasiado grande para abrirlo</target>
+      </trans-unit>
+      <trans-unit id="0en2zbo" resname="The asset &quot;%1&quot; (%2) exceeds the maximum size the desktop application can open (%3).">
+        <source>The asset "%1" (%2) exceeds the maximum size the desktop application can open (%3).</source>
+        <target>El recurso "%1" (%2) supera el tamaño máximo que la aplicación de escritorio puede abrir (%3).</target>
+      </trans-unit>
+      <trans-unit id="0946nwm" resname="This project (%1) exceeds the maximum size the desktop application can open (%2).">
+        <source>This project (%1) exceeds the maximum size the desktop application can open (%2).</source>
+        <target>Este proyecto (%1) supera el tamaño máximo que la aplicación de escritorio puede abrir (%2).</target>
+      </trans-unit>
+      <trans-unit id="3723nbh" resname="The resulting ELPX may not open in the desktop application.">
+        <source>The resulting ELPX may not open in the desktop application.</source>
+        <target>Es posible que el ELPX resultante no se pueda abrir en la aplicación de escritorio.</target>
+      </trans-unit>
+      <trans-unit id="bp7ahdr" resname="Do you want to continue exporting anyway?">
+        <source>Do you want to continue exporting anyway?</source>
+        <target>¿Quieres continuar con la exportación de todos modos?</target>
+      </trans-unit>
+      <trans-unit id="dt4lw7z" resname="Large ELPX export">
+        <source>Large ELPX export</source>
+        <target>Exportación ELPX de gran tamaño</target>
+      </trans-unit>
+      <trans-unit id="1l13rpg" resname="Export anyway">
+        <source>Export anyway</source>
+        <target>Exportar de todos modos</target>
+      </trans-unit>
+      <trans-unit id="sv04eyx" resname="Page title">
+        <source>Page title</source>
+        <target>Título de la página</target>
+      </trans-unit>
+      <trans-unit id="clb2gvn" resname="This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.">
+        <source>This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.</source>
+        <target>Este iDevice no se puede editar porque sus datos guardados están dañados. Se ha conservado su contenido actual.</target>
+      </trans-unit>
+      <trans-unit id="x7d0t6w" resname="Invalid iDevice data. The save was discarded.">
+        <source>Invalid iDevice data. The save was discarded.</source>
+        <target>Datos del iDevice no válidos. Se ha descartado el guardado.</target>
+      </trans-unit>
+      <trans-unit id="cow3zgu" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).">
+        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).</source>
+        <target>~Genera 5 preguntas de opción múltiple sobre circuitos eléctricos. Una pregunta por línea. Cada línea debe contener todos los campos separados por #: una descripción breve, el código TikZ (usando circuitikz) del esquema del circuito, la respuesta correcta en letras (por ejemplo, A, AB), la pregunta y de 2 a 4 opciones de respuesta. No uses el carácter # dentro de ningún campo. No añadas saltos de línea dentro de una pregunta. IMPORTANTE: el código TikZ debe ser compatible con la versión 0.9.6 de circuitikz. Usa únicamente componentes disponibles en esta versión: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diodo), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (con t=A para amperímetro, t=V para voltímetro), and gate, or gate, not gate, nand gate, nor gate. NO uses componentes de circuitikz 1.0 o posterior como dipchip, qfpchip, muxdemux, flipflop, latch o displays de 7 segmentos. El esquema lo renderiza TikZJax, que solo carga los paquetes LaTeX circuitikz, amsmath y amssymb; NO uses comandos de ningún otro paquete. Escribe las unidades como texto plano o Unicode (por ejemplo Ω, µ, V, A, W, F, H, Hz, kΩ, µF), nunca como macros de siunitx o gensymb tales como \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} o \\qty{...}{...}, y nunca envuelvas una unidad entre corchetes angulares (escribe 100 Ω, no 100&lt;\\ohm&gt;).</target>
+      </trans-unit>
+      <trans-unit id="s51xkhl" resname="Attachment">
+        <source>Attachment</source>
+        <target>Adjunto</target>
+      </trans-unit>
+      <trans-unit id="uavjqq3" resname="No files attached.">
+        <source>No files attached.</source>
+        <target>No hay archivos adjuntos.</target>
+      </trans-unit>
+      <trans-unit id="btf0zg1" resname="File unavailable">
+        <source>File unavailable</source>
+        <target>Archivo no disponible</target>
+      </trans-unit>
+      <trans-unit id="dhh0j2f" resname="File attachments">
+        <source>File attachments</source>
+        <target>Archivos adjuntos</target>
+      </trans-unit>
+      <trans-unit id="3i535qg" resname="Show file descriptions">
+        <source>Show file descriptions</source>
+        <target>Mostrar las descripciones de los archivos</target>
+      </trans-unit>
+      <trans-unit id="889dpsn" resname="No files attached yet.">
+        <source>No files attached yet.</source>
+        <target>Todavía no hay archivos adjuntos.</target>
+      </trans-unit>
+      <trans-unit id="r47gxyi" resname="Unknown file">
+        <source>Unknown file</source>
+        <target>Archivo desconocido</target>
+      </trans-unit>
+      <trans-unit id="p4pkwc5" resname="The attached file is missing. Re-add it from the Media Library.">
+        <source>The attached file is missing. Re-add it from the Media Library.</source>
+        <target>Falta el archivo adjunto. Vuelve a añadirlo desde la Biblioteca de medios.</target>
+      </trans-unit>
+      <trans-unit id="xad8936" resname="The Media Library is not available.">
+        <source>The Media Library is not available.</source>
+        <target>La Biblioteca de medios no está disponible.</target>
+      </trans-unit>
+      <trans-unit id="t9cb1d0" resname="The file could not be uploaded.">
+        <source>The file could not be uploaded.</source>
+        <target>No se ha podido subir el archivo.</target>
+      </trans-unit>
+      <trans-unit id="78md1qy" resname="File properties">
+        <source>File properties</source>
+        <target>Propiedades del archivo</target>
+      </trans-unit>
+      <trans-unit id="35cct8d" resname="Please wait">
+        <source>Please wait</source>
+        <target>Espera, por favor</target>
+      </trans-unit>
+      <trans-unit id="bybpss8" resname="Generating the circuit images, this may take a few minutes, please wait…">
+        <source>Generating the circuit images, this may take a few minutes, please wait…</source>
+        <target>Generando las imágenes de los circuitos; esto puede tardar unos minutos, espera por favor…</target>
+      </trans-unit>
+      <trans-unit id="v0bdn4u" resname="Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.">
+        <source>Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.</source>
+        <target>Algunas preguntas no se han podido añadir porque no se ha podido generar su circuito. Se han mantenido en el cuadro de texto para que puedas corregirlas y volver a intentarlo.</target>
+      </trans-unit>
+      <trans-unit id="hug22jj" resname="Requires manual review">
+        <source>Requires manual review</source>
+        <target>Requiere revisión manual</target>
+      </trans-unit>
+      <trans-unit id="1izvuof" resname="Broken">
+        <source>Broken</source>
+        <target>Roto</target>
+      </trans-unit>
+      <trans-unit id="hrhw389" resname="Listing links...">
+        <source>Listing links...</source>
+        <target>Listando enlaces...</target>
+      </trans-unit>
+      <trans-unit id="508w7j7" resname="Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.">
+        <source>Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.</source>
+        <target>Por restricciones de seguridad del navegador, esta versión de eXeLearning no puede comprobar los enlaces externos automáticamente. Abre cada enlace para revisarlo manualmente.</target>
+      </trans-unit>
+      <trans-unit id="1pj3vzd" resname="the status of these links could not be checked automatically; open them to confirm.">
+        <source>the status of these links could not be checked automatically; open them to confirm.</source>
+        <target>Estos enlaces no se han podido comprobar automáticamente.</target>
+      </trans-unit>
+      <trans-unit id="la5izo8" resname="A check mark means the server responded: some sites answer 200 even for pages that do not exist.">
+        <source>A check mark means the server responded: some sites answer 200 even for pages that do not exist.</source>
+        <target>Una marca de verificación significa que el servidor respondió, pero algunos sitios responden 200 incluso para páginas que no existen.</target>
+      </trans-unit>
+      <trans-unit id="tlngypu" resname="Links listed">
+        <source>Links listed</source>
+        <target>Enlaces listados</target>
+      </trans-unit>
+      <trans-unit id="tb0otmy" resname="to review manually">
+        <source>to review manually</source>
+        <target>~para revisar manualmente</target>
+      </trans-unit>
+      <trans-unit id="9zmqhc7" resname="to review">
+        <source>to review</source>
+        <target>~para revisar</target>
+      </trans-unit>
+      <trans-unit id="m83ni1k" resname="No links to export">
+        <source>No links to export</source>
+        <target>~No hay enlaces que exportar</target>
+      </trans-unit>
+      <trans-unit id="c4qr71u" resname="External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.">
+        <source>External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.</source>
+        <target>Los enlaces externos no se pueden comprobar automáticamente en esta versión de eXeLearning: obtendrás una lista de enlaces para revisar manualmente.</target>
+      </trans-unit>
+      <trans-unit id="0tnfagc" resname="Not checked automatically: open the link to review it">
+        <source>Not checked automatically: open the link to review it</source>
+        <target>No comprobado automáticamente; abrir para revisar</target>
+      </trans-unit>
+      <trans-unit id="qra0lne" resname="Local or private address: open the link to review it manually">
+        <source>Local or private address: open the link to review it manually</source>
+        <target>Dirección local o privada; abrir para revisar</target>
+      </trans-unit>
+      <trans-unit id="grjc9mf" resname="Redirects to another site — open the link to verify it">
+        <source>Redirects to another site — open the link to verify it</source>
+        <target>Redirige a otro sitio; abrir para revisar</target>
+      </trans-unit>
+      <trans-unit id="zfpn6li" resname="Could not be fully verified: open the link to confirm it">
+        <source>Could not be fully verified: open the link to confirm it</source>
+        <target>Verificación incompleta; abrir para revisar</target>
+      </trans-unit>
+      <trans-unit id="97ouscv" resname="Redirects could not be followed: open the link to review it">
+        <source>Redirects could not be followed: open the link to review it</source>
+        <target>No se han podido seguir las redirecciones; abrir para revisar</target>
+      </trans-unit>
+      <trans-unit id="t0fqkmh" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~y %1 más</target>
+      </trans-unit>
+      <trans-unit id="rcsvykh" resname="Missing files">
+        <source>Missing files</source>
+        <target>Archivos que faltan</target>
+      </trans-unit>
+      <trans-unit id="im812rj" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>Estas actividades hacen referencia a archivos que no están en el contenido importado. Se han conservado las referencias. Si vuelves a añadir los archivos, el contenido volverá a estar completo.</target>
+      </trans-unit>
+      <trans-unit id="no56d8k" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target>Las fórmulas se muestran aunque esta opción esté desactivada. Actívala para incluir la biblioteca MathJax completa en las exportaciones. Eso añade su menú contextual y sus funciones interactivas.</target>
+      </trans-unit>
+      <trans-unit id="3146zp4" resname="Change password">
+        <source>Change password</source>
+        <target>Cambiar contraseña</target>
+      </trans-unit>
+      <trans-unit id="bh4dmnh" resname="Current password">
+        <source>Current password</source>
+        <target>Contraseña actual</target>
+      </trans-unit>
+      <trans-unit id="rbh33rg" resname="New password">
+        <source>New password</source>
+        <target>Nueva contraseña</target>
+      </trans-unit>
+      <trans-unit id="473dyg0" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target>Al menos 4 caracteres. Las contraseñas largas que combinan letras, números y símbolos son más seguras.</target>
+      </trans-unit>
+      <trans-unit id="frtm7ga" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target>Confirmar la nueva contraseña</target>
+      </trans-unit>
+      <trans-unit id="t4sbhx7" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target>Actividades dañadas</target>
+      </trans-unit>
+      <trans-unit id="c6us81i" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target>Los datos de estas actividades están dañados y no se han podido leer. Se han importado sin cambios: se sigue mostrando su último contenido, pero no se pueden editar sin crearlas de nuevo.</target>
+      </trans-unit>
+      <trans-unit id="aud8cgb" resname="Import warnings">
+        <source>Import warnings</source>
+        <target>Avisos de importación</target>
+      </trans-unit>
+      <trans-unit id="n366xho" resname="Search icon">
+        <source>Search icon</source>
+        <target>Buscar icono</target>
+      </trans-unit>
+      <trans-unit id="mxdk9zq" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target>Elegir imagen desde el gestor de archivos</target>
+      </trans-unit>
+      <trans-unit id="eaevuse" resname="Icon">
+        <source>Icon</source>
+        <target>Icono</target>
+      </trans-unit>
+      <trans-unit id="r9otlv0" resname="Style icons">
+        <source>Style icons</source>
+        <target>Iconos del estilo</target>
+      </trans-unit>
+      <trans-unit id="7me10rn" resname="General icons">
+        <source>General icons</source>
+        <target>Iconos generales</target>
+      </trans-unit>
+      <trans-unit id="sivy34q" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target>Seguridad de la contraseña: demasiado corta</target>
+      </trans-unit>
+      <trans-unit id="a4j06qj" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target>Seguridad de la contraseña: débil</target>
+      </trans-unit>
+      <trans-unit id="mg2u8ds" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target>Seguridad de la contraseña: aceptable</target>
+      </trans-unit>
+      <trans-unit id="40hlbwv" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target>Seguridad de la contraseña: buena</target>
+      </trans-unit>
+      <trans-unit id="t7vk398" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target>Seguridad de la contraseña: fuerte</target>
+      </trans-unit>
+      <trans-unit id="26bgcn7" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target>La contraseña actual no es correcta</target>
+      </trans-unit>
+      <trans-unit id="q3b5ljt" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target>La nueva contraseña no puede estar vacía.</target>
+      </trans-unit>
+      <trans-unit id="0cty7hp" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target>Las contraseñas no coinciden</target>
+      </trans-unit>
+      <trans-unit id="di7mgqt" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target>Contraseña cambiada correctamente</target>
+      </trans-unit>
+      <trans-unit id="mfjk53p" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target>Se ha producido un error. Por favor, inténtalo de nuevo.</target>
+      </trans-unit>
+      <trans-unit id="hcqm5mq" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target>Esta cuenta no permite cambiar la contraseña.</target>
+      </trans-unit>
+      <trans-unit id="6zlucmf" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target>La nueva contraseña no es válida.</target>
+      </trans-unit>
+      <trans-unit id="hzo4adf" resname="Huger text">
+        <source>Huger text</source>
+        <target>~Texto más enorme</target>
+      </trans-unit>
+      <trans-unit id="qt3dlw5" resname="To save the score, the activity needs at least one question.">
+        <source>To save the score, the activity needs at least one question.</source>
+        <target>La actividad necesita al menos una pregunta para guardar la puntuación.</target>
+      </trans-unit>
+      <trans-unit id="0dgqwp5" resname="Minimum score to pass">
+        <source>Minimum score to pass</source>
+        <target>Puntuación mínima para aprobar</target>
+      </trans-unit>
+      <trans-unit id="qffd756" resname="Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.">
+        <source>Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.</source>
+        <target>Nota sobre 10 que el alumnado debe alcanzar para que una actividad cuente como aprobada. Todos los iDevices usan este valor salvo que definan el suyo propio.</target>
+      </trans-unit>
+      <trans-unit id="39nk5ou" resname="Each SCORM activity must reach its minimum score">
+        <source>Each SCORM activity must reach its minimum score</source>
+        <target>Cada actividad SCORM debe alcanzar su puntuación mínima</target>
+      </trans-unit>
+      <trans-unit id="tvtzv3a" resname="A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.">
+        <source>A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.</source>
+        <target>Una página SCORM solo se aprueba si todas sus actividades alcanzan su puntuación mínima. Si no se marca esta opción, basta con que la media ponderada de las puntuaciones alcance la de las puntuaciones mínimas, así que una nota alta puede compensar una baja.</target>
+      </trans-unit>
+      <trans-unit id="tjkx6ld" resname="Edit access">
+        <source>Edit access</source>
+        <target>~Quién puede editar</target>
+      </trans-unit>
+      <trans-unit id="o4cee9j" resname="Only invited people">
+        <source>Only invited people</source>
+        <target>Solo las personas invitadas</target>
+      </trans-unit>
+      <trans-unit id="fqp2cd8" resname="Anyone with the edit link">
+        <source>Anyone with the edit link</source>
+        <target>Cualquiera con el enlace de edición</target>
+      </trans-unit>
+      <trans-unit id="c0ftxtq" resname="Only the people added above can open and edit this resource.">
+        <source>Only the people added above can open and edit this resource.</source>
+        <target>Solo las personas autorizadas pueden abrir y editar este recurso.</target>
+      </trans-unit>
+      <trans-unit id="30efyim" resname="Edit link">
+        <source>Edit link</source>
+        <target>Enlace de edición</target>
+      </trans-unit>
+      <trans-unit id="lelr31h" resname="Public read-only link">
+        <source>Public read-only link</source>
+        <target>Enlace público (solo lectura)</target>
+      </trans-unit>
+      <trans-unit id="1gklrwc" resname="Disabled">
+        <source>Disabled</source>
+        <target>Desactivado</target>
+      </trans-unit>
+      <trans-unit id="8g5brl5" resname="Enabled">
+        <source>Enabled</source>
+        <target>Activado</target>
+      </trans-unit>
+      <trans-unit id="0tyf9ot" resname="This resource has no public read-only link.">
+        <source>This resource has no public read-only link.</source>
+        <target>Este recurso no tiene enlace público.</target>
+      </trans-unit>
+      <trans-unit id="poexztm" resname="Public link">
+        <source>Public link</source>
+        <target>Enlace público</target>
+      </trans-unit>
+      <trans-unit id="8y22t62" resname="Regenerate link">
+        <source>Regenerate link</source>
+        <target>Regenerar enlace</target>
+      </trans-unit>
+      <trans-unit id="km4nnf5" resname="Regenerate the public link? The previous link will stop working.">
+        <source>Regenerate the public link? The previous link will stop working.</source>
+        <target>¿Regenerar el enlace público? El anterior dejará de funcionar.</target>
+      </trans-unit>
+      <trans-unit id="kliftgw" resname="Yes, regenerate">
+        <source>Yes, regenerate</source>
+        <target>Sí, regenerar</target>
+      </trans-unit>
+      <trans-unit id="arm7g78" resname="Print options">
+        <source>Print options</source>
+        <target>Opciones de impresión</target>
+      </trans-unit>
+      <trans-unit id="xd5iyhq" resname="Save as PDF">
+        <source>Save as PDF</source>
+        <target>Guardar como PDF</target>
+      </trans-unit>
+      <trans-unit id="6f6e9jp" resname="Printing did not start. Printing may be disabled in this browser or on this device.">
+        <source>Printing did not start. Printing may be disabled in this browser or on this device.</source>
+        <target>La impresión no se ha iniciado. Puede que esté desactivada en este navegador o en el dispositivo.</target>
+      </trans-unit>
+      <trans-unit id="9bjqgko" resname="The PDF could not be saved.">
+        <source>The PDF could not be saved.</source>
+        <target>No se ha podido guardar el PDF.</target>
+      </trans-unit>
+      <trans-unit id="uo4bqfk" resname="All visible content will be printed.">
+        <source>All visible content will be printed.</source>
+        <target>Se imprimirá todo el contenido visible.</target>
+      </trans-unit>
+      <trans-unit id="ib5kcux" resname="You can choose which activities to include and whether to show hidden content.">
+        <source>You can choose which activities to include and whether to show hidden content.</source>
+        <target>Puedes elegir qué actividades incluir y si mostrar el contenido oculto.</target>
+      </trans-unit>
+      <trans-unit id="lmjcl45" resname="You can choose whether to show hidden content.">
+        <source>You can choose whether to show hidden content.</source>
+        <target>Puedes elegir si mostrar el contenido oculto.</target>
+      </trans-unit>
+      <trans-unit id="u3kv4x9" resname="Document">
+        <source>Document</source>
+        <target>Documento</target>
+      </trans-unit>
+      <trans-unit id="4e5ha2t" resname="Show link URLs">
+        <source>Show link URLs</source>
+        <target>Mostrar la URL de los enlaces</target>
+      </trans-unit>
+      <trans-unit id="3smp4rl" resname="Print the content of minimized boxes">
+        <source>Print the content of minimized boxes</source>
+        <target>Imprimir el contenido de las cajas minimizadas</target>
+      </trans-unit>
+      <trans-unit id="9rn5lt7" resname="Print teacher-only content">
+        <source>Print teacher-only content</source>
+        <target>Imprimir el contenido exclusivo para docentes</target>
+      </trans-unit>
+      <trans-unit id="kiuo2cm" resname="Loading preview...">
+        <source>Loading preview...</source>
+        <target>Cargando vista previa...</target>
+      </trans-unit>
+      <trans-unit id="bochq8l" resname="Spell checker languages">
+        <source>Spell checker languages</source>
+        <target>Idiomas del corrector ortográfico</target>
+      </trans-unit>
+      <trans-unit id="a78pqki" resname="Choose languages">
+        <source>Choose languages</source>
+        <target>Elegir idiomas</target>
+      </trans-unit>
+      <trans-unit id="3wkq09m" resname="System default">
+        <source>System default</source>
+        <target>Predeterminado del sistema</target>
+      </trans-unit>
+      <trans-unit id="8b3y5fq" resname="iDevice %1">
+        <source>iDevice %1</source>
+        <target>iDevice %1</target>
+      </trans-unit>
+      <trans-unit id="9em8i3o" resname="%1 on page &quot;%2&quot;">
+        <source>%1 on page "%2"</source>
+        <target>%1 en la página "%2"</target>
+      </trans-unit>
+      <trans-unit id="usykdqk" resname="Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.">
+        <source>Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.</source>
+        <target>Las actividades evaluables usan la puntuación mínima en todos los formatos de exportación. La opción SCORM solo se aplica a las exportaciones compatibles con SCORM.</target>
+      </trans-unit>
+      <trans-unit id="wypmix1" resname="Server unavailable">
+        <source>Server unavailable</source>
+        <target>Servidor no disponible</target>
+      </trans-unit>
+      <trans-unit id="yem48j3" resname="the server took too long to respond, try again later">
+        <source>the server took too long to respond, try again later</source>
+        <target>~el servidor ha tardado demasiado en responder, inténtalo de nuevo más tarde</target>
+      </trans-unit>
+      <trans-unit id="o8xnv1w" resname="too many requests to this site, try again later">
+        <source>too many requests to this site, try again later</source>
+        <target>~demasiadas peticiones a este sitio, inténtalo de nuevo más tarde</target>
+      </trans-unit>
+      <trans-unit id="8zxyws9" resname="server error, try again later">
+        <source>server error, try again later</source>
+        <target>~error del servidor, inténtalo de nuevo más tarde</target>
+      </trans-unit>
+      <trans-unit id="qgjimqd" resname="the site did not answer in time or was busy; the link may still work, try again later.">
+        <source>the site did not answer in time or was busy; the link may still work, try again later.</source>
+        <target>~el sitio no ha respondido a tiempo o estaba ocupado; puede que el enlace funcione, inténtalo de nuevo más tarde.</target>
+      </trans-unit>
+      <trans-unit id="2varm2w" resname="unavailable">
+        <source>unavailable</source>
+        <target>~no disponible</target>
+      </trans-unit>
+      <trans-unit id="piqgg2j" resname="Print iDevices">
+        <source>Print iDevices</source>
+        <target>Imprimir iDevices</target>
+      </trans-unit>
+      <trans-unit id="haksfvv" resname="Content without activities">
+        <source>Content without activities</source>
+        <target>Contenido sin actividades</target>
+      </trans-unit>
+      <trans-unit id="8gtwu43" resname="Content with activities">
+        <source>Content with activities</source>
+        <target>Contenido con actividades</target>
+      </trans-unit>
+      <trans-unit id="p24jmjv" resname="Content with activities in an appendix">
+        <source>Content with activities in an appendix</source>
+        <target>Contenido con las actividades en un apéndice</target>
+      </trans-unit>
+      <trans-unit id="qzoyng8" resname="Activities only (no other content)">
+        <source>Activities only (no other content)</source>
+        <target>Solo las actividades (sin el resto del contenido)</target>
+      </trans-unit>
+      <trans-unit id="qukpzjk" resname="What would you like to print?">
+        <source>What would you like to print?</source>
+        <target>¿Qué quieres imprimir?</target>
+      </trans-unit>
+      <trans-unit id="hhdedbl" resname="Shown when a printing mode that includes activities is selected.">
+        <source>Shown when a printing mode that includes activities is selected.</source>
+        <target>~Se muestra al elegir un modo de impresión que incluye actividades.</target>
+      </trans-unit>
+      <trans-unit id="79528x3" resname="Title only">
+        <source>Title only</source>
+        <target>Solo el título</target>
+      </trans-unit>
+      <trans-unit id="n6hdrop" resname="Select at least one activity to print.">
+        <source>Select at least one activity to print.</source>
+        <target>Selecciona al menos una actividad para imprimir.</target>
+      </trans-unit>
+      <trans-unit id="0ue0ob4" resname="Requires multimedia">
+        <source>Requires multimedia</source>
+        <target>~Requiere multimedia</target>
+      </trans-unit>
+      <trans-unit id="sb6z2ko" resname="Invalid or empty activity data">
+        <source>Invalid or empty activity data</source>
+        <target>Datos de la actividad no válidos o vacíos</target>
+      </trans-unit>
+      <trans-unit id="1381zy3" resname="Words that could not be placed">
+        <source>Words that could not be placed</source>
+        <target>Palabras que no se han podido colocar</target>
+      </trans-unit>
+      <trans-unit id="ssgco8y" resname="This project has no printable activities yet.">
+        <source>This project has no printable activities yet.</source>
+        <target>Este proyecto aún no tiene actividades imprimibles.</target>
+      </trans-unit>
+      <trans-unit id="y70r106" resname="Left out of this worksheet">
+        <source>Left out of this worksheet</source>
+        <target>~No incluidas en esta ficha</target>
+      </trans-unit>
+      <trans-unit id="01xipr4" resname="Not available in print">
+        <source>Not available in print</source>
+        <target>No disponible en la versión impresa</target>
+      </trans-unit>
+      <trans-unit id="03gg587" resname="Operation">
+        <source>Operation</source>
+        <target>Operación</target>
+      </trans-unit>
+      <trans-unit id="j96q6fa" resname="Flip cards">
+        <source>Flip cards</source>
+        <target>Tarjetas de memoria</target>
+      </trans-unit>
+      <trans-unit id="08fy0r5" resname="Electrical circuits">
+        <source>Electrical circuits</source>
+        <target>Circuitos eléctricos</target>
+      </trans-unit>
+      <trans-unit id="u18ur45" resname="3D molecules">
+        <source>3D molecules</source>
+        <target>Moléculas 3D</target>
+      </trans-unit>
+      <trans-unit id="x34s56g" resname="Select multimedia">
+        <source>Select multimedia</source>
+        <target>Selecciona (multimedia)</target>
+      </trans-unit>
+      <trans-unit id="xwx7cra" resname="Adaptative quiz">
+        <source>Adaptative quiz</source>
+        <target>Cuestionario adaptativo</target>
+      </trans-unit>
+      <trans-unit id="mkwbaq5" resname="Print iDevices is not available.">
+        <source>Print iDevices is not available.</source>
+        <target>Imprimir iDevices no está disponible.</target>
+      </trans-unit>
+      <trans-unit id="7io8c0j" resname="Appendix">
+        <source>Appendix</source>
+        <target>Apéndice</target>
+      </trans-unit>
+      <trans-unit id="rrtf5ug" resname="See appendix, activity %s">
+        <source>See appendix, activity %s</source>
+        <target>Ver apéndice, actividad %s</target>
+      </trans-unit>
+      <trans-unit id="zp7hvst" resname="Not available in print.">
+        <source>Not available in print.</source>
+        <target>No disponible en la versión impresa.</target>
+      </trans-unit>
+      <trans-unit id="oi9lcvv" resname="Anyone with this link can open and edit in real time.">
+        <source>Anyone with this link can open and edit in real time.</source>
+        <target>Cualquiera con este enlace puede abrir y editar en tiempo real.</target>
+      </trans-unit>
+      <trans-unit id="zl01pc0" resname="Anyone with this link can view this resource, but not edit it.">
+        <source>Anyone with this link can view this resource, but not edit it.</source>
+        <target>Cualquiera con este enlace puede ver este recurso, pero no editarlo.</target>
+      </trans-unit>
+      <trans-unit id="orirq67" resname="Public read-only link enabled">
+        <source>Public read-only link enabled</source>
+        <target>Enlace público (solo lectura) activado</target>
+      </trans-unit>
+      <trans-unit id="beabmy8" resname="Public read-only link disabled">
+        <source>Public read-only link disabled</source>
+        <target>Enlace público (solo lectura) desactivado</target>
+      </trans-unit>
+      <trans-unit id="f4ndyif" resname="Failed to update the public read-only link">
+        <source>Failed to update the public read-only link</source>
+        <target>No se ha podido actualizar el enlace público</target>
+      </trans-unit>
+      <trans-unit id="l8m8t6l" resname="The public link has been regenerated. The previous link will stop working.">
+        <source>The public link has been regenerated. The previous link will stop working.</source>
+        <target>Se ha regenerado el enlace público. El anterior dejará de funcionar.</target>
+      </trans-unit>
+      <trans-unit id="9u7pfr7" resname="Failed to regenerate the public link">
+        <source>Failed to regenerate the public link</source>
+        <target>No se ha podido regenerar el enlace público</target>
+      </trans-unit>
+      <trans-unit id="vufr021" resname="Minimum score to pass the activity">
+        <source>Minimum score to pass the activity</source>
+        <target>Puntuación mínima para aprobar la actividad</target>
+      </trans-unit>
+      <trans-unit id="7mt68b7" resname="Global value">
+        <source>Global value</source>
+        <target>Valor global</target>
+      </trans-unit>
+      <trans-unit id="5e4ri2u" resname="Customize">
+        <source>Customize</source>
+        <target>Personalizar</target>
+      </trans-unit>
+      <trans-unit id="l277gzg" resname="Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.">
+        <source>Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.</source>
+        <target>Valor global: la actividad usa la nota fijada en las propiedades del proyecto. Si la cambias allí, esta actividad también cambia.</target>
+      </trans-unit>
+      <trans-unit id="7w5tppu" resname="Customize: the activity uses its own mark and ignores the project one.">
+        <source>Customize: the activity uses its own mark and ignores the project one.</source>
+        <target>Personalizar: la actividad usa su propia nota e ignora la del proyecto.</target>
+      </trans-unit>
+      <trans-unit id="okoqp5r" resname="Grading">
+        <source>Grading</source>
+        <target>~Calificación</target>
+      </trans-unit>
+      <trans-unit id="lp4l8r6" resname="The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.">
+        <source>The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.</source>
+        <target>La actividad no envía ninguna puntuación al LMS, ni siquiera al exportarla como SCORM. El usuario puede hacerla y ver su resultado, pero no se registra nada en la plataforma.</target>
+      </trans-unit>
+      <trans-unit id="jlua5p6" resname="The progress report is not affected: it is kept in the learner&apos;s own browser and works whatever you choose here.">
+        <source>The progress report is not affected: it is kept in the learner's own browser and works whatever you choose here.</source>
+        <target>El informe de progreso no se ve afectado: se guarda en el propio navegador y funciona elijas lo que elijas aquí.</target>
+      </trans-unit>
+      <trans-unit id="o6vmdyy" resname="The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.">
+        <source>The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.</source>
+        <target>La actividad envía su puntuación por sí sola, a medida que se responde y de nuevo al terminar. El usuario no tiene que pulsar nada.</target>
+      </trans-unit>
+      <trans-unit id="f3woun8" resname="A learner who leaves halfway still has the work done so far recorded, because the score was already sent.">
+        <source>A learner who leaves halfway still has the work done so far recorded, because the score was already sent.</source>
+        <target>Si alguien abandona a medias, el trabajo hecho hasta ese momento queda registrado, porque la puntuación ya se había enviado.</target>
+      </trans-unit>
+      <trans-unit id="r4wxkd4" resname="Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.">
+        <source>Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.</source>
+        <target>No llega nada al LMS hasta que se pulsa el botón. El usuario decide si se registra su puntuación y cuándo, así que una actividad hecha sin pulsarlo no deja rastro en la plataforma.</target>
+      </trans-unit>
+      <trans-unit id="app1zrv" resname="Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.">
+        <source>Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.</source>
+        <target>Al pulsar el botón se publica la puntuación obtenida hasta ese momento, pero la actividad no se cierra: se puede seguir realizándola y volver a guardar.</target>
+      </trans-unit>
+      <trans-unit id="pa25y1y" resname="The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.">
+        <source>The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.</source>
+        <target>El peso decide cuánto cuenta esta actividad en la puntuación de la página, en comparación con las demás actividades de la misma página.</target>
+      </trans-unit>
+      <trans-unit id="dvjq83y" resname="What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.">
+        <source>What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.</source>
+        <target>Lo que importa es la proporción entre los pesos, no el número en sí. Si una página tiene una sola actividad, el peso no influye: vale la puntuación completa.</target>
+      </trans-unit>
+      <trans-unit id="1ob64xp" resname="For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.">
+        <source>For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.</source>
+        <target>Por ejemplo, tres actividades con pesos 100, 100 y 50 cuentan el 40%, el 40% y el 20% de la puntuación de la página. Las actividades que no guardan su puntuación quedan fuera del cálculo.</target>
+      </trans-unit>
+      <trans-unit id="s08r9d2" resname="Minimum score needed to pass this activity: %s">
+        <source>Minimum score needed to pass this activity: %s</source>
+        <target>Puntuación mínima necesaria para aprobar esta actividad: %s</target>
+      </trans-unit>
+      <trans-unit id="vha4fmr" resname="Minimum score to pass: %s">
+        <source>Minimum score to pass: %s</source>
+        <target>Puntuación mínima para aprobar: %s</target>
+      </trans-unit>
+      <trans-unit id="ib2djfi" resname="Each activity must reach its minimum score">
+        <source>Each activity must reach its minimum score</source>
+        <target>~Cada actividad debe alcanzar su puntuación mínima</target>
+      </trans-unit>
+      <trans-unit id="wug4ndy" resname="This block will create a link to download the .elpx file. Write some use instructions and customize your download link.">
+        <source>This block will create a link to download the .elpx file. Write some use instructions and customize your download link.</source>
+        <target>Este bloque creará un enlace para descargar el archivo .elpx. Escribe unas instrucciones de uso y personaliza el enlace de descarga.</target>
+      </trans-unit>
+      <trans-unit id="ibyrw7e" resname="Download .elpx file">
+        <source>Download .elpx file</source>
+        <target>Descargar el archivo .elpx</target>
+      </trans-unit>
+      <trans-unit id="1u379ks" resname="System default uses the operating system language. It is also used when no language is checked.">
+        <source>System default uses the operating system language. It is also used when no language is checked.</source>
+        <target>La opción predeterminada usa el idioma del sistema operativo. También se usa cuando no se marca ningún idioma.</target>
       </trans-unit>
     </body>
   </file>

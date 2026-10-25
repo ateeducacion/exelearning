@@ -23,6 +23,7 @@ globalThis.eXeLearning = {
     },
     api: {
       apiUrlBase: 'http://localhost',
+      apiUrlBasePath: '/exelearning',
       func: {
         getText: vi.fn().mockResolvedValue('css content'),
       },
@@ -224,6 +225,26 @@ describe('TinyMCE 5 Settings', () => {
       expect(result).toContain('/app/editor/tinymce_5_extra.css');
     });
 
+    // Regression for #1802 / #1804 — these CSS files were previously emitted
+    // with apiUrlBase only (origin), so on a subdirectory deploy they 404'd
+    // because BASE_PATH was missing.
+    it('getContentCSS prefixes static CSS with apiUrlBasePath (BASE_PATH)', () => {
+      const result = globalThis.$exeTinyMCE.getContentCSS();
+      expect(result).toContain('http://localhost/exelearning/app/editor/tinymce_5_extra.css');
+      expect(result).toContain('http://localhost/exelearning/libs/bootstrap/bootstrap.min.css');
+    });
+
+    it('getContentCSS works when apiUrlBasePath is missing (no BASE_PATH)', () => {
+      const original = globalThis.eXeLearning.app.api.apiUrlBasePath;
+      globalThis.eXeLearning.app.api.apiUrlBasePath = '';
+
+      const result = globalThis.$exeTinyMCE.getContentCSS();
+      expect(result).toContain('http://localhost/app/editor/tinymce_5_extra.css');
+      expect(result).toContain('http://localhost/libs/bootstrap/bootstrap.min.css');
+
+      globalThis.eXeLearning.app.api.apiUrlBasePath = original;
+    });
+
     it('getContentCSS falls back to base theme when missing', () => {
       const originalTheme = globalThis.eXeLearning.app.themes.selected;
       globalThis.eXeLearning.app.themes.selected = null;
@@ -257,9 +278,37 @@ describe('TinyMCE 5 Settings', () => {
       expect(config.images_replace_blob_uris).toBe(false);
     });
 
-    it('init instance callback triggers toggler and editor hook', () => {
+    it('init forwards document.baseURI as document_base_url so srcdoc embedders avoid the about:srcdoc URI-parser bug (#1799)', () => {
+      // Under iframe-srcdoc, window.location.href === 'about:srcdoc'. The
+      // TinyMCE 5 URI parser matches /^([\w-]+):([^/]{2})/ against that
+      // value (consuming "about:" + "sr") and short-circuits with
+      // .path / .directory undefined. Every editor instance later built
+      // from tinymce.documentBaseURL inherits the broken URI and crashes
+      // the first toAbsolute() against a relative URL with
+      // "TypeError: can't access property 'split', e is undefined".
+      // document.baseURI reflects the embedder's <base href> in that
+      // scenario and is a valid http(s) URL, so passing it explicitly to
+      // tinymce.init() sidesteps the broken parse entirely.
+      const previousBaseURI = Object.getOwnPropertyDescriptor(document, 'baseURI');
+      Object.defineProperty(document, 'baseURI', {
+        value: 'https://example.test/exelearning/editor/',
+        configurable: true,
+      });
+      try {
+        globalThis.$exeTinyMCE.init('multiple', '#editor', true);
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+        expect(config.document_base_url).toBe('https://example.test/exelearning/editor/');
+      } finally {
+        if (previousBaseURI) {
+          Object.defineProperty(document, 'baseURI', previousBaseURI);
+        }
+      }
+    });
+
+    it('init instance callback triggers toggler without the removed Yjs editor hook (#2169)', () => {
       globalThis.$exeTinyMCEToggler.documentWidth = 1000;
       const initSpy = vi.spyOn(globalThis.$exeTinyMCEToggler, 'init').mockImplementation(() => {});
+      // A stray onEditorInit must be ignored: the TinyMCE-Yjs auto-binding hook was removed
       const hookSpy = vi.fn();
       globalThis.$exeTinyMCE.onEditorInit = hookSpy;
 
@@ -284,7 +333,7 @@ describe('TinyMCE 5 Settings', () => {
       config.init_instance_callback(mockEditor);
 
       expect(initSpy).toHaveBeenCalledWith('editor', true);
-      expect(hookSpy).toHaveBeenCalled();
+      expect(hookSpy).not.toHaveBeenCalled();
       initSpy.mockRestore();
       delete globalThis.$exeTinyMCE.onEditorInit;
     });
@@ -2615,5 +2664,64 @@ describe('TinyMCE 5 Settings', () => {
       expect(() => globalThis.$exeTinyMCEToggler.createEditorLink(wrapper, 'editor')).not.toThrow();
       expect(document.getElementById('editor-toggler')).toBeNull();
     });
+  });
+});
+
+describe('vendored TinyMCE tree matches the configured plugin/skin surface', () => {
+  // The static and server builds ship public/libs/tinymce_5 wholesale, so the
+  // vendored tree is pruned to exactly what the editor configs can load.
+  // These tests fail loudly if a config starts naming a plugin that was
+  // pruned, or if unused upstream payloads (mobile theme, alternate skins)
+  // sneak back into the tree.
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const repoRoot = path.resolve(__dirname, '../../..');
+  const tinymceRoot = path.join(repoRoot, 'public/libs/tinymce_5/js/tinymce');
+
+  // Plugin lists used by iDevice mini-editors (quick-questions*, trivial,
+  // map, guess, interactive-video admin) on top of the main config above.
+  const IDEVICE_EXTRA_PLUGINS = ['code', 'paste', 'textcolor', 'link', 'image', 'autoresize', 'lists'];
+
+  it('ships a plugin directory for every plugin named in the main config', () => {
+    for (const plugin of globalThis.$exeTinyMCE.plugins.split(/\s+/).filter(Boolean)) {
+      const dir = path.join(tinymceRoot, 'plugins', plugin);
+      expect(fs.existsSync(dir), `missing TinyMCE plugin dir: ${plugin}`).toBe(true);
+    }
+  });
+
+  it('ships a plugin directory for every plugin the iDevice editors request', () => {
+    for (const plugin of IDEVICE_EXTRA_PLUGINS) {
+      const dir = path.join(tinymceRoot, 'plugins', plugin);
+      expect(fs.existsSync(dir), `missing TinyMCE plugin dir: ${plugin}`).toBe(true);
+    }
+  });
+
+  it('ships the default silver theme and oxide skin (no skin/theme is configured)', () => {
+    expect(fs.existsSync(path.join(tinymceRoot, 'themes/silver'))).toBe(true);
+    expect(fs.existsSync(path.join(tinymceRoot, 'skins/ui/oxide/skin.min.css'))).toBe(true);
+    expect(fs.existsSync(path.join(tinymceRoot, 'skins/ui/oxide/content.min.css'))).toBe(true);
+  });
+
+  it('does not ship upstream payloads no config can load (pruned for bundle size)', () => {
+    for (const gone of [
+      'plugins/emoticons', // biggest pruned plugin (~1.4 MB of emoji databases)
+      'plugins/media', // exemedia is used instead
+    ]) {
+      expect(fs.existsSync(path.join(tinymceRoot, gone)), `${gone} should stay pruned`).toBe(false);
+    }
+    expect(fs.existsSync(path.join(tinymceRoot, 'themes/mobile'))).toBe(false);
+    expect(fs.existsSync(path.join(tinymceRoot, 'skins/ui/oxide-dark'))).toBe(false);
+    // TinyMCE 5 defaults content_css to ['default'] for iframe editors with
+    // no explicit content_css (five iDevice mini-editors rely on that), so the
+    // default content skin must ship; the unused variants stay pruned.
+    expect(fs.existsSync(path.join(tinymceRoot, 'skins/content/default/content.min.css'))).toBe(true);
+    for (const variant of ['dark', 'document', 'writer']) {
+      expect(fs.existsSync(path.join(tinymceRoot, `skins/content/${variant}`)), `skins/content/${variant} should stay pruned`).toBe(false);
+    }
+    expect(fs.existsSync(path.join(tinymceRoot, 'skins/ui/oxide/skin.mobile.min.css'))).toBe(false);
+  });
+
+  it('keeps the TinyMCE license', () => {
+    expect(fs.existsSync(path.join(repoRoot, 'public/libs/tinymce_5/js/tinymce/license.txt'))).toBe(true);
   });
 });

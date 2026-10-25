@@ -2,6 +2,9 @@ import ProjectProperties from './properties/projectProperties.js';
 import IdevicesEngine from './idevices/idevicesEngine.js';
 import StructureEngine from './structure/structureEngine.js';
 import ImportProgress from '../interface/importProgress.js';
+import { buildMissingAssetsNotice } from './missingAssetsNotice.js';
+import { buildDamagedPropertiesNotice } from './damagedPropertiesNotice.js';
+import { isImportCancelled } from '../interface/importResult.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -97,7 +100,6 @@ export default class projectManager {
         // Yjs collaborative editing
         this._yjsEnabled = false;
         this._yjsBridge = null;
-        this._yjsBindings = new Map(); // TinyMCE bindings by componentId
     }
 
     /**
@@ -161,7 +163,7 @@ export default class projectManager {
             Logger.log('[ProjectManager] Found pending import file, importing...');
             const file = window.__pendingImportFile;
             window.__pendingImportFile = null; // Clear it
-            this.importElp(file).catch(err => {
+            this.app.openStaticFile(file).catch(err => {
                 console.error('[ProjectManager] Failed to import pending file:', err);
             });
         }
@@ -312,6 +314,45 @@ export default class projectManager {
     }
 
     /**
+     * Tell the author what the import could not fully restore: activities whose
+     * saved data is damaged (#2190) and activities referencing files the package
+     * did not carry (#2223). Called from every browser import path through
+     * `importFromElpxViaYjs`, so the notices do not depend on which entry point
+     * started the import.
+     *
+     * The alert modal is a singleton — a second show() replaces the first — so
+     * when both reports have content they must share one dialog.
+     *
+     * @param {Object} stats - Import result, `malformedProperties` and
+     *   `missingAssets` are the reports
+     */
+    showImportNotices(stats) {
+        const notices = [];
+        const damaged = buildDamagedPropertiesNotice(stats?.malformedProperties);
+        if (damaged) notices.push({ ...damaged, contentId: 'damaged-activities' });
+        const missing = buildMissingAssetsNotice(
+            stats?.missingAssets,
+            this._yjsBridge?.documentManager?.getNavigation(),
+            (type) => this.app.idevices?.getIdeviceInstalled(type)?.title
+        );
+        if (missing) notices.push({ ...missing, contentId: 'missing-assets' });
+        if (notices.length === 0) return;
+
+        if (notices.length === 1) {
+            this.app?.modals?.alert?.show(notices[0]);
+            return;
+        }
+
+        this.app?.modals?.alert?.show({
+            title: _('Import warnings'),
+            body: notices
+                .map((notice) => `<h6>${notice.title}</h6>${notice.body}`)
+                .join(''),
+            contentId: 'import-warnings',
+        });
+    }
+
+    /**
      * Remove pendingImport and new params from the URL without reload.
      */
     _cleanPendingImportUrl() {
@@ -418,6 +459,26 @@ export default class projectManager {
     }
 
     /**
+     * Tell the server the project now holds a platform package, so the next edit
+     * of the activity reopens it as is while the platform keeps that package.
+     * Best effort: without it the next edit simply imports the package again.
+     */
+    async _confirmPlatformElpImport(basePath, jwtToken, projectUuid, packageHash) {
+        try {
+            const response = await fetch(`${basePath}/api/platform/integration/confirmPlatformElpImport`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jwt_token: jwtToken, projectUuid, packageHash }),
+            });
+            if (!response.ok) {
+                throw new Error(`Platform confirmation responded with status ${response.status}`);
+            }
+        } catch (error) {
+            console.warn('[ProjectManager] Could not record the platform package of the project', error);
+        }
+    }
+
+    /**
      * Check URL/config for import path and import ELPX file if present.
      *
      * Supported sources:
@@ -441,16 +502,24 @@ export default class projectManager {
                 }
 
                 const basePath = window.eXeLearning?.config?.basePath || '';
+                // The server reopens the user's own project for the activity (#2549);
+                // naming it lets the server say whether it already holds the package.
+                const projectUuid = this.yjsProjectId || window.eXeLearning?.projectId;
                 const response = await fetch(`${basePath}/api/platform/integration/openPlatformElp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ jwt_token: jwtToken })
+                    body: JSON.stringify({ jwt_token: jwtToken, projectUuid })
                 });
 
                 if (response.ok) {
                     const data = await response.json();
 
-                    if (data.responseMessage === 'OK' && data.elpFile) {
+                    if (data.responseMessage === 'OK' && data.unchanged) {
+                        // Nobody changed the package on the platform since this project
+                        // last received or sent it: keep the project, including work
+                        // saved here but not sent back yet.
+                        Logger.log('[ProjectManager] Project already holds the platform package, keeping it');
+                    } else if (data.responseMessage === 'OK' && data.elpFile) {
                         Logger.log('[ProjectManager] ELP file fetched from platform, base64 size:', data.elpFile.length);
 
                         // Convert base64 to Blob/File
@@ -466,11 +535,24 @@ export default class projectManager {
                         const stats = await this.importFromElpxViaYjs(file);
                         Logger.log('[ProjectManager] Platform ELP import complete:', stats);
 
-                        try {
-                            await this._yjsBridge.documentManager.saveToServer();
-                            Logger.log('[ProjectManager] Document saved to server after platform import');
-                        } catch (saveError) {
-                            console.warn('[ProjectManager] Failed to save to server after platform import', saveError);
+                        // Import cancelled/rejected (over-limit archive or declined
+                        // confirmation): the project is unchanged, so do not save. #2198
+                        if (isImportCancelled(stats)) {
+                            Logger.log('[ProjectManager] Platform ELP import cancelled/rejected; project left unchanged');
+                        } else {
+                            let saved = false;
+                            try {
+                                // A full save also uploads the package's assets: the next
+                                // edit may reopen this project from another browser (#2550).
+                                const saveResult = await this._yjsBridge.save({ showProgress: false });
+                                saved = saveResult?.success === true;
+                                Logger.log('[ProjectManager] Document saved to server after platform import');
+                            } catch (saveError) {
+                                console.warn('[ProjectManager] Failed to save to server after platform import', saveError);
+                            }
+                            if (saved && data.packageHash) {
+                                await this._confirmPlatformElpImport(basePath, jwtToken, projectUuid, data.packageHash);
+                            }
                         }
 
                     } else {
@@ -557,13 +639,19 @@ export default class projectManager {
 
             Logger.log('[ProjectManager] ELP import complete:', stats);
 
+            // Import cancelled/rejected (over-limit archive or declined
+            // confirmation): the project is unchanged, so skip the save. #2198
+            const importCancelled = isImportCancelled(stats);
+
             // Save to server so other users can access the document
-            try {
-                await this._yjsBridge.documentManager.saveToServer();
-                Logger.log('[ProjectManager] Document saved to server after import');
-            } catch (saveError) {
-                console.warn('[ProjectManager] Failed to save to server after import:', saveError);
-                // Continue anyway - data is at least saved locally
+            if (!importCancelled) {
+                try {
+                    await this._yjsBridge.documentManager.saveToServer();
+                    Logger.log('[ProjectManager] Document saved to server after import');
+                } catch (saveError) {
+                    console.warn('[ProjectManager] Failed to save to server after import:', saveError);
+                    // Continue anyway - data is at least saved locally
+                }
             }
 
             if (fromUrlParam) {
@@ -575,7 +663,8 @@ export default class projectManager {
                 // Cleanup: Request server to delete temp file (URL-import workflow only)
                 try {
                     await fetch(`${basePath}/api/project/cleanup-import?path=${encodeURIComponent(importPath)}`, {
-                        method: 'DELETE'
+                        method: 'DELETE',
+                        credentials: 'include'
                     });
                 } catch (cleanupError) {
                     console.warn('[ProjectManager] Failed to cleanup temp file:', cleanupError);
@@ -1664,9 +1753,17 @@ export default class projectManager {
         // If Yjs mode is enabled and a theme was already set from Yjs metadata,
         // don't override it with user preferences or default
         if (!this._yjsEnabled || !this.app.themes.selected) {
+            // Precedence: user "defaultTheme" preference > legacy "theme" pref >
+            // server/site default. An empty preference value means "use the default
+            // style of the site", so we fall back to the server default.
             let theme = eXeLearning.config.defaultTheme;
-            if (this.app.user.preferences.preferences.theme) {
-                theme = this.app.user.preferences.preferences.theme.value;
+            const prefs = this.app.user.preferences.preferences;
+            const userDefaultTheme = prefs.defaultTheme && prefs.defaultTheme.value;
+            const legacyTheme = prefs.theme && prefs.theme.value;
+            if (userDefaultTheme) {
+                theme = userDefaultTheme;
+            } else if (legacyTheme) {
+                theme = legacyTheme;
             }
             await this.app.themes.selectTheme(theme, false);
         }

@@ -23,6 +23,8 @@
     <script class="exe" src="{{ '/libs/multi-dropdown.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/libs/interact/interact.min.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/libs/showdown/showdown.min.js' | asset }}" defer></script>
+    {# DOMPurify - sanitizes untrusted (remote collaborator) HTML before innerHTML #}
+    <script class="exe" src="{{ '/libs/dompurify/purify.min.js' | asset }}" defer></script>
     {# Asset URL Resolver - intercepts asset:// URLs and resolves them to blob URLs #}
     <script class="exe" src="{{ '/app/common/asset_url_resolver.js' | asset }}" defer></script>
     {# eXeLearning common legacy objects #}
@@ -39,6 +41,7 @@
     <script class="exe" src="{{ '/app/common/exe_math/tex-mml-svg.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/common/LatexPreRenderer.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/common/MermaidPreRenderer.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/app/common/MoleculeCapture.js' | asset }}" defer></script>
     {# To review: Scripts for plugins in development #}
     <script class="exe" src="{{ '/app/common/fix_webm_duration/fix_webm_duration.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/libs/abcjs/exe_abc_music.js' | asset }}" defer></script>
@@ -53,8 +56,8 @@
             version: "{{ version }}",
             expires: "{{ expires }}",
             extension: "{{ extension }}",
-            user: `{{ user | dump | safe }}`,
-            config: `{{ config | dump | safe }}`,
+            user: '{{ user | jsonScript | safe }}',
+            config: '{{ config | jsonScript | safe }}',
             projectId: {% if projectId %}"{{ projectId }}"{% else %}null{% endif %}
         }
     </script>
@@ -124,13 +127,18 @@
                             <button id="preview-unpin-button" class="btn button-square button-tertiary" title="{{ t.unpin_preview or 'Unpin preview' }}" aria-label="{{ t.unpin_preview or 'Unpin preview' }}">
                                 <span class="small-icon unpin-icon"></span>
                             </button>
+                            <button id="preview-pinned-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="{{ 'Toggle mobile preview' | trans }}" aria-label="{{ 'Toggle mobile preview' | trans }}">
+                                <span class="small-icon mobile-icon"></span>
+                            </button>
                             <button id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="{{ t.refresh_preview or 'Refresh preview' }}" aria-label="{{ t.refresh_preview or 'Refresh preview' }}">
                                 <span class="small-icon refresh-icon"></span>
                             </button>
                         </div>
                     </div>
                     <div class="preview-pinned-body">
-                        <iframe id="preview-pinned-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                        <div class="preview-device-frame">
+                            <iframe id="preview-pinned-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                        </div>
                     </div>
                 </aside>
             </div>
@@ -185,6 +193,9 @@
                     <button id="preview-pin-button" class="btn button-square button-tertiary" title="{{ t.pin_preview or 'Pin preview' }}" aria-label="{{ t.pin_preview or 'Pin preview to layout' }}">
                         <span class="small-icon pin-icon"></span>
                     </button>
+                    <button id="preview-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="{{ 'Toggle mobile preview' | trans }}" aria-label="{{ 'Toggle mobile preview' | trans }}">
+                        <span class="small-icon mobile-icon"></span>
+                    </button>
                     <button id="preview-refresh-button" class="btn button-square button-tertiary" title="{{ t.refresh_preview or 'Refresh preview' }}" aria-label="{{ t.refresh_preview or 'Refresh preview' }}">
                         <span class="small-icon refresh-icon"></span>
                     </button>
@@ -196,7 +207,9 @@
                 </div>
             </div>
             <div class="preview-panel-body">
-                <iframe id="preview-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                <div class="preview-device-frame">
+                    <iframe id="preview-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                </div>
             </div>
         </aside>
     </div>
@@ -207,8 +220,6 @@
         {% include 'workarea/modals/generic/modalInfo.njk' %}
         {% include 'workarea/modals/generic/modalConfirm.njk' %}
         {% include 'workarea/modals/generic/modalSessionLogout.njk' %}
-        {% include 'workarea/modals/pages/uploadtodrive.njk' %}
-        {% include 'workarea/modals/pages/uploadtodropbox.njk' %}
         {% include 'workarea/modals/pages/filemanager.njk' %}
         {% include 'workarea/modals/pages/stylemanager.njk' %}
         {% include 'workarea/modals/pages/idevicemanager.njk' %}
@@ -222,6 +233,7 @@
 	        {% include 'workarea/modals/pages/about.njk' %}
 	        {% include 'workarea/modals/pages/easteregg.njk' %}
 	        {% include 'workarea/modals/pages/properties.njk' %}
+	        {% include 'workarea/modals/pages/changepassword.njk' %}
 	        {% include 'workarea/modals/pages/openuserodefiles.njk' %}
 	        {% include 'workarea/modals/pages/templateselection.njk' %}
 	        {% include 'workarea/modals/pages/modalShare.njk' %}

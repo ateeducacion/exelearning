@@ -8,11 +8,17 @@ import * as path from 'path';
 describe('Translations Command', () => {
     const testDir = path.join(process.cwd(), 'test', 'temp', 'translations-test');
     const testTranslationsDir = path.join(testDir, 'translations');
+    const generatedSourceDir = path.join(testDir, 'public', 'app', 'common', 'edicuatex');
     const originalCwd = process.cwd;
 
     beforeEach(async () => {
         // Create test directory structure
         await fs.ensureDir(testTranslationsDir);
+
+        // The fixture stands for a built checkout: the generated trees the extraction
+        // depends on are present, so the missing-generated guard stays out of the way.
+        // Tests that exercise the guard remove this directory themselves.
+        await fs.ensureDir(generatedSourceDir);
 
         // Create sample XLF file
         const sampleXlf = `<?xml version="1.0" encoding="UTF-8"?>
@@ -765,6 +771,267 @@ describe('Translations Command', () => {
         });
     });
 
+    describe('missing generated source guard', () => {
+        const obsoleteXlf = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" target-language="es" datatype="plaintext">
+    <body>
+      <trans-unit id="abc" resname="keep.this.key">
+        <source>keep.this.key</source>
+        <target>Mantener esta clave</target>
+      </trans-unit>
+      <trans-unit id="def" resname="only.in.generated.tree">
+        <source>only.in.generated.tree</source>
+        <target>Solo en el arbol generado</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+
+        beforeEach(async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(path.join(srcDir, 'feature.ts'), `const msg = trans('keep.this.key');`);
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), obsoleteXlf);
+        });
+
+        /**
+         * Writes a complete `node_modules/edicuatex` the vendor plan can be built from.
+         * Returns the plan's files so a test can mirror or diverge from them.
+         */
+        const writePinnedPackage = async (): Promise<Record<string, string>> => {
+            const files: Record<string, string> = {
+                'index.html': '<!doctype html>',
+                'favicon.svg': '<svg/>',
+                'LICENSE.txt': 'AGPL-3.0-or-later',
+                'css/editor.css': '.editor{}',
+                'icons/logo.svg': '<svg/>',
+                'js/editor.js': 'export const editor = 1;',
+                'lang/en.js': "export default { 'Huger text': 'Huger text' };",
+                'menus/default.json': '{}',
+            };
+
+            const packageRoot = path.join(testDir, 'node_modules', 'edicuatex');
+            for (const [relativePath, contents] of Object.entries(files)) {
+                const target = path.join(packageRoot, ...relativePath.split('/'));
+                await fs.ensureDir(path.dirname(target));
+                await fs.writeFile(target, contents);
+            }
+
+            return files;
+        };
+
+        const mirrorIntoGeneratedTree = async (files: Record<string, string>): Promise<void> => {
+            for (const [relativePath, contents] of Object.entries(files)) {
+                const target = path.join(generatedSourceDir, ...relativePath.split('/'));
+                await fs.ensureDir(path.dirname(target));
+                await fs.writeFile(target, contents);
+            }
+        };
+
+        it('should report a generated tree that is not on disk', async () => {
+            const { findUntrustedGeneratedSources } = await import('./translations');
+
+            await fs.remove(generatedSourceDir);
+            const problems = findUntrustedGeneratedSources(testDir);
+
+            expect(problems).toHaveLength(1);
+            expect(problems[0].kind).toBe('missing');
+            expect(problems[0].source.path).toBe('public/app/common/edicuatex');
+            expect(problems[0].source.regenerateWith).toBe('make vendor-edicuatex');
+        });
+
+        it('should report nothing when every generated tree is on disk', async () => {
+            const { findUntrustedGeneratedSources } = await import('./translations');
+
+            expect(findUntrustedGeneratedSources(testDir)).toEqual([]);
+        });
+
+        it('should report a generated tree that exists but is short of the files its generator writes', async () => {
+            const { GENERATED_SOURCE_DIRS, findUntrustedGeneratedSources } = await import('./translations');
+
+            // The vendored edicuatex tree is compared against the pinned package, which the
+            // fixture does not carry. Stand a package in whose plan the tree cannot satisfy:
+            // an interrupted vendor run leaves exactly this shape.
+            const packageRoot = path.join(testDir, 'node_modules', 'edicuatex');
+            await fs.ensureDir(path.join(packageRoot, 'lang'));
+            await fs.writeFile(path.join(packageRoot, 'index.html'), '<!doctype html>');
+            await fs.writeFile(path.join(packageRoot, 'favicon.svg'), '<svg/>');
+            await fs.writeFile(path.join(packageRoot, 'LICENSE.txt'), 'AGPL-3.0-or-later');
+            await fs.writeFile(path.join(packageRoot, 'lang', 'en.js'), 'export default {};');
+            for (const directory of ['css', 'icons', 'js', 'menus']) {
+                await fs.ensureDir(path.join(packageRoot, directory));
+            }
+
+            // The tree holds the licence but never received the language file.
+            await fs.writeFile(path.join(generatedSourceDir, 'LICENSE.txt'), 'AGPL-3.0-or-later');
+
+            const problems = findUntrustedGeneratedSources(testDir);
+
+            expect(problems).toHaveLength(1);
+            expect(problems[0].kind).toBe('incomplete');
+            expect(problems[0].detail).toContain('lang/en.js');
+
+            // The registry entry is what carries the recovery instruction.
+            expect(GENERATED_SOURCE_DIRS[0].regenerateWith).toBe('make vendor-edicuatex');
+        });
+
+        it('should refuse to remove obsolete trans-units when a generated tree is incomplete', async () => {
+            const packageRoot = path.join(testDir, 'node_modules', 'edicuatex');
+            await fs.ensureDir(path.join(packageRoot, 'lang'));
+            await fs.writeFile(path.join(packageRoot, 'index.html'), '<!doctype html>');
+            await fs.writeFile(path.join(packageRoot, 'favicon.svg'), '<svg/>');
+            await fs.writeFile(path.join(packageRoot, 'LICENSE.txt'), 'AGPL-3.0-or-later');
+            await fs.writeFile(path.join(packageRoot, 'lang', 'en.js'), 'export default {};');
+            for (const directory of ['css', 'icons', 'js', 'menus']) {
+                await fs.ensureDir(path.join(packageRoot, directory));
+            }
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true, 'remove-obsolete': true });
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('--allow-missing-generated');
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('only.in.generated.tree');
+        });
+
+        it('should refuse to remove obsolete trans-units when a generated tree is missing', async () => {
+            await fs.remove(generatedSourceDir);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true, 'remove-obsolete': true });
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('--allow-missing-generated');
+
+            // The refusal must leave the catalogue exactly as it was.
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('only.in.generated.tree');
+        });
+
+        it('should still remove obsolete trans-units with --allow-missing-generated', async () => {
+            await fs.remove(generatedSourceDir);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], {
+                locale: 'es',
+                'clean-only': true,
+                'remove-obsolete': true,
+                'allow-missing-generated': true,
+            });
+
+            expect(result.success).toBe(true);
+            expect(result.stats?.removed).toBe(1);
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('keep.this.key');
+            expect(content).not.toContain('only.in.generated.tree');
+        });
+
+        it('should still extract when a generated tree is missing, since extraction adds only', async () => {
+            await fs.remove(generatedSourceDir);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'extract-only': true });
+
+            expect(result.success).toBe(true);
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('only.in.generated.tree');
+        });
+
+        it('should report nothing when the generated tree matches the pinned package exactly', async () => {
+            const { findUntrustedGeneratedSources } = await import('./translations');
+
+            await mirrorIntoGeneratedTree(await writePinnedPackage());
+
+            expect(findUntrustedGeneratedSources(testDir)).toEqual([]);
+        });
+
+        it('should report a generated tree whose files exist with stale contents', async () => {
+            const { findUntrustedGeneratedSources } = await import('./translations');
+
+            // The realistic path: an edicuatex bump plus `bun install`, with no re-vendor. Every
+            // file is still there, so a presence-only check passes -- while the strings the new
+            // lang file carries are invisible to the scan and look obsolete.
+            const files = await writePinnedPackage();
+            await mirrorIntoGeneratedTree({ ...files, 'lang/en.js': 'export default {};' });
+
+            const problems = findUntrustedGeneratedSources(testDir);
+
+            expect(problems).toHaveLength(1);
+            expect(problems[0].kind).toBe('incomplete');
+            expect(problems[0].detail).toContain('lang/en.js');
+        });
+
+        it('should refuse to remove obsolete trans-units when the generated tree is stale', async () => {
+            const files = await writePinnedPackage();
+            await mirrorIntoGeneratedTree({ ...files, 'lang/en.js': 'export default {};' });
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true, 'remove-obsolete': true });
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('--allow-missing-generated');
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('only.in.generated.tree');
+        });
+
+        it('should report the tree as untrusted when the pinned package is half-installed', async () => {
+            const { findUntrustedGeneratedSources } = await import('./translations');
+
+            // An interrupted `bun install` leaves the package root without the directories the
+            // plan walks. Nothing can say whether the tree on disk still matches the package,
+            // and the tree is whatever the previous version left -- exactly the state under
+            // which `--remove-obsolete` would delete the newer strings.
+            const packageRoot = path.join(testDir, 'node_modules', 'edicuatex');
+            await fs.ensureDir(path.join(packageRoot, 'lang'));
+            await fs.writeFile(path.join(packageRoot, 'index.html'), '<!doctype html>');
+            await fs.writeFile(path.join(packageRoot, 'LICENSE.txt'), 'AGPL-3.0-or-later');
+            await fs.writeFile(path.join(packageRoot, 'lang', 'en.js'), 'export default {};');
+
+            const problems = findUntrustedGeneratedSources(testDir);
+
+            expect(problems).toHaveLength(1);
+            expect(problems[0].kind).toBe('incomplete');
+            expect(problems[0].detail).toContain('could not be read');
+        });
+
+        it('should still extract with a half-installed pinned package', async () => {
+            const packageRoot = path.join(testDir, 'node_modules', 'edicuatex');
+            await fs.ensureDir(path.join(packageRoot, 'lang'));
+            await fs.writeFile(path.join(packageRoot, 'index.html'), '<!doctype html>');
+            await fs.writeFile(path.join(packageRoot, 'LICENSE.txt'), 'AGPL-3.0-or-later');
+            await fs.writeFile(path.join(packageRoot, 'lang', 'en.js'), 'export default {};');
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'extract-only': true });
+
+            // The problem only warns here: extraction adds keys, it never deletes any.
+            expect(result.success).toBe(true);
+        });
+
+        it('should refuse to remove obsolete trans-units with a half-installed pinned package', async () => {
+            const packageRoot = path.join(testDir, 'node_modules', 'edicuatex');
+            await fs.ensureDir(path.join(packageRoot, 'lang'));
+            await fs.writeFile(path.join(packageRoot, 'index.html'), '<!doctype html>');
+            await fs.writeFile(path.join(packageRoot, 'LICENSE.txt'), 'AGPL-3.0-or-later');
+            await fs.writeFile(path.join(packageRoot, 'lang', 'en.js'), 'export default {};');
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true, 'remove-obsolete': true });
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('--allow-missing-generated');
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('only.in.generated.tree');
+        });
+    });
+
     describe('edge cases', () => {
         it('should handle missing XLF file for locale', async () => {
             await fs.remove(path.join(testTranslationsDir, 'messages.es.xlf'));
@@ -869,6 +1136,23 @@ describe('Translations Command', () => {
             // MathJax-like key should NOT be present
             expect(content).not.toContain('mathfontexe');
         });
+
+        it('should exclude the generated pdf.js files', async () => {
+            const pdfjsDir = path.join(testDir, 'public', 'libs', 'pdfjs');
+            await fs.ensureDir(pdfjsDir);
+            // Minified pdf.js embeds binary data that can contain a `_(` followed by a backtick
+            await fs.writeFile(path.join(pdfjsDir, 'pdf.worker.min.js'), 'var d=a)_(`f)Mwjmb(af)Mwjmb`;');
+            const libsDir = path.join(testDir, 'public', 'libs', 'exe_lib');
+            await fs.ensureDir(libsDir);
+            await fs.writeFile(path.join(libsDir, 'exe_lib.js'), `const msg = _('regular.lib.translation');`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('regular.lib.translation');
+            expect(content).not.toContain('Mwjmb');
+        });
     });
 
     describe('invalid key filtering', () => {
@@ -949,6 +1233,110 @@ describe('Translations Command', () => {
             expect(content).toContain('valid.key.name');
             // Should not add just "key" as a translation
             expect(content).not.toMatch(/resname="key"/);
+        });
+
+        it('should exclude keys with characters that XML 1.0 does not allow', async () => {
+            const libDir = path.join(testDir, 'public', 'libs', 'minified');
+            await fs.ensureDir(libDir);
+            // Like the pdf.js worker: binary data inside a minified file that happens to hold `_(`
+            await fs.writeFile(
+                path.join(libDir, 'worker.min.js'),
+                `a=_('bin\u0004ary\u0005');b=_('nul\u0000');c=_('non\uFFFEchar');d=_('Valid key with emoji \u{1F600}');`,
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Valid key with emoji \u{1F600}');
+            expect(content).not.toContain('bin');
+            expect(content).not.toContain('nul');
+            expect(content).not.toContain('non');
+            // Every character left in the file must be allowed by the XML 1.0 Char production
+            expect(content).not.toMatch(/[^\t\n\r\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u);
+        });
+
+        it('should keep keys with tabs and line breaks, which XML 1.0 allows', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(path.join(srcDir, 'source.ts'), "const a = trans('Column\tvalue\nnext line');");
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Column\tvalue\nnext line');
+        });
+    });
+
+    describe('duplicate trans-units', () => {
+        const duplicateXlf = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" target-language="es" datatype="plaintext">
+    <body>
+      <trans-unit id="a1" resname="Being edited by">
+        <source>Being edited by</source>
+        <target>Lo está editando</target>
+      </trans-unit>
+      <trans-unit id="a2" resname="Sort by &quot;size&quot;">
+        <source>Sort by "size"</source>
+        <target>Ordenar por "tamaño"</target>
+      </trans-unit>
+      <trans-unit id="a3" resname="Being edited by ">
+        <source>Being edited by </source>
+        <target>Lo está editando </target>
+      </trans-unit>
+      <trans-unit id="a4" resname="Being edited by">
+        <source>Being edited by</source>
+        <target>Está siendo editado por</target>
+      </trans-unit>
+      <trans-unit id="a5" resname="Sort by &quot;size&quot;">
+        <source>Sort by "size"</source>
+        <target>Ordena por "tamaño"</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+
+        it('should list each repeated key once, unescaped, in file order', async () => {
+            const { findDuplicateResnames } = await import('./translations');
+
+            expect(findDuplicateResnames(duplicateXlf)).toEqual(['Being edited by', 'Sort by "size"']);
+        });
+
+        it('should treat keys that differ only in surrounding spaces as different', async () => {
+            const { findDuplicateResnames } = await import('./translations');
+
+            expect(findDuplicateResnames(duplicateXlf)).not.toContain('Being edited by ');
+        });
+
+        it('should return nothing when every key has one trans-unit', async () => {
+            const { findDuplicateResnames } = await import('./translations');
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+
+            expect(findDuplicateResnames(content)).toEqual([]);
+        });
+
+        it('should report duplicates without removing any trans-unit', async () => {
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), duplicateXlf);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true });
+
+            expect(result.success).toBe(true);
+            expect(result.stats?.duplicates).toBe(2);
+            expect(result.message).toContain('2 keys have duplicate trans-units');
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content.match(/<trans-unit\b/g)).toHaveLength(5);
+        });
+
+        it('should not mention duplicates when there are none', async () => {
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true });
+
+            expect(result.stats?.duplicates).toBe(0);
+            expect(result.message).not.toContain('duplicate');
         });
     });
 });

@@ -14,6 +14,7 @@ import {
     setIdevicesBasePath,
     getAllIdeviceConfigs,
     getIdeviceExportFiles,
+    isIdeviceJsModule,
 } from './idevice-config';
 
 describe('IdeviceConfig Service', () => {
@@ -152,6 +153,24 @@ describe('IdeviceConfig Service', () => {
             const config = getIdeviceConfig('my-idevice');
             expect(config.cssClass).toBe('my-idevice');
         });
+
+        // Issue #2543: 3dmol declares <css-class>dmole</css-class>, and exports linked idevices/dmole/
+        it('should use the folder name even when <css-class> differs from it', async () => {
+            const moleculeDir = path.join(idevicesDir, '3dmol');
+            await fs.ensureDir(moleculeDir);
+            await fs.writeFile(
+                path.join(moleculeDir, 'config.xml'),
+                `<idevice>
+                    <name>Molecules</name>
+                    <css-class>dmole</css-class>
+                </idevice>`,
+            );
+
+            loadIdeviceConfigs(idevicesDir);
+
+            expect(getIdeviceConfig('3dmol').cssClass).toBe('3dmol');
+            expect(getIdeviceConfig('Molecules').cssClass).toBe('3dmol');
+        });
     });
 
     describe('getIdeviceConfig', () => {
@@ -286,7 +305,6 @@ describe('IdeviceConfig Service', () => {
                 path.join(path1, 'idevice1', 'config.xml'),
                 `<idevice>
                     <name>idevice1</name>
-                    <css-class>dev1</css-class>
                     <component-type>json</component-type>
                 </idevice>`,
             );
@@ -298,22 +316,21 @@ describe('IdeviceConfig Service', () => {
                 path.join(path2, 'idevice2', 'config.xml'),
                 `<idevice>
                     <name>idevice2</name>
-                    <css-class>dev2</css-class>
-                    <component-type>html</component-type>
+                    <component-type>json</component-type>
                 </idevice>`,
             );
 
-            // Load from first path
+            // Load from first path ('json' only comes from config.xml; the fallback is 'html')
             loadIdeviceConfigs(path1);
-            expect(getIdeviceConfig('idevice1').cssClass).toBe('dev1');
+            expect(getIdeviceConfig('idevice1').componentType).toBe('json');
 
             // Change base path - should reset cache
             setIdevicesBasePath(path2);
 
             // Now should load from second path
-            expect(getIdeviceConfig('idevice2').cssClass).toBe('dev2');
+            expect(getIdeviceConfig('idevice2').componentType).toBe('json');
             // First iDevice should use fallback now
-            expect(getIdeviceConfig('idevice1').cssClass).toBe('idevice1');
+            expect(getIdeviceConfig('idevice1').componentType).toBe('html');
         });
     });
 
@@ -434,6 +451,82 @@ describe('IdeviceConfig Service', () => {
             expect(files).toContain('checklist.js');
             expect(files).toContain('html2canvas.js');
             expect(files[0]).toBe('checklist.js'); // main first
+        });
+
+        // Regression: plugins like the 3D Viewer iDevice (issue #1810) ship ES module
+        // files that use the standard `.mjs` extension. They must show up in the
+        // returned list so the exporter can attach `type="module"` to the script tag.
+        it('should include .mjs files when asked for .js (ES modules)', async () => {
+            const moduleDir = path.join(idevicesDir, 'modular', 'export');
+            await fs.ensureDir(moduleDir);
+            await fs.writeFile(path.join(moduleDir, 'modular.js'), '// classic main\n');
+            await fs.writeFile(
+                path.join(moduleDir, 'OrbitControls.mjs'),
+                "import { EventDispatcher } from './three.module.min.js';\nexport class OrbitControls {}\n",
+            );
+
+            const files = getIdeviceExportFiles('modular', '.js');
+            expect(files).toContain('modular.js');
+            expect(files).toContain('OrbitControls.mjs');
+            expect(files[0]).toBe('modular.js'); // main first regardless of extension
+        });
+    });
+
+    describe('isIdeviceJsModule', () => {
+        beforeEach(async () => {
+            const moduleDir = path.join(idevicesDir, 'three-d-viewer', 'export');
+            await fs.ensureDir(moduleDir);
+            await fs.writeFile(
+                path.join(moduleDir, 'three-d-viewer.js'),
+                '/* eslint-disable */\n(function () { window.ThreeDViewerRuntime = {}; })();\n',
+            );
+            await fs.writeFile(
+                path.join(moduleDir, 'three.module.min.js'),
+                'export const REVISION="160";export class Vector3{}\n',
+            );
+            await fs.writeFile(
+                path.join(moduleDir, 'STLLoader.js'),
+                "import { BufferGeometry } from './three.module.min.js';\nexport class STLLoader {}\n",
+            );
+            await fs.writeFile(
+                path.join(moduleDir, 'OrbitControls.mjs'),
+                "import { EventDispatcher } from './three.module.min.js';\nexport class OrbitControls {}\n",
+            );
+            await fs.writeFile(
+                path.join(moduleDir, 'model-viewer.min.js'),
+                '/*! @license MIT */(function(g,f){typeof exports==="object"?f(exports):g.modelViewer=f({})})(this,function(e){e.foo=1});\n',
+            );
+
+            setIdevicesBasePath(idevicesDir);
+        });
+
+        it('returns true for files using the .mjs extension', () => {
+            expect(isIdeviceJsModule('three-d-viewer', 'OrbitControls.mjs')).toBe(true);
+        });
+
+        it('returns true for files using the .module.js convention', () => {
+            expect(isIdeviceJsModule('three-d-viewer', 'three.module.min.js')).toBe(true);
+        });
+
+        it('returns true when content has a top-level import/export', () => {
+            // STLLoader.js does NOT follow the .module.js naming convention, but the
+            // file's top-level `import` makes it a module.
+            expect(isIdeviceJsModule('three-d-viewer', 'STLLoader.js')).toBe(true);
+        });
+
+        it('returns false for classic IIFE bootstrap scripts', () => {
+            expect(isIdeviceJsModule('three-d-viewer', 'three-d-viewer.js')).toBe(false);
+        });
+
+        it('returns false for UMD bundles that only mention "exports" in strings', () => {
+            // model-viewer.min.js is a UMD bundle. The literal string "exports" must not
+            // trigger module mode; otherwise classic scripts get loaded with type="module"
+            // and lose their global side-effects.
+            expect(isIdeviceJsModule('three-d-viewer', 'model-viewer.min.js')).toBe(false);
+        });
+
+        it('returns false for non-JS filenames', () => {
+            expect(isIdeviceJsModule('three-d-viewer', 'three-d-viewer.css')).toBe(false);
         });
     });
 });

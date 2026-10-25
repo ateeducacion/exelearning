@@ -1,8 +1,8 @@
 /* eslint-disable no-undef */
 /**
- * Electrical Circuits iDevice (export code)
+ * Electrical Circuits iDevice (export code) 
  *
- * Questions are paired with TikZ circuit diagrams rendered via TikZJax.
+ * Questions are paired with prerendered SVG circuit diagrams.
  *
  * Released under Attribution-ShareAlike 4.0 International License.
  * Author: Manuel Narváez Martínez
@@ -13,7 +13,7 @@ var $eXeEC = {
     idevicePath: '',
     borderColors: $exeDevices.iDevice.gamification.colors.borderColors,
     colors: $exeDevices.iDevice.gamification.colors.backColor,
-    options: {},
+    options: [],
     userName: '',
     previousScore: '',
     initialScore: '',
@@ -35,20 +35,31 @@ var $eXeEC = {
     },
 
     enable: function () {
-        $eXeEC.loadTikzJax();
         $eXeEC.loadGame();
     },
 
     /**
-     * Load the TikZJax library from the iDevice export path.
-     * tikzjax.js uses a MutationObserver to detect <script type="text/tikz">
-     * elements and render them automatically.
+     * Report the score in the same turn the learner acted in.
+     *
+     * The automatic report used to happen only from showQuestion(), i.e. once
+     * the setTimeout that reveals the next question had elapsed. That put the
+     * mark in the LMS seconds late, and a learner who left during that window
+     * lost the answer: the timer never fired.
+     *
+     * Carries the same non-repeat lock showQuestion applies, so an activity
+     * that may only be scored once is not scored twice through this path.
+     *
+     * @param {number|string} instance The activity instance.
      */
-    loadTikzJax: function () {
-        if (document.querySelector('script[src*="tikzjax"]')) return;
-        const script = document.createElement('script');
-        script.src = $eXeEC.idevicePath + 'tikzjax.js';
-        document.head.appendChild(script);
+    saveScormScore: function (instance) {
+        const mOptions = $eXeEC.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        // No "score only once" lock: every answer is reported. The lock this
+        // used to carry could never close anyway — registerActivity forces
+        // `repeatActivity` to true at page load (common.js updateScormNew), so
+        // it short-circuited the condition before the learner touched
+        // anything. The activity registry owns what has been recorded.
+        $eXeEC.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {
@@ -61,6 +72,23 @@ var $eXeEC = {
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $eXeEC.previousScore = mOptions.previousScore;
+    },
+
+    /**
+     * The colour the end-of-attempt message is painted in: 2 when the learner
+     * passed, 1 when they did not.
+     *
+     * It used to be a fixed 2. Every attempt closed in the pass colour, a
+     * perfect one and an empty one alike, while the progress report beside it
+     * told the learner the opposite. Judged on getScoreRP, which is the very
+     * mark sent to the report and to the LMS.
+     *
+     * @param {number} instance Index of the activity on the page.
+     * @returns {number} An index into the colour table showMessage paints with.
+     */
+    getVerdictColor: function (instance) {
+        const mOptions = $eXeEC.options[instance];
+        return $eXeEC.getScoreRP(instance) >= $exe.passScore.resolve(mOptions) ? 2 : 1;
     },
 
     getShowScoreRP: function (instance) {
@@ -80,7 +108,8 @@ var $eXeEC = {
     },
 
     loadGame: function () {
-        $eXeEC.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeEC.options.length = $eXeEC.activities.length;
         $eXeEC.activities.each(function (i) {
             const dl = $('.electrical-circuits-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -93,9 +122,10 @@ var $eXeEC = {
             mOption.main = 'elcpMainContainer-' + i;
             mOption.idevice = 'electrical-circuits-IDevice';
 
-            $eXeEC.options.push(mOption);
+            $eXeEC.options[i] = mOption;
             const interfaceHtml = $eXeEC.createInterface(i);
             dl.before(interfaceHtml).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#elcpGameMinimize-' + i).hide();
             $('#elcpGameContainer-' + i).hide();
@@ -156,14 +186,6 @@ var $eXeEC = {
                         <div class="exeQuextIcons exeQuextIcons-Score" title="${msgs.msgScore}"></div>
                         <p><span class="sr-av">${msgs.msgScore}: </span><span id="elcpPScore-${instance}">0</span></p>
                     </div>
-                    <div class="ELCP-LifesGame" id="elcpLifesGame-${instance}">
-                        ${$eXeEC.createLives(msgs)}
-                    </div>
-                    <div class="ELCP-NumberLifesGame" id="elcpNumberLivesGame-${instance}">
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life"></div>
-                        <p id="elcpPLifes-${instance}">0</p>
-                    </div>
                     <div class="ELCP-TimeNumber">
                         <strong><span class="sr-av">${msgs.msgTime}:</span></strong>
                         <div class="exeQuextIcons exeQuextIcons-Time" title="${msgs.msgTime}"></div>
@@ -194,8 +216,7 @@ var $eXeEC = {
                     <img src="${path}elcHome.png" class="ELCP-Cover" id="elcpCover-${instance}" alt="${msgs.msgNoImage}" />
                     <div class="ELCP-GameOver" id="elcpGamerOver-${instance}">
                         <div class="ELCP-DataImage">
-                            <img src="${path}exequextwon.png" class="ELCP-HistGGame" id="elcpHistGame-${instance}" alt="${msgs.msgAllQuestions}" />
-                            <img src="${path}exequextlost.png" class="ELCP-LostGGame" id="elcpLostGame-${instance}" alt="${msgs.msgLostLives}" />
+                            <img src="${path}exequextscore.svg" class="ELCP-HistGGame" id="elcpHistGame-${instance}" alt="${msgs.msgAllQuestions}" />
                         </div>
                         <div class="ELCP-DataScore">
                             <p id="elcpOverScore-${instance}">Score: 0</p>
@@ -276,18 +297,6 @@ var $eXeEC = {
         return html;
     },
 
-    createLives: function (msgs) {
-        let lives = [...Array(5)]
-            .map(
-                () => `
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life" title="${msgs.msgLive}"></div>
-                    `
-            )
-            .join('');
-        return lives;
-    },
-
     createOptions: function (msgs, instance) {
         let optionss = ['A', 'B', 'C', 'D']
             .map(
@@ -348,6 +357,10 @@ var $eXeEC = {
                 typeof mOptions.selectsGame[i].tikzCode == 'undefined'
                     ? ''
                     : mOptions.selectsGame[i].tikzCode;
+            mOptions.selectsGame[i].tikzSvg =
+                typeof mOptions.selectsGame[i].tikzSvg == 'undefined'
+                    ? ''
+                    : mOptions.selectsGame[i].tikzSvg;
             mOptions.selectsGame[i].description =
                 typeof mOptions.selectsGame[i].description == 'undefined'
                     ? ''
@@ -362,7 +375,6 @@ var $eXeEC = {
             typeof mOptions.percentajeFB != 'undefined'
                 ? mOptions.percentajeFB
                 : 100;
-        mOptions.useLives = mOptions.gameMode != 0 ? false : mOptions.useLives;
         mOptions.gameOver = false;
         mOptions.evaluation =
             typeof mOptions.evaluation == 'undefined'
@@ -399,7 +411,6 @@ var $eXeEC = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.exeEC beforeunload.exeEC');
         $(`#elcpLinkMaximize-${instance}`).off('click touchstart');
         $(`#elcpLinkMinimize-${instance}`).off('click touchstart');
         $('#elcpMainContainer-' + instance)
@@ -437,11 +448,6 @@ var $eXeEC = {
         mOptions.respuesta = '';
 
         $eXeEC.removeEvents(instance);
-        $(window).on('unload.exeEC beforeunload.exeEC', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXeEC.mScorm
-            );
-        });
 
         $(`#elcpGamerOver-${instance}`).css('display', 'flex');
 
@@ -508,7 +514,6 @@ var $eXeEC = {
             return true;
         });
 
-        mOptions.livesLeft = mOptions.numberLives;
 
         $(`#elcpOptionsDiv-${instance}`)
             .find('.ELCP-Options')
@@ -539,7 +544,6 @@ var $eXeEC = {
         );
 
         $eXeEC.updateFullscreenLayout(instance);
-        $eXeEC.updateLives(instance);
         $(`#elcpInstructions-${instance}`).text(mOptions.instructions);
         $(`#elcpPNumber-${instance}`).text(mOptions.numberQuestions);
         $(`#elcpGameContainer-${instance} .ELCP-StartGame`).show();
@@ -699,6 +703,16 @@ var $eXeEC = {
                 mOptions.showCurrentIndex++;
                 mOptions.visiteds++;
                 $eXeEC.showCircuitAtIndex(mOptions.showCurrentIndex, instance);
+                // Reaching the last circuit is the end of a presentation:
+                // there is nothing further to visit. common.js derives
+                // completion from `gameOver === true || auto !== true`, and
+                // this report is automatic, so without the flag the page
+                // stayed `incomplete` even with every circuit seen and the
+                // score already at 10. Raised before the report, so the one
+                // carrying the full mark is the one that says it is finished.
+                if (mOptions.showCurrentIndex >= mOptions.selectsGame.length - 1) {
+                    mOptions.gameOver = true;
+                }
                 if (mOptions.isScorm > 0) {
                     $eXeEC.sendScore(true, instance);
                 }
@@ -722,13 +736,7 @@ var $eXeEC = {
         $prev.attr('src', index === 0 ? path + 'bfafpreviousd.png' : path + 'bfafprevious.png');
         $next.attr('src', index >= total - 1 ? path + 'bfafnextd.png' : path + 'bfafnext.png');
 
-        // Show TikZ circuit
-        $(`#elcpCover-${instance}`).hide();
-        $(`#elcpTikzPreview-${instance}`).empty().show();
-
-        if (question.tikzCode && question.tikzCode.trim().length > 0) {
-            $eXeEC.showTikzCircuit(question.tikzCode, instance);
-        }
+        $eXeEC.showTikzCircuit(question, instance);
 
         // Show description
         const desc = question.description || '';
@@ -830,43 +838,61 @@ var $eXeEC = {
         }
     },
 
-    /**
-     * Render a TikZ circuit diagram in the multimedia area.
-     * Uses TikZJax's MutationObserver to auto-render <script type="text/tikz">.
-     */
-    showTikzCircuit: function (tikzCode, instance) {
+    sanitizeTikzSvg: function (svg) {
+        if (!svg) return '';
+
+        const parser = new DOMParser();
+        let parsedSvg = null;
+
+        if (typeof svg === 'string') {
+            const parsed = parser.parseFromString(svg, 'image/svg+xml');
+            if (parsed.querySelector('parsererror')) return '';
+            parsedSvg = parsed.querySelector('svg');
+        } else if (svg.nodeType === 1) {
+            parsedSvg =
+                svg.tagName.toLowerCase() === 'svg'
+                    ? svg.cloneNode(true)
+                    : svg.querySelector('svg')?.cloneNode(true);
+        }
+
+        if (!parsedSvg || parsedSvg.tagName.toLowerCase() !== 'svg') return '';
+
+        parsedSvg.querySelectorAll('script, foreignObject').forEach((node) => {
+            node.remove();
+        });
+
+        [parsedSvg, ...parsedSvg.querySelectorAll('*')].forEach((node) => {
+            [...node.attributes].forEach((attribute) => {
+                const name = attribute.name.toLowerCase(),
+                    value = attribute.value.replace(/\s+/g, '').toLowerCase();
+
+                if (name.startsWith('on') || value.includes('javascript:')) {
+                    node.removeAttribute(attribute.name);
+                }
+            });
+        });
+
+        parsedSvg.removeAttribute('width');
+        parsedSvg.removeAttribute('height');
+
+        return new XMLSerializer().serializeToString(parsedSvg);
+    },
+
+    showTikzCircuit: function (question, instance) {
         const $preview = $(`#elcpTikzPreview-${instance}`),
-            $cover = $(`#elcpCover-${instance}`);
+            $cover = $(`#elcpCover-${instance}`),
+            tikzSvg = question && typeof question.tikzSvg === 'string' ? question.tikzSvg : '',
+            sanitizedSvg = $eXeEC.sanitizeTikzSvg(tikzSvg);
 
         $preview.empty().hide();
         $cover.hide();
 
-        if (!tikzCode || tikzCode.trim().length === 0) {
+        if (!sanitizedSvg) {
             $cover.show();
             return;
         }
 
-        // Create <script type="text/tikz"> via DOM so MutationObserver detects it
-        const tikzScript = document.createElement('script');
-        tikzScript.type = 'text/tikz';
-        tikzScript.dataset.texPackages = JSON.stringify({ 'circuitikz': '', 'amsmath': '', 'amssymb': '' });
-        tikzScript.dataset.showConsole = 'true';
-        tikzScript.textContent = '\\begin{document}' + tikzCode + '\\end{document}';
-
-        $preview.show();
-        $preview[0].appendChild(tikzScript);
-
-        // Observe when TikZJax replaces the <script> with an <svg>.
-        // Remove inline width/height so CSS can scale it to fill the container.
-        const observer = new MutationObserver(() => {
-            const svg = $preview[0].querySelector('svg');
-            if (svg) {
-                svg.removeAttribute('width');
-                svg.removeAttribute('height');
-                observer.disconnect();
-            }
-        });
-        observer.observe($preview[0], { childList: true, subtree: true });
+        $preview.html(sanitizedSvg).show();
     },
 
     enterCodeAccess: function (instance) {
@@ -878,7 +904,18 @@ var $eXeEC = {
 
         if (codeEntered === correctCode) {
             $eXeEC.showCubiertaOptions(false, instance);
-            $eXeEC.startGame(instance);
+            // Quiz mode starts here, and startGame publishes the opening zero.
+            // Presentation mode cannot: it was already started by initShowMode
+            // behind the cover, so startGame returns early — which is what
+            // stops it laying the quiz interface over the presentation, and
+            // also what left the LMS hearing nothing. Report it here instead.
+            if (mOptions.activityMode === 'show') {
+                if (mOptions.isScorm === 1) {
+                    $eXeEC.sendScore(true, instance);
+                }
+            } else {
+                $eXeEC.startGame(instance);
+            }
             $(`#elcpLinkMaximize-${instance}`).trigger('click');
         } else {
             $(`#elcpMesajeAccesCodeE-${instance}`)
@@ -894,7 +931,6 @@ var $eXeEC = {
         const mOptions = $eXeEC.options[instance],
             msgs = mOptions.msgs,
             $histGame = $(`#elcpHistGame-${instance}`),
-            $lostGame = $(`#elcpLostGame-${instance}`),
             $overPoint = $(`#elcpOverScore-${instance}`),
             $overHits = $(`#elcpOverHits-${instance}`),
             $overErrors = $(`#elcpOverErrors-${instance}`),
@@ -902,10 +938,9 @@ var $eXeEC = {
             $gamerOver = $(`#elcpGamerOver-${instance}`);
 
         let message = '',
-            messageColor = 2;
+            messageColor = $eXeEC.getVerdictColor(instance);
 
         $histGame.hide();
-        $lostGame.hide();
         $overPoint.show();
         $overHits.show();
         $overErrors.show();
@@ -935,30 +970,11 @@ var $eXeEC = {
                     }
                 }
                 break;
-            case 1:
-                message = msgs.msgLostLives;
-                messageColor = 1;
-                $lostGame.show();
-                if (mOptions.itinerary.showClue) {
-                    if (mOptions.obtainedClue) {
-                        $showClue
-                            .text(
-                                `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
-                            )
-                            .show();
-                    } else {
-                        $showClue
-                            .text(
-                                msgs.msgTryAgain.replace(
-                                    '%s',
-                                    mOptions.itinerary.percentageClue
-                                )
-                            )
-                            .show();
-                    }
-                }
-                break;
             case 2:
+                // Not an outcome: the learner is still exploring the circuit,
+                // and the score panel is hidden. Neutral, so it is not read as
+                // a verdict on an attempt that has not finished.
+                messageColor = 0;
                 message = msgs.msgInformationLooking;
                 $overPoint.hide();
                 $overHits.hide();
@@ -1017,52 +1033,71 @@ var $eXeEC = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
-        mOptions.livesLeft = mOptions.numberLives;
+        // gameOver() leaves this true and renames the same button to New game;
+        // a replay starts as unfinished before the automatic zero-score report
+        // below. Without it that report carries the finished attempt's flag and
+        // sendScoreNew reads the replay as a completed one, so the activity
+        // stayed complete in the LMS instead of going back to incomplete.
+        mOptions.gameOver = false;
 
-        $eXeEC.updateLives(instance);
         $(`#elcpPNumber-${instance}`).text(mOptions.numberQuestions);
 
         mOptions.selectsGame.forEach((question) => {
             question.answerScore = -1;
         });
 
-        mOptions.counterClock = setInterval(() => {
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and moving it on to the next
+        // question when its own time ran out.
+        const container = document.getElementById(
+            'elcpMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
+            if (
+                !container?.isConnected ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#elcpMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $eXeEC.updateTime(mOptions.counter, instance);
 
                 if (mOptions.counter <= 0) {
                     mOptions.activeCounter = false;
+                    mOptions.gameActived = false;
+                    const currentQuestion =
+                        mOptions.selectsGame[mOptions.activeQuestion];
+                    // Word questions: lock the answer input once time is up,
+                    // regardless of whether the solution is shown.
+                    if (currentQuestion && currentQuestion.typeSelect === 2) {
+                        $eXeEC.disableWordAnswer(instance);
+                    }
                     let timeShowSolution = 1000;
                     if (mOptions.showSolution) {
                         timeShowSolution = mOptions.timeShowSolution * 1000;
-                        if (
-                            !$eXeEC.sameQuestion(false, instance)
+                        if (currentQuestion && currentQuestion.typeSelect === 2) {
+                            // Word questions: always reveal the full correct word.
+                            $eXeEC.drawPhrase(
+                                currentQuestion.solutionQuestion,
+                                currentQuestion.quextion,
+                                100,
+                                1,
+                                false,
+                                instance,
+                                true
+                            );
+                        } else if (
+                            currentQuestion &&
+                            (currentQuestion.typeSelect === 1 ||
+                                !$eXeEC.sameQuestion(false, instance))
                         ) {
-                            const currentQuestion =
-                                mOptions.selectsGame[mOptions.activeQuestion];
-                            if (currentQuestion && currentQuestion.typeSelect !== 2) {
-                                $eXeEC.drawSolution(instance);
-                            } else if (currentQuestion) {
-                                $eXeEC.drawPhrase(
-                                    currentQuestion.solutionQuestion,
-                                    currentQuestion.quextion,
-                                    100,
-                                    1,
-                                    false,
-                                    instance,
-                                    true
-                                );
-                            }
+                            $eXeEC.drawSolution(instance);
                         }
                     }
                     setTimeout(() => {
@@ -1072,6 +1107,7 @@ var $eXeEC = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $eXeEC.updateTime(0, instance);
         $(`#elcpGamerOver-${instance}`).hide();
@@ -1080,6 +1116,11 @@ var $eXeEC = {
         $(`#elcpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        // The opening zero, published here because starting the attempt is the
+        // event. It briefly lived in showQuestion() instead, which reported on
+        // every question and so republished the previous answer's mark; that
+        // one is gone and this is the one that belongs.
+        $eXeEC.saveScormScore(instance);
         $eXeEC.newQuestion(instance);
     },
 
@@ -1091,6 +1132,14 @@ var $eXeEC = {
 
     gameOver: function (type, instance) {
         const mOptions = $eXeEC.options[instance];
+        // Answering the last question raises gameOver and reports the finish
+        // itself, on purpose: the reveal delay that follows may be seconds
+        // long, and a learner who leaves during it must still have the activity
+        // recorded as finished. So by the time this runs the LMS may already
+        // know. Read that before the flag is raised below, and report only when
+        // nobody has — which is the case this function alone covers: the clock
+        // running out with the question unanswered.
+        const alreadyReportedFinished = mOptions.gameOver === true;
         mOptions.gameStarted = false;
         mOptions.gameActived = false;
         clearInterval(mOptions.counterClock);
@@ -1103,11 +1152,8 @@ var $eXeEC = {
 
         $exeDevices.iDevice.gamification.media.stopSound();
 
-        const message =
-            type === 0
-                ? mOptions.msgs.msgAllQuestions
-                : mOptions.msgs.msgLostLives;
-        $eXeEC.showMessage(2, message, instance);
+        const message = mOptions.msgs.msgAllQuestions;
+        $eXeEC.showMessage($eXeEC.getVerdictColor(instance), message, instance);
         $eXeEC.showScoreGame(type, instance);
         $eXeEC.clearQuestions(instance);
         $eXeEC.updateTime(0, instance);
@@ -1121,21 +1167,8 @@ var $eXeEC = {
 
         mOptions.gameOver = true;
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeEC.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXeEC.sendScore(true, instance);
-                $(`#elcpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $eXeEC.initialScore = score;
-            }
+        if (mOptions.isScorm === 1 && !alreadyReportedFinished) {
+            $eXeEC.sendScore(true, instance);
         }
         $eXeEC.saveEvaluation(instance);
         $eXeEC.showFeedBack(instance);
@@ -1276,10 +1309,7 @@ var $eXeEC = {
 
         $(`#elcpPAuthor-${instance}`).text('');
 
-        // Render TikZ circuit diagram for this question
-        if (mQuestion.tikzCode && mQuestion.tikzCode.trim().length > 0) {
-            $eXeEC.showTikzCircuit(mQuestion.tikzCode, instance);
-        }
+        $eXeEC.showTikzCircuit(mQuestion, instance);
 
         $(`#elcpDivModeBoard-${instance}`).hide();
 
@@ -1307,50 +1337,22 @@ var $eXeEC = {
             }
         }
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeEC.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXeEC.sendScore(true, instance);
-                $(`#elcpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
-        }
-
-
+        // No report here. Painting a question is not an event that changes the
+        // mark: the answer before it already published the new score, and this
+        // put the same value on the wire again a moment later — one extra
+        // commit and one extra redraw of the LMS menu per question. What starts
+        // the attempt reports in startGame(), what changes the mark reports in
+        // answerQuestion(), and what ends it reports in gameOver().
+        //
+        // The score line the removed block also wrote was dead: the id
+        // `elcpRepeatActivity-N` exists in no markup of this iDevice. The span
+        // the learner sees is the shared `.Games-RepeatActivity`, which
+        // sendScoreNew writes on every report.
         $eXeEC.saveEvaluation(instance);
-    },
-
-    updateLives: function (instance) {
-        const mOptions = $eXeEC.options[instance];
-        $(`#elcpPLifes-${instance}`).text(mOptions.livesLeft);
-        const $livesIcons = $(`#elcpLifesGame-${instance}`).find(
-            '.exeQuextIcons-Life'
-        );
-
-        if (mOptions.useLives) {
-            $livesIcons.each((index, element) => {
-                $(element).toggle(index < mOptions.livesLeft);
-            });
-        } else {
-            $livesIcons.hide();
-            $(`#elcpNumberLivesGame-${instance}`).hide();
-        }
     },
 
     newQuestion: function (instance) {
         const mOptions = $eXeEC.options[instance];
-
-        if (mOptions.useLives && mOptions.livesLeft <= 0) {
-            $eXeEC.gameOver(1, instance);
-            return;
-        }
 
         const mActiveQuestion =
             $eXeEC.updateNumberQuestion(
@@ -1393,6 +1395,14 @@ var $eXeEC = {
                 : (msgs.msgFailures || 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
             messagesArray = sMessages.split('|');
         return messagesArray[Math.floor(Math.random() * messagesArray.length)];
+    },
+
+    disableWordAnswer: function (instance) {
+        // Word questions: once answered or timed out, lock the answer input and
+        // its buttons so the word can no longer be edited or submitted.
+        $(
+            `#elcpEdAnswer-${instance}, #elcpBtnReply-${instance}, #elcpBtnMoveOn-${instance}`
+        ).prop('disabled', true);
     },
 
     answerQuestion: function (instance) {
@@ -1443,7 +1453,20 @@ var $eXeEC = {
 
         mOptions.activeCounter = false;
 
+        // Word questions: lock the answer input once the question is answered.
+        if (question.typeSelect === 2) {
+            $eXeEC.disableWordAnswer(instance);
+        }
+
         $eXeEC.updateScore(correct, instance);
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, and so a learner who leaves
+        // during the reveal delay below still has the activity recorded as
+        // finished.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $eXeEC.saveScormScore(instance);
 
         let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
@@ -1467,13 +1490,9 @@ var $eXeEC = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXeEC.sameQuestion(correct, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXeEC.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = correct ? 2 : 1;
                 $eXeEC.drawPhrase(
                     question.solutionQuestion,
@@ -1484,6 +1503,12 @@ var $eXeEC = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXeEC.sameQuestion(correct, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXeEC.drawSolution(instance);
             }
         }
 
@@ -1501,7 +1526,20 @@ var $eXeEC = {
         mOptions.gameActived = false;
         mOptions.activeCounter = false;
 
+        // Word questions: lock the answer input once the question is resolved.
+        if (question.typeSelect === 2) {
+            $eXeEC.disableWordAnswer(instance);
+        }
+
         $eXeEC.updateScore(value, instance);
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, and so a learner who leaves
+        // during the reveal delay below still has the activity recorded as
+        // finished.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $eXeEC.saveScormScore(instance);
 
          let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
@@ -1525,13 +1563,9 @@ var $eXeEC = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXeEC.sameQuestion(value, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXeEC.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = value ? 2 : 1;
                 $eXeEC.drawPhrase(
                     question.solutionQuestion,
@@ -1542,6 +1576,12 @@ var $eXeEC = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXeEC.sameQuestion(value, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXeEC.drawSolution(instance);
             }
         }
 
@@ -1597,10 +1637,6 @@ var $eXeEC = {
             } else {
                 obtainedPoints = -330 * question.customScore;
                 points = obtainedPoints;
-                if (mOptions.useLives) {
-                    mOptions.livesLeft--;
-                    $eXeEC.updateLives(instance);
-                }
             }
         }
 
@@ -1645,9 +1681,7 @@ var $eXeEC = {
             question = mOptions.selectsGame[mOptions.activeQuestion];
         let message = '';
 
-        message = mOptions.useLives
-                ? `${messageError} ${mOptions.msgs.msgLoseLive}`
-                : `${messageError} ${npts} ${pts}`;
+        message = `${messageError} ${npts} ${pts}`;
             if (mOptions.gameMode > 0) {
                 message = messageError;
             }
@@ -1681,8 +1715,6 @@ var $eXeEC = {
             letters = 'ABCD',
             question = mOptions.question;
 
-        if (question.typeSelect === 1) return;
-
         let l = 0;
         const solutions = question.solution;
         question.options.forEach((option) => {
@@ -1691,10 +1723,25 @@ var $eXeEC = {
 
         const respuestas = question.options.slice(0, l),
             respuestasNuevas =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas),
-            respuestaCorrectas = solutions
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas);
+
+        if (question.typeSelect === 1) {
+            // Order questions: the solution is an ORDERED sequence of letters,
+            // so map each step of the correct order to the option's new
+            // position so the order is preserved after shuffling.
+            const correctOrder = solutions
                 .split('')
                 .map((letter) => question.options[letters.indexOf(letter)]);
+            question.options = [...respuestasNuevas, '', '', '', ''].slice(0, 4);
+            question.solution = correctOrder
+                .map((text) => letters[respuestasNuevas.indexOf(text)])
+                .join('');
+            return;
+        }
+
+        const respuestaCorrectas = solutions
+            .split('')
+            .map((letter) => question.options[letters.indexOf(letter)]);
 
         let solucionesNuevas = '';
         respuestasNuevas.forEach((respuesta, index) => {

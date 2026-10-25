@@ -149,7 +149,8 @@ describe('ProjectManager', () => {
         it('initializes Yjs state as disabled', () => {
             expect(projectManager._yjsEnabled).toBe(false);
             expect(projectManager._yjsBridge).toBe(null);
-            expect(projectManager._yjsBindings).toBeInstanceOf(Map);
+            // The per-editor TinyMCE binding map was removed in #2169
+            expect(projectManager._yjsBindings).toBeUndefined();
         });
 
         it('creates properties, idevices and structure engines', () => {
@@ -356,6 +357,71 @@ describe('ProjectManager', () => {
             title: 'Saved',
             body: 'The project has been saved.',
         });
+    });
+
+    // #2223
+    it('shows a modal naming the activities whose files are missing', () => {
+        projectManager.showImportNotices({
+            missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+        });
+
+        expect(mockApp.modals.alert.show).toHaveBeenCalledTimes(1);
+        const call = mockApp.modals.alert.show.mock.calls[0][0];
+        expect(call.contentId).toBe('missing-assets');
+        expect(call.body).toContain('iDevice');
+        expect(call.body).toContain('rabbit.svg');
+    });
+
+    it('resolves missing-file notice locations and localized titles from the active project', () => {
+        projectManager._yjsBridge = { documentManager: { getNavigation: () => ({
+            toArray: () => [new Map([
+                ['pageName', 'Classify content'],
+                ['blocks', { toArray: () => [new Map([
+                    ['components', { toArray: () => [new Map([['id', 'c1']])] }],
+                ])] }],
+            ])],
+        }) } };
+        mockApp.idevices = { getIdeviceInstalled: vi.fn(() => ({ title: 'Clasifica' })) };
+        projectManager.showImportNotices({
+            missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+        });
+        expect(mockApp.idevices.getIdeviceInstalled).toHaveBeenCalledWith('classify');
+        expect(mockApp.modals.alert.show.mock.calls[0][0].body)
+            .toContain('iDevice 1 (Clasifica) on page &quot;Classify content&quot;');
+    });
+
+    // #2190
+    it('shows a modal naming the activities whose saved data is damaged', () => {
+        projectManager.showImportNotices({
+            malformedProperties: [{ componentId: 'c1', ideviceType: 'trueorfalse' }],
+        });
+
+        expect(mockApp.modals.alert.show).toHaveBeenCalledTimes(1);
+        const call = mockApp.modals.alert.show.mock.calls[0][0];
+        expect(call.contentId).toBe('damaged-activities');
+        expect(call.body).toContain('trueorfalse');
+    });
+
+    // The alert modal is a singleton, so simultaneous reports share one dialog.
+    it('merges both reports into a single modal when both have content', () => {
+        projectManager.showImportNotices({
+            missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+            malformedProperties: [{ componentId: 'c2', ideviceType: 'trueorfalse' }],
+        });
+
+        expect(mockApp.modals.alert.show).toHaveBeenCalledTimes(1);
+        const call = mockApp.modals.alert.show.mock.calls[0][0];
+        expect(call.contentId).toBe('import-warnings');
+        expect(call.body).toContain('trueorfalse');
+        expect(call.body).toContain('rabbit.svg');
+    });
+
+    it('stays silent when the import reported no problems', () => {
+        projectManager.showImportNotices({ missingAssets: [], malformedProperties: [] });
+        projectManager.showImportNotices({});
+        projectManager.showImportNotices(undefined);
+
+        expect(mockApp.modals.alert.show).not.toHaveBeenCalled();
     });
 
     it('shows the save error modal with the response', () => {
@@ -761,6 +827,7 @@ describe('ProjectManager', () => {
             global.fetch = vi.fn();
             projectManager.importFromElpxViaYjs = vi.fn().mockResolvedValue('stats');
             projectManager._yjsBridge = {
+                save: vi.fn().mockResolvedValue({ success: true }),
                 documentManager: {
                     saveToServer: vi.fn().mockResolvedValue()
                 }
@@ -799,8 +866,143 @@ describe('ProjectManager', () => {
                 expect.objectContaining({ method: 'POST' })
             );
             expect(projectManager.importFromElpxViaYjs).toHaveBeenCalled();
-            expect(projectManager._yjsBridge.documentManager.saveToServer).toHaveBeenCalled();
+            // A full save also uploads the package's assets, so the project
+            // keeps its images when reopened from another browser (#2550).
+            expect(projectManager._yjsBridge.save).toHaveBeenCalledWith({ showProgress: false });
+            expect(projectManager._yjsBridge.documentManager.saveToServer).not.toHaveBeenCalled();
             expect(mockApp.modals.loader.show).toHaveBeenCalled();
+        });
+
+        describe('reopening the project of a platform activity', () => {
+            const packageHash = 'a'.repeat(64);
+
+            beforeEach(() => {
+                projectManager.yjsProjectId = 'activity-project';
+                vi.stubGlobal('location', {
+                    href: 'http://localhost:8080/workarea?project=activity-project&jwt_token=12345&fetchPlatformElp=1',
+                    search: '?project=activity-project&jwt_token=12345&fetchPlatformElp=1',
+                });
+            });
+
+            function platformResponds(openResponse) {
+                global.fetch.mockImplementation((url) =>
+                    Promise.resolve({
+                        ok: true,
+                        json: () =>
+                            Promise.resolve(
+                                url.includes('openPlatformElp') ? openResponse : { responseMessage: 'OK' },
+                            ),
+                    }),
+                );
+            }
+
+            function requestBody(endpoint) {
+                const call = global.fetch.mock.calls.find(([url]) => url.includes(endpoint));
+                return call ? JSON.parse(call[1].body) : undefined;
+            }
+
+            it('tells the server which project it opened for the activity', async () => {
+                platformResponds({ responseMessage: 'OK', unchanged: true });
+
+                await projectManager.checkAndImportElp();
+
+                expect(requestBody('openPlatformElp')).toEqual({
+                    jwt_token: '12345',
+                    projectUuid: 'activity-project',
+                });
+            });
+
+            it('keeps the project as it is when it already holds the platform package', async () => {
+                platformResponds({ responseMessage: 'OK', unchanged: true });
+
+                await projectManager.checkAndImportElp();
+
+                expect(projectManager.importFromElpxViaYjs).not.toHaveBeenCalled();
+                expect(projectManager._yjsBridge.save).not.toHaveBeenCalled();
+                expect(requestBody('confirmPlatformElpImport')).toBeUndefined();
+                expect(mockApp.modals.loader.hide).toHaveBeenCalled();
+            });
+
+            it('confirms the imported package once the project is saved', async () => {
+                platformResponds({ responseMessage: 'OK', elpFile: btoa('pkg'), elpFileName: 'a.zip', packageHash });
+
+                await projectManager.checkAndImportElp();
+
+                expect(projectManager.importFromElpxViaYjs).toHaveBeenCalled();
+                expect(requestBody('confirmPlatformElpImport')).toEqual({
+                    jwt_token: '12345',
+                    projectUuid: 'activity-project',
+                    packageHash,
+                });
+            });
+
+            it('does not confirm a package that was not imported or not saved', async () => {
+                platformResponds({ responseMessage: 'OK', elpFile: btoa('pkg'), elpFileName: 'a.zip', packageHash });
+                projectManager.importFromElpxViaYjs.mockResolvedValueOnce({ cancelled: true });
+                await projectManager.checkAndImportElp();
+
+                projectManager._yjsBridge.save.mockResolvedValueOnce({ success: false });
+                await projectManager.checkAndImportElp();
+
+                projectManager._yjsBridge.save.mockRejectedValueOnce(new Error('offline'));
+                await projectManager.checkAndImportElp();
+
+                expect(requestBody('confirmPlatformElpImport')).toBeUndefined();
+            });
+
+            it('warns when the server refuses to record the imported package', async () => {
+                global.fetch.mockImplementation((url) =>
+                    Promise.resolve(
+                        url.includes('openPlatformElp')
+                            ? {
+                                  ok: true,
+                                  json: () =>
+                                      Promise.resolve({
+                                          responseMessage: 'OK',
+                                          elpFile: btoa('pkg'),
+                                          elpFileName: 'a.zip',
+                                          packageHash,
+                                      }),
+                              }
+                            : { ok: false, status: 403 },
+                    ),
+                );
+                const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+                await projectManager.checkAndImportElp();
+
+                expect(warn).toHaveBeenCalledWith(
+                    expect.stringContaining('Could not record the platform package'),
+                    expect.objectContaining({ message: expect.stringContaining('403') }),
+                );
+                warn.mockRestore();
+            });
+
+            it('keeps working when the confirmation cannot be sent', async () => {
+                global.fetch.mockImplementation((url) =>
+                    url.includes('openPlatformElp')
+                        ? Promise.resolve({
+                              ok: true,
+                              json: () =>
+                                  Promise.resolve({
+                                      responseMessage: 'OK',
+                                      elpFile: btoa('pkg'),
+                                      elpFileName: 'a.zip',
+                                      packageHash,
+                                  }),
+                          })
+                        : Promise.reject(new Error('network down')),
+                );
+                const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+                await expect(projectManager.checkAndImportElp()).resolves.toBeUndefined();
+
+                expect(warn).toHaveBeenCalledWith(
+                    expect.stringContaining('Could not record the platform package'),
+                    expect.any(Error),
+                );
+                warn.mockRestore();
+            });
         });
 
         it('handles fetch platform ELP failure gracefully', async () => {
@@ -1160,7 +1362,7 @@ describe('ProjectManager', () => {
                 expect(global.fetch).toHaveBeenNthCalledWith(
                     2,
                     '/exelearning/api/project/cleanup-import?path=%2Ftmp%2Fproject.elpx',
-                    { method: 'DELETE' },
+                    { method: 'DELETE', credentials: 'include' },
                 );
                 expect(replaceStateSpy).toHaveBeenCalled();
             } finally {
@@ -1789,6 +1991,20 @@ describe('ProjectManager', () => {
             expect(projectManager.initialiceProject).toHaveBeenCalled();
             expect(projectManager.showScreen).toHaveBeenCalled();
             expect(projectManager.setInstallationTypeAttribute).toHaveBeenCalled();
+        });
+
+        it('hands a pending static import file to the app', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+            mockApp.capabilities = { storage: { remote: false } };
+            mockApp.openStaticFile = vi.fn().mockResolvedValue();
+            const file = new File(['x'], 'course.elpx');
+            window.__pendingImportFile = file;
+
+            await projectManager.load();
+
+            expect(mockApp.openStaticFile).toHaveBeenCalledWith(file);
+            expect(window.__pendingImportFile).toBeNull();
         });
 
         it('loads content translations after Yjs initialization', async () => {
@@ -3461,6 +3677,62 @@ describe('ProjectManager', () => {
                 expect(mockExport).toHaveBeenCalled();
                 expect(mockServerSave).not.toHaveBeenCalled();
             });
+        });
+    });
+
+    // ===========================================
+    // initialiceProject — default theme preference
+    // ===========================================
+
+    describe('initialiceProject default theme preference', () => {
+        let selectThemeMock;
+
+        beforeEach(() => {
+            window.eXeLearning.config.defaultTheme = 'site-default';
+            selectThemeMock = vi.fn().mockResolvedValue();
+            mockApp.themes = { selected: null, selectTheme: selectThemeMock };
+            mockApp.user = { preferences: { preferences: {} } };
+            mockApp.selectFirstNodeStructure = vi.fn().mockResolvedValue();
+            // Bypass Yjs branch so we always exercise the preference logic
+            projectManager._yjsEnabled = false;
+        });
+
+        it('uses the site default when the user has no theme preference', async () => {
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('site-default', false);
+        });
+
+        it('falls back to site default when defaultTheme preference is empty', async () => {
+            mockApp.user.preferences.preferences = {
+                defaultTheme: { value: '' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('site-default', false);
+        });
+
+        it('uses the user defaultTheme preference when set', async () => {
+            mockApp.user.preferences.preferences = {
+                defaultTheme: { value: 'spectrum128k' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('spectrum128k', false);
+        });
+
+        it('prefers defaultTheme over the legacy theme key', async () => {
+            mockApp.user.preferences.preferences = {
+                defaultTheme: { value: 'spectrum128k' },
+                theme: { value: 'legacy-value' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('spectrum128k', false);
+        });
+
+        it('honors the legacy theme key when defaultTheme is missing', async () => {
+            mockApp.user.preferences.preferences = {
+                theme: { value: 'legacy-value' },
+            };
+            await projectManager.initialiceProject();
+            expect(selectThemeMock).toHaveBeenCalledWith('legacy-value', false);
         });
     });
 });

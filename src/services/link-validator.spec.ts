@@ -11,10 +11,28 @@ import {
     validateLinkWithResult,
     validateLinksStream,
     toBrokenLinkInfo,
+    classifyHttpStatus,
     type ExtractedLink,
     type RawExtractedLink,
     type IdeviceContent,
 } from './link-validator';
+import type { LookupFn } from '../utils/ssrf-guard';
+
+// A DNS resolver that maps any host to a single public IP, so the SSRF guard
+// allows the request and control reaches the (mocked) fetch. Keeps tests
+// hermetic: no real DNS or network is touched.
+const publicLookup: LookupFn = async () => [{ address: '93.184.216.34' }];
+
+// Helper to build a minimal Response-like mock that includes a working
+// `headers.get()` so safeFetch can inspect the Location header. Pass a
+// `location` to simulate a redirect hop.
+function mockResponse(init: { status: number; ok: boolean; location?: string }): Response {
+    const headers = new Headers();
+    if (init.location) {
+        headers.set('location', init.location);
+    }
+    return { status: init.status, ok: init.ok, headers } as Response;
+}
 
 describe('Link Validator Service', () => {
     describe('extractLinksFromHtml', () => {
@@ -260,6 +278,27 @@ describe('Link Validator Service', () => {
             expect(result).toBe('404');
         });
 
+        it('should treat a "files/" traversal escaping FILES_DIR as broken (no existence oracle)', async () => {
+            // A file that definitely EXISTS outside filesDir (parent of tempDir).
+            const oracleTarget = '/tmp/exe-link-validator-oracle-target';
+            await fs.writeFile(oracleTarget, 'secret');
+            // A legitimate nested link inside filesDir must still validate.
+            await fs.ensureDir(`${tempDir}/docs`);
+            await fs.writeFile(`${tempDir}/docs/file.pdf`, 'ok');
+            try {
+                // Resolves to /tmp/exe-link-validator-oracle-target, OUTSIDE filesDir.
+                // Vulnerable build: file exists -> returns null (leaks existence).
+                // Hardened build: traversal rejected -> '404'.
+                const escaped = await validateLink('files/../exe-link-validator-oracle-target', { filesDir: tempDir });
+                expect(escaped).toBe('404');
+                // No over-blocking: a real nested file is still valid.
+                const nested = await validateLink('files/docs/file.pdf', { filesDir: tempDir });
+                expect(nested).toBeNull();
+            } finally {
+                await fs.remove(oracleTarget);
+            }
+        });
+
         it('should return null for relative URLs (skip validation)', async () => {
             const result = await validateLink('images/pic.jpg', { filesDir: tempDir });
             expect(result).toBeNull();
@@ -278,6 +317,9 @@ describe('Link Validator Service', () => {
                 const result = await validateLink('https://this-domain-definitely-does-not-exist-12345.com', {
                     filesDir: tempDir,
                     timeout: 5000,
+                    // Resolve to a public IP so the SSRF guard allows the host and
+                    // control reaches the (mocked) fetch which throws ENOTFOUND.
+                    lookupFn: publicLookup,
                 });
                 expect(result).toBe('Could not resolve host');
             } finally {
@@ -299,6 +341,7 @@ describe('Link Validator Service', () => {
                 const result = await validateLink('//this-domain-definitely-does-not-exist-12345.com', {
                     filesDir: tempDir,
                     timeout: 5000,
+                    lookupFn: publicLookup,
                 });
                 expect(result).toBe('Could not resolve host');
             } finally {
@@ -315,71 +358,199 @@ describe('Link Validator Service', () => {
         });
 
         it('should handle 301 redirects as valid', async () => {
-            // Mock fetch to return 301
-            const originalFetch = globalThis.fetch;
-            globalThis.fetch = async () =>
-                ({
-                    status: 301,
-                    ok: false,
-                }) as Response;
+            // A 301 with no Location header is returned by safeFetch as-is (not
+            // treated as a redirect to follow), so validateLink sees status 301.
+            // Inject fetchImpl + a public lookup to stay hermetic.
+            const fetchImpl = (async () => mockResponse({ status: 301, ok: false })) as unknown as typeof fetch;
 
-            try {
-                const result = await validateLink('https://example.com/redirect', {
-                    filesDir: tempDir,
-                    timeout: 5000,
-                });
-                expect(result).toBeNull(); // 301 is considered valid
-            } finally {
-                globalThis.fetch = originalFetch;
-            }
+            const result = await validateLink('https://example.com/redirect', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull(); // 301 is considered valid
         });
 
-        it('should fallback to GET with Range header when HEAD returns 405', async () => {
-            // Mock fetch to return 405 on HEAD, then 200 on GET
-            const originalFetch = globalThis.fetch;
+        it('should validate with a single ranged GET using browser-like headers', async () => {
+            // No HEAD phase: too many hosts reject, lie about or hang on HEAD
+            // (educa.madrid answers HEAD with 404 while GET has the real status).
             let callCount = 0;
-            globalThis.fetch = async (url: string, options?: RequestInit) => {
+            const fetchImpl = (async (_url: string, options?: RequestInit) => {
                 callCount++;
-                if (options?.method === 'HEAD') {
-                    return { status: 405, ok: false } as Response;
-                }
-                // GET request with Range header
                 expect(options?.method).toBe('GET');
-                expect(options?.headers).toHaveProperty('Range', 'bytes=0-0');
-                return { status: 200, ok: true } as Response;
-            };
+                expect(options?.headers).toMatchObject({ Range: 'bytes=0-0' });
+                expect(options?.headers).toHaveProperty('User-Agent');
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
 
-            try {
-                const result = await validateLink('https://example.com/head-not-allowed', {
-                    filesDir: tempDir,
-                    timeout: 5000,
-                });
-                expect(result).toBeNull(); // Should be valid after GET fallback
-                expect(callCount).toBe(2); // HEAD then GET
-            } finally {
-                globalThis.fetch = originalFetch;
-            }
+            const result = await validateLink('https://example.com/page', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull();
+            expect(callCount).toBe(1);
         });
 
-        it('should return error when GET fallback also fails', async () => {
-            // Mock fetch to return 405 on HEAD, then 404 on GET
-            const originalFetch = globalThis.fetch;
-            globalThis.fetch = async (_url: string, options?: RequestInit) => {
-                if (options?.method === 'HEAD') {
-                    return { status: 405, ok: false } as Response;
-                }
-                return { status: 404, ok: false } as Response;
-            };
+        it('should probe without decoding the response body', async () => {
+            // The body is cancelled unread, so the probe asks for identity and
+            // also turns Bun's automatic decompression off: a host that answers
+            // with a Content-Encoding anyway must not get its bytes decoded.
+            let init: (RequestInit & { decompress?: boolean }) | undefined;
+            const fetchImpl = (async (_url: string, options?: RequestInit) => {
+                init = options;
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
 
-            try {
-                const result = await validateLink('https://example.com/not-found', {
-                    filesDir: tempDir,
-                    timeout: 5000,
-                });
-                expect(result).toBe('404');
-            } finally {
-                globalThis.fetch = originalFetch;
-            }
+            const result = await validateLink('https://example.com/page', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull();
+            expect(init?.headers).toMatchObject({ 'Accept-Encoding': 'identity' });
+            expect(init?.decompress).toBe(false);
+        });
+
+        it('should report the real status code on 404', async () => {
+            const fetchImpl = (async () => mockResponse({ status: 404, ok: false })) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/not-found', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBe('404');
+        });
+
+        it('should treat 416 as valid (zero-length resource cannot satisfy bytes=0-0)', async () => {
+            const fetchImpl = (async () => mockResponse({ status: 416, ok: false })) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/empty-file', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull();
+        });
+
+        it('should cancel the response body without reading it', async () => {
+            let cancelled = false;
+            const fetchImpl = (async () => ({
+                ...mockResponse({ status: 200, ok: true }),
+                body: {
+                    cancel: async () => {
+                        cancelled = true;
+                    },
+                },
+            })) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/big-file', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull();
+            expect(cancelled).toBe(true);
+        });
+
+        it('should report Timeout when the request times out', async () => {
+            const fetchImpl = (async () => {
+                const abortError = new Error('The operation was aborted');
+                abortError.name = 'AbortError';
+                throw abortError;
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/slow', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBe('Timeout');
+        });
+
+        it('should report a broken URL when the request fails with a network error', async () => {
+            const fetchImpl = (async () => {
+                throw new Error('The socket connection was closed unexpectedly');
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/dead', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBe('The socket connection was closed unexpectedly');
+        });
+
+        it('should block a host that resolves to a private/loopback address (SSRF guard)', async () => {
+            // lookupFn maps the public-looking host to a loopback address. The
+            // guard must reject it before any fetch is attempted.
+            let fetchCalled = false;
+            const fetchImpl = (async () => {
+                fetchCalled = true;
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
+            const loopbackLookup: LookupFn = async () => [{ address: '127.0.0.1' }];
+
+            const result = await validateLink('https://internal.example.com/secret', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: loopbackLookup,
+                fetchImpl,
+            });
+
+            // Broken, not null — and a generic message that does not leak the IP.
+            expect(result).toBe('Blocked address');
+            expect(result).not.toContain('127.0.0.1');
+            expect(fetchCalled).toBe(false);
+        });
+
+        it('should block a cloud-metadata IP literal (169.254.169.254)', async () => {
+            // IP literal: the guard checks it directly without DNS.
+            let fetchCalled = false;
+            const fetchImpl = (async () => {
+                fetchCalled = true;
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('http://169.254.169.254/latest/meta-data/', {
+                filesDir: tempDir,
+                timeout: 5000,
+                fetchImpl,
+            });
+
+            expect(result).toBe('Blocked address');
+            expect(fetchCalled).toBe(false);
+        });
+
+        it('should block a redirect from a public host to an internal host', async () => {
+            // First hop resolves public and returns a 302 to an internal host;
+            // safeFetch re-validates the next hop (resolved to loopback) and blocks.
+            const fetchImpl = (async () =>
+                mockResponse({
+                    status: 302,
+                    ok: false,
+                    location: 'http://internal.example.com/admin',
+                })) as unknown as typeof fetch;
+            const redirectLookup: LookupFn = async hostname =>
+                hostname === 'internal.example.com' ? [{ address: '127.0.0.1' }] : [{ address: '93.184.216.34' }];
+
+            const result = await validateLink('https://public.example.com/go', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: redirectLookup,
+                fetchImpl,
+            });
+
+            expect(result).toBe('Blocked address');
         });
     });
 
@@ -485,6 +656,168 @@ describe('Link Validator Service', () => {
 
             // All 7 links should be processed
             expect(results).toHaveLength(7);
+        });
+    });
+
+    describe('transient failures (#2502)', () => {
+        const link = (id: string, url: string): ExtractedLink => ({
+            id,
+            url,
+            count: 1,
+            pageName: '',
+            blockName: '',
+            ideviceType: '',
+            order: '',
+        });
+        const statusFetch = (status: number) =>
+            (async () => mockResponse({ status, ok: status < 400 })) as unknown as typeof fetch;
+        const opts = { filesDir: '/tmp', lookupFn: publicLookup, hostDelayMs: 0, retryDelayMs: 0 };
+
+        it('reports server errors and rate limiting as unavailable, not broken', async () => {
+            for (const status of [500, 502, 503, 504, 429]) {
+                const result = await validateLinkWithResult(link('1', 'https://example.com/a'), {
+                    ...opts,
+                    fetchImpl: statusFetch(status),
+                });
+                expect(result).toMatchObject({ status: 'unavailable', error: String(status) });
+            }
+        });
+
+        it('reports a timeout as unavailable, not broken', async () => {
+            const fetchImpl = (async () => {
+                throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+            }) as unknown as typeof fetch;
+            const result = await validateLinkWithResult(link('1', 'https://example.com/a'), { ...opts, fetchImpl });
+            expect(result).toMatchObject({ status: 'unavailable', error: 'Timeout' });
+        });
+
+        it('still reports a missing resource as broken', async () => {
+            const result = await validateLinkWithResult(link('1', 'https://example.com/a'), {
+                ...opts,
+                fetchImpl: statusFetch(404),
+            });
+            expect(result).toMatchObject({ status: 'broken', error: '404' });
+        });
+
+        it('requests one URL at a time per host and checks repeated URLs once', async () => {
+            const inFlight = new Map<string, number>();
+            let maxPerHost = 0;
+            let calls = 0;
+            const fetchImpl = (async (url: string) => {
+                calls++;
+                const host = new URL(url).host;
+                inFlight.set(host, (inFlight.get(host) ?? 0) + 1);
+                maxPerHost = Math.max(maxPerHost, inFlight.get(host) ?? 0);
+                await new Promise(r => setTimeout(r, 5));
+                inFlight.set(host, (inFlight.get(host) ?? 0) - 1);
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
+            const links = [
+                ...Array.from({ length: 6 }, (_, i) => link(`px${i}`, `https://pxhere.com/photo/${i}`)),
+                link('dup', 'https://pxhere.com/photo/0'),
+                link('other', 'https://example.org/'),
+            ];
+
+            const results = [];
+            for await (const result of validateLinksStream(links, { ...opts, fetchImpl })) {
+                results.push(result);
+            }
+
+            expect(results).toHaveLength(8);
+            expect(results.every(r => r.status === 'valid')).toBe(true);
+            expect(maxPerHost).toBe(1);
+            expect(calls).toBe(7);
+        });
+
+        it('retries an unavailable link once before reporting it', async () => {
+            const statuses = [503, 200];
+            const fetchImpl = (async () => {
+                const status = statuses.shift() ?? 200;
+                return mockResponse({ status, ok: status < 400 });
+            }) as unknown as typeof fetch;
+
+            const results = [];
+            for await (const result of validateLinksStream([link('1', 'https://example.com/a')], {
+                ...opts,
+                fetchImpl,
+            })) {
+                results.push(result);
+            }
+
+            expect(results).toEqual([{ id: '1', url: 'https://example.com/a', status: 'valid', error: null }]);
+        });
+
+        it('stops requesting a host that still times out after the retry', async () => {
+            const calls = new Map<string, number>();
+            const fetchImpl = (async (url: string) => {
+                const host = new URL(url).host;
+                calls.set(host, (calls.get(host) ?? 0) + 1);
+                if (host === 'down.example') throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
+            const links = [
+                ...Array.from({ length: 4 }, (_, i) => link(`down${i}`, `https://down.example/${i}`)),
+                link('up', 'https://example.org/'),
+            ];
+
+            const results = [];
+            for await (const result of validateLinksStream(links, { ...opts, fetchImpl })) {
+                results.push(result);
+            }
+
+            expect(calls.get('down.example')).toBe(2);
+            expect(results.filter(r => r.id.startsWith('down'))).toHaveLength(4);
+            for (const result of results.filter(r => r.id.startsWith('down'))) {
+                expect(result).toMatchObject({ status: 'unavailable', error: 'Timeout' });
+            }
+            expect(results.find(r => r.id === 'up')?.status).toBe('valid');
+        });
+
+        it('stops requesting and retrying once the consumer cancels', async () => {
+            const calls = new Map<string, number>();
+            const fetchImpl = (async (url: string) => {
+                const host = new URL(url).host;
+                calls.set(host, (calls.get(host) ?? 0) + 1);
+                const status = host === 'busy.example' ? 503 : 200;
+                return mockResponse({ status, ok: status < 400 });
+            }) as unknown as typeof fetch;
+            const links = [
+                ...Array.from({ length: 3 }, (_, i) => link(`fast${i}`, `https://fast.example/${i}`)),
+                link('busy', 'https://busy.example/'),
+            ];
+
+            for await (const result of validateLinksStream(links, {
+                ...opts,
+                fetchImpl,
+                hostDelayMs: 20,
+                retryDelayMs: 20,
+            })) {
+                expect(result.id).toBe('fast0');
+                break;
+            }
+            await new Promise(r => setTimeout(r, 150));
+
+            expect(calls.get('fast.example')).toBe(1);
+            expect(calls.get('busy.example')).toBe(1);
+        });
+    });
+
+    describe('classifyHttpStatus', () => {
+        it('should treat 2xx and 3xx as valid', () => {
+            expect(classifyHttpStatus(200)).toBeNull();
+            expect(classifyHttpStatus(204)).toBeNull();
+            expect(classifyHttpStatus(301)).toBeNull();
+            expect(classifyHttpStatus(302)).toBeNull();
+            expect(classifyHttpStatus(303)).toBeNull();
+        });
+
+        it('should treat 416 as valid (zero-length resource cannot satisfy bytes=0-0)', () => {
+            expect(classifyHttpStatus(416)).toBeNull();
+        });
+
+        it('should report 4xx/5xx as the status string', () => {
+            expect(classifyHttpStatus(404)).toBe('404');
+            expect(classifyHttpStatus(500)).toBe('500');
         });
     });
 

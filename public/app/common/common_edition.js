@@ -93,15 +93,35 @@ var $exeDevicesEdition = {
 
             // Enable color pickers (provisional solution)
             // To review: 100 ms delay because the color picker won't work when combined with $exeTinyMCE.init
-            setTimeout(function () {
+            var lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+            var initColorPicker = function () {
                 $exeDevicesEdition.iDevice.colorPicker.init();
-            }, 100);
+            };
+            if (lifecycle) lifecycle.setTimeout(initColorPicker, 100);
+            else setTimeout(initColorPicker, 100);
 
             // Enable file uploaders
             $exeDevicesEdition.iDevice.filePicker.init();
 
             // Enable shared voice recorder controls in marked audio fields
             $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(document);
+        },
+        /**
+         * Lifecycle of the edition currently open, if any.
+         *
+         * These helpers are shared by every edition script and run outside the
+         * `$exeDevice` object, so they have no `this.$lifecycle`; `IdeviceNode`
+         * publishes the same object as `window.$exeEditionLifecycle`. It is
+         * null whenever no editor is open — and in tests that exercise the
+         * helpers directly — in which case every helper must keep behaving
+         * exactly as it did before.
+         *
+         * @returns {Object|null} The active lifecycle, or null.
+         */
+        getLifecycle: function () {
+            var lifecycle = typeof window !== 'undefined' ? window.$exeEditionLifecycle : null;
+            if (!lifecycle || typeof lifecycle.isActive !== 'function') return null;
+            return lifecycle.isActive() ? lifecycle : null;
         },
         // Common
         common: {
@@ -177,12 +197,10 @@ var $exeDevicesEdition = {
                         }
                     }
                 },
-                getGamificationTab: function () {
-                    return '\
-                            ' + $exeDevicesEdition.iDevice.gamification.itinerary.getItineraryTab() + '\
-                            ' + $exeDevicesEdition.iDevice.gamification.scorm.getScormTab() + '\
-                            ' + $exeDevicesEdition.iDevice.gamification.share.getShareTab();
-                }
+                // getGamificationTab() lived here and called getItineraryTab,
+                // getScormTab and getShareTab -- none of which exist, and none
+                // of which any iDevice called. Removed with the Grading tab
+                // refactor rather than left as a trap.
             },
             instructions: {
                 getFieldset: function (str) {
@@ -245,12 +263,210 @@ var $exeDevicesEdition = {
                         var checked = $(this).is(':checked');
                         $('#eXeProgressReportID').prop('disabled', !checked);
                     });
-                    $(document)
-                        .off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk')
-                        .on('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk', function (e) {
-                            e.preventDefault();
-                            $('#eXeProgressReportHelp').toggleClass('d-none');
-                        });
+                    var toggleHelp = function (e) {
+                        e.preventDefault();
+                        $('#eXeProgressReportHelp').toggleClass('d-none');
+                    };
+                    // Delegated on `document`, so it outlives the edition form.
+                    // The legacy namespace still de-duplicates repeated calls;
+                    // the edition owns the registration when one is open, which
+                    // is what removes it on close.
+                    $(document).off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk');
+                    var lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+                    if (lifecycle) {
+                        lifecycle.on(document, 'click.exeProgressReportHelp', '#eXeProgressReportHelpLnk', toggleHelp);
+                    } else {
+                        $(document).on('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk', toggleHelp);
+                    }
+                }
+            },
+            /**
+             * Collapsible help notes, the pattern the progress report has always
+             * used: a small icon that toggles a note below the control.
+             *
+             * The Grading tab needs six of them, and the alternative was six
+             * copies of the same anchor, the same inline sizing and the same
+             * delegated handler.
+             */
+            help: {
+
+                /**
+                 * @param {string} id Identifier of the note this opens.
+                 * @param {string} [path] The iDevice's asset path. Without it
+                 * no icon is rendered, rather than one pointing at nothing.
+                 * @returns {string} The icon markup, or '' when there is no path.
+                 */
+                icon: function (id, path) {
+                    if (!path) return '';
+                    return `<a href="#${id}" id="${id}Lnk" title="${_('Help')}">
+                                <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" style="width:18px;height:18px;min-width:18px;min-height:18px;max-width:18px;max-height:18px"/>
+                            </a>`;
+                },
+
+                /**
+                 * @param {string} id Identifier the icon points at.
+                 * @param {string[]} paragraphs Text of the note.
+                 * @returns {string} The note markup, closed.
+                 */
+                note: function (id, paragraphs) {
+                    const body = paragraphs
+                        .map((text, index) => `<p class="${index === paragraphs.length - 1 ? 'mb-0' : 'mb-2'}">${text}</p>`)
+                        .join('');
+                    return `<div id="${id}" class="alert alert-info d-none mt-2">${body}</div>`;
+                },
+
+                /**
+                 * Wire an icon to its note.
+                 *
+                 * Delegated and namespaced because addEvents runs again on
+                 * every re-render: a direct handler would stack up one copy per
+                 * render, and the note would flip once per copy -- i.e. appear
+                 * not to toggle at all.
+                 *
+                 * @param {string} id Identifier of the note.
+                 */
+                bind: function (id) {
+                    const event = `click.${id}`;
+                    const selector = `#${id}Lnk`;
+                    const toggleHelp = function (e) {
+                        e.preventDefault();
+                        $(`#${id}`).toggleClass('d-none');
+                    };
+                    // De-duplicate re-renders and release the document handler when the edition closes.
+                    $(document).off(event, selector);
+                    const lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+                    if (lifecycle) {
+                        lifecycle.on(document, event, selector, toggleHelp);
+                    } else {
+                        $(document).on(event, selector, toggleHelp);
+                    }
+                }
+            },
+            /**
+             * Minimum score an activity needs to be passed.
+             *
+             * Every iDevice offers the same choice: follow the project-wide value
+             * or override it here. Only the choice and the override are saved --
+             * the project value is read live from $exe.passScore every time the
+             * iDevice is edited, so an iDevice left on "global" keeps following
+             * the project even after the author changes it.
+             *
+             * Shared block, like progressBar above: one implementation, added to
+             * each iDevice's form one at a time.
+             */
+            passScore: {
+
+                MODE_GLOBAL: 'global',
+                MODE_CUSTOM: 'custom',
+
+                /**
+                 * The project-wide value, or 5 when $exe is not around.
+                 * @returns {number} A mark in [0, 10].
+                 */
+                getGlobalValue: function () {
+                    if (typeof $exe != "undefined" && $exe.passScore) return $exe.passScore.get();
+                    return 5;
+                },
+
+                /**
+                 * Clamp a value to the same 0-10 one-decimal domain the project
+                 * property uses, so a custom mark and a global one compare.
+                 * @param {*} value
+                 * @returns {number}
+                 */
+                normalize: function (value) {
+                    if (typeof $exe != "undefined" && $exe.passScore) return $exe.passScore.normalize(value);
+                    var parsed = parseFloat(value);
+                    return isFinite(parsed) ? Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10 : 5;
+                },
+
+                /**
+                 * @param {string} [path] The iDevice's own asset path, for the
+                 * help icon. Without it the icon is left out rather than
+                 * pointing at nothing.
+                 */
+                getContents: function (path) {
+                    var global = $exeDevicesEdition.iDevice.gamification.passScore.getGlobalValue();
+                    return `<div class="exe-pass-score-wrapper" style="flex-basis:100%;width:100%">
+                                <h3 class="exe-evaluation-section-title" id="eXePassScoreLabel">${_('Minimum score to pass the activity')}</h3>
+                                <div class="d-flex align-items-center flex-wrap gap-3" role="radiogroup" aria-labelledby="eXePassScoreLabel">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <input class="form-check-input" type="radio" name="eXePassScoreMode" id="eXePassScoreGlobal" value="global" checked />
+                                        <label class="form-check-label mb-0" for="eXePassScoreGlobal">${_('Global value')} (<span id="eXePassScoreGlobalValue">${global}</span>)</label>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <input class="form-check-input" type="radio" name="eXePassScoreMode" id="eXePassScoreCustom" value="custom" />
+                                        <label class="form-check-label mb-0" for="eXePassScoreCustom">${_('Customize')}</label>
+                                    </div>
+                                    <div id="eXePassScoreCustomOptions" class="d-flex align-items-center gap-2 d-none">
+                                        <label for="eXePassScoreValue" class="sr-av">${_('Minimum score to pass the activity')}</label>
+                                        <input type="number" id="eXePassScoreValue" name="eXePassScoreValue" class="form-control form-control-sm" min="0" max="10" step="0.1" value="${global}" style="width:9ch !important;max-width:9ch !important" />
+                                    </div>
+                                    ${$exeDevicesEdition.iDevice.gamification.help.icon('eXePassScoreHelp', path)}
+                                </div>
+                                ${$exeDevicesEdition.iDevice.gamification.help.note('eXePassScoreHelp', [
+                                    _('Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.'),
+                                    _('Customize: the activity uses its own mark and ignores the project one.'),
+                                ])}
+                            </div>`;
+                },
+
+                /**
+                 * Repaint the number shown next to the "Global value" radio from
+                 * the project. Called on every edition so the author never reads
+                 * a figure the project has since moved on from.
+                 */
+                refreshGlobalValue: function () {
+                    $('#eXePassScoreGlobalValue').text(
+                        $exeDevicesEdition.iDevice.gamification.passScore.getGlobalValue()
+                    );
+                },
+
+                setValues: function (data) {
+                    var passScore = $exeDevicesEdition.iDevice.gamification.passScore;
+                    var custom = data && data.passScoreMode === passScore.MODE_CUSTOM;
+
+                    passScore.refreshGlobalValue();
+
+                    // An iDevice that has never been customised starts the input
+                    // at the project value, so switching to "Customize" offers a
+                    // sensible mark instead of an empty box.
+                    var value = data && typeof data.passScoreCustom !== 'undefined' && data.passScoreCustom !== ''
+                        ? passScore.normalize(data.passScoreCustom)
+                        : passScore.getGlobalValue();
+                    $('#eXePassScoreValue').val(value);
+
+                    $('#eXePassScoreCustom').prop('checked', custom);
+                    $('#eXePassScoreGlobal').prop('checked', !custom);
+                    $('#eXePassScoreCustomOptions').toggleClass('d-none', !custom);
+                },
+
+                getValues: function () {
+                    var passScore = $exeDevicesEdition.iDevice.gamification.passScore;
+                    var custom = $('#eXePassScoreCustom').is(':checked');
+                    return {
+                        passScoreMode: custom ? passScore.MODE_CUSTOM : passScore.MODE_GLOBAL,
+                        passScoreCustom: passScore.normalize($('#eXePassScoreValue').val())
+                    };
+                },
+
+                addEvents: function () {
+                    var passScore = $exeDevicesEdition.iDevice.gamification.passScore;
+
+                    $('input[type=radio][name="eXePassScoreMode"]').on('change', function () {
+                        $('#eXePassScoreCustomOptions').toggleClass(
+                            'd-none',
+                            $(this).val() !== passScore.MODE_CUSTOM
+                        );
+                    });
+
+                    // Repaint on blur so a field left empty or out of range shows
+                    // the mark that will actually be saved.
+                    $('#eXePassScoreValue').on('blur', function () {
+                        $(this).val(passScore.normalize($(this).val()));
+                    });
+
+                    $exeDevicesEdition.iDevice.gamification.help.bind('eXePassScoreHelp');
                 }
             },
             itinerary: {
@@ -383,21 +599,64 @@ var $exeDevicesEdition = {
                     $exeDevicesEdition.iDevice.gamification.scorm.addEvents();
                 },
 
-                getTab: function (hidebutton = false, onlybutton = false) {
+                /**
+                 * The Grading tab: everything that decides whether a learner
+                 * passed, in one place.
+                 *
+                 * It used to be the SCORM tab, and the other two evaluative
+                 * controls -- the pass score and the progress report -- sat
+                 * loose in each iDevice's general options, which meant the
+                 * author had to look in two places to answer one question. The
+                 * tab now composes all three, so every iDevice gets the same
+                 * layout for free and none of them lays it out by hand.
+                 *
+                 * @param {string} [path] The iDevice's own asset path, needed
+                 * by the progress report for its help icon. Omit it and the
+                 * report is left out -- which is what an iDevice that scores
+                 * without publishing a report wants.
+                 * @param {Object} [options]
+                 * @param {boolean} [options.hidebutton=false]
+                 * @param {boolean} [options.onlybutton=false]
+                 * @param {boolean} [options.hideautosave=false] Hide the
+                 * automatic mode. For an activity with no end of its own --
+                 * geogebra-activity, where the learner may keep dragging the
+                 * construction forever -- there is no moment at which to report
+                 * on its own, so offering the mode would offer nothing.
+                 */
+                getTab: function (path, options = {}) {
+                    const { hidebutton = false, onlybutton = false, hideautosave = false } = options;
+                    const autoSaveClass = hideautosave ? 'd-none' : 'd-flex';
+                    const help = $exeDevicesEdition.iDevice.gamification.help;
                     const buttonClass = hidebutton ? 'd-none' : 'd-flex';
                     const buttonLiClass = hidebutton ? 'd-none' : '';
                     const message = onlybutton ? _("Save the score") : _("Automatically save the score");
+                    const passScoreContents =
+                        $exeDevicesEdition.iDevice.gamification.passScore.getContents(path);
+                    const progressReport = path
+                        ? $exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)
+                        : '';
                     return `
-                        <div class="exe-form-tab" title="${_('SCORM')}">
+                        <div class="exe-form-tab" title="${_('Grading')}">
+                            <h3 class="exe-evaluation-section-title">${_('SCORM')}</h3>
                             <div class="d-flex align-items-center gap-1 mb-3 ml-1">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" checked />
                                 <label class="form-check-label" for="eXeGameSCORMNoSave">${_("Do not save the score")}</label>
+                                ${help.icon('eXeGameSCORMNoSaveHelp', path)}
                             </div>
-                            <div class="d-flex align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMAutomatically">
+                            ${help.note('eXeGameSCORMNoSaveHelp', [
+                                _('The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.'),
+                                _("The progress report is not affected: it is kept in the learner's own browser and works whatever you choose here."),
+                            ])}
+                            <div class="${autoSaveClass} align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMAutomatically">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMAutoSave" value="1" />
                                 <label class="form-check-label" for="eXeGameSCORMAutoSave">${message}</label>
                                 <span id="eXeGameSCORgameAuto" class="ms-3 d-none"></span>
+                                ${help.icon('eXeGameSCORMAutoSaveHelp', path)}
                             </div>
+                            ${hideautosave ? '' : help.note('eXeGameSCORMAutoSaveHelp', [
+                                _('The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.'),
+                                _('A learner who leaves halfway still has the work done so far recorded, because the score was already sent.'),
+                            ])}
                             <div class="${buttonClass} align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMblock">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
                                 <label class="form-check-label" for="eXeGameSCORMButtonSave">${_("Show a button to save the score")}</label>
@@ -405,7 +664,12 @@ var $exeDevicesEdition = {
                                     <label for="eXeGameSCORMbuttonText" class="form-label mb-0">${_("Button text")}: </label>
                                     <input type="text" max="100" name="eXeGameSCORMbuttonText" id="eXeGameSCORMbuttonText" value="${_("Save score")}" class="form-control " style="width: auto; min-width: 140px;" />
                                 </span>
+                                ${help.icon('eXeGameSCORMButtonSaveHelp', path)}
                             </div>
+                            ${help.note('eXeGameSCORMButtonSaveHelp', [
+                                _('Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.'),
+                                _('Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.'),
+                            ])}
                             <div id="eXeGameSCORMinstructionsAuto" class="mb-3 ml-2 d-none">
                                 <ul class="mb-3">
                                     <li>${_("This will only work when exported as SCORM")}</li>
@@ -421,12 +685,22 @@ var $exeDevicesEdition = {
                                 <label for="eXeGameSCORMWeight" class="form-label mb-0">${_("Weighted")}: </label>
                                 <input type="number" id="eXeGameSCORMWeight" name="eXeGameSCORMWeight" value="100" min="1" max="100" class="form-control" style="width: 9.5ch !important; max-width:9.5ch  !important;" />
                                 <span>%</span>
+                                ${help.icon('eXeGameSCORMWeightHelp', path)}
                             </div>
+                            ${help.note('eXeGameSCORMWeightHelp', [
+                                _('The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.'),
+                                _('What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.'),
+                                _('For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.'),
+                            ])}
+                            ${progressReport ? `<h3 class="exe-evaluation-section-title">${_('Progress report')}</h3>${progressReport}` : ''}
+                            ${passScoreContents}
                         </div>`;
                 },
 
                 setValues: function (isScorm, textButtonScorm, repeatActivity = true, weighted = 100) {
-                    $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMPercentaje,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto").addClass('d-none');
+                    // The weight help note is hidden with the row it explains
+                    // (see addEvents), and starts closed on every load.
+                    $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMPercentaje,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto,#eXeGameSCORMWeightHelp").addClass('d-none');
 
                     $('#eXeGameSCORMWeight').val(weighted);
 
@@ -468,7 +742,11 @@ var $exeDevicesEdition = {
                     };
 
                     $('input[type=radio][name="eXeGameSCORM"]').on('change', function () {
-                        $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto,#eXeGameSCORMPercentaje").addClass('d-none').css('opacity', '');
+                        // The weight help note sits outside #eXeGameSCORMPercentaje
+                        // (an alert inside that flex row would squeeze the field),
+                        // so hiding the row has to take the note with it --
+                        // otherwise an open note outlives the control it explains.
+                        $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto,#eXeGameSCORMPercentaje,#eXeGameSCORMWeightHelp").addClass('d-none').css('opacity', '');
                         switch ($(this).val()) {
                             case '0':
                                 break;
@@ -490,6 +768,18 @@ var $exeDevicesEdition = {
                         let value = this.value.trim() === '' ? 100 : parseInt(this.value, 10);
                         value = Math.max(1, Math.min(value, 100));
                         this.value = value;
+                    });
+
+                    // The three mode notes stay available whichever mode is
+                    // selected -- the author is comparing them. Only the weight
+                    // note is tied to a control that comes and goes.
+                    [
+                        'eXeGameSCORMNoSaveHelp',
+                        'eXeGameSCORMAutoSaveHelp',
+                        'eXeGameSCORMButtonSaveHelp',
+                        'eXeGameSCORMWeightHelp',
+                    ].forEach(function (id) {
+                        $exeDevicesEdition.iDevice.gamification.help.bind(id);
                     });
                 },
 
@@ -525,9 +815,9 @@ var $exeDevicesEdition = {
                     return tab.replace(/[ \t]+/g, ' ').trim();
                 },
 
-                getTabIA: function (type = 0) {
+                getTabIA: function (type = 0, options = {}) {
                     const msgAddText = _("You can easily generate multiple questions for the activity using AI.");
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type);
+                    const promptText = $exeDevicesEdition.iDevice.gamification.share.buildIAPromptText(type, options);
                     const tab = `
                         <div class="exe-form-tab" title="${_('AI')}">
                             <p class="exe-block-info">${msgAddText}</p>
@@ -551,16 +841,7 @@ var $exeDevicesEdition = {
                                     </li>
                                 </ul>
                                 <div class="eXeE-LightboxContent p-2">
-                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">
-                                        ${c_('Act as a highly experienced teacher.')}
-                                        ${fprompt.prompt}
-                                        ${c_('Formats')}:
-                                        ${fprompt.format.join('\n')}
-                                        ${fprompt.explanation}
-                                        ${c_('Examples')}:
-                                        ${fprompt.examples.join('\n')}
-                                        ${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')}, 
-                                    </textarea>
+                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">${promptText}</textarea>
                                     <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
                                     <div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
                                         ${$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
@@ -637,7 +918,7 @@ var $exeDevicesEdition = {
                 },
 
 
-                getAllowedFormats: function (gameId) {
+                getAllowedFormats: function (gameId, options = {}) {
                     const gameFormats = {
                         0: { // Word/Definition
                             format: [`${c_('Word')}#${c_('Definition')}`],
@@ -755,7 +1036,91 @@ var $exeDevicesEdition = {
                             examples: [`${c_('Heart')}#${c_('A muscular organ that pumps blood through the body')}`],
                             allowRegex: /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/
                         },
-                        10: { // Electric circuits
+                        10: (() => { // adaptative quiz (mixed: select / sort / word)
+                            const requestedLevels = parseInt(options.numLevels, 10);
+                            const numLevels = requestedLevels === 5 ? 5 : requestedLevels === 4 ? 4 : 3;
+                            const lvlClass = numLevels === 5 ? '[0-4]' : numLevels === 4 ? '[0-3]' : '[0-2]';
+                            const lvlList = numLevels === 5
+                                ? '0, 1, 2, 3 or 4'
+                                : numLevels === 4
+                                    ? '0, 1, 2 or 3'
+                                    : '0, 1 or 2';
+                            const lvlDescr = numLevels === 5
+                                ? c_('Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).')
+                                : numLevels === 4
+                                    ? c_('Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).')
+                                    : c_('Level: 0 (low), 1 (medium) or 2 (high).');
+
+                            const format = [
+                                // Type 0: Select (multiple-choice)
+                                `0@${c_('Level')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}[#${c_('OptionC')}][#${c_('OptionD')}][#${c_('OptionE')}][#${c_('OptionF')}]`,
+                                // Type 1: Sort / order
+                                `1@${c_('Level')}#${c_('Question')}#Item1#Item2#Item3[#Item4][#Item5][#Item6]`,
+                                // Type 2: Word / definition
+                                `2@${c_('Level')}#${c_('Word')}#${c_('Definition')}`
+                            ];
+
+                            const examples = [
+                                // Type 0: single correct answer (letter B = OptionB)
+                                `0@0#B#${c_('What is the largest planet in the solar system?')}#${c_('Earth')}#${c_('Jupiter')}#${c_('Mars')}#${c_('Venus')}`,
+                                // Type 0: multiple correct answers (A and C)
+                                `0@1#AC#${c_('Which of the following are prime numbers?')}#2#4#5#9`,
+                                // Type 1: sort
+                                `1@2#${c_('Sort from largest to smallest')}#${c_('Elephant')}#${c_('Tiger')}#${c_('Cat')}#${c_('Mouse')}`,
+                                // Type 2: word/definition
+                                `2@0#${c_('Heart')}#${c_('A muscular organ that pumps blood through the body')}`
+                            ];
+                            if (numLevels >= 4) {
+                                examples.push(`0@3#ABCD#${c_('Which of these are transcendental numbers?')}#π#e#${c_('Liouville constant')}#${c_('Champernowne constant')}`);
+                            }
+                            if (numLevels === 5) {
+                                examples.push(`1@4#${c_('Sort these chemical elements from lowest to highest atomic number')}#${c_('Hydrogen')}#${c_('Carbon')}#${c_('Iron')}#${c_('Gold')}#${c_('Uranium')}`);
+                            }
+
+                            const explanation = [
+                                lvlDescr,
+                                c_('Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:'),
+                                c_('Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.'),
+                                c_('Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.'),
+                                c_('Type 2 (word/definition): 2@Level#Word#Definition.'),
+                                c_('Do not include the # character inside any field.')
+                            ].join(' ');
+
+                            // Type 0 (Select): 0..6 uppercase or lowercase letters A-F as solution; 2-6 options.
+                            const selectRe = `0@${lvlClass}#[A-Fa-f]{0,6}#[^#]+#[^#]+#[^#]+(#[^#]+){0,4}`;
+                            // Type 1 (Sort): question + 3 to 6 items already in correct order.
+                            const sortRe = `1@${lvlClass}#[^#]+#[^#]+#[^#]+#[^#]+(#[^#]+){0,3}`;
+                            // Type 2 (Word): word + definition.
+                            const wordRe = `2@${lvlClass}#[^#]+#[^#]+`;
+                            const allowRegex = new RegExp(`^(${selectRe}|${sortRe}|${wordRe})$`);
+
+                            const distribution = numLevels === 5
+                                ? c_('balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)')
+                                : numLevels === 4
+                                    ? c_('balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)')
+                                    : c_('balanced across the 3 levels (0=low, 1=medium, 2=high)');
+                            const perLevelCount = numLevels === 5 ? 12 : numLevels === 4 ? 15 : 20;
+                            const totalQuestions = perLevelCount * numLevels;
+                            const difficultyLadder = numLevels === 5
+                                ? c_('Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.')
+                                : numLevels === 4
+                                    ? c_('Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.')
+                                    : c_('Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.');
+
+                            // The prompt is a single static translation key with %placeholders%
+                            // so it can be extracted and translated. We must NOT wrap a template
+                            // literal containing ${...} in c_(): the extractor skips dynamic keys
+                            // (translations.ts) and the catalogue lookup would never match, leaving
+                            // the whole sentence in English. Translate first, then substitute.
+                            const prompt = c_('Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.')
+                                .replace('%total%', totalQuestions)
+                                .replace('%distribution%', distribution)
+                                .replace('%ladder%', difficultyLadder)
+                                .replace('%perLevel%', perLevelCount);
+
+                            return { format, explanation, examples, allowRegex, prompt, _meta: { numLevels, lvlList } };
+                        })(),
+                        11: { // Electric circuits
                             format: [
                                 `${c_('Description')}#${c_('TikZ code')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}#${c_('OptionC')}#${c_('OptionD')}`,
                                 `${c_('Description')}#${c_('TikZ code')}#${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}#${c_('OptionC')}`,
@@ -763,11 +1128,11 @@ var $exeDevicesEdition = {
                             ],
                             explanation: `${c_('One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.')}`,
                             examples: [
-                                `${c_('Simple resistor circuit')}#\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}#${c_('A')}#${c_('What is the resistance value?')}#${c_('1 kΩ')}#${c_('2 kΩ')}#${c_('500 Ω')}#${c_('10 kΩ')}`,
+                                `${c_('Simple resistor circuit')}#\\begin{circuitikz}\\draw (0,0) to[R=1k] (2,0);\\end{circuitikz}#${c_('A')}#${c_('What is the resistance value?')}#1 kΩ#2 kΩ#500 Ω#10 kΩ`,
                                 `${c_('Battery and lamp circuit')}#\\begin{circuitikz}\\draw (0,0) to[battery1] (2,0) to[lamp] (2,2) -- (0,2) to[switch] (0,0);\\end{circuitikz}#${c_('B')}#${c_('What happens when the switch is closed?')}#${c_('Nothing')}#${c_('The lamp turns on')}#${c_('The battery drains')}`
                             ],
                             allowRegex: /^([^#]+#[^#]+#([0-3]|[A-D]{1,4})#[^#]+#[^#]+(?:#[^#]*){1,3}|[^#]+#[^#]+)$/,
-                            prompt: c_(`Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.`)
+                            prompt: c_(`Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100<\\ohm>).`)
                         },
                     };
 
@@ -786,7 +1151,31 @@ var $exeDevicesEdition = {
                     };
                 },
 
-                addEvents: function (type, saveQuestions) {
+                buildIAPromptText: function (gameId, options = {}) {
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options);
+                    const lines = [
+                        c_('Act as a highly experienced teacher.'),
+                        fprompt.prompt,
+                        `${c_('Formats')}:`,
+                        fprompt.format.join('\n'),
+                        fprompt.explanation,
+                        `${c_('Examples')}:`,
+                        fprompt.examples.join('\n'),
+                        `${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')},`
+                    ];
+                    return lines.filter((line) => line !== undefined && line !== '').join('\n');
+                },
+
+                refreshIAPrompt: function (gameId, options = {}) {
+                    const $prompt = $('#eXeEPromptArea');
+                    if (!$prompt.length) return;
+                    $prompt.val($exeDevicesEdition.iDevice.gamification.share.buildIAPromptText(gameId, options));
+                },
+
+                addEvents: function (type, saveQuestions, getOptions) {
+                    const resolveOptions = typeof getOptions === 'function'
+                        ? getOptions
+                        : () => (getOptions && typeof getOptions === 'object' ? getOptions : {});
                     const $textQuestionsArea = $('#eXeEQuestionsArea');
                     const $textPrompt = $('#eXeEPromptArea');
                     const $textAreaIa = $('#eXeEQuestionsIA');
@@ -829,14 +1218,19 @@ var $exeDevicesEdition = {
                     $iaSelect.show()
                     $divEIA.hide();                   
 
-                    // File input custom UI events
-                    $(document).off('click.exeFileTrigger').on('click.exeFileTrigger', '[data-exe-file-trigger]', function () {
-                        const $wrap = $(this).closest('[data-exe-upload]');
+                    // File input custom UI events.
+                    // Delegated on `document`, so they outlive the edition form:
+                    // the edition owns them when one is open, and the legacy
+                    // namespaces keep de-duplicating repeated calls.
+                    const lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+                    const onFileTrigger = function (e) {
+                        const $wrap = $(e.currentTarget).closest('[data-exe-upload]');
                         $wrap.find('.exe-file-input').trigger('click');
-                    });
-                    $(document).off('change.exeFileInput').on('change.exeFileInput', '.exe-file-input', function () {
-                        const file = this.files && this.files[0];
-                        const $wrap = $(this).closest('[data-exe-upload]');
+                    };
+                    const onFileInputChange = function (e) {
+                        const input = e.currentTarget;
+                        const file = input.files && input.files[0];
+                        const $wrap = $(input).closest('[data-exe-upload]');
                         const $name = $wrap.find('[data-exe-file-name]');
                         if (file) {
                             $wrap.attr('data-has-file', 'true');
@@ -845,7 +1239,16 @@ var $exeDevicesEdition = {
                             $wrap.removeAttr('data-has-file');
                             $name.text(_("No file selected"));
                         }
-                    });
+                    };
+                    $(document).off('click.exeFileTrigger');
+                    $(document).off('change.exeFileInput');
+                    if (lifecycle) {
+                        lifecycle.on(document, 'click.exeFileTrigger', '[data-exe-file-trigger]', onFileTrigger);
+                        lifecycle.on(document, 'change.exeFileInput', '.exe-file-input', onFileInputChange);
+                    } else {
+                        $(document).on('click.exeFileTrigger', '[data-exe-file-trigger]', onFileTrigger);
+                        $(document).on('change.exeFileInput', '.exe-file-input', onFileInputChange);
+                    }
 
                     $tabQuestions.on('click', function (e) {
                         e.preventDefault();
@@ -911,15 +1314,28 @@ var $exeDevicesEdition = {
                         window.open(url, '_blank');
                     });
 
-                    $saveButton.on('click', function () {
+                    $saveButton.on('click', async function () {
                         const content = $textQuestionsArea.val().trim();
                         if (!content) {
                             eXe.app.alert(_("Please enter at least one question."));
                             return;
                         }
-                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
+                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
-                        saveQuestions(questions.validLines);
+                        // saveQuestions may be async and may own the result messaging
+                        // (e.g. electrical-circuits renders each circuit image before
+                        // inserting). When it returns { handledMessaging: true } the
+                        // callback already informed the user, so skip the generic alert.
+                        // It may also return `remainingLines` (questions it could not
+                        // add): refill the textarea with them, cleared, so the user can
+                        // correct them and save again.
+                        const result = await saveQuestions(questions.validLines, questions.invalidLines);
+                        if (result && result.handledMessaging) {
+                            if (Array.isArray(result.remainingLines)) {
+                                $textQuestionsArea.val(result.remainingLines.join('\n'));
+                            }
+                            return;
+                        }
                         if (questions.invalidLines.length > 0) {
                             eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
@@ -927,16 +1343,22 @@ var $exeDevicesEdition = {
                             //$('.exe-form-tabs li:first-child a').trigger("click")
                         }
                     });
-                    $iaButton.on('click', function () {
+                    $iaButton.on('click', async function () {
                         const content = $textAreaIa.val().trim();
                         if (!content) {
                             eXe.app.alert(_("Please enter at least one question."));
                             return;
                         }
 
-                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
+                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea, resolveOptions());
 
-                        saveQuestions(questions.validLines);
+                        const result = await saveQuestions(questions.validLines, questions.invalidLines);
+                        if (result && result.handledMessaging) {
+                            if (Array.isArray(result.remainingLines)) {
+                                $textQuestionsArea.val(result.remainingLines.join('\n'));
+                            }
+                            return;
+                        }
                         if (questions.invalidLines.length > 0) {
                             eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
@@ -970,11 +1392,16 @@ var $exeDevicesEdition = {
 
                     $('#eXeIAButton').on('click', function () {
                         $('#eXeIAMessage').text(_('Generating questions. Please wait...')).show();
-                        $exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(type, saveQuestions);
+                        $exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(type, saveQuestions, resolveOptions());
                     });
 
                 },
-                genarateIAQuestons: async function (type, saveQuestions) {
+                genarateIAQuestons: async function (type, saveQuestions, options = {}) {
+                    // The request outlives the form, so the edition that asked
+                    // for the questions is captured here: a response arriving
+                    // after the editor closed must not reach the iDevice that
+                    // replaced it.
+                    const lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
                     $('#eXeFormIAContainer').find('input, textarea, button, select').prop('disabled', true);
                     const $specialty = $('#eXeSpecialtyIA');
                     const $course = $('#eXeCourseIA');
@@ -1011,14 +1438,14 @@ var $exeDevicesEdition = {
                         promptText += `${_('With the following formats:')}`;
                     }
 
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type);
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type, options);
                     let prompt = `
                         ${promptText}
                         ${fprompt.format.join('\n')}
                         ${fprompt.explanation}
                         ${_('Examples')}:
-                        ${fprompt.examples.join('\n')}  
-                        ${_('You must return only the questions without numbering and without classification or bullet points')},                    
+                        ${fprompt.examples.join('\n')}
+                        ${_('You must return only the questions without numbering and without classification or bullet points')},
                     `;
 
                     let sdata = '';
@@ -1026,11 +1453,12 @@ var $exeDevicesEdition = {
 
                     try {
                         const data = await eXeLearning.app.api.getGenerateQuestions(prompt);
+                        if (lifecycle && !lifecycle.isActive()) return;
 
                         if (data.questions) {
                             let questions = $exeDevicesEdition.iDevice.gamification.share.checkQuestions(data.questions);
                             if (questions) {
-                                const correctsQuestions = $exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(type, questions);
+                                const correctsQuestions = $exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(type, questions, options);
                                 saveQuestions(correctsQuestions);
                             } else {
                                 sdata = _('The questions could not be generated');
@@ -1042,6 +1470,9 @@ var $exeDevicesEdition = {
                         }
                         $('#eXeFormIAContainer').find('input, textarea, button, select').prop('disabled', false);
                     } catch (error) {
+                        // The selectors below are global: once this edition is
+                        // gone they would reach the form of the next one.
+                        if (lifecycle && !lifecycle.isActive()) return;
                         sdata = _('An error occurred while retrieving the questions. Please try again.');
                         $('#eXeIAMessage').text(_(sdata)).show();
                         $('#eXeFormIAContainer').find('input, textarea, button, select').prop('disabled', false);
@@ -1079,11 +1510,11 @@ var $exeDevicesEdition = {
                 },
 
 
-                validateAndSave: function (gameId, $textQuestionsArea) {
+                validateAndSave: function (gameId, $textQuestionsArea, options = {}) {
                     const lines = $textQuestionsArea.val().trim().split('\n');
                     const validLines = [];
                     const invalidLines = [];
-                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
+                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options).allowRegex;
 
                     lines.forEach((line) => {
                         const cleanLine = line.trim();
@@ -1101,10 +1532,10 @@ var $exeDevicesEdition = {
                     }
                 },
 
-                validateQuesionsIA: function (gameId, lines) {
+                validateQuesionsIA: function (gameId, lines, options = {}) {
                     const validLines = [];
                     const invalidLines = [];
-                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
+                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options).allowRegex;
 
                     lines.forEach((line) => {
                         const cleanLine = line.trim();
@@ -1204,10 +1635,25 @@ var $exeDevicesEdition = {
                         document.body;
                     container.appendChild(link);
                     link.click();
-                    setTimeout(function () {
+                    const removeLink = function () {
                         if (link.parentNode) link.parentNode.removeChild(link);
-                        window.URL.revokeObjectURL(data);
-                    }, 100);
+                    };
+                    // The anchor is appended outside the edition form and the
+                    // object URL is only released 100 ms later. The edition owns
+                    // both meanwhile, so closing the editor in that window frees
+                    // them instead of leaking them.
+                    const lifecycle =
+                        $exeDevicesEdition.iDevice.getLifecycle();
+                    const releaseLink = lifecycle ? lifecycle.own(removeLink) : null;
+                    const releaseUrl = lifecycle ? lifecycle.own(() => window.URL.revokeObjectURL(data)) : null;
+                    const release = function () {
+                        if (releaseUrl) releaseUrl();
+                        else window.URL.revokeObjectURL(data);
+                        if (releaseLink) releaseLink();
+                        else removeLink();
+                    };
+                    if (lifecycle) lifecycle.setTimeout(release, 100);
+                    else setTimeout(release, 100);
                     return true;
                 },
 
@@ -1330,6 +1776,8 @@ var $exeDevicesEdition = {
             helpers: {
                 playerAudio: null,
                 currentAudioUrl: null,
+                /** Disposer that stops the audio when the edition closes. */
+                _releaseAudio: null,
 
                 /**
                  * Play an audio file, supporting both regular URLs and asset:// URLs
@@ -1354,7 +1802,18 @@ var $exeDevicesEdition = {
 
                     // Stop any currently playing audio before playing new one
                     this.stopSound();
+                    // stopSound() bumps the request counter, so it is read
+                    // afterwards. Resolving an asset:// URL is async: requests
+                    // can overlap, and only the latest one — not stopped in
+                    // the meantime — may create a player. Otherwise each would
+                    // create its own and only the last stays reachable by
+                    // stopSound() and by the lifecycle.
+                    const request = this._soundRequest;
 
+                    const self = this;
+                    // Captured before any await: the audio must belong to the
+                    // edition that asked for it, never to a later one.
+                    const lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
                     let audioUrl = audio;
 
                     // Check if it's an asset:// URL and resolve it
@@ -1383,6 +1842,12 @@ var $exeDevicesEdition = {
                         }
                     }
 
+                    // Resolving an asset:// URL is asynchronous: give up if the
+                    // editor was closed, or a later request or a stop superseded
+                    // this one, while it was in flight.
+                    if (lifecycle && !lifecycle.isActive()) return;
+                    if (request !== this._soundRequest) return;
+
                     // Extract URL from Google Drive if applicable
                     if (
                         typeof $exeDevices !== 'undefined' &&
@@ -1396,6 +1861,13 @@ var $exeDevicesEdition = {
 
                     // Create and play the audio
                     this.playerAudio = new Audio(audioUrl);
+                    // Playback would otherwise carry on after the editor closes:
+                    // let the edition stop it exactly as stopSound() does.
+                    if (lifecycle) {
+                        this._releaseAudio = lifecycle.own(function () {
+                            self.stopSound();
+                        });
+                    }
                     this.playerAudio
                         .play()
                         .catch((error) => console.error('playSound: Error playing audio:', error));
@@ -1405,11 +1877,16 @@ var $exeDevicesEdition = {
                  * Stop the currently playing audio
                  */
                 stopSound: function () {
+                    // Cancels any playSound() still resolving its URL.
+                    this._soundRequest = (this._soundRequest || 0) + 1;
                     if (this.playerAudio && typeof this.playerAudio.pause === 'function') {
                         this.playerAudio.pause();
                         this.playerAudio = null;
                     }
                     this.currentAudioUrl = null;
+                    var release = this._releaseAudio;
+                    this._releaseAudio = null;
+                    if (typeof release === 'function') release();
                 }
             }
         },
@@ -1441,13 +1918,13 @@ var $exeDevicesEdition = {
                 });
 
                 // EVENT DELEGATION - A single handler for ALL buttons
-                $(document).off('click.filepicker').on('click.filepicker', '.exe-pick-image, .exe-pick-any-file', function(e) {
+                var openFileManager = function (e) {
                     e.preventDefault();
                     e.stopImmediatePropagation();
 
                     if (!filemanager) return;
 
-                    var $button = $(this);
+                    var $button = $(e.currentTarget);
                     var inputId = $button.attr('data-filepicker') || $button.prev('input[type="text"]').attr('id');
                     var $input = inputId ? $('#' + inputId) : $button.prev('input[type="text"]');
 
@@ -1472,7 +1949,18 @@ var $exeDevicesEdition = {
                             $input.trigger('change');
                         }
                     });
-                });
+                };
+
+                // Delegated on `document`, so it outlives the edition form: the
+                // edition owns it when one is open, and the legacy namespace
+                // keeps de-duplicating repeated calls.
+                $(document).off('click.filepicker');
+                var lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+                if (lifecycle) {
+                    lifecycle.on(document, 'click.filepicker', '.exe-pick-image, .exe-pick-any-file', openFileManager);
+                } else {
+                    $(document).on('click.filepicker', '.exe-pick-image, .exe-pick-any-file', openFileManager);
+                }
 
                 // Initialize recorder controls for fields marked with data-voice-recorder.
                 $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(document);
@@ -1507,14 +1995,22 @@ var $exeDevicesEdition = {
                 this._cleanupBound = true;
 
                 var self = this;
+                var lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
 
-                window.addEventListener('beforeunload', function () {
+                var releaseOnPageHide = function () {
                     self.cleanupAll();
-                });
+                };
 
-                window.addEventListener('pagehide', function () {
-                    self.cleanupAll();
-                });
+                // `window` and `document.body` both outlive the edition form, so
+                // an edition owns these registrations and binds them again the
+                // next time an editor is opened.
+                if (lifecycle) {
+                    lifecycle.addEventListener(window, 'beforeunload', releaseOnPageHide);
+                    lifecycle.addEventListener(window, 'pagehide', releaseOnPageHide);
+                } else {
+                    window.addEventListener('beforeunload', releaseOnPageHide);
+                    window.addEventListener('pagehide', releaseOnPageHide);
+                }
 
                 if (typeof MutationObserver !== 'undefined' && document.body) {
                     this._detachObserver = new MutationObserver(function () {
@@ -1523,6 +2019,14 @@ var $exeDevicesEdition = {
                     this._detachObserver.observe(document.body, {
                         childList: true,
                         subtree: true,
+                    });
+                    if (lifecycle) lifecycle.ownInstance(this._detachObserver, 'disconnect');
+                }
+
+                if (lifecycle) {
+                    lifecycle.own(function () {
+                        self._cleanupBound = false;
+                        self._detachObserver = null;
                     });
                 }
             },
@@ -1856,6 +2360,10 @@ var $exeDevicesEdition = {
                     modalOpen: false,
                     recordingStarted: false,
                     suggestedName: '',
+                    // Set by cleanup(). The microphone permission, the recorder's
+                    // `stop` event and the upload all settle later, so each of
+                    // them checks it before touching anything cleanup released.
+                    destroyed: false,
                 };
 
                 var self = this;
@@ -2041,7 +2549,16 @@ var $exeDevicesEdition = {
                         resetBlob();
                         showError('', false);
                         state.lastFocused = document.activeElement;
-                        state.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        if (state.destroyed) {
+                            // Granted too late: release the microphone at once
+                            // instead of recording into a closed editor.
+                            stream.getTracks().forEach(function (track) {
+                                if (track && typeof track.stop === 'function') track.stop();
+                            });
+                            return;
+                        }
+                        state.stream = stream;
                         state.chunks = [];
 
                         var options = state.mimeType ? { mimeType: state.mimeType } : undefined;
@@ -2056,6 +2573,9 @@ var $exeDevicesEdition = {
                         };
 
                         state.recorder.onstop = function () {
+                            // Delivered asynchronously after stop(), so it can
+                            // arrive once cleanup disposed the modal.
+                            if (state.destroyed) return;
                             clearTimers();
                             stopStream();
                             state.recordingStarted = false;
@@ -2069,6 +2589,7 @@ var $exeDevicesEdition = {
                         scheduleRecordingStart();
                     } catch (error) {
                         stopStream();
+                        if (state.destroyed) return;
                         setIdleState();
                         showError(strings.microphoneError, false);
                     }
@@ -2120,6 +2641,7 @@ var $exeDevicesEdition = {
                         );
 
                         var assetUrl = await manager.insertImage(file);
+                        if (state.destroyed) return;
                         $input.val(assetUrl).trigger('change');
 
                         if ($preview.length && $preview.is('audio')) {
@@ -2140,6 +2662,7 @@ var $exeDevicesEdition = {
                     cleanup: function () {
                         if ($container.data('voiceRecorderDestroyed')) return;
                         $container.data('voiceRecorderDestroyed', true);
+                        state.destroyed = true;
 
                         try {
                             if (state.recorder && state.recorder.state === 'recording') {
@@ -2182,6 +2705,18 @@ var $exeDevicesEdition = {
                 };
 
                 this.registerInstance(registryEntry);
+
+                // A recorder holds a microphone stream, timers, an object URL and
+                // two modals appended to <body> — none of them inside the edition
+                // form. Closing the editor must release all of it, and above all
+                // must stop the microphone. `cleanup()` is idempotent, so the
+                // detach observer and this disposer can both reach it.
+                var recorderLifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+                if (recorderLifecycle) {
+                    recorderLifecycle.own(function () {
+                        registryEntry.cleanup();
+                    });
+                }
 
                 $toggle.on('click', function (event) {
                     event.preventDefault();

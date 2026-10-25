@@ -23,7 +23,6 @@ const YjsProjectManagerMixin = {
     // Add Yjs properties
     projectManager._yjsEnabled = false;
     projectManager._yjsBridge = null;
-    projectManager._yjsBindings = new Map(); // TinyMCE bindings
 
     /**
      * Enable Yjs mode for the current project
@@ -58,9 +57,6 @@ const YjsProjectManagerMixin = {
 
       this._yjsEnabled = true;
 
-      // Set up TinyMCE editor hook for auto-binding to Yjs
-      this._setupTinyMCEHook();
-
       Logger.log('[ProjectManager] Yjs mode enabled');
 
       // Update title element now that Yjs is ready
@@ -88,114 +84,12 @@ const YjsProjectManagerMixin = {
     };
 
     /**
-     * Set up TinyMCE hook for automatic Yjs binding
-     * @private
-     */
-    projectManager._setupTinyMCEHook = function () {
-      // eslint-disable-next-line @typescript-eslint/no-this-alias
-      const self = this;
-
-      // Store original hook if exists
-      const originalHook = window.$exeTinyMCE?.onEditorInit;
-
-      // Set up the hook for TinyMCE editor initialization
-      if (window.$exeTinyMCE) {
-        window.$exeTinyMCE.onEditorInit = function (editor) {
-          // Call original hook if exists
-          if (originalHook) {
-            originalHook(editor);
-          }
-
-          // Skip if Yjs is not enabled
-          if (!self._yjsEnabled || !self._yjsBridge) {
-            return;
-          }
-
-          // Try to extract page/block/component IDs from the editor context
-          const ids = self._extractIdsFromEditor(editor);
-          if (ids) {
-            Logger.log('[YjsHook] Binding editor to Yjs:', ids);
-            self.bindEditorToYjs(editor, ids.pageId, ids.blockId, ids.componentId);
-          } else {
-            Logger.log('[YjsHook] Could not extract IDs for editor:', editor.id);
-          }
-        };
-      }
-    };
-
-    /**
-     * Extract page, block, and component IDs from TinyMCE editor context
-     * @private
-     */
-    projectManager._extractIdsFromEditor = function (editor) {
-      try {
-        // Try to get IDs from the editor container's data attributes or parent elements
-        const container = editor.getContainer();
-        if (!container) return null;
-
-        // Walk up to find idevice container with data attributes
-        let element = container;
-        let ideviceEl = null;
-        let blockEl = null;
-
-        while (element && element !== document.body) {
-          if (element.classList?.contains('idevice-node') || element.dataset?.odeIdeviceId) {
-            ideviceEl = element;
-          }
-          if (element.classList?.contains('block-node') || element.dataset?.odeBlockId) {
-            blockEl = element;
-          }
-          element = element.parentElement;
-        }
-
-        // Get active page ID from structure
-        const activePageId = this.structure?.nodeSelected?.id ||
-                            this.structure?.nodeSelected?.pageId ||
-                            document.querySelector('.structure-node.selected')?.dataset?.pageId;
-
-        if (!activePageId) {
-          Logger.log('[YjsHook] No active page ID found');
-          return null;
-        }
-
-        // Get block ID
-        const blockId = blockEl?.dataset?.odeBlockId ||
-                       ideviceEl?.closest('[data-ode-block-id]')?.dataset?.odeBlockId ||
-                       'default-block';
-
-        // Get component/iDevice ID
-        const componentId = ideviceEl?.dataset?.odeIdeviceId ||
-                           container.closest('[data-ode-idevice-id]')?.dataset?.odeIdeviceId;
-
-        if (!componentId) {
-          Logger.log('[YjsHook] No component ID found');
-          return null;
-        }
-
-        return {
-          pageId: activePageId,
-          blockId: blockId,
-          componentId: componentId,
-        };
-      } catch (error) {
-        console.error('[YjsHook] Error extracting IDs:', error);
-        return null;
-      }
-    };
-
-    /**
      * Disable Yjs mode and revert to legacy behavior
      */
     projectManager.disableYjsMode = async function () {
       if (!this._yjsEnabled) return;
 
       Logger.log('[ProjectManager] Disabling Yjs mode');
-
-      // Clean up bindings
-      for (const binding of this._yjsBindings.values()) {
-        binding.destroy?.();
-      }
-      this._yjsBindings.clear();
 
       // Clean up Yjs
       if (window.YjsModules) {
@@ -256,47 +150,6 @@ const YjsProjectManagerMixin = {
       // Fallback to original
       if (originalGenerateIntervalAutosave) {
         return originalGenerateIntervalAutosave(...args);
-      }
-    };
-
-    /**
-     * Bind a TinyMCE editor to Yjs for collaborative editing
-     * @param {TinyMCE.Editor} editor - TinyMCE editor instance
-     * @param {string} pageId - Page ID
-     * @param {string} blockId - Block ID
-     * @param {string} componentId - Component ID (iDevice ID)
-     * @returns {Object|null} The binding object or null
-     */
-    projectManager.bindEditorToYjs = function (editor, pageId, blockId, componentId) {
-      if (!this._yjsEnabled || !window.YjsModules) {
-        return null;
-      }
-
-      // Clean up existing binding for this component
-      const existingBinding = this._yjsBindings.get(componentId);
-      if (existingBinding) {
-        existingBinding.destroy?.();
-        this._yjsBindings.delete(componentId);
-      }
-
-      // Create new binding
-      const binding = window.YjsModules.bindTinyMCE(editor, pageId, blockId, componentId);
-      if (binding) {
-        this._yjsBindings.set(componentId, binding);
-      }
-
-      return binding;
-    };
-
-    /**
-     * Unbind a TinyMCE editor from Yjs
-     * @param {string} componentId - Component ID
-     */
-    projectManager.unbindEditorFromYjs = function (componentId) {
-      const binding = this._yjsBindings.get(componentId);
-      if (binding) {
-        binding.destroy?.();
-        this._yjsBindings.delete(componentId);
       }
     };
 
@@ -627,6 +480,22 @@ const YjsProjectManagerMixin = {
         return str;
       };
 
+      // Canonical id generator -- mirrors src/shared/ids.ts (Format A: base36
+      // timestamp + 9 base36 random chars). Kept inline because this mixin runs
+      // in the browser before the TS bundle is available. See issue #1782.
+      // Mirrors src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+      const generateCanonicalId = (prefix) => {
+        if (!prefix) {
+          throw new Error('generateId: prefix is required');
+        }
+        const timestamp = Date.now().toString(36);
+        // Pad to a fixed 9-char suffix: `toString(36)` yields a variable-length
+        // tail, so without this the suffix is occasionally 8 chars. Mirrors
+        // src/shared/ids.ts::generateId — keep in sync. See issue #1782.
+        const random = Math.random().toString(36).substring(2, 11).padEnd(9, '0');
+        return `${prefix}-${timestamp}-${random}`;
+      };
+
       // 2. Import structure into Yjs
       const documentManager = this._yjsBridge.getDocumentManager();
       const navigation = documentManager.getNavigation();
@@ -673,7 +542,7 @@ const YjsProjectManagerMixin = {
       // Import each page as a flat entry in navigation (NO nested children arrays)
       const importPage = (pageData) => {
         const pageMap = new Y.Map();
-        const pageId = pageData.id || `page-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const pageId = pageData.id || generateCanonicalId('page');
 
         pageMap.set('id', pageId);
         pageMap.set('pageId', pageId);
@@ -687,7 +556,7 @@ const YjsProjectManagerMixin = {
         if (pageData.blocks && Array.isArray(pageData.blocks)) {
           for (const blockData of pageData.blocks) {
             const blockMap = new Y.Map();
-            const blockId = blockData.id || `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const blockId = blockData.id || generateCanonicalId('block');
 
             blockMap.set('id', blockId);
             blockMap.set('blockId', blockId);
@@ -698,7 +567,7 @@ const YjsProjectManagerMixin = {
             if (blockData.idevices && Array.isArray(blockData.idevices)) {
               for (const ideviceData of blockData.idevices) {
                 const compMap = new Y.Map();
-                const compId = ideviceData.id || `idevice-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const compId = ideviceData.id || generateCanonicalId('idevice');
 
                 compMap.set('id', compId);
                 compMap.set('ideviceId', compId);

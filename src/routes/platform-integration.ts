@@ -6,14 +6,100 @@
  * bidirectional file transfer (download from platform, upload to platform).
  */
 import { Elysia, t } from 'elysia';
+import type { Kysely } from 'kysely';
 import { getBasePath } from '../utils/basepath.util';
-import { decodePlatformJWT, getPlatformIntegrationParams } from '../utils/platform-jwt';
-import { platformPetitionGet, platformPetitionSet, platformPetitionSetForward } from '../services/platform-integration';
+import { decodePlatformJWT, getPlatformIntegrationParams, type PlatformJWTPayload } from '../utils/platform-jwt';
+import {
+    hashPlatformPackage,
+    isBoundToOtherPlatformActivity,
+    isPlatformPackageCurrent,
+    platformPetitionGet,
+    platformPetitionSet,
+    platformPetitionSetForward,
+    recordPlatformPackage,
+} from '../services/platform-integration';
+import { withJwtAuth } from '../utils/route-auth';
+import { requireAuth } from '../utils/guards';
+import { db as defaultDb } from '../db/client';
+import { findProjectByUuid as findProjectByUuidDefault } from '../db/queries';
+import type { Database } from '../db/types';
+
+/**
+ * Route-level dependencies for platform integration.
+ *
+ * The export/post-back handlers must enforce that a client-supplied
+ * `projectUuid` actually belongs to the platform identity carried by the
+ * validated JWT before exporting and shipping its contents back to the
+ * platform. That ownership check needs to read the project row (in
+ * particular `platform_id`), so the lookup is exposed here for dependency
+ * injection in tests instead of mutating the service-level dependencies.
+ */
+export interface PlatformIntegrationRouteDependencies {
+    db: Kysely<Database>;
+    findProjectByUuid: typeof findProjectByUuidDefault;
+}
+
+const defaultRouteDeps: PlatformIntegrationRouteDependencies = {
+    db: defaultDb,
+    findProjectByUuid: findProjectByUuidDefault,
+};
+
+let routeDeps = defaultRouteDeps;
+
+/**
+ * Configure route-level dependencies (for testing).
+ */
+export function configurePlatformIntegrationRoutes(newDeps: Partial<PlatformIntegrationRouteDependencies>): void {
+    routeDeps = { ...defaultRouteDeps, ...newDeps };
+}
+
+/**
+ * Reset route-level dependencies to their defaults.
+ */
+export function resetPlatformIntegrationRoutesDependencies(): void {
+    routeDeps = defaultRouteDeps;
+}
+
+/**
+ * Authorize that a project may be exported to / posted back to the platform
+ * identified by a validated JWT.
+ *
+ * Ownership invariant (prevents IDOR — bug M2): a project that is already
+ * bound to a platform course module (`projects.platform_id` is set — this is
+ * written when /workarea opens the activity and by `platformPetitionSet` /
+ * `platformPetitionSetForward` on a successful upload, and stores the JWT's
+ * `cmid` and platform site) may only be exported when that binding matches
+ * the activity in the validated JWT. Without this check, a
+ * legitimate-but-malicious platform user holding a valid JWT for their own
+ * course module could substitute a victim's `projectUuid` and exfiltrate its
+ * full contents via the platform post-back.
+ *
+ * A project whose `platform_id` is still `null` is being saved back to a
+ * platform for the first time (the link is established on success), so it is
+ * allowed to proceed. A non-existent project is NOT treated as a denial here:
+ * the lookup is left to the service so the existing "Project not found"
+ * response shape is preserved.
+ *
+ * @returns `true` if the export may proceed, `false` if it must be denied.
+ */
+async function isProjectAuthorizedForPlatform(projectUuid: string, payload: PlatformJWTPayload): Promise<boolean> {
+    const project = await routeDeps.findProjectByUuid(routeDeps.db, projectUuid);
+
+    // Not found here is not an authorization failure: defer to the service,
+    // which returns the canonical "Project not found" response shape.
+    if (!project) {
+        return true;
+    }
+
+    // Linked projects may only be exported to the platform module they belong to.
+    return !isBoundToOtherPlatformActivity(project, payload);
+}
 
 /**
  * Platform integration routes
  */
 export const platformIntegrationRoutes = new Elysia({ name: 'platform-integration' })
+    .use(withJwtAuth())
 
     // =========================================================================
     // Entry Points (from Platform to eXeLearning)
@@ -93,12 +179,14 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
      * The server acts as a proxy, fetching the file from Moodle and returning it.
      *
      * @body jwt_token - JWT token for platform authentication
-     * @returns Base64-encoded ELP file and filename
+     * @body projectUuid - Optional project the editor opened for the activity
+     * @returns Base64-encoded ELP file, filename and package hash, or
+     *          `unchanged: true` when that project already holds the package
      */
     .post(
         '/api/platform/integration/openPlatformElp',
         async ({ body, set }) => {
-            const { jwt_token } = body;
+            const { jwt_token, projectUuid } = body;
 
             // Get integration parameters with validation
             const params = await getPlatformIntegrationParams(jwt_token, 'get');
@@ -112,11 +200,22 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
 
             try {
                 const result = await platformPetitionGet(params, jwt_token);
+                const packageHash = result.ode_file
+                    ? hashPlatformPackage(Buffer.from(result.ode_file, 'base64'))
+                    : undefined;
+
+                // The project already holds this package (nobody changed it on the
+                // platform since it was last received or sent): keep the project
+                // as it is, including work saved but not sent back yet.
+                if (packageHash && projectUuid && (await isPlatformPackageCurrent(projectUuid, params, packageHash))) {
+                    return { responseMessage: 'OK', unchanged: true };
+                }
 
                 return {
                     responseMessage: 'OK',
                     elpFile: result.ode_file,
                     elpFileName: result.ode_filename,
+                    packageHash,
                 };
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
@@ -132,6 +231,65 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
         {
             body: t.Object({
                 jwt_token: t.String(),
+                projectUuid: t.Optional(t.String()),
+            }),
+        },
+    )
+
+    /**
+     * POST /api/platform/integration/confirmPlatformElpImport
+     *
+     * The editor calls this once it has imported and saved the package that
+     * openPlatformElp returned, so the next edit of the activity reopens the
+     * project as it is while the platform still holds that package. Only the
+     * project's owner can record it, and only on a project bound to the JWT's
+     * activity or not bound to any activity yet.
+     *
+     * @body jwt_token - JWT token for platform authentication
+     * @body projectUuid - UUID of the project the package was imported into
+     * @body packageHash - `packageHash` returned by openPlatformElp
+     */
+    .post(
+        '/api/platform/integration/confirmPlatformElpImport',
+        async ({ body, jwtPayload, set }) => {
+            const authError = requireAuth(jwtPayload);
+            if (authError) {
+                set.status = authError.status;
+                return { responseMessage: authError.message };
+            }
+
+            const params = await getPlatformIntegrationParams(body.jwt_token, 'get');
+            if (!params) {
+                set.status = 401;
+                return { responseMessage: 'Invalid token or unauthorized provider' };
+            }
+
+            if (!/^[0-9a-f]{64}$/.test(body.packageHash)) {
+                set.status = 400;
+                return { responseMessage: 'Invalid package hash' };
+            }
+
+            const project = await routeDeps.findProjectByUuid(routeDeps.db, body.projectUuid);
+            if (!project) {
+                set.status = 404;
+                return { responseMessage: 'Project not found' };
+            }
+
+            if (
+                project.owner_id !== Number(jwtPayload!.sub) ||
+                !(await recordPlatformPackage(project, params, body.packageHash))
+            ) {
+                set.status = 403;
+                return { responseMessage: 'Forbidden: project does not belong to this platform identity' };
+            }
+
+            return { responseMessage: 'OK' };
+        },
+        {
+            body: t.Object({
+                jwt_token: t.String(),
+                projectUuid: t.String(),
+                packageHash: t.String(),
             }),
         },
     )
@@ -160,6 +318,17 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
                 set.status = 401;
                 return {
                     responseMessage: 'Invalid token or unauthorized provider',
+                };
+            }
+
+            // Ownership gate (IDOR — bug M2): a valid JWT only authorizes the
+            // platform module it was issued for. Refuse to export and post
+            // back a project that is bound to a different platform module.
+            const authorized = await isProjectAuthorizedForPlatform(projectUuid, params);
+            if (!authorized) {
+                set.status = 403;
+                return {
+                    responseMessage: 'Forbidden: project does not belong to this platform identity',
                 };
             }
 
@@ -215,6 +384,8 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
      * @body jwt_token    Platform JWT, validated server-side.
      * @body projectUuid  UUID of the project (optional; used to remember the
      *                    Moodle cmid so re-edit can find the project).
+     * @body projectSaved `1` when the browser saved the project and its assets
+     *                    to the server first, so the next edit may reopen it.
      * @returns Success/error status with the platform return URL.
      */
     .post(
@@ -223,8 +394,9 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
             const {
                 jwt_token,
                 projectUuid,
+                projectSaved,
                 package: packageFile,
-            } = body as { jwt_token: string; projectUuid?: string; package: File };
+            } = body as { jwt_token: string; projectUuid?: string; projectSaved?: string; package: File };
 
             const params = await getPlatformIntegrationParams(jwt_token, 'set');
             if (!params) {
@@ -235,6 +407,24 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
             if (!packageFile || typeof packageFile === 'string') {
                 set.status = 400;
                 return { responseMessage: 'Missing package file' };
+            }
+
+            // Ownership gate (IDOR): mirror the check the non-browser
+            // set_platform_new_ode handler performs above. A valid platform JWT
+            // only authorizes the course module it was issued for; a
+            // client-supplied projectUuid already bound to a *different* module
+            // must not have a package forwarded on its behalf or be rebound
+            // (platformPetitionSetForward writes projects.platform_id). Checking
+            // before reading the upload also avoids buffering a large file for an
+            // unauthorized request. Unknown/unlinked projects stay allowed.
+            if (projectUuid) {
+                const authorized = await isProjectAuthorizedForPlatform(projectUuid, params);
+                if (!authorized) {
+                    set.status = 403;
+                    return {
+                        responseMessage: 'Forbidden: project does not belong to this platform identity',
+                    };
+                }
             }
 
             let buffer: Buffer;
@@ -254,7 +444,16 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
                         ? (packageFile as { name: string }).name
                         : 'package.zip';
 
-                const result = await platformPetitionSetForward(params, jwt_token, projectUuid ?? '', buffer, filename);
+                const result = await platformPetitionSetForward(
+                    params,
+                    jwt_token,
+                    projectUuid ?? '',
+                    buffer,
+                    filename,
+                    {
+                        projectSaved: projectSaved === '1',
+                    },
+                );
 
                 if (!result.success) {
                     set.status = 500;

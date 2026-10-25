@@ -97,6 +97,33 @@ describe('SaveManager', () => {
     delete window.electronAPI;
   });
 
+  describe('collaborative autosave coordination', () => {
+    it('cancels a pending collaborative autosave when a manual save starts', async () => {
+      const cancel = vi.fn();
+      mockBridge.collaborativeAutosave = { cancel };
+      const manager = new SaveManager(mockBridge);
+      manager._isStaticMode = true; // short-circuit to keep the test focused
+      await manager.save();
+      expect(cancel).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not cancel autosave when the save IS the collaborative autosave', async () => {
+      const cancel = vi.fn();
+      mockBridge.collaborativeAutosave = { cancel };
+      const manager = new SaveManager(mockBridge);
+      manager._isStaticMode = true;
+      await manager.save({ reason: 'collaborative-autosave' });
+      expect(cancel).not.toHaveBeenCalled();
+    });
+
+    it('tolerates a bridge without a collaborative autosave coordinator', async () => {
+      const manager = new SaveManager(mockBridge); // no collaborativeAutosave
+      manager._isStaticMode = true;
+      const result = await manager.save();
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe('constructor', () => {
     it('sets bridge reference', () => {
       const manager = new SaveManager(mockBridge);
@@ -608,6 +635,19 @@ describe('SaveManager', () => {
       expect(passedAssets[0].blob).toBeUndefined();
     });
 
+    it('keeps the document dirty when an asset upload is incomplete', async () => {
+      const manager = new SaveManager(mockBridge);
+      mockBridge.assetManager.getPendingAssetsMetadata.mockReturnValue([
+        { id: 'asset-1', filename: 'test.txt', size: 4, uploaded: false },
+      ]);
+      vi.spyOn(manager, 'uploadAssets').mockResolvedValue({ uploaded: 0, failed: 1 });
+
+      const result = await manager.save();
+
+      expect(result.success).toBe(false);
+      expect(mockBridge.documentManager.markClean).not.toHaveBeenCalled();
+    });
+
     it('handles save errors gracefully', async () => {
       const manager = new SaveManager(mockBridge);
       vi.spyOn(manager, 'saveYjsState').mockRejectedValue(new Error('Network error'));
@@ -706,6 +746,85 @@ describe('SaveManager', () => {
 
       const xhr = xhrInstances[0];
       expect(xhr.setRequestHeader).toHaveBeenCalledWith('X-Project-Title', '');
+    });
+
+    describe('save validation headers and merged responses (issue #2615)', () => {
+      /** XHR mock whose response body is configurable per test. */
+      function installXhr(responseBody) {
+        const instances = [];
+        global.XMLHttpRequest = class {
+          constructor() {
+            this.open = vi.fn();
+            this.setRequestHeader = vi.fn();
+            this.upload = { onprogress: null };
+            this.status = 200;
+            this.responseText = JSON.stringify(responseBody);
+            this.send = vi.fn(() => {
+              setTimeout(() => {
+                if (this.onload) this.onload();
+              }, 0);
+            });
+            instances.push(this);
+          }
+        };
+        return instances;
+      }
+
+      it('sends X-Base-Version when the document manager knows the stored version', async () => {
+        const instances = installXhr({ success: true, version: '2000', merged: false });
+        mockBridge.documentManager.serverVersion = '1000';
+        const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+
+        await manager.saveYjsState('project-123', mockBridge.documentManager, null);
+
+        expect(instances[0].setRequestHeader).toHaveBeenCalledWith('X-Base-Version', '1000');
+        // The response version becomes the new base for the next save.
+        expect(mockBridge.documentManager.serverVersion).toBe('2000');
+      });
+
+      it('does not send X-Base-Version when no stored version is known', async () => {
+        const instances = installXhr({ success: true, version: '2000' });
+        mockBridge.documentManager.serverVersion = null;
+        const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+
+        await manager.saveYjsState('project-123', mockBridge.documentManager, null);
+
+        const baseCall = instances[0].setRequestHeader.mock.calls.find((c) => c[0] === 'X-Base-Version');
+        expect(baseCall).toBeUndefined();
+      });
+
+      it('reloads the merged document when the server merged the save with newer changes', async () => {
+        installXhr({ success: true, version: '3000', merged: true });
+        mockBridge.documentManager.serverVersion = '1000';
+        mockBridge.documentManager.loadFromServer = vi.fn().mockResolvedValue(undefined);
+        const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+
+        const result = await manager.saveYjsState('project-123', mockBridge.documentManager, null);
+
+        expect(result.merged).toBe(true);
+        expect(mockBridge.documentManager.loadFromServer).toHaveBeenCalledTimes(1);
+        expect(mockBridge.documentManager.serverVersion).toBe('3000');
+      });
+
+      it('does not reload when the save was stored as-is', async () => {
+        installXhr({ success: true, version: '3000', merged: false });
+        mockBridge.documentManager.loadFromServer = vi.fn().mockResolvedValue(undefined);
+        const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+
+        await manager.saveYjsState('project-123', mockBridge.documentManager, null);
+
+        expect(mockBridge.documentManager.loadFromServer).not.toHaveBeenCalled();
+      });
+
+      it('survives a merged response when the document manager cannot reload', async () => {
+        installXhr({ success: true, version: '3000', merged: true });
+        delete mockBridge.documentManager.loadFromServer;
+        const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+
+        await expect(manager.saveYjsState('project-123', mockBridge.documentManager, null)).resolves.toMatchObject({
+          merged: true,
+        });
+      });
     });
 
     it('handles missing getMetadata method gracefully', async () => {
@@ -1326,8 +1445,8 @@ describe('SaveManager', () => {
 
       const result = await manager.save();
 
-      // Should still succeed overall (asset errors are caught in the try-catch)
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(mockBridge.documentManager.markClean).not.toHaveBeenCalled();
     });
 
     it('does not create toast when showProgress is false', async () => {
@@ -1600,6 +1719,24 @@ describe('SaveManager', () => {
       // Verify listeners were unregistered
       expect(mockWsHandler.off).toHaveBeenCalledWith('uploadFileProgress', expect.any(Function));
       expect(mockWsHandler.off).toHaveBeenCalledWith('uploadBatchComplete', expect.any(Function));
+    });
+
+    it('marks successful session uploads before resolving', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.setWebSocketHandler(mockWsHandler);
+      const assets = [{ id: 'a', blob: new Blob(['test']), filename: 'a.txt', mime: 'text/plain' }];
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          uploaded: 1,
+          failed: 0,
+          results: [{ clientId: 'a', success: true }],
+        }),
+      });
+
+      await manager.uploadWithSession('project-123', mockBridge.assetManager, assets, null);
+
+      expect(mockBridge.assetManager.markAssetUploaded).toHaveBeenCalledWith('a');
     });
 
     it('includes session token in HTTP headers', async () => {

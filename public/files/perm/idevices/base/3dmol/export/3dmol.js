@@ -13,10 +13,9 @@ var $eXe3Dmol = {
     idevicePath: '',
     borderColors: $exeDevices.iDevice.gamification.colors.borderColors,
     colors: $exeDevices.iDevice.gamification.colors.backColor,
-    options: {},
+    options: [],
     userName: '',
     previousScore: '',
-    initialScore: '',
     msgs: '',
     hasSCORMbutton: false,
     isInExe: false,
@@ -86,6 +85,23 @@ var $eXe3Dmol = {
         $eXe3Dmol.previousScore = mOptions.previousScore;
     },
 
+    /**
+     * The colour the end-of-attempt message is painted in: 2 when the learner
+     * passed, 1 when they did not.
+     *
+     * It used to be a fixed 2. Every attempt closed in the pass colour, a
+     * perfect one and an empty one alike, while the progress report beside it
+     * told the learner the opposite. Judged on getScoreRP, which is the very
+     * mark sent to the report and to the LMS.
+     *
+     * @param {number} instance Index of the activity on the page.
+     * @returns {number} An index into the colour table showMessage paints with.
+     */
+    getVerdictColor: function (instance) {
+        const mOptions = $eXe3Dmol.options[instance];
+        return $eXe3Dmol.getScoreRP(instance) >= $exe.passScore.resolve(mOptions) ? 2 : 1;
+    },
+
     getShowScoreRP: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
         const total = mOptions.selectsGame.length;
@@ -103,11 +119,12 @@ var $eXe3Dmol = {
     },
 
     loadGame: function () {
-        $eXe3Dmol.options = [];
-        $eXe3Dmol.viewers = {};
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXe3Dmol.options.length = $eXe3Dmol.activities.length;
         $eXe3Dmol.activities.each(function (i) {
             const dl = $('.dmole-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
+            $eXe3Dmol.destroyViewer(i);
             const version = $('.dmole-version', this).eq(0).text(),
                 mOption = $eXe3Dmol.loadDataGame(dl, version),
                 msg = mOption.msgs.msgPlayStart;
@@ -117,9 +134,10 @@ var $eXe3Dmol = {
             mOption.main = 'dmolpMainContainer-' + i;
             mOption.idevice = 'dmole-IDevice';
 
-            $eXe3Dmol.options.push(mOption);
+            $eXe3Dmol.options[i] = mOption;
             const interfaceHtml = $eXe3Dmol.createInterface(i);
             dl.before(interfaceHtml).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#dmolpGameMinimize-' + i).hide();
             $('#dmolpGameContainer-' + i).hide();
@@ -180,14 +198,6 @@ var $eXe3Dmol = {
                         <div class="exeQuextIcons exeQuextIcons-Score" title="${msgs.msgScore}"></div>
                         <p><span class="sr-av">${msgs.msgScore}: </span><span id="dmolpPScore-${instance}">0</span></p>
                     </div>
-                    <div class="DMOLP-LifesGame" id="dmolpLifesGame-${instance}">
-                        ${$eXe3Dmol.createLives(msgs)}
-                    </div>
-                    <div class="DMOLP-NumberLifesGame" id="dmolpNumberLivesGame-${instance}">
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life"></div>
-                        <p id="dmolpPLifes-${instance}">0</p>
-                    </div>
                     <div class="DMOLP-TimeNumber">
                         <strong><span class="sr-av">${msgs.msgTime}:</span></strong>
                         <div class="exeQuextIcons exeQuextIcons-Time" title="${msgs.msgTime}"></div>
@@ -214,7 +224,6 @@ var $eXe3Dmol = {
                     <div class="DMOLP-GameOver" id="dmolpGamerOver-${instance}">
                         <div class="DMOLP-DataImage">
                             <img src="${path}exequextwon.png" class="DMOLP-HistGGame" id="dmolpHistGame-${instance}" alt="${msgs.msgAllQuestions}" />
-                            <img src="${path}exequextlost.png" class="DMOLP-LostGGame" id="dmolpLostGame-${instance}" alt="${msgs.msgLostLives}" />
                         </div>
                         <div class="DMOLP-DataScore">
                             <p id="dmolpOverScore-${instance}">Score: 0</p>
@@ -225,6 +234,7 @@ var $eXe3Dmol = {
                 </div>
                 <div class="DMOLP-AtomLegend" id="dmolpAtomLegend-${instance}" aria-hidden="true"></div>
                 </div>
+                <div class="DMOLP-ModelAuthor" id="dmolpModelAuthor-${instance}" style="display:none"></div>
                 <div class="DMOLP-ShowFullScreenRow" id="dmolpShowFullScreenRow-${instance}">
                     <a href="#" class="DMOLP-ShowFullScreenBtn" id="dmolpShowFullScreen-${instance}" title="${msgs.msgFullScreen}">
                         <div class="exeQuextIcons exeQuextIcons-FullScreen" aria-hidden="true"></div>
@@ -315,18 +325,6 @@ var $eXe3Dmol = {
          ${$exeDevices.iDevice.gamification.scorm.addButtonScoreNew(mOptions, this.isInExe)}
         `;
         return html;
-    },
-
-    createLives: function (msgs) {
-        let lives = [...Array(5)]
-            .map(
-                () => `
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life" title="${msgs.msgLive}"></div>
-                    `
-            )
-            .join('');
-        return lives;
     },
 
     createOptions: function (msgs, instance) {
@@ -436,6 +434,14 @@ var $eXe3Dmol = {
                 typeof mOptions.selectsGame[i].description == 'undefined'
                     ? ''
                     : mOptions.selectsGame[i].description;
+            mOptions.selectsGame[i].author =
+                typeof mOptions.selectsGame[i].author == 'undefined'
+                    ? ''
+                    : mOptions.selectsGame[i].author;
+            mOptions.selectsGame[i].alt =
+                typeof mOptions.selectsGame[i].alt == 'undefined'
+                    ? ''
+                    : mOptions.selectsGame[i].alt;
             if (
                 !mOptions.selectsGame[i].modelFormat &&
                 mOptions.selectsGame[i].modelName
@@ -460,7 +466,6 @@ var $eXe3Dmol = {
             typeof mOptions.percentajeFB != 'undefined'
                 ? mOptions.percentajeFB
                 : 100;
-        mOptions.useLives = mOptions.gameMode != 0 ? false : mOptions.useLives;
         mOptions.gameOver = false;
         mOptions.evaluation =
             typeof mOptions.evaluation == 'undefined'
@@ -504,7 +509,6 @@ var $eXe3Dmol = {
 
     removeEvents: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
-        $(window).off('unload.exeEC beforeunload.exeEC');
         $(document).off(`fullscreenchange.dmolp${instance}`);
         $(document).off(`webkitfullscreenchange.dmolp${instance}`);
         $(document).off(`mozfullscreenchange.dmolp${instance}`);
@@ -562,11 +566,6 @@ var $eXe3Dmol = {
             });
 
         $eXe3Dmol.removeEvents(instance);
-        $(window).on('unload.exeEC beforeunload.exeEC', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXe3Dmol.mScorm
-            );
-        });
 
         $(`#dmolpGamerOver-${instance}`).css('display', 'flex');
 
@@ -726,7 +725,6 @@ var $eXe3Dmol = {
         $eXe3Dmol.applyModelViewportScale(instance);
         $eXe3Dmol.updateFullscreenLayout(instance);
 
-        mOptions.livesLeft = mOptions.numberLives;
 
         $(`#dmolpOptionsDiv-${instance}`)
             .find('.DMOLP-Options')
@@ -758,7 +756,6 @@ var $eXe3Dmol = {
             );
         });
 
-        $eXe3Dmol.updateLives(instance);
         $(`#dmolpPNumber-${instance}`).text(mOptions.numberQuestions);
         $(`#dmolpGameContainer-${instance} .DMOLP-StartGame`).show();
         $(`#dmolpQuestionDiv-${instance}`).hide();
@@ -930,6 +927,16 @@ var $eXe3Dmol = {
                     }
                 }
                 $eXe3Dmol.showModelAtIndex(mOptions.showCurrentIndex, instance);
+                // Reaching the last model is the end of a presentation: there
+                // is nothing further to visit. common.js derives completion
+                // from `gameOver === true || auto !== true`, and this report is
+                // automatic, so without the flag the page stayed `incomplete`
+                // even with every model seen and the score already at 10.
+                // Raised before the report, so the one carrying the full mark
+                // is the one that says the activity is finished.
+                if (mOptions.showCurrentIndex >= mOptions.selectsGame.length - 1) {
+                    mOptions.gameOver = true;
+                }
                 if (mOptions.isScorm > 0) {
                     $eXe3Dmol.sendScore(true, instance);
                 }
@@ -1179,6 +1186,7 @@ var $eXe3Dmol = {
     getModelFormatByName: function (fileName) {
         const name = (fileName || '').toLowerCase().trim();
         if (!name || name.indexOf('.') === -1) return '';
+        if (name.endsWith('.tar.gz')) return '';
         const ext = name.split('.').pop();
         const map = {
             pdb: 'pdb',
@@ -1200,16 +1208,37 @@ var $eXe3Dmol = {
         }
     },
 
-    updateModelA11y: function (modelName, instance) {
+    updateModelA11y: function (modelName, instance, altText) {
         const msgs = $eXe3Dmol.options[instance]
             ? $eXe3Dmol.options[instance].msgs
             : {};
         const noModel = msgs.msgNoImage || 'No 3D model';
-        const desc = modelName
-            ? (msgs.msgTypeGame || '3D Model') + ': ' + modelName
-            : noModel;
+        const alt = (altText || '').trim();
+        // A custom alternative text (when provided) takes precedence as the
+        // accessible description; otherwise fall back to the model name.
+        const desc = alt
+            ? alt
+            : modelName
+              ? (msgs.msgTypeGame || '3D Model') + ': ' + modelName
+              : noModel;
         $(`#dmolpModelPreview-${instance}`).attr('aria-label', desc);
         $(`#dmolpModelDesc-${instance}`).text(desc);
+    },
+
+    /**
+     * Show the per-question authorship caption centered below the model. When
+     * no author is set (or no model is rendered) the caption is cleared and
+     * hidden so the layout is unchanged.
+     */
+    updateModelAuthor: function (author, instance) {
+        const $author = $(`#dmolpModelAuthor-${instance}`);
+        if (!$author.length) return;
+        const text = (author || '').trim();
+        if (text) {
+            $author.text(text).show();
+        } else {
+            $author.text('').hide();
+        }
     },
 
     getViewer: function (instance) {
@@ -1279,15 +1308,22 @@ var $eXe3Dmol = {
             $preview = $(`#dmolpModelPreview-${instance}`),
             $cover = $(`#dmolpCover-${instance}`);
 
-        let modelData = (question.modelData || '').trim();
+        // Keep the model data raw: MDL molfiles (SDF/MOL) are line-position
+        // sensitive (line 1 is the title, which may be empty), so trimming the
+        // leading blank line shifts the counts line and breaks parsing.
+        let modelData = question.modelData || '';
         let modelFormat = (question.modelFormat || '').trim().toLowerCase();
         const modelName = (question.modelName || '').trim();
+
+        // Default to no author caption; only the successful render path below
+        // reveals it (the author belongs to the model image).
+        $eXe3Dmol.updateModelAuthor('', instance);
 
         if (!modelFormat && modelName) {
             modelFormat = $eXe3Dmol.getModelFormatByName(modelName);
         }
 
-        if (!modelData || !modelFormat) {
+        if (!modelData.trim() || !modelFormat) {
             $preview.hide();
             $cover.show();
             $(`#dmolpAtomLegend-${instance}`).hide();
@@ -1336,7 +1372,8 @@ var $eXe3Dmol = {
                 viewer.render();
             }
             $cover.hide();
-            $eXe3Dmol.updateModelA11y(modelName, instance);
+            $eXe3Dmol.updateModelA11y(modelName, instance, question.alt);
+            $eXe3Dmol.updateModelAuthor(question.author, instance);
             $eXe3Dmol.renderAtomLegend(viewer, question, instance);
 
             // Sync toggle background button to match the question's bgDark
@@ -1414,7 +1451,19 @@ var $eXe3Dmol = {
 
         if (codeEntered === correctCode) {
             $eXe3Dmol.showCubiertaOptions(false, instance);
-            $eXe3Dmol.startGame(instance);
+            // Quiz mode starts here, and startGame publishes the opening mark
+            // through the first showQuestion. Presentation mode cannot: it was
+            // already started by initShowMode behind the cover, so startGame
+            // returns early — which is what stops it laying the quiz interface
+            // over the presentation, and also what left the LMS hearing
+            // nothing. Report it here instead.
+            if (mOptions.activityMode === 'show') {
+                if (mOptions.isScorm === 1) {
+                    $eXe3Dmol.sendScore(true, instance);
+                }
+            } else {
+                $eXe3Dmol.startGame(instance);
+            }
             $(`#dmolpLinkMaximize-${instance}`).trigger('click');
         } else {
             $(`#dmolpMesajeAccesCodeE-${instance}`)
@@ -1449,7 +1498,6 @@ var $eXe3Dmol = {
         const mOptions = $eXe3Dmol.options[instance],
             msgs = mOptions.msgs,
             $histGame = $(`#dmolpHistGame-${instance}`),
-            $lostGame = $(`#dmolpLostGame-${instance}`),
             $overPoint = $(`#dmolpOverScore-${instance}`),
             $overHits = $(`#dmolpOverHits-${instance}`),
             $overErrors = $(`#dmolpOverErrors-${instance}`),
@@ -1457,10 +1505,9 @@ var $eXe3Dmol = {
             $gamerOver = $(`#dmolpGamerOver-${instance}`);
 
         let message = '',
-            messageColor = 2;
+            messageColor = $eXe3Dmol.getVerdictColor(instance);
 
         $histGame.hide();
-        $lostGame.hide();
         $overPoint.show();
         $overHits.show();
         $overErrors.show();
@@ -1490,30 +1537,11 @@ var $eXe3Dmol = {
                     }
                 }
                 break;
-            case 1:
-                message = msgs.msgLostLives;
-                messageColor = 1;
-                $lostGame.show();
-                if (mOptions.itinerary.showClue) {
-                    if (mOptions.obtainedClue) {
-                        $showClue
-                            .text(
-                                `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
-                            )
-                            .show();
-                    } else {
-                        $showClue
-                            .text(
-                                msgs.msgTryAgain.replace(
-                                    '%s',
-                                    mOptions.itinerary.percentageClue
-                                )
-                            )
-                            .show();
-                    }
-                }
-                break;
             case 2:
+                // Not an outcome: the learner is still exploring the model, and
+                // the score panel is hidden. Neutral, so it is not read as a
+                // verdict on an attempt that has not finished.
+                messageColor = 0;
                 message = msgs.msgInformationLooking;
                 $overPoint.hide();
                 $overHits.hide();
@@ -1575,52 +1603,72 @@ var $eXe3Dmol = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
-        mOptions.livesLeft = mOptions.numberLives;
+        // gameOver() leaves this true and renames the same button to New game,
+        // so a replay came back in with the finished attempt's flag still up.
+        // sendScoreNew derives completion from it, so every report of the new
+        // round said the activity was over and the page stayed complete in the
+        // LMS from the first answer. Its twin electrical-circuits lowers it
+        // here for the same reason.
+        mOptions.gameOver = false;
 
-        $eXe3Dmol.updateLives(instance);
         $(`#dmolpPNumber-${instance}`).text(mOptions.numberQuestions);
 
         mOptions.selectsGame.forEach((question) => {
             question.answerScore = -1;
         });
 
-        mOptions.counterClock = setInterval(() => {
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and moving it on to the next
+        // question when its own time ran out.
+        const container = document.getElementById(
+            'dmolpMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
+            if (
+                !container?.isConnected ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#dmolpMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $eXe3Dmol.updateTime(mOptions.counter, instance);
 
                 if (mOptions.counter <= 0) {
                     mOptions.activeCounter = false;
+                    mOptions.gameActived = false;
+                    const currentQuestion =
+                        mOptions.selectsGame[mOptions.activeQuestion];
+                    // Word questions: lock the answer input once time is up,
+                    // regardless of whether the solution is shown.
+                    if (currentQuestion && currentQuestion.typeSelect === 2) {
+                        $eXe3Dmol.disableWordAnswer(instance);
+                    }
                     let timeShowSolution = 1000;
                     if (mOptions.showSolution) {
                         timeShowSolution = mOptions.timeShowSolution * 1000;
-                        if (
-                            !$eXe3Dmol.sameQuestion(false, instance)
+                        if (currentQuestion && currentQuestion.typeSelect === 2) {
+                            // Word questions: always reveal the full word.
+                            $eXe3Dmol.drawPhrase(
+                                currentQuestion.solutionQuestion,
+                                currentQuestion.quextion,
+                                100,
+                                1,
+                                false,
+                                instance,
+                                true
+                            );
+                        } else if (
+                            currentQuestion &&
+                            (currentQuestion.typeSelect === 1 ||
+                                !$eXe3Dmol.sameQuestion(false, instance))
                         ) {
-                            const currentQuestion =
-                                mOptions.selectsGame[mOptions.activeQuestion];
-                            if (currentQuestion && currentQuestion.typeSelect !== 2) {
-                                $eXe3Dmol.drawSolution(instance);
-                            } else if (currentQuestion) {
-                                $eXe3Dmol.drawPhrase(
-                                    currentQuestion.solutionQuestion,
-                                    currentQuestion.quextion,
-                                    100,
-                                    1,
-                                    false,
-                                    instance,
-                                    true
-                                );
-                            }
+                            $eXe3Dmol.drawSolution(instance);
                         }
                     }
                     setTimeout(() => {
@@ -1630,6 +1678,7 @@ var $eXe3Dmol = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $eXe3Dmol.updateTime(0, instance);
         $(`#dmolpGamerOver-${instance}`).hide();
@@ -1638,6 +1687,13 @@ var $eXe3Dmol = {
         $(`#dmolpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        // The opening zero, published here because starting the attempt is the
+        // event. It used to arrive from showQuestion(), which reported on every
+        // question and so republished the previous answer's mark a moment after
+        // the answer had already published it.
+        if (mOptions.isScorm === 1) {
+            $eXe3Dmol.sendScore(true, instance);
+        }
         $eXe3Dmol.newQuestion(instance);
     },
 
@@ -1649,6 +1705,14 @@ var $eXe3Dmol = {
 
     gameOver: function (type, instance) {
         const mOptions = $eXe3Dmol.options[instance];
+        // Answering the last question raises gameOver and reports the finish
+        // itself, on purpose: the reveal delay that follows may be seconds
+        // long, and a learner who leaves during it must still have the activity
+        // recorded as finished. So by the time this runs the LMS may already
+        // know. Read that before the flag is raised below, and report only when
+        // nobody has — which is the case this function alone covers: the clock
+        // running out with the question unanswered.
+        const alreadyReportedFinished = mOptions.gameOver === true;
         mOptions.gameStarted = false;
         mOptions.gameActived = false;
         $eXe3Dmol.setModelStyleControlVisibility(instance, false);
@@ -1664,11 +1728,12 @@ var $eXe3Dmol = {
 
         $exeDevices.iDevice.gamification.media.stopSound();
 
-        const message =
-            type === 0
-                ? mOptions.msgs.msgAllQuestions
-                : mOptions.msgs.msgLostLives;
-        $eXe3Dmol.showMessage(2, message, instance);
+        const message = mOptions.msgs.msgAllQuestions;
+        $eXe3Dmol.showMessage(
+            $eXe3Dmol.getVerdictColor(instance),
+            message,
+            instance
+        );
         $eXe3Dmol.showScoreGame(type, instance);
         $eXe3Dmol.clearQuestions(instance);
         $eXe3Dmol.updateTime(0, instance);
@@ -1682,21 +1747,14 @@ var $eXe3Dmol = {
 
         mOptions.gameOver = true;
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXe3Dmol.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXe3Dmol.sendScore(true, instance);
-                $(`#dmolpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $eXe3Dmol.initialScore = score;
-            }
+        // No "score only once" lock: the end of the attempt is always reported.
+        // The lock this used to carry could never close anyway —
+        // registerActivity forces `repeatActivity` to true at page load
+        // (common.js updateScormNew), so it short-circuited the condition
+        // before the learner touched anything. The activity registry owns what
+        // has been recorded.
+        if (mOptions.isScorm === 1 && !alreadyReportedFinished) {
+            $eXe3Dmol.sendScore(true, instance);
         }
         $eXe3Dmol.saveEvaluation(instance);
         $eXe3Dmol.showFeedBack(instance);
@@ -1865,50 +1923,21 @@ var $eXe3Dmol = {
             }
         }
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXe3Dmol.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXe3Dmol.sendScore(true, instance);
-                $(`#dmolpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
-        }
-
-
+        // No report here. Painting a question is not an event that changes the
+        // mark: the answer before it already published the new score, and this
+        // put the same value on the wire again a moment later. What starts the
+        // attempt reports in startGame(), what changes the mark reports in
+        // answerQuestion(), and what ends it reports in gameOver().
+        //
+        // The score line the removed block also wrote was dead: the id
+        // `dmolpRepeatActivity-N` exists in no markup of this iDevice. The span
+        // the learner sees is the shared `.Games-RepeatActivity`, which
+        // sendScoreNew writes on every report.
         $eXe3Dmol.saveEvaluation(instance);
-    },
-
-    updateLives: function (instance) {
-        const mOptions = $eXe3Dmol.options[instance];
-        $(`#dmolpPLifes-${instance}`).text(mOptions.livesLeft);
-        const $livesIcons = $(`#dmolpLifesGame-${instance}`).find(
-            '.exeQuextIcons-Life'
-        );
-
-        if (mOptions.useLives) {
-            $livesIcons.each((index, element) => {
-                $(element).toggle(index < mOptions.livesLeft);
-            });
-        } else {
-            $livesIcons.hide();
-            $(`#dmolpNumberLivesGame-${instance}`).hide();
-        }
     },
 
     newQuestion: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
-
-        if (mOptions.useLives && mOptions.livesLeft <= 0) {
-            $eXe3Dmol.gameOver(1, instance);
-            return;
-        }
 
         const mActiveQuestion =
             $eXe3Dmol.updateNumberQuestion(
@@ -1951,6 +1980,14 @@ var $eXe3Dmol = {
                 : (msgs.msgFailures || 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
             messagesArray = sMessages.split('|');
         return messagesArray[Math.floor(Math.random() * messagesArray.length)];
+    },
+
+    disableWordAnswer: function (instance) {
+        // Word questions: once answered or timed out, lock the answer input and
+        // its buttons so the word can no longer be edited or submitted.
+        $(
+            `#dmolpEdAnswer-${instance}, #dmolpBtnReply-${instance}, #dmolpBtnMoveOn-${instance}`
+        ).prop('disabled', true);
     },
 
     answerQuestion: function (instance) {
@@ -2001,7 +2038,26 @@ var $eXe3Dmol = {
 
         mOptions.activeCounter = false;
 
+        // Word questions: lock the answer input once the question is answered.
+        if (question.typeSelect === 2) {
+            $eXe3Dmol.disableWordAnswer(instance);
+        }
+
         $eXe3Dmol.updateScore(correct, instance);
+
+        // Answering the last question ends the attempt. Raise the flag and
+        // report here, before the reveal delay below: gameOver() is only
+        // reached from the setTimeout that follows it, so a learner who leaves
+        // while the solution is on screen used to have neither this answer's
+        // points nor the completion recorded. There is no later report to
+        // carry them — showQuestion only reports when a NEXT question appears,
+        // and after the last one there is none.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+            if (mOptions.isScorm === 1) {
+                $eXe3Dmol.sendScore(true, instance);
+            }
+        }
 
         let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
@@ -2025,13 +2081,9 @@ var $eXe3Dmol = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXe3Dmol.sameQuestion(correct, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXe3Dmol.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = correct ? 2 : 1;
                 $eXe3Dmol.drawPhrase(
                     question.solutionQuestion,
@@ -2042,6 +2094,12 @@ var $eXe3Dmol = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXe3Dmol.sameQuestion(correct, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXe3Dmol.drawSolution(instance);
             }
         }
 
@@ -2059,9 +2117,28 @@ var $eXe3Dmol = {
         mOptions.gameActived = false;
         mOptions.activeCounter = false;
 
+        // Word questions: lock the answer input once the question is resolved.
+        if (question.typeSelect === 2) {
+            $eXe3Dmol.disableWordAnswer(instance);
+        }
+
         $eXe3Dmol.updateScore(value, instance);
 
-         let timeShowSolution = mOptions.showSolution
+        // Answering the last question ends the attempt. Raise the flag and
+        // report here, before the reveal delay below: gameOver() is only
+        // reached from the setTimeout that follows it, so a learner who leaves
+        // while the solution is on screen used to have neither this answer's
+        // points nor the completion recorded. There is no later report to
+        // carry them — showQuestion only reports when a NEXT question appears,
+        // and after the last one there is none.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+            if (mOptions.isScorm === 1) {
+                $eXe3Dmol.sendScore(true, instance);
+            }
+        }
+
+        let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
             : 1000;
         const percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
@@ -2083,13 +2160,9 @@ var $eXe3Dmol = {
             mOptions.obtainedClue = true;
         }
 
-        if (
-            mOptions.showSolution &&
-            !$eXe3Dmol.sameQuestion(value, instance)
-        ) {
-            if (question.typeSelect !== 2) {
-                $eXe3Dmol.drawSolution(instance);
-            } else {
+        if (mOptions.showSolution) {
+            if (question.typeSelect === 2) {
+                // Word questions: always reveal the full correct word.
                 const mType = value ? 2 : 1;
                 $eXe3Dmol.drawPhrase(
                     question.solutionQuestion,
@@ -2100,6 +2173,12 @@ var $eXe3Dmol = {
                     instance,
                     true
                 );
+            } else if (
+                question.typeSelect === 1 ||
+                !$eXe3Dmol.sameQuestion(value, instance)
+            ) {
+                // Order questions: always show the correct order.
+                $eXe3Dmol.drawSolution(instance);
             }
         }
 
@@ -2155,10 +2234,6 @@ var $eXe3Dmol = {
             } else {
                 obtainedPoints = -330 * question.customScore;
                 points = obtainedPoints;
-                if (mOptions.useLives) {
-                    mOptions.livesLeft--;
-                    $eXe3Dmol.updateLives(instance);
-                }
             }
         }
 
@@ -2202,9 +2277,7 @@ var $eXe3Dmol = {
             pts = mOptions.msgs.msgPoints || 'puntos';
         let message = '';
 
-        message = mOptions.useLives
-                ? `${messageError} ${mOptions.msgs.msgLoseLive}`
-                : `${messageError} ${npts} ${pts}`;
+        message = `${messageError} ${npts} ${pts}`;
             if (mOptions.gameMode > 0) {
                 message = messageError;
             }
@@ -2238,8 +2311,6 @@ var $eXe3Dmol = {
             letters = 'ABCD',
             question = mOptions.question;
 
-        if (question.typeSelect === 1) return;
-
         let l = 0;
         const solutions = question.solution;
         question.options.forEach((option) => {
@@ -2248,10 +2319,25 @@ var $eXe3Dmol = {
 
         const respuestas = question.options.slice(0, l),
             respuestasNuevas =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas),
-            respuestaCorrectas = solutions
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestas);
+
+        if (question.typeSelect === 1) {
+            // Order questions: the solution is an ORDERED sequence of letters,
+            // so map each step of the correct order to the option's new
+            // position so the order is preserved after shuffling.
+            const correctOrder = solutions
                 .split('')
                 .map((letter) => question.options[letters.indexOf(letter)]);
+            question.options = [...respuestasNuevas, '', '', '', ''].slice(0, 4);
+            question.solution = correctOrder
+                .map((text) => letters[respuestasNuevas.indexOf(text)])
+                .join('');
+            return;
+        }
+
+        const respuestaCorrectas = solutions
+            .split('')
+            .map((letter) => question.options[letters.indexOf(letter)]);
 
         let solucionesNuevas = '';
         respuestasNuevas.forEach((respuesta, index) => {

@@ -9,21 +9,41 @@
  *    plain English, which the frontend translates at render time via _().
  */
 
+import {
+    PASS_SCORE_DEFAULT,
+    PASS_SCORE_MAX,
+    PASS_SCORE_MIN,
+    PASS_SCORE_STEP,
+} from '../shared/export/metadata-properties';
+
 export interface ConfigParamsDeps {
     TRANS_PREFIX: string;
     LICENSES: Record<string, string>;
     PACKAGE_LOCALES: Record<string, string>;
     LOCALES: Record<string, string>;
+    /**
+     * Map of available themes for the user-preference dropdown.
+     * Key = theme dirName (what gets stored in the project metadata),
+     * Value = display label shown in the modal. Optional so that older
+     * callers keep working until they pass the new dependency.
+     */
+    THEMES?: Record<string, string>;
 }
 
 export function buildConfigParams(deps: ConfigParamsDeps) {
     // Named TRANS_PREFIX so the translation extractor can detect strings in this file.
     const TRANS_PREFIX = deps.TRANS_PREFIX;
     const { LICENSES, PACKAGE_LOCALES, LOCALES } = deps;
+    // The first option (empty value) means "use the server/site default theme".
+    const THEMES: Record<string, string> = {
+        '': `${TRANS_PREFIX}Use the default style of the site`,
+        ...(deps.THEMES ?? {}),
+    };
 
     const GROUPS_TITLE = {
         properties_package: `${TRANS_PREFIX}Content metadata`,
         export: `${TRANS_PREFIX}Export options`,
+        grading: `${TRANS_PREFIX}Grading`,
         custom_code: `${TRANS_PREFIX}Custom code`,
     };
 
@@ -51,17 +71,12 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
             options: LICENSES,
             category: `${TRANS_PREFIX}General settings`,
         },
-        theme: {
-            title: `${TRANS_PREFIX}Style`,
-            value: 'base',
-            type: 'text',
-            hide: true,
-            category: `${TRANS_PREFIX}General settings`,
-        },
-        versionControl: {
-            title: `${TRANS_PREFIX}Version control`,
-            value: 'true',
-            type: 'checkbox',
+        defaultTheme: {
+            title: `${TRANS_PREFIX}Default style for new documents`,
+            help: `${TRANS_PREFIX}Pick a style that will be preselected when you create a new project. Overrides the site default.`,
+            value: '',
+            type: 'select',
+            options: THEMES,
             category: `${TRANS_PREFIX}General settings`,
         },
         defaultAI: {
@@ -77,6 +92,22 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
                 'https://grok.com/?q=': 'Grok',
                 'https://chat.qwen.ai/?text=': 'Qwen',
             },
+            category: `${TRANS_PREFIX}General settings`,
+        },
+        // Legacy 'theme' key is kept hidden for backward compatibility so projects
+        // that still read user.preferences.preferences.theme keep working until
+        // they migrate to the new defaultTheme key.
+        theme: {
+            title: `${TRANS_PREFIX}Style`,
+            value: 'base',
+            type: 'text',
+            hide: true,
+            category: `${TRANS_PREFIX}General settings`,
+        },
+        versionControl: {
+            title: `${TRANS_PREFIX}Version control`,
+            value: 'true',
+            type: 'checkbox',
             category: `${TRANS_PREFIX}General settings`,
         },
     };
@@ -115,6 +146,7 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
         },
         teacherOnly: {
             title: `${TRANS_PREFIX}Teacher only`,
+            help: `${TRANS_PREFIX}Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.`,
             value: 'false',
             type: 'checkbox',
             category: null,
@@ -198,6 +230,7 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
         },
         teacherOnly: {
             title: `${TRANS_PREFIX}Teacher only`,
+            help: `${TRANS_PREFIX}Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.`,
             value: 'false',
             type: 'checkbox',
             category: null,
@@ -324,7 +357,21 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
             },
             pp_addMathJax: {
                 title: `${TRANS_PREFIX}Include MathJax (advanced features)`,
-                help: `${TRANS_PREFIX}Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.`,
+                /*
+                 * The help text used to quote a size and name the features. Both aged
+                 * badly: the directory has been 8 MB, 2.4 MB and 6.8 MB inside a single
+                 * release cycle, and "accessibility tools" was false for the seven
+                 * months issue #2259 covers. A translated string is expensive to change
+                 * — the English text is the XLF key, so every edit orphans ten locales —
+                 * so this one deliberately carries no figure and no feature list.
+                 *
+                 * The retired text stays here on purpose: `make translations-cleanup`
+                 * drops any trans-unit whose key is not found in the sources, and the
+                 * extractor is a plain text scan, so leaving it in a comment keeps the
+                 * ten existing translations parked instead of deleted.
+                 *   `${TRANS_PREFIX}Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.`
+                 */
+                help: `${TRANS_PREFIX}Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.`,
                 value: 'false',
                 type: 'checkbox',
                 category: 'properties',
@@ -345,6 +392,25 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
                 },
                 category: 'properties',
                 groups: { export: GROUPS_TITLE.export },
+            },
+            pp_passScore: {
+                title: `${TRANS_PREFIX}Minimum score to pass`,
+                help: `${TRANS_PREFIX}Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.`,
+                value: PASS_SCORE_DEFAULT,
+                type: 'number',
+                min: PASS_SCORE_MIN,
+                max: PASS_SCORE_MAX,
+                step: PASS_SCORE_STEP,
+                category: 'properties',
+                groups: { grading: GROUPS_TITLE.grading },
+            },
+            pp_passScoreEveryActivity: {
+                title: `${TRANS_PREFIX}Each SCORM activity must reach its minimum score`,
+                help: `${TRANS_PREFIX}A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.`,
+                value: 'false',
+                type: 'checkbox',
+                category: 'properties',
+                groups: { grading: GROUPS_TITLE.grading },
             },
             pp_extraHeadContent: {
                 title: `${TRANS_PREFIX}HEAD`,

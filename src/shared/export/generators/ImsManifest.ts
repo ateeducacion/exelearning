@@ -17,6 +17,7 @@
 
 import type { ExportPage, ImsManifestOptions } from '../interfaces';
 import { IMS_NAMESPACES } from '../constants';
+import { dedupePagesById, generateManifestItems, escapeXml } from './ManifestItems';
 
 /**
  * Page file info for resource generation
@@ -52,16 +53,27 @@ export class ImsManifestGenerator {
     private projectId: string;
     private pages: ExportPage[];
     private metadata: ImsManifestOptions;
+    private manifestIdentifier: string | null;
 
     /**
-     * @param projectId - Unique project identifier
+     * @param projectId - Bare project identifier (used for organization id and resource ids)
      * @param pages - Pages from navigation structure
      * @param metadata - Project metadata
+     * @param manifestIdentifier - Optional pre-built manifest@identifier. When provided
+     *   it is used verbatim (no `eXe-MANIFEST-` prefix is prepended). Pass this from
+     *   BaseExporter.getManifestIdentifier() so re-exports of the same project produce
+     *   a stable identifier the LMS can track (see exelearning/exelearning#1785).
      */
-    constructor(projectId: string, pages: ExportPage[], metadata: ImsManifestOptions = {}) {
+    constructor(
+        projectId: string,
+        pages: ExportPage[],
+        metadata: ImsManifestOptions = {},
+        manifestIdentifier: string | null = null,
+    ) {
         this.projectId = projectId || this.generateId();
         this.pages = pages || [];
         this.metadata = metadata;
+        this.manifestIdentifier = manifestIdentifier;
     }
 
     /**
@@ -133,7 +145,11 @@ export class ImsManifestGenerator {
      * @returns Manifest opening XML
      */
     generateManifestOpen(): string {
-        return `<manifest identifier="eXe-MANIFEST-${this.escapeXml(this.projectId)}"
+        // When a manifest identifier is supplied (BaseExporter.getManifestIdentifier),
+        // use it verbatim so re-uploads share a stable LMS-tracking identifier.
+        // Otherwise fall back to the legacy `eXe-MANIFEST-<bareId>` shape.
+        const identifier = this.manifestIdentifier ?? `eXe-MANIFEST-${this.projectId}`;
+        return `<manifest identifier="${this.escapeXml(identifier)}"
   xmlns="${IMS_NAMESPACES.imscp}"
   xmlns:imsmd="${IMS_NAMESPACES.imsmd}">
 `;
@@ -206,50 +222,20 @@ export class ImsManifestGenerator {
     }
 
     /**
-     * Generate item elements for pages in hierarchical structure
+     * Generate item elements for pages in hierarchical structure.
+     *
+     * All pages hang from a single non-launchable root cluster item — see
+     * {@link generateManifestItems} and ADR-2222-01 for why Moodle's stock
+     * `mod_scorm` needs it (exelearning/exelearning#2222).
+     *
      * @returns Items XML
      */
     generateItems(): string {
-        // Build a map of pages by ID for quick lookup
-        const pageMap = new Map<string, ExportPage>();
-        for (const page of this.pages) {
-            pageMap.set(page.id, page);
-        }
-
-        // Find root pages (no parent)
-        const rootPages = this.pages.filter(p => !p.parentId);
-
-        // Generate items recursively
-        let xml = '';
-        for (const page of rootPages) {
-            xml += this.generateItemRecursive(page, pageMap, 3);
-        }
-
-        return xml;
-    }
-
-    /**
-     * Generate item element recursively for nested pages
-     * @param page - Page object
-     * @param pageMap - Map of all pages by ID
-     * @param indent - Indentation level
-     * @returns Item XML
-     */
-    generateItemRecursive(page: ExportPage, pageMap: Map<string, ExportPage>, indent: number): string {
-        const indentStr = '  '.repeat(indent);
-        const isVisible = 'true'; // Default visibility
-        const children = this.pages.filter(p => p.parentId === page.id);
-
-        let xml = `${indentStr}<item identifier="ITEM-${this.escapeXml(page.id)}" identifierref="RES-${this.escapeXml(page.id)}" isvisible="${isVisible}">\n`;
-        xml += `${indentStr}  <title>${this.escapeXml(page.title || 'Page')}</title>\n`;
-
-        // Generate children
-        for (const child of children) {
-            xml += this.generateItemRecursive(child, pageMap, indent + 1);
-        }
-
-        xml += `${indentStr}</item>\n`;
-        return xml;
+        return generateManifestItems({
+            pages: this.pages,
+            projectId: this.projectId,
+            rootTitle: this.metadata.title,
+        });
     }
 
     /**
@@ -262,7 +248,9 @@ export class ImsManifestGenerator {
         let xml = '  <resources>\n';
 
         // Generate resource for each page
-        for (const page of this.pages) {
+        // Deduplicated: `identifier` is an xsd:ID, so a repeated page id would emit
+        // two <resource> elements sharing one identifier and invalidate the package.
+        for (const page of dedupePagesById(this.pages)) {
             const pageFile = pageFiles[page.id] || {};
             xml += this.generatePageResource(page, pageFile);
         }
@@ -326,13 +314,7 @@ export class ImsManifestGenerator {
      * @returns Escaped string
      */
     escapeXml(str: string): string {
-        if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        return escapeXml(str);
     }
 
     /**

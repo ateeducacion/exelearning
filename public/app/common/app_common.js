@@ -1,3 +1,4 @@
+import createTooltip from "./app_tooltip.js";
 import DateConversion from "./app_date_conversion.js";
 
 export default class Common {
@@ -32,41 +33,52 @@ export default class Common {
    * @returns {string}
    */
   initTooltips(elm) {
-    try {
-      const scope = elm instanceof Element ? elm : document;
-      const elems = scope.querySelectorAll('.exe-app-tooltip');
-      elems.forEach((el) => {
-        // Idempotent initialization: only create if not already bound
-        const existing = window.bootstrap?.Tooltip?.getInstance
-          ? window.bootstrap.Tooltip.getInstance(el)
-          : null;
-        if (!existing && window.bootstrap?.Tooltip?.getOrCreateInstance) {
-          window.bootstrap.Tooltip.getOrCreateInstance(el);
-          // Hide on click/mouseleave like previous jQuery behavior
-          el.addEventListener('click', () => {
-            try { window.bootstrap.Tooltip.getInstance(el)?.hide(); } catch (_) {}
-          }, { passive: true });
-          el.addEventListener('mouseleave', () => {
-            try { window.bootstrap.Tooltip.getInstance(el)?.hide(); } catch (_) {}
-          }, { passive: true });
-        }
-      });
-    } catch (_) {
-      // Fallback to jQuery plugin if Bootstrap global is not available
-      $(".exe-app-tooltip", elm).tooltip();
-      $('.exe-app-tooltip', elm).on('click mouseleave', function(){
-        $(this).tooltip('hide');
-      });
-    }
+    if (!window.bootstrap?.Tooltip) return;
+    const scope = elm instanceof Element ? elm : document;
+    scope.querySelectorAll('.exe-app-tooltip').forEach((el) => {
+      if (window.bootstrap.Tooltip.getInstance(el)) return;
+      const tooltip = createTooltip(el);
+      for (const event of ['click', 'mouseleave']) {
+        el.addEventListener(event, () => tooltip.hide(), { passive: true });
+      }
+    });
   }
 
   /**
-   * Markdown to HTML converter
+   * Markdown to HTML converter.
+   *
+   * LaTeX delimiters (\(...\), \[...\], $$...$$, \begin{...}\end{...}) are
+   * stashed before Showdown runs so that markdown processing does not eat
+   * underscores, asterisks or backslashes inside formulas. They are restored
+   * verbatim afterwards so MathJax can pick them up at render time.
    */
   markdownToHTML(content) {
-    var converter = new showdown.Converter();
-    converter.setOption('noHeaderId', true);
-    return converter.makeHtml(content);
+    var src = String(content == null ? '' : content);
+    var store = [];
+    [
+      /\\\[[\s\S]*?\\\]/g,
+      /\$\$[\s\S]*?\$\$/g,
+      /\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g,
+      /\\\([\s\S]*?\\\)/g,
+    ].forEach(function (re) {
+      src = src.replace(re, function (match) {
+        store.push(match);
+        return 'EXELATEXBEGIN' + (store.length - 1) + 'EXELATEXEND';
+      });
+    });
+
+    var converter = new showdown.Converter({
+      noHeaderId: true,
+      tables: true,
+      tasklists: true,
+      strikethrough: true,
+      disableForced4SpacesIndentedSublists: true,
+    });
+    var html = converter.makeHtml(src);
+
+    return html.replace(/EXELATEXBEGIN(\d+)EXELATEXEND/g, function (_, i) {
+      return store[Number(i)] !== undefined ? store[Number(i)] : _;
+    });
   }
 
   /**

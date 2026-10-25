@@ -24,8 +24,6 @@ var $exeDevice = {
     btnAddFillBottom: 'buttonAddFillQuestionBottom',
     btnAddDropdownBottom: 'buttonAddDropdownQuestionBottom',
     btnAddSelectionBottom: 'buttonAddSelectionQuestionBottom',
-    passRateId: 'passRateMessage',
-    dropdownPassRateId: 'dropdownPassRate',
     checkCapitalizationId: 'checkCapitalization',
     checkStrictQualificationId: 'checkStrictQualification',
     checkAddBtnAnswersId: 'checkAddBtnAnswers',
@@ -104,12 +102,81 @@ var $exeDevice = {
     getQuestionIndexById: function (id) {
         return this.questionsForm.findIndex((q) => q.id === id);
     },
+
+    getQuestionElementById(id) {
+        const formPreview = $exeDevice.ideviceBody.querySelector(
+            `#${$exeDevice.formPreviewId}`
+        );
+        if (!formPreview) return null;
+        return (
+            Array.from(formPreview.children).find(
+                (question) => question.dataset.id === id
+            ) || null
+        );
+    },
+
+    /**
+     * Reorders the questions array to match the given list of ids (the visual
+     * order taken from the DOM). Ids without a matching question are ignored.
+     * If the resulting list does not contain every question (e.g. a malformed
+     * DOM), the original array is returned untouched to avoid data loss.
+     */
+    reorderQuestionsByIds(questions, orderedIds) {
+        const questionsById = new Map(questions.map((question) => [question.id, question]));
+        if (questionsById.size !== questions.length) return questions;
+
+        const seenIds = new Set();
+        const reordered = [];
+        for (const id of orderedIds) {
+            if (!questionsById.has(id)) continue;
+            if (seenIds.has(id)) return questions;
+            seenIds.add(id);
+            reordered.push(questionsById.get(id));
+        }
+
+        return seenIds.size === questions.length ? reordered : questions;
+    },
+
+    /**
+     * Synchronizes the questionsForm array with the current DOM order of the
+     * preview list. This is the single source of truth used by drag & drop and
+     * by the add-question buttons so the saved order always matches what the
+     * user sees on screen.
+     */
+    syncQuestionsFormToDomOrder() {
+        const formPreview = $exeDevice.ideviceBody.querySelector(
+            `#${$exeDevice.formPreviewId}`
+        );
+        if (!formPreview) return;
+        const orderedIds = Array.from(formPreview.children).map((li) =>
+            li.getAttribute('data-id')
+        );
+        $exeDevice.questionsForm = $exeDevice.reorderQuestionsByIds(
+            $exeDevice.questionsForm,
+            orderedIds
+        );
+    },
+
+    normalizeTrueFalseAnswer(answer) {
+        const normalizedAnswer =
+            typeof answer === 'string' ? answer.trim().toLowerCase() : answer;
+        return normalizedAnswer === 1 ||
+            normalizedAnswer === true ||
+            normalizedAnswer === '1' ||
+            normalizedAnswer === 'true'
+            ? '1'
+            : '0';
+    },
+
     refreshTranslations: function () {
         this.ci18n = {
             msgScoreScorm: c_(
                 "The score can't be saved because this page is not part of a SCORM package."
             ),
             msgYouScore: c_('You scores is'),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
             msgScore: c_('Score'),
             msgWeight: c_('Weight'),
             msgYouLastScore: c_('The last score saved is'),
@@ -131,6 +198,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Form'),
             msgStartGame: c_('Click here to start'),
             msgTime: c_('Time per question'),
@@ -160,6 +228,16 @@ var $exeDevice = {
             msgNext: c_('Next'),
             msgPrevious: c_('Previous'),
             msgSuggestion: c_('Suggestion'),
+            // The per-question feedback (form.js export, showFeedback). Missing
+            // here, it never went through c_() and the export's own default was
+            // the only value that ever reached the page — in Spanish, whatever
+            // the project language.
+            msgOk: c_('Correct'),
+            msgKO: c_('Incorrect'),
+            // The suggestion toggle's alt text, which the export used to spell
+            // out as a literal 'Ocultar' when the key was absent — and it
+            // always was.
+            msgHide: c_('Hide'),
         };
     },
 
@@ -222,14 +300,6 @@ var $exeDevice = {
                 ).style.display = 'none';
             }
         }
-        let dropdownPassRate = $exeDevice.ideviceBody.querySelector(
-            `[id^="${$exeDevice.dropdownPassRateId}"]`
-        );
-        if (previousData[$exeDevice.dropdownPassRateId] !== undefined) {
-            dropdownPassRate.value =
-                previousData[$exeDevice.dropdownPassRateId];
-        }
-
         let checkAddBtnAnswers = $exeDevice.ideviceBody.querySelector(
             `#${$exeDevice.checkAddBtnAnswersId}`
         );
@@ -244,6 +314,10 @@ var $exeDevice = {
             evaluation: previousData.evaluation ?? false,
             evaluationID: previousData.evaluationID ?? '',
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: previousData.passScoreMode,
+            passScoreCustom: previousData.passScoreCustom,
+        });
         this.ideviceBody.querySelector('#frmEQuestionsRandom').checked =
             previousData.questionsRandom || false;
         this.ideviceBody.querySelector('#frmEPercentageQuestions').value =
@@ -257,7 +331,7 @@ var $exeDevice = {
         this.ideviceBody.querySelector('#frmEShowSlider').checked =
             previousData.showSlider;
         previousData.weighted = previousData.weighted ?? 100;
-        previousData.repeatActivity = previousData.repeatActivity ?? false;
+        previousData.repeatActivity = true;
         let isscore =
             previousData.exportScorm && previousData.exportScorm.saveScore
                 ? 1
@@ -293,6 +367,10 @@ var $exeDevice = {
         if (!progressBar) return false;
         this.evaluation = progressBar.evaluation;
         this.evaluationID = progressBar.evaluationID;
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        this.passScoreMode = passScore.passScoreMode;
+        this.passScoreCustom = passScore.passScoreCustom;
         this.eXeFormInstructions = this.getEditorTinyMCEValue(
             'eXeGameInstructions'
         );
@@ -300,17 +378,12 @@ var $exeDevice = {
             'eXeIdeviceTextAfter'
         );
         this.questionsData = $exeDevice.getQuestionsData();
-        this[$exeDevice.dropdownPassRateId] =
-            $exeDevice.ideviceBody.querySelector(
-                `[id^="${$exeDevice.dropdownPassRateId}"]`
-            ).value;
         this[$exeDevice.checkAddBtnAnswersId] =
             $exeDevice.ideviceBody.querySelector(
                 `#${$exeDevice.checkAddBtnAnswersId}`
             ).checked;
         this.showSlider =
             this.ideviceBody.querySelector('#frmEShowSlider').checked;
-        this.passRate = 50;
         this.addBtnAnswers =
             $exeDevice.ideviceBody.querySelector(`#checkAddBtnAnswers`).checked;
         this.questionsRandom = this.ideviceBody.querySelector(
@@ -322,7 +395,6 @@ var $exeDevice = {
         this.time = this.ideviceBody.querySelector('#frmETime').value;
         this.dataIds.push('eXeFormInstructions');
         this.dataIds.push('questionsData');
-        this.dataIds.push($exeDevice.dropdownPassRateId);
         this.dataIds.push($exeDevice.checkAddBtnAnswersId);
         this.dataIds.push('eXeIdeviceTextAfter');
         const fields = this.ci18n,
@@ -668,6 +740,8 @@ var $exeDevice = {
         data.ideviceId = this.ideviceBody.getAttribute('idevice-id');
         data.evaluation = this.evaluation;
         data.evaluationID = this.evaluationID;
+        data.passScoreMode = this.passScoreMode;
+        data.passScoreCustom = this.passScoreCustom;
         data.repeatActivity = this.repeatActivity;
         data.isScorm = this.isScorm;
         data.textButtonScorm = this.textButtonScorm;
@@ -679,7 +753,6 @@ var $exeDevice = {
         data.time = this.time;
         data.eXeFormInstructions = this.eXeFormInstructions;
         data.questionsData = this.questionsData;
-        data.passRate = 5;
         data.addBtnAnswers = this.addBtnAnswers;
         data.eXeIdeviceTextAfter = this.eXeIdeviceTextAfter;
         data.showSlider = this.showSlider;
@@ -756,7 +829,8 @@ var $exeDevice = {
         this.strings.msgETrue = _('True');
         this.strings.msgEFalse = _('False');
         this.strings.msgNoQuestions = _('No questions in the form');
-        this.strings.msgPassRate = _('Set the pass mark');
+        // msgPassRate ('Set the pass mark') went with the dropdown it labelled:
+        // the mark now comes from the shared pass-score control.
         this.strings.msgAddBtnAnswers = _(
             'Include a button to display the answers'
         );
@@ -874,11 +948,6 @@ var $exeDevice = {
                                 <input type="number" name="frmEPercentageQuestions" id="frmEPercentageQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
                                 <span id="frmENumeroPercentaje">1/1</span>
                             </div>
-                            <!-- Pass Rate Dropdown -->
-                            <div class="question-button inline mb-3" style="display:none;">
-                                <span id="${$exeDevice.passRateId}">${this.strings.msgPassRate}</span>
-                                ${this.createPassRateDropdown('formIdevice')}
-                            </div>            
                             <!-- Show Answers Checkbox -->
                             <div id="${$exeDevice.checkAddBtnAnswersId}_container" class="mb-3">
                                 <span class="toggle-item" role="switch" aria-checked="true">
@@ -890,7 +959,6 @@ var $exeDevice = {
                                 </span>
                             </div>
                             <!-- Evaluation -->
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -926,7 +994,7 @@ var $exeDevice = {
                     </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab($exeDevice.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 7, false)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(7)}
@@ -938,6 +1006,7 @@ var $exeDevice = {
     },
 
     setBehaviour() {
+        const lifecycle = this.$lifecycle;
         this.behaviourExeTabs();
         this.behaviourButtonHideShowQuestions($exeDevice.btnQuestionsTop);
         this.behaviourButtonAddTrueFalseQuestion(
@@ -992,8 +1061,11 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        // Delegated on `document`, which outlives the edition form, so the
+        // lifecycle removes it — under its own namespace — when the editor
+        // closes.
+        this.$lifecycle.on(document, 'change', '.toggle-input', function (event) {
+            initToggle($(event.currentTarget));
         });
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             7,
@@ -1033,10 +1105,14 @@ var $exeDevice = {
                     return;
                 }
 
+                // A read still in flight is aborted when the editor closes,
+                // and the callback is bound to this edition, so an import that
+                // completes late never lands in another iDevice.
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importActivity(e.target.result, file.type);
-                };
+                lifecycle.ownFileReader(reader);
+                reader.onload = lifecycle.bind(function (e) {
+                    this.importActivity(e.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
         } else {
@@ -1677,6 +1753,8 @@ var $exeDevice = {
                     const questionIndex =
                         $exeDevice.getQuestionIndexById(questionId);
                     if (questionIndex !== -1) {
+                        const questionElement =
+                            $exeDevice.getQuestionElementById(questionId);
                         const updatedQuestion = $exeDevice.createQuestionObject(
                             $exeDevice.formPreviewId,
                             questionType
@@ -1689,11 +1767,12 @@ var $exeDevice = {
                                 `#${$exeDevice.formPreviewId}TextareaContainer`
                             )
                             .parentElement.remove();
-                        $exeDevice.manageHideQuestion('remove');
                         $exeDevice.renderQuestion(
                             updatedQuestion,
-                            questionIndex
+                            undefined,
+                            questionElement
                         );
+                        $exeDevice.dataIdQuestionBeforeEdit = '';
                         $exeDevice.active = questionIndex;
                     }
                 } else {
@@ -1731,8 +1810,8 @@ var $exeDevice = {
         }
     },
     manageHideQuestion(action = 'show') {
-        const hideQuestion = $exeDevice.ideviceBody.querySelector(
-            `[data-id="${$exeDevice.dataIdQuestionBeforeEdit}"]`
+        const hideQuestion = $exeDevice.getQuestionElementById(
+            $exeDevice.dataIdQuestionBeforeEdit
         );
         if (hideQuestion) {
             if (action === 'remove') hideQuestion.remove();
@@ -1758,7 +1837,10 @@ var $exeDevice = {
         );
         $exeDevice.questionsForm.push(newQuestion);
         this.renderQuestion(newQuestion);
-        $exeDevice.active = $exeDevice.questionsForm.length - 1;
+        // The new question may have been inserted above/below existing ones via
+        // the top/bottom add buttons, so realign the array with the DOM order.
+        $exeDevice.syncQuestionsFormToDomOrder();
+        $exeDevice.active = $exeDevice.getQuestionIndexById(newQuestion.id);
         $exeDevice.ideviceBody.querySelector(
             `#${$exeDevice.msgNoQuestionsId}`
         ).style.display = 'none';
@@ -1827,13 +1909,12 @@ var $exeDevice = {
                     .getAttribute('selection-type');
                 break;
             case $exeDevice.ACTIVITY_TYPES.TRUE_FALSE:
-                const trueFalseAnswer = document.querySelector(
+                const trueFalseAnswer = container.querySelector(
                     'input[name="TrueFalseQuestion"]:checked'
                 );
-                question.answer =
-                    trueFalseAnswer && trueFalseAnswer.value === 'true'
-                        ? '1'
-                        : '0';
+                question.answer = $exeDevice.normalizeTrueFalseAnswer(
+                    trueFalseAnswer?.value
+                );
                 break;
             case $exeDevice.ACTIVITY_TYPES.FILL:
                 question.capitalization = container.querySelector(
@@ -1848,13 +1929,20 @@ var $exeDevice = {
         return question;
     },
 
-    renderQuestion(question, index) {
+    renderQuestion(question, index, elementToReplace = null) {
         const formPreview = $exeDevice.ideviceBody.querySelector(
             `#${$exeDevice.formPreviewId}`
         );
         const html = this.generateQuestionHTML(question);
         let renderedQuestion;
-        if (typeof index !== 'undefined' && formPreview.children[index]) {
+        if (elementToReplace?.parentElement === formPreview) {
+            elementToReplace.insertAdjacentHTML('beforebegin', html);
+            renderedQuestion = elementToReplace.previousElementSibling;
+            elementToReplace.remove();
+        } else if (
+            typeof index !== 'undefined' &&
+            formPreview.children[index]
+        ) {
             const oldElement = formPreview.children[index];
             oldElement.outerHTML = html;
             renderedQuestion = formPreview.children[index];
@@ -1949,7 +2037,7 @@ var $exeDevice = {
     },
 
     getPreviewTextTrueFalseQuestion(question) {
-        const answer = question.answer === '1' ? 1 : 0;
+        const answer = this.normalizeTrueFalseAnswer(question.answer);
         return this.getProcessTextTrueFalseQuestion(question.baseText, answer);
     },
 
@@ -2146,7 +2234,9 @@ var $exeDevice = {
                 class="question-button"
             />
             `;
-        setTimeout(() => {
+        // Owned by the edition: the button is wired only once the markup is in
+        // the DOM, and never for the iDevice that replaced this one.
+        this.$lifecycle.setTimeout(() => {
             document.getElementById(btnId)?.addEventListener('click', () => {
                 this.removeOrAddUnderline(editorId);
             });
@@ -2161,7 +2251,7 @@ var $exeDevice = {
                             <input type="radio" 
                                        name="TrueFalseQuestion" 
                                        id="InputTrue" 
-                                       value="${this.strings.msgETrue}" 
+                                       value="1"
                                        checked>
                             <label for="InputTrue">                                
                                 ${this.strings.msgETrue}
@@ -2171,7 +2261,7 @@ var $exeDevice = {
                             <input type="radio" 
                                     name="TrueFalseQuestion" 
                                     id="InputFalse" 
-                                    value="${this.strings.msgEFalse}">
+                                    value="0">
                              <label for="InputFalse">
                                 ${this.strings.msgEFalse}
                             </label>
@@ -2203,6 +2293,7 @@ var $exeDevice = {
     behaviourEvaluation() {
         const { ideviceBody } = $exeDevice;
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         const divTime = ideviceBody.querySelector('#frmETimeDiv');
         const percentageQuestions = ideviceBody.querySelector(
             '#frmEPercentageQuestions'
@@ -2606,7 +2697,7 @@ var $exeDevice = {
         }
 
         let newTextarea = $exeDevice.ideviceBody.querySelector(
-            `TEXTAREA[id^=${$exeDevice.formPreviewId}`
+            `TEXTAREA[id^="${$exeDevice.formPreviewId}"]`
         );
         newTextarea.innerHTML = questionData.baseText.replace(
             /<p>\s*(<br\s*\/?>)?\s*<\/p>/gi,
@@ -2614,7 +2705,7 @@ var $exeDevice = {
         );
         let falseBtn = $exeDevice.ideviceBody.querySelector('#InputFalse');
         let trueBtn = $exeDevice.ideviceBody.querySelector('#InputTrue');
-        if (questionData.answer === '0') {
+        if ($exeDevice.normalizeTrueFalseAnswer(questionData.answer) === '0') {
             falseBtn.checked = true;
         } else {
             trueBtn.checked = true;
@@ -2669,7 +2760,9 @@ var $exeDevice = {
             buttonAddOption.click();
         }
 
-        setTimeout(() => {
+        // Owned by the edition: the deferred fill must not write into the form
+        // of the iDevice that replaced this one.
+        this.$lifecycle.setTimeout(() => {
             let optionTextareas = $exeDevice.ideviceBody.querySelectorAll(
                 'TEXTAREA.small-textarea'
             );
@@ -2943,6 +3036,23 @@ var $exeDevice = {
         return htmlDropdown;
     },
 
+    /**
+     * Escape plain-text content for safe insertion as HTML text.
+     * Option texts are plain text (e.g. "A<B"); without escaping, the "<"
+     * would be parsed as markup and the text after it lost.
+     */
+    escapeHtmlText(text) {
+        return String(text == null ? '' : text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    /** Escape plain text for safe insertion inside a double-quoted attribute. */
+    escapeHtmlAttr(text) {
+        return this.escapeHtmlText(text).replace(/"/g, '&quot;');
+    },
+
     getProcessTextSelectionQuestion(baseText, optionType, answer) {
         let id = this.generateRandomId();
         let htmlSelection = baseText.replace(
@@ -2953,9 +3063,9 @@ var $exeDevice = {
         htmlSelection += `<div id="SelectionQuestion_${id}" data-id="${id}" class="selection-buttons-container">`;
         answer.forEach((option, index) => {
             htmlSelection += `<div class="inline">`;
-            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${option[1]}">`;
+            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${this.escapeHtmlAttr(option[1])}">`;
             htmlSelection += `<label for="${id}_option_${index + 1}">`;
-            htmlSelection += option[1];
+            htmlSelection += this.escapeHtmlText(option[1]);
             htmlSelection += `</label>`;
             htmlSelection += `</div>`;
             if (option[0]) {
@@ -3065,18 +3175,6 @@ var $exeDevice = {
         });
         selectDropdown += `</select>`;
         selectDropdown += `<span id="dropdownAnswer_${id}" class="dropdownAnswer" style="display:none">${answer}</span>`;
-        return selectDropdown;
-    },
-
-    createPassRateDropdown(id) {
-        let options = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-        let selectDropdown = ``;
-        selectDropdown += `<select id="${$exeDevice.dropdownPassRateId}_${id}" class="dropdownPassRate form-control" aria-labelledby="${$exeDevice.passRateId}" data-id="${id}">`;
-        selectDropdown += `<option value="" selected></option>`;
-        options.forEach((option) => {
-            selectDropdown += `<option value="${option}">${option}%</option>`;
-        });
-        selectDropdown += `</select>`;
         return selectDropdown;
     },
 
@@ -3195,16 +3293,7 @@ var $exeDevice = {
 
     handleDragEnd(e) {
         e.currentTarget.classList.remove('dragging');
-        const formPreview = $exeDevice.ideviceBody.querySelector(
-            `#${$exeDevice.formPreviewId}`
-        );
-        const newOrder = Array.from(formPreview.children).map((li) =>
-            li.getAttribute('data-id')
-        );
-        const reorderedQuestions = newOrder
-            .map((id) => $exeDevice.questionsForm.find((q) => q.id === id))
-            .filter((q) => q !== undefined);
-        $exeDevice.questionsForm = reorderedQuestions;
+        $exeDevice.syncQuestionsFormToDomOrder();
         $exeDevice.disableArrowUpDown();
     },
 

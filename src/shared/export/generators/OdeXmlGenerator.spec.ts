@@ -123,6 +123,21 @@ describe('OdeXmlGenerator', () => {
             expect(xml).toContain('</odeProperties>');
         });
 
+        it('does not duplicate the screenshot data URL in content.xml', () => {
+            const xml = generateOdeXml({ title: 'T', screenshot: 'data:image/png;base64,iVBORw0KGgo=' }, []);
+            expect(xml).not.toContain('pp_screenshot');
+            expect(xml).not.toContain('data:image/png');
+        });
+
+        it('should save the every-activity pass rule so it survives a reopen', () => {
+            const xml = generateOdeXml({ title: 'T', passScoreEveryActivity: true }, []);
+
+            expect(xml).toContain(`<odeProperty>
+    <key>pp_passScoreEveryActivity</key>
+    <value>true</value>
+  </odeProperty>`);
+        });
+
         it('should include empty odeNavStructures for no pages', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [];
@@ -318,6 +333,43 @@ describe('OdeXmlGenerator', () => {
             expect(xml).toContain('Show Feedback');
         });
 
+        it('should write a malformed payload verbatim instead of an empty element (#2190)', () => {
+            const malformed = '{"questionsData":[{"baseText":"<audio src="broken.webm"></audio>"}]}';
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'trueorfalse',
+                                    order: 0,
+                                    content: '<p>Damaged</p>',
+                                    properties: {},
+                                    malformedProperties: malformed,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            // The damaged payload is the only copy of the activity's data: it
+            // must survive export instead of collapsing to <jsonProperties/>.
+            expect(xml).toContain(`<jsonProperties><![CDATA[${malformed}]]></jsonProperties>`);
+            expect(xml).not.toContain('<jsonProperties></jsonProperties>');
+        });
+
         it('should use custom odeId and versionId when provided', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [];
@@ -329,6 +381,45 @@ describe('OdeXmlGenerator', () => {
 
             expect(xml).toContain('<value>CUSTOM-ODE-ID</value>');
             expect(xml).toContain('<value>CUSTOM-VERSION-ID</value>');
+        });
+
+        it('should use meta.odeVersionId when options.versionId is not set', () => {
+            const meta: ExportMetadata = {
+                title: 'Test',
+                odeVersionId: '20251201123456FEDCBA',
+            };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toMatch(/<key>odeVersionId<\/key>\s*<value>20251201123456FEDCBA<\/value>/);
+        });
+
+        it('should generate a fresh versionId when neither options.versionId nor meta.odeVersionId is set', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages);
+
+            // Extract the odeVersionId value
+            const match = xml.match(/<key>odeVersionId<\/key>\s*<value>([^<]+)<\/value>/);
+            expect(match).not.toBeNull();
+            expect(match![1]).toMatch(/^\d{14}[A-Z0-9]{6}$/);
+        });
+
+        it('should prefer options.versionId over meta.odeVersionId', () => {
+            const meta: ExportMetadata = {
+                title: 'Test',
+                odeVersionId: '20251201123456FEDCBA',
+            };
+            const pages: ExportPage[] = [];
+
+            const xml = generateOdeXml(meta, pages, {
+                versionId: '20251231235959AAAAAA',
+            });
+
+            expect(xml).toMatch(/<key>odeVersionId<\/key>\s*<value>20251231235959AAAAAA<\/value>/);
+            expect(xml).not.toContain('20251201123456FEDCBA');
         });
 
         it('should include DOCTYPE by default', () => {
@@ -782,6 +873,47 @@ describe('OdeXmlGenerator', () => {
 
             // Unresolved assets use UUID as filename
             expect(xml).toContain('{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012.jpg');
+        });
+    });
+
+    describe('scormIdentifier round-trip via <odeResources> (#1786)', () => {
+        it('emits scormIdentifier as an odeResource when present in metadata', () => {
+            const meta = {
+                title: 'Stable SCORM ID',
+                author: '',
+                language: 'en',
+                theme: 'base',
+                odeIdentifier: '20251201123456ABCDEF',
+                scormIdentifier: 'LMS-COURSE-XYZ',
+            };
+            const xml = generateOdeXml(meta, []);
+            expect(xml).toContain('<key>scormIdentifier</key>');
+            expect(xml).toContain('<value>LMS-COURSE-XYZ</value>');
+        });
+
+        it('does NOT emit scormIdentifier when the metadata field is absent', () => {
+            const meta = {
+                title: 'No SCORM override',
+                author: '',
+                language: 'en',
+                theme: 'base',
+                odeIdentifier: '20251201123456ABCDEF',
+            };
+            const xml = generateOdeXml(meta, []);
+            expect(xml).not.toContain('<key>scormIdentifier</key>');
+        });
+
+        it('does NOT emit scormIdentifier when the metadata field is empty', () => {
+            const meta = {
+                title: 'Empty SCORM override',
+                author: '',
+                language: 'en',
+                theme: 'base',
+                odeIdentifier: '20251201123456ABCDEF',
+                scormIdentifier: '',
+            };
+            const xml = generateOdeXml(meta, []);
+            expect(xml).not.toContain('<key>scormIdentifier</key>');
         });
     });
 });

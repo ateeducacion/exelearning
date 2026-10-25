@@ -2,7 +2,11 @@
  * Kysely Migrations
  * Programmatic migrations for SQLite, PostgreSQL, and MySQL
  */
-import { Kysely, Migrator, sql, type Migration, type MigrationProvider } from 'kysely';
+import { Kysely, sql } from 'kysely';
+// Kysely 0.29 moved Migrator, Migration and MigrationProvider out of the
+// package root. They must now be imported from the `kysely/migration`
+// subpath export; importing them from `'kysely'` throws at runtime.
+import { Migrator, type Migration, type MigrationProvider } from 'kysely/migration';
 import { tableExists as tableExistsHelper, getDialect } from '../helpers';
 
 // Import all migrations
@@ -14,6 +18,9 @@ import * as migration004 from './004_fix_user_foreign_keys';
 import * as migration005 from './005_user_id_nullable';
 import * as migration006 from './006_impersonation_audit_log';
 import * as migration007 from './007_activity_log';
+import * as migration008 from './008_project_public_view_id';
+import * as migration009 from './009_project_public_view_enabled';
+import * as migration010 from './010_project_platform_binding';
 
 // ============================================================================
 // MIGRATION REGISTRY
@@ -28,6 +35,9 @@ const migrations: Record<string, Migration> = {
     '005_user_id_nullable': migration005,
     '006_impersonation_audit_log': migration006,
     '007_activity_log': migration007,
+    '008_project_public_view_id': migration008,
+    '009_project_public_view_enabled': migration009,
+    '010_project_platform_binding': migration010,
 };
 
 // ============================================================================

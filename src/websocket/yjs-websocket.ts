@@ -161,6 +161,24 @@ const clientMetaMap = new Map<string, ClientMeta>();
 let initialized = false;
 
 /**
+ * Maximum size (in bytes) of a single WebSocket message accepted on the Yjs
+ * route. Set explicitly rather than relying on Bun's 16MB default so the per
+ * message memory an attacker can force is a known, conservative value.
+ *
+ * Two message classes flow over this socket:
+ *   1. Yjs document updates — a full Y.Doc sync of a large eXeLearning project
+ *      (many pages with embedded HTML/iDevice content) can legitimately reach a
+ *      few MB. Binary asset payloads are NOT sent here; they go through the
+ *      chunked HTTP upload endpoints, so this socket only carries document
+ *      structure/text, which stays well under the cap.
+ *   2. Asset-coordination JSON — tiny control messages (kilobytes at most).
+ *
+ * 8 MB comfortably covers the largest realistic Yjs sync while halving the
+ * 16MB default, bounding the heap a single oversized frame can allocate.
+ */
+export const YJS_WS_MAX_PAYLOAD_LENGTH = 8 * 1024 * 1024;
+
+/**
  * Generate unique client ID
  * Exported for testing
  */
@@ -196,27 +214,41 @@ export async function checkWebSocketProjectAccess(
     projectUuid: string,
     userId: number,
 ): Promise<{ hasAccess: boolean; reason?: string }> {
-    // First, check if it's an in-memory session
-    // In-memory sessions are created for new projects before they're saved to DB
+    // Resolve the persisted project first. When a project record exists it is
+    // authoritative: run the centralized owner/collaborator/public access check.
+    // The mere existence of an in-memory session must NEVER substitute for
+    // authorization, otherwise any authenticated user could join any private
+    // room that happens to have a live session (cross-tenant read AND write of
+    // the relayed Y.Doc). This mirrors the access-control flow already used by
+    // the workarea page handler in src/routes/pages.ts.
+    const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
+    if (project) {
+        return deps.queries.checkProjectAccess(deps.db, project, userId);
+    }
+
+    // No persisted project. An in-memory session can still legitimately exist for
+    // a brand-new project that has not been written to the database yet (offline
+    // / not-yet-saved flow). Only the user who created that session may join it.
     const session = deps.sessionManager.getSession(projectUuid);
     if (session) {
-        // Session exists in memory - allow access
+        // Fail closed: only the user who created the session may join it. An
+        // ownerless session (userId undefined) must NOT admit an arbitrary
+        // authenticated user — authorization never falls open on optional data.
+        if (!session.userId || session.userId !== userId) {
+            if (DEBUG)
+                console.log(
+                    `[YjsWebSocket] Access denied to in-memory session ${projectUuid}: ` +
+                        `created by user ${session.userId ?? '(none)'}, requested by ${userId}`,
+                );
+            return { hasAccess: false, reason: 'ACCESS_DENIED' };
+        }
         if (DEBUG) console.log(`[YjsWebSocket] Access granted via in-memory session: ${projectUuid}`);
         return { hasAccess: true };
     }
 
-    // Fall back to database check for persisted projects using centralized function
-    const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
-
-    if (!project) {
-        // Neither in session nor in database - deny access
-        if (DEBUG)
-            console.log(`[YjsWebSocket] Project ${projectUuid} not found in session or database, denying access`);
-        return { hasAccess: false, reason: 'Project not found' };
-    }
-
-    // Use centralized access check
-    return deps.queries.checkProjectAccess(deps.db, project, userId);
+    // Neither in database nor in session - deny access
+    if (DEBUG) console.log(`[YjsWebSocket] Project ${projectUuid} not found in session or database, denying access`);
+    return { hasAccess: false, reason: 'Project not found' };
 }
 
 /**
@@ -255,6 +287,20 @@ export async function handleWebSocketOpen(
     if (!access.hasAccess) {
         console.error(`[YjsWebSocket] Access denied: ${access.reason}`);
         return { success: false, error: { code: 4003, reason: access.reason || 'Access denied' } };
+    }
+
+    // The token/access checks above both await (JWT verification, a DB
+    // lookup), and Bun does not wait for this async `open` handler before
+    // considering the socket live: the `close` handler can run concurrently
+    // during those awaits. If it did, `ws.data.docName` was still unset at
+    // that point, so `handleWebSocketClose` treated it as 'unknown' and
+    // skipped `roomManager.removeConnection` — no future `close` event will
+    // fire to clean up otherwise, so registering this now-dead socket would
+    // leak it in the room forever (issue #2255 C10k benchmark: this was
+    // measured accumulating thousands of permanently "connected" ghost
+    // entries under concurrent load).
+    if (ws.readyState !== 1) {
+        return { success: false };
     }
 
     const userId = user.sub;
@@ -302,7 +348,7 @@ export async function handleWebSocketOpen(
                     );
 
                     // Find the first (oldest) client in the room to request state
-                    const firstClient = Array.from(room.conns)[0];
+                    const firstClient = Array.from(room.conns.values())[0];
                     if (firstClient) {
                         // Send JSON message to request sync-state
                         const syncRequestMsg = JSON.stringify({
@@ -321,7 +367,7 @@ export async function handleWebSocketOpen(
 
         // Ask existing clients to re-broadcast awareness when a new client joins.
         // This keeps presence UI in sync without forcing reconnects.
-        for (const existingConn of room.conns) {
+        for (const existingConn of room.conns.values()) {
             if (existingConn.readyState === 1) {
                 try {
                     existingConn.send(
@@ -448,34 +494,51 @@ export function handleWebSocketClose(ws: ServerWebSocket<WsData>, data: WsData |
  * Create Elysia WebSocket routes for Yjs
  */
 export function createWebSocketRoutes() {
-    return new Elysia({ name: 'yjs-websocket' }).ws('/yjs/:docName', {
-        // Connection opened - validate token here since beforeHandle doesn't pass data to open
-        async open(ws) {
-            const rawData = ws.data as ElysiaWsRawData;
-            const docName = rawData.params?.docName;
-            const token = rawData.query?.token as string;
+    return (
+        new Elysia({ name: 'yjs-websocket' })
+            // Public liveness probe under the same prefix where the WebSocket is
+            // mounted. Used by external healthchecks and quick smoke tests that
+            // want to confirm the Yjs service is up without negotiating a WS
+            // upgrade. Intentionally minimal: no counts, ports, modes or hostnames.
+            .get('/yjs/info', () => ({ ok: true, service: 'yjs-websocket' }))
+            .ws('/yjs/:docName', {
+                // Cap the per-message size explicitly (Bun defaults to 16MB).
+                // Bounds the heap a single oversized frame can allocate while
+                // still allowing large-but-legitimate Yjs document syncs.
+                maxPayloadLength: YJS_WS_MAX_PAYLOAD_LENGTH,
 
-            const result = await handleWebSocketOpen(ws as ServerWebSocket<WsData>, docName, token);
-            if (!result.success && result.error) {
-                ws.close(result.error.code, result.error.reason);
-            }
-        },
+                // Connection opened - validate token here since beforeHandle doesn't pass data to open
+                async open(ws) {
+                    const rawData = ws.data as ElysiaWsRawData;
+                    const docName = rawData.params?.docName;
+                    const token = rawData.query?.token as string;
 
-        // Handle pong response (Bun WebSocket native support)
-        pong(ws) {
-            handleWebSocketPong(ws.data as WsData);
-        },
+                    const result = await handleWebSocketOpen(ws as ServerWebSocket<WsData>, docName, token);
+                    if (!result.success && result.error) {
+                        ws.close(result.error.code, result.error.reason);
+                    }
+                },
 
-        // Message received
-        message(ws, message) {
-            handleWebSocketMessage(ws as ServerWebSocket<WsData>, ws.data as WsData, message as Buffer | string);
-        },
+                // Handle pong response (Bun WebSocket native support)
+                pong(ws) {
+                    handleWebSocketPong(ws.data as WsData);
+                },
 
-        // Connection closed
-        close(ws) {
-            handleWebSocketClose(ws as ServerWebSocket<WsData>, ws.data as WsData | undefined);
-        },
-    });
+                // Message received
+                message(ws, message) {
+                    handleWebSocketMessage(
+                        ws as ServerWebSocket<WsData>,
+                        ws.data as WsData,
+                        message as Buffer | string,
+                    );
+                },
+
+                // Connection closed
+                close(ws) {
+                    handleWebSocketClose(ws as ServerWebSocket<WsData>, ws.data as WsData | undefined);
+                },
+            })
+    );
 }
 
 /**

@@ -44,7 +44,13 @@ export class Scorm2004Exporter extends Html5Exporter {
             const meta = this.getMetadata();
             // Theme priority: 1º parameter > 2º ELP metadata > 3º default
             const themeName = options?.theme || meta.theme || 'base';
-            const projectId = this.generateProjectId();
+            // Stable manifest identifier (see BaseExporter.getManifestIdentifier and #1785).
+            // `manifestIdentifier` is the final `<manifest identifier="...">` value;
+            // `projectId` is the bare id used for organization/resource ids and the
+            // LOM `catalog/entry`, so a single project identity flows through all
+            // artifacts (manifest, organization, LOM, content.xml).
+            const manifestIdentifier = this.getManifestIdentifier();
+            const projectId = this.getBareProjectIdentifier();
 
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
@@ -66,16 +72,21 @@ export class Scorm2004Exporter extends Html5Exporter {
             };
 
             // Initialize generators
-            this.manifestGenerator = new Scorm2004ManifestGenerator(projectId, pages, {
-                identifier: projectId,
-                pages: pages,
-                version: '2004',
-                title: meta.title || 'eXeLearning',
-                language: meta.language || 'en',
-                author: meta.author || '',
-                description: meta.description || '',
-                license: meta.license || '',
-            });
+            this.manifestGenerator = new Scorm2004ManifestGenerator(
+                projectId,
+                pages,
+                {
+                    identifier: manifestIdentifier,
+                    pages: pages,
+                    version: '2004',
+                    title: meta.title || 'eXeLearning',
+                    language: meta.language || 'en',
+                    author: meta.author || '',
+                    description: meta.description || '',
+                    license: meta.license || '',
+                },
+                manifestIdentifier,
+            );
 
             this.lomGenerator = new LomMetadataGenerator(projectId, {
                 title: meta.title || 'eXeLearning',
@@ -94,6 +105,8 @@ export class Scorm2004Exporter extends Html5Exporter {
 
             // Configure iDevice renderer with theme files for icon resolution
             this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+            const { files: materialIconFiles, dataUris: materialIconDataUris } =
+                await this.resolveMaterialIconDataUris(pages);
 
             // Fetch translated nav labels for the content language (includes license)
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
@@ -116,9 +129,10 @@ export class Scorm2004Exporter extends Html5Exporter {
                     faviconInfo,
                     pageFilenameMap,
                     navLabels,
+                    materialIconDataUris,
                 );
 
-                // Pre-render LaTeX ONLY if addMathJax is false
+                // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
                 if (!meta.addMathJax) {
                     // Pre-render LaTeX in encrypted DataGame divs FIRST
                     if (options?.preRenderDataGameLatex) {
@@ -232,6 +246,11 @@ export class Scorm2004Exporter extends Html5Exporter {
                 // No base libraries available
             }
 
+            this.addPrefixedFiles(materialIconFiles, 'libs/', (path, content) => {
+                this.zip.addFile(path, content);
+                commonFiles.push(path);
+            });
+
             // 4.5. Generate localized i18n file
             const i18nContent = await this.generateI18nContent(meta.language || 'en');
             addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
@@ -277,17 +296,24 @@ export class Scorm2004Exporter extends Html5Exporter {
                 commonFiles.push('libs/SCORM_API_wrapper.js', 'libs/SCOFunctions.js');
             }
 
-            // 6b. Copy content.xml and DTD (always include for re-editing capability)
-            try {
-                const contentXml = await this.getContentXml();
-                if (contentXml) {
-                    addFile('content.xml', contentXml);
-                    commonFiles.push('content.xml');
-                    addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
-                    commonFiles.push(ODE_DTD_FILENAME);
+            // 6b. Copy content.xml and DTD so the package stays re-editable.
+            // Skipped when the author disabled the "Editable export" project
+            // property (`exportSource`), which the website and ePub exporters
+            // already honour (#2415). Both the files and their manifest entries
+            // are skipped together, so the manifest never references a file
+            // that was not written.
+            if (this.shipsEditableSource(meta, options)) {
+                try {
+                    const contentXml = await this.getContentXml();
+                    if (contentXml) {
+                        addFile('content.xml', contentXml);
+                        commonFiles.push('content.xml');
+                        addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                        commonFiles.push(ODE_DTD_FILENAME);
+                    }
+                } catch {
+                    // content.xml is optional
                 }
-            } catch {
-                // content.xml is optional
             }
 
             // 7. Fetch and add iDevice assets
@@ -373,7 +399,12 @@ export class Scorm2004Exporter extends Html5Exporter {
     }
 
     /**
-     * Generate project ID for SCORM package
+     * Generate a random low-level project ID.
+     *
+     * @deprecated Since #1785, the SCORM manifest identifier is derived from
+     * the project's odeIdentifier via {@link BaseExporter.getManifestIdentifier}
+     * so LMS tracking survives re-uploads. This helper is kept only for
+     * external callers/tests and is no longer used by the export pipeline.
      */
     generateProjectId(): string {
         return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
@@ -400,6 +431,7 @@ export class Scorm2004Exporter extends Html5Exporter {
         faviconInfo?: FaviconInfo | null,
         pageFilenameMap?: Map<string, string>,
         navLabels?: { previous: string; next: string; license?: string },
+        materialIconDataUris?: Map<string, string>,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -435,6 +467,13 @@ export class Scorm2004Exporter extends Html5Exporter {
             addSearchBox: false,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
+            addMathJax: meta.addMathJax === true,
+            // Project-wide pass score, published to the page as a META so iDevices
+            // resolve it at runtime instead of carrying a copy of their own.
+            passScore: meta.passScore,
+            passScoreEveryActivity: meta.passScoreEveryActivity,
+            // Accessibility toolbar (exe_atools) when enabled in project properties (#1978)
+            addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
             isScorm: true,
@@ -451,6 +490,8 @@ export class Scorm2004Exporter extends Html5Exporter {
             pageFilenameMap,
             // Pre-translated nav button labels (resolved from XLF at export time)
             navLabels,
+            materialIconDataUris,
+            // Application version for generator meta tag
             version: meta.exelearningVersion,
         });
     }

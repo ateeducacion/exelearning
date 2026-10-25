@@ -57,22 +57,27 @@ describe('PreviewPanelManager', () => {
       'preview-extract-button': document.createElement('button'),
       'preview-pin-button': document.createElement('button'),
       'preview-refresh-button': document.createElement('button'),
+      'preview-mobile-button': document.createElement('button'),
       'preview-iframe': document.createElement('iframe'),
       'preview-pinned-container': document.createElement('div'),
       'preview-pinned-iframe': document.createElement('iframe'),
       'preview-pinned-extract-button': document.createElement('button'),
       'preview-unpin-button': document.createElement('button'),
       'preview-pinned-refresh-button': document.createElement('button'),
+      'preview-pinned-mobile-button': document.createElement('button'),
       workarea: document.createElement('div'),
     };
 
-    // Add nested elements for loading states
+    // Add nested elements for loading states; place the iframes inside the
+    // bodies so parentElement matches the real DOM (used by viewport toggling).
     const panelBody = document.createElement('div');
     panelBody.className = 'preview-panel-body';
+    panelBody.appendChild(mockElements['preview-iframe']);
     mockElements.previewsidenav.appendChild(panelBody);
 
     const pinnedBody = document.createElement('div');
     pinnedBody.className = 'preview-pinned-body';
+    pinnedBody.appendChild(mockElements['preview-pinned-iframe']);
     mockElements['preview-pinned-container'].appendChild(pinnedBody);
 
     vi.spyOn(document, 'getElementById').mockImplementation(id => mockElements[id] || null);
@@ -139,6 +144,70 @@ describe('PreviewPanelManager', () => {
       expect(manager.isOpen).toBe(false);
       expect(manager.isPinned).toBe(false);
       expect(manager.panel).toBe(mockElements.previewsidenav);
+    });
+  });
+
+  describe('viewport toggle', () => {
+    beforeEach(() => {
+      try {
+        window.sessionStorage.clear();
+      } catch {
+        // ignore
+      }
+    });
+
+    it('should default to desktop viewport', () => {
+      expect(manager.isMobileViewport).toBe(false);
+    });
+
+    it('should toggle to mobile and back on toggleViewport()', () => {
+      const body = mockElements['preview-iframe'].parentElement;
+      const pinnedBody = mockElements['preview-pinned-iframe'].parentElement;
+
+      manager.toggleViewport();
+      expect(manager.isMobileViewport).toBe(true);
+      expect(body.classList.contains('preview-mobile-viewport')).toBe(true);
+      expect(pinnedBody.classList.contains('preview-mobile-viewport')).toBe(true);
+      expect(mockElements['preview-mobile-button'].getAttribute('aria-pressed')).toBe('true');
+      expect(mockElements['preview-pinned-mobile-button'].getAttribute('aria-pressed')).toBe('true');
+
+      manager.toggleViewport();
+      expect(manager.isMobileViewport).toBe(false);
+      expect(body.classList.contains('preview-mobile-viewport')).toBe(false);
+      expect(mockElements['preview-mobile-button'].getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('should persist the viewport choice to sessionStorage', () => {
+      manager.toggleViewport();
+      expect(window.sessionStorage.getItem('exe-preview-viewport')).toBe('mobile');
+      manager.toggleViewport();
+      expect(window.sessionStorage.getItem('exe-preview-viewport')).toBe('desktop');
+    });
+
+    it('should restore a persisted mobile choice on construction and apply it', () => {
+      window.sessionStorage.setItem('exe-preview-viewport', 'mobile');
+      const restored = new PreviewPanelManager();
+      expect(restored.isMobileViewport).toBe(true);
+
+      restored.applyViewport();
+      expect(mockElements['preview-iframe'].parentElement.classList.contains('preview-mobile-viewport')).toBe(true);
+    });
+
+    it('should not throw when sessionStorage is unavailable', () => {
+      const original = Object.getOwnPropertyDescriptor(window, 'sessionStorage');
+      Object.defineProperty(window, 'sessionStorage', {
+        configurable: true,
+        get() {
+          throw new Error('blocked');
+        },
+      });
+      try {
+        expect(() => new PreviewPanelManager().toggleViewport()).not.toThrow();
+      } finally {
+        if (original) {
+          Object.defineProperty(window, 'sessionStorage', original);
+        }
+      }
     });
   });
 
@@ -802,7 +871,7 @@ describe('PreviewPanelManager', () => {
 
       // Should derive base path from pathname and construct correct URL
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/pr-preview/pr-20/viewer/index.html',
+        'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -828,7 +897,7 @@ describe('PreviewPanelManager', () => {
       await manager.extractToNewTab();
 
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/app/viewer/index.html',
+        'https://example.com/app/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -853,7 +922,7 @@ describe('PreviewPanelManager', () => {
       await manager.extractToNewTab();
 
       expect(mockOpen).toHaveBeenCalledWith(
-        'http://localhost:8080/viewer/index.html',
+        'http://localhost:8080/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -879,7 +948,7 @@ describe('PreviewPanelManager', () => {
 
       // Should NOT produce double slashes
       expect(mockOpen).toHaveBeenCalledWith(
-        'https://example.com/pr-preview/pr-20/viewer/index.html',
+        'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
@@ -1253,6 +1322,8 @@ describe('PreviewPanelManager', () => {
 
       // happy-dom normalizes URLs, so check for the path
       expect(mockElements['preview-iframe'].src).toContain('/myapp/viewer/index.html');
+      // The authoring preview reveals Teacher Mode content by default.
+      expect(mockElements['preview-iframe'].src).toContain('exe-teacher=1');
     });
 
     it('should force reload when src is already viewer URL', async () => {
@@ -1543,6 +1614,81 @@ describe('PreviewPanelManager', () => {
       expect(result).toContain('<style>');
       expect(result).toContain('body { margin: 0; }');
     });
+
+    it('should inline binary images as data URIs and skip data:, blob: and missing sources', () => {
+      const html = '<img src="a.png"><img src="b.xyz"><img src="data:image/png;base64,AA=="><img src="blob:x"><img src="c.png">';
+      const files = { 'a.png': new Uint8Array([1]), 'b.xyz': new Uint8Array([2]) };
+
+      const result = manager._inlineResources(html, files);
+
+      expect(result).toBe(
+        '<img src="data:image/png;base64,AQ=="><img src="data:application/octet-stream;base64,Ag==">' +
+          '<img src="data:image/png;base64,AA=="><img src="blob:x"><img src="c.png">',
+      );
+    });
+
+    describe('url() references inside inlined CSS', () => {
+      const png = new Uint8Array([137, 80, 78, 71]);
+      const pngDataUri = 'data:image/png;base64,iVBORw==';
+      const inline = (href, css, extraFiles = {}) =>
+        manager._inlineResources(`<head><link rel="stylesheet" href="${href}"></head>`, {
+          'theme/style.css': css,
+          ...extraFiles,
+        });
+
+      it('should resolve theme url(img/icons.png) relative to the stylesheet, not the page', () => {
+        const result = inline('../theme/style.css', '.nav { background: url(img/icons.png) no-repeat; }', {
+          'theme/img/icons.png': png,
+        });
+
+        expect(result).toContain(`.nav { background: url("${pngDataUri}") no-repeat; }`);
+      });
+
+      it('should handle quoted forms, whitespace, query strings and hashes', () => {
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg"/>';
+        const result = inline(
+          'theme/style.css',
+          "a{background:url('img/icons.png?v=2')} b{background:url( \"img/arrow.svg#x\" )}",
+          { 'theme/img/icons.png': png, 'theme/img/arrow.svg': svg },
+        );
+
+        expect(result).toContain(`a{background:url("${pngDataUri}")}`);
+        expect(result).toContain(`b{background:url("data:image/svg+xml;base64,${btoa(svg)}")}`);
+      });
+
+      it('should resolve ../ references from a stylesheet in a subfolder', () => {
+        const result = manager._inlineResources('<link rel="stylesheet" href="../libs/widget/css/widget.css">', {
+          'libs/widget/css/widget.css': '.w{background:url(../img/w.gif)}',
+          'libs/widget/img/w.gif': new Uint8Array([2]).buffer,
+        });
+
+        expect(result).toContain('.w{background:url("data:image/gif;base64,Ag==")}');
+      });
+
+      it('should use font MIME types for @font-face sources', () => {
+        const result = inline('theme/style.css', "@font-face{src:url('fonts/a.woff2')}", {
+          'theme/fonts/a.woff2': new Uint8Array([1]),
+        });
+
+        expect(result).toContain('@font-face{src:url("data:font/woff2;base64,AQ==")}');
+      });
+
+      it('should leave external, data, blob, absolute, fragment and missing references untouched', () => {
+        const css = [
+          'a{background:url(data:image/png;base64,AAAA)}',
+          'b{background:url(blob:https://x.test/1)}',
+          'c{background:url(https://cdn.test/a.png)}',
+          'd{background:url(//cdn.test/a.png)}',
+          'e{background:url(/files/a.png)}',
+          'f{filter:url(#shadow)}',
+          'g{background:url(img/missing.png)}',
+        ].join('\n');
+
+        const result = inline('theme/style.css', css);
+
+        expect(result).toContain(css);
+      });
+    });
   });
 
   describe('_replacePdfEmbedsForBlob', () => {
@@ -1643,9 +1789,12 @@ describe('PreviewPanelManager', () => {
 
       expect(result).toContain('initPdfEmbeds');
       expect(result).toContain('data-exe-pdf-src');
-      expect(result).toContain('libs/pdfjs/pdf.min.mjs');
-      expect(result).toContain('libs/pdfjs/pdf.worker.min.mjs');
+      expect(result).toContain('libs/pdfjs/pdf.min.js');
+      expect(result).toContain('libs/pdfjs/pdf.worker.min.js');
       expect(result).toContain("createElement('canvas')");
+      // pdf.js 6 rejects a plain string; the parameter object is required.
+      expect(result).toContain('getDocument({ url: src })');
+      expect(result).not.toContain('getDocument(src)');
     });
 
     it('should inject toolbar elements in embed rendering script', () => {
@@ -1747,8 +1896,46 @@ describe('PreviewPanelManager', () => {
       await manager.refreshWithServiceWorker();
 
       expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
-      expect(window.eXeLearning.app.sendContentToPreviewSW).toHaveBeenCalled();
+      expect(window.eXeLearning.app.sendContentToPreviewSW).toHaveBeenCalledWith(
+        { 'index.html': expect.any(Uint8Array) },
+        { openExternalLinksInNewWindow: true },
+        { regenerateFiles: expect.any(Function) },
+      );
       expect(loadSpy).toHaveBeenCalled();
+    });
+
+    it('gives the app a callback that regenerates the files for a resend', async () => {
+      vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+      await manager.refreshWithServiceWorker();
+      const { regenerateFiles } = window.eXeLearning.app.sendContentToPreviewSW.mock.calls[0][2];
+      const freshFiles = { 'index.html': new Uint8Array([9]) };
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: true, files: freshFiles });
+
+      await expect(regenerateFiles()).resolves.toBe(freshFiles);
+
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: false, error: 'Regen failed' });
+      await expect(regenerateFiles()).rejects.toThrow('Regen failed');
+    });
+
+    it('falls back to the blob URL preview when the SW is gone after a failed send', async () => {
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(new Error('Timeout waiting for SW content ready'));
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+      const loadSpy = vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+
+      await manager.refreshWithServiceWorker();
+
+      expect(blobSpy).toHaveBeenCalled();
+      expect(loadSpy).not.toHaveBeenCalled();
+    });
+
+    it('rethrows send errors while the SW is still available', async () => {
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(new Error('Timeout waiting for SW content ready'));
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+
+      await expect(manager.refreshWithServiceWorker()).rejects.toThrow('Timeout waiting for SW content ready');
+      expect(blobSpy).not.toHaveBeenCalled();
     });
 
     it('should use theme from eXeLearning.app.themes.selected', async () => {
@@ -1772,6 +1959,29 @@ describe('PreviewPanelManager', () => {
       // Verify the last argument contains the theme
       const lastCall = window.SharedExporters.generatePreviewForSW.mock.calls[0];
       expect(lastCall[4]).toEqual({ theme: 'theme-name' });
+    });
+
+    it('should rethrow send errors while the Service Worker is still available', async () => {
+      const error = new Error('Timeout waiting for SW content ready');
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(error);
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+
+      await expect(manager.refreshWithServiceWorker()).rejects.toBe(error);
+      expect(blobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to blob URL when the app gave up on the Service Worker', async () => {
+      const error = new Error('Preview Service Worker not available');
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(error);
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+      const loadSpy = vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+
+      await manager.refreshWithServiceWorker();
+
+      expect(blobSpy).toHaveBeenCalled();
+      expect(loadSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -2081,9 +2291,10 @@ describe('PreviewPanelManager', () => {
       expect(secondCallArg.type).toBe('text/html');
       // Verify viewer HTML contains PDF.js import (not iframe)
       const viewerHtml = await secondCallArg.text();
-      expect(viewerHtml).toContain('libs/pdfjs/pdf.min.mjs');
-      expect(viewerHtml).toContain('libs/pdfjs/pdf.worker.min.mjs');
-      expect(viewerHtml).toContain('getDocument(');
+      expect(viewerHtml).toContain('libs/pdfjs/pdf.min.js');
+      expect(viewerHtml).toContain('libs/pdfjs/pdf.worker.min.js');
+      expect(viewerHtml).toContain('getDocument({ url:');
+      expect(viewerHtml).not.toContain('getDocument("');
       expect(viewerHtml).toContain('createElement("canvas")');
       expect(viewerHtml).not.toContain('<iframe');
       // Verify toolbar elements

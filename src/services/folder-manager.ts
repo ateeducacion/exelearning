@@ -12,7 +12,12 @@ import * as fflateModule from 'fflate';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 import * as cryptoModule from 'crypto';
-import { getProjectAssetsDir as defaultGetProjectAssetsDir } from './file-helper';
+import {
+    resolveAssetStoragePath as defaultResolveAssetStoragePath,
+    tryResolveAssetStoragePath as defaultTryResolveAssetStoragePath,
+} from './file-helper';
+import { buildAssetStoragePath } from '../utils/asset-paths';
+import { safeUnzipSync, ZipLimitError, type ZipDecompressionLimits } from '../utils/safe-unzip';
 
 // ============================================================================
 // Types and Interfaces
@@ -28,7 +33,9 @@ export interface FolderManagerDeps {
     fs?: typeof fsExtra;
     path?: typeof pathModule;
     crypto?: typeof cryptoModule;
-    getProjectAssetsDir?: (projectUuid: string) => string;
+    resolveAssetStoragePath?: (storagePath: string) => string;
+    tryResolveAssetStoragePath?: (storagePath: string) => string | null;
+    zipLimits?: Partial<ZipDecompressionLimits>;
 }
 
 /**
@@ -152,7 +159,9 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
     const fs = deps.fs ?? fsExtra;
     const path = deps.path ?? pathModule;
     const crypto = deps.crypto ?? cryptoModule;
-    const getProjectAssetsDir = deps.getProjectAssetsDir ?? defaultGetProjectAssetsDir;
+    const resolveAssetStoragePath = deps.resolveAssetStoragePath ?? defaultResolveAssetStoragePath;
+    const tryResolveAssetStoragePath = deps.tryResolveAssetStoragePath ?? defaultTryResolveAssetStoragePath;
+    const zipLimits = deps.zipLimits;
 
     // ========================================================================
     // Validation Functions
@@ -398,34 +407,48 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
         // Generate new UUID/client_id
         const newClientId = crypto.randomUUID();
 
-        // Copy the physical file
-        const projectAssetsDir = getProjectAssetsDir(projectUuid);
-        const originalFilePath = original.storage_path;
-        const newStoragePath = path.join(projectAssetsDir, newClientId, newFilename);
+        // Copy the physical file. The database stores the FILES_DIR-relative
+        // sharded path (nested layout: <clientId>/<filename>); the source path
+        // is resolved through the shared resolver, which also accepts legacy
+        // absolute values from before the relative-path migration.
+        const originalFilePath = original.storage_path ? tryResolveAssetStoragePath(original.storage_path) : null;
 
+        let newStoragePath: string;
+        let newFilePath: string;
         try {
-            await fs.ensureDir(path.dirname(newStoragePath));
-            await fs.copy(originalFilePath, newStoragePath);
+            if (!originalFilePath) {
+                throw new Error('source storage path is not resolvable');
+            }
+            newStoragePath = buildAssetStoragePath(projectUuid, newClientId, newFilename);
+            newFilePath = resolveAssetStoragePath(newStoragePath);
+            await fs.ensureDir(path.dirname(newFilePath));
+            await fs.copy(originalFilePath, newFilePath);
         } catch (err) {
             return { success: false, error: `Failed to copy file: ${(err as Error).message}` };
         }
 
-        // Create new asset record
-        const newAssetData: NewAsset = {
-            project_id: projectId,
-            filename: newFilename,
-            storage_path: newStoragePath,
-            mime_type: original.mime_type,
-            file_size: original.file_size,
-            client_id: newClientId,
-            component_id: null, // New asset is not attached to any component
-            content_hash: original.content_hash, // Same content
-            folder_path: original.folder_path, // Same folder
-        };
+        // Create new asset record. A database failure is reported as such, and
+        // the already-copied file is removed so no untracked orphan remains.
+        try {
+            const newAssetData: NewAsset = {
+                project_id: projectId,
+                filename: newFilename,
+                storage_path: newStoragePath,
+                mime_type: original.mime_type,
+                file_size: original.file_size,
+                client_id: newClientId,
+                component_id: null, // New asset is not attached to any component
+                content_hash: original.content_hash, // Same content
+                folder_path: original.folder_path, // Same folder
+            };
 
-        const newAsset = await queries.createAsset(db, newAssetData);
+            const newAsset = await queries.createAsset(db, newAssetData);
 
-        return { success: true, newAsset };
+            return { success: true, newAsset };
+        } catch (err) {
+            await fs.remove(path.dirname(newFilePath)).catch(() => {});
+            return { success: false, error: `Failed to create asset record: ${(err as Error).message}` };
+        }
     };
 
     // ========================================================================
@@ -485,10 +508,15 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
             };
         }
 
-        // Read the ZIP file
+        // Read the ZIP file (the stored path is FILES_DIR-relative; legacy
+        // absolute values are handled by the resolver)
+        const zipFilePath = zipAsset.storage_path ? tryResolveAssetStoragePath(zipAsset.storage_path) : null;
         let zipData: Buffer;
         try {
-            zipData = await fs.readFile(zipAsset.storage_path);
+            if (!zipFilePath) {
+                throw new Error('unresolvable storage path');
+            }
+            zipData = await fs.readFile(zipFilePath);
         } catch {
             return {
                 success: false,
@@ -499,22 +527,27 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
             };
         }
 
-        // Extract ZIP contents
+        // Refuse archives over the decompression limits before any entry is inflated.
+        // safeUnzipSync is the shared guard for every server unzip sink. Its
+        // central-directory check is the same pre-inflation cap main added on this
+        // path, and an injected zipLimits override still applies.
         const uint8ZipData = new Uint8Array(zipData);
         let unzipped: Record<string, Uint8Array>;
         try {
-            unzipped = fflate.unzipSync(uint8ZipData);
-        } catch {
+            unzipped = safeUnzipSync(uint8ZipData, { label: 'project ZIP asset', fflate, limits: zipLimits });
+        } catch (err) {
             return {
                 success: false,
-                error: 'Failed to extract ZIP file - invalid or corrupted archive',
+                error:
+                    err instanceof ZipLimitError
+                        ? err.message
+                        : 'Failed to extract ZIP file - invalid or corrupted archive',
                 extractedCount: 0,
                 folders: [],
                 assets: [],
             };
         }
 
-        const projectAssetsDir = getProjectAssetsDir(projectUuid);
         const createdAssets: Asset[] = [];
         const foundFolders = new Set<string>();
 
@@ -577,14 +610,22 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
                 continue;
             }
 
-            // Generate client ID and storage path
+            // Generate client ID and the FILES_DIR-relative storage path
+            // (nested layout: assets/<shard>/<projectUuid>/<clientId>/<filename>)
             const clientId = crypto.randomUUID();
-            const storagePath = path.join(projectAssetsDir, clientId, entryFilename);
+            let storagePath: string;
+            let physicalPath: string;
+            try {
+                storagePath = buildAssetStoragePath(projectUuid, clientId, entryFilename);
+                physicalPath = resolveAssetStoragePath(storagePath);
+            } catch {
+                continue; // Skip entries whose names cannot form a safe path
+            }
 
             // Write file to storage
             try {
-                await fs.ensureDir(path.dirname(storagePath));
-                await fs.writeFile(storagePath, Buffer.from(data));
+                await fs.ensureDir(path.dirname(physicalPath));
+                await fs.writeFile(physicalPath, Buffer.from(data));
             } catch {
                 continue; // Skip files that fail to write
             }

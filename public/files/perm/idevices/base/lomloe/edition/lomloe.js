@@ -55,7 +55,56 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: null,
             file: '../data/lomloe-ES.json',
-            available: false  // National concretion JSON not yet available
+            available: true
+        },
+        {
+            id: 'ES-EFP',
+            isoCode: 'ES-EFP',
+            label: 'LOMLOE — Ámbito de gestión MEFPD',
+            labelEn: 'LOMLOE — Ministry-managed territory (MEFPD)',
+            framework: 'LOMLOE',
+            community: 'Ámbito de gestión del Ministerio de Educación, Formación Profesional y Deportes',
+            file: '../data/lomloe-ES-EFP.json',
+            available: true
+        },
+        {
+            id: 'ES-EX',
+            isoCode: 'ES-EX',
+            label: 'LOMLOE — Extremadura',
+            labelEn: 'LOMLOE — Extremadura',
+            framework: 'LOMLOE',
+            community: 'Extremadura',
+            file: '../data/lomloe-ES-EX.json',
+            // Temporarily disabled, awaiting confirmation for reactivation. The
+            // dataset JSON stays in the repo untouched; flip back to true to
+            // re-enable.
+            available: false
+        },
+        {
+            id: 'ES-MD',
+            isoCode: 'ES-MD',
+            label: 'LOMLOE — Comunidad de Madrid',
+            labelEn: 'LOMLOE — Community of Madrid',
+            framework: 'LOMLOE',
+            community: 'Comunidad de Madrid',
+            file: '../data/lomloe-ES-MD.json',
+            available: true
+        },
+        {
+            id: 'ES-GA',
+            isoCode: 'ES-GA',
+            label: 'LOMLOE — Galicia',
+            labelEn: 'LOMLOE — Galicia',
+            framework: 'LOMLOE',
+            community: 'Galicia',
+            file: '../data/lomloe-ES-GA.json',
+            // On hold (#1900 / #1898): the Galicia concretion needs official
+            // spec decisions before it can match the regulatory curriculum —
+            // a hybrid "mandatory + optional" descriptor mode (unsupported
+            // today) and official Galician descriptor labels. Hidden until
+            // those are defined; flip back to true to re-enable. The dataset
+            // JSON stays in the repo untouched.
+            available: false
         },
         {
             id: 'ES-CN',
@@ -65,19 +114,118 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Islas Canarias',
             file: '../data/lomloe-ES-CN.json',
+            available: true,
+            // Canarias is the only concretion whose official source maps
+            // descriptores operativos individually to each criterio de
+            // evaluación. The other datasets copy the competencia-level
+            // descriptor set onto every criterio, so the teacher must pick
+            // them explicitly (checkbox mode). See issue #1832.
+            descriptorsPerCriterion: true
+        },
+        {
+            id: 'ES-NC',
+            isoCode: 'ES-NC',
+            label: 'LOMLOE — Comunidad Foral de Navarra',
+            labelEn: 'LOMLOE — Chartered Community of Navarre',
+            framework: 'LOMLOE',
+            community: 'Comunidad Foral de Navarra',
+            file: '../data/lomloe-ES-NC.json',
             available: true
+        },
+        {
+            id: 'ES-VC',
+            isoCode: 'ES-VC',
+            label: 'LOMLOE — Comunitat Valenciana',
+            labelEn: 'LOMLOE — Valencian Community',
+            framework: 'LOMLOE',
+            community: 'Comunitat Valenciana',
+            file: '../data/lomloe-ES-VC.json',
+            available: true
+        },
+        {
+            id: 'ES-PV',
+            isoCode: 'ES-PV',
+            label: 'LOMLOE — Euskadi / País Vasco',
+            labelEn: 'LOMLOE — Euskadi / Basque Country',
+            framework: 'LOMLOE',
+            community: 'Euskadi / País Vasco',
+            file: '../data/lomloe-ES-PV.json',
+            available: true,
+            showDescriptorsAtCompetency: true,
+            // Keep canonical dataset keys stable while using inclusive age labels
+            // in the editor for the two Euskadi Infantil cycles.
+            nivelLabels: {
+                'Lehen zikloa (0-3 urte)': 'Lehen zikloa (0-2 urte)',
+                'Bigarren zikloa (3-6 urte)': 'Bigarren zikloa (3-5 urte)'
+            }
         }
         // Future entries — add when data files are ready:
         // { id: 'ES-AN', isoCode: 'ES-AN', label: 'LOMLOE — Andalucía', ... }
-        // { id: 'ES-MD', isoCode: 'ES-MD', label: 'LOMLOE — Comunidad de Madrid', ... }
         // { id: 'ES-CT', isoCode: 'ES-CT', label: 'LOMLOE — Catalunya', ... }
     ];
 
     var DEFAULT_DATASET = 'ES-CN';
 
     /**
-     * Display names for each LOMLOE competencia clave code.
-     * Used as tooltip text (title attribute) on cc-tag and cc-badge spans.
+     * Per-course subject availability for the obligatory ESO block (1.º–3.º).
+     *
+     * The state RD 217/2022 defines the curriculum of these subjects for the
+     * "primero a tercero" block as a whole, without assigning each subject to a
+     * specific course, so the generator duplicated every subject into all three
+     * years. Each autonomous community, however, fixes the per-course
+     * distribution in its own decree (Anexo horario). This map encodes that
+     * distribution (subjects with weekly hours > 0) so the materia list shows
+     * only the subjects actually taught in the selected course. See issue #1832.
+     *
+     * Only datasets whose norm fixes a per-course distribution appear here:
+     *   - ES-EX:  Decreto 110/2022 (DOE), Anexo V. (unreachable while ES-EX available:false)
+     *   - ES-MD:  Decreto 65/2022 (BOCM), Anexo I.
+     *   - ES-EFP: Orden EFP/754/2022 (BOE), per-course markers of Anexo II.
+     * Datasets absent from this map (ES state floor, ES-CN, ES-GA already
+     * extracted per course, etc.) are not filtered. 4.º ESO is intentionally
+     * left unfiltered: it is built on optional "materias de opción" the student
+     * chooses, so all options remain visible.
+     */
+    var ESO_COURSE_SUBJECTS = {
+        // ES-EX uses the official Extremadura subject codes (see README).
+        // Unreachable while available:false above — getCourseSubjectFilter('ES-EX') is never
+        // called for disabled datasets. Restore together with the available flag above.
+        'ES-EX': {
+            '1º ESO': ['BG', 'EF', 'EPVA', 'GH', 'LCL', 'LE', 'MAT', 'MUS'],
+            '2º ESO': ['EF', 'EVCE', 'FQ', 'GH', 'LCL', 'LE', 'MAT', 'MUS', 'TECD'],
+            '3º ESO': ['BG', 'EF', 'EPVA', 'FQ', 'GH', 'LCL', 'LE', 'MAT', 'TECD']
+        },
+        'ES-MD': {
+            '1º ESO': ['BIG', 'EFI', 'EPV', 'GEH', 'LCL', 'LEX', 'MAT', 'MUS'],
+            '2º ESO': ['EFI', 'EPV', 'EVC', 'FQX', 'GEH', 'LCL', 'LEX', 'MAT', 'TYD'],
+            '3º ESO': ['BIG', 'EFI', 'FQX', 'GEH', 'LCL', 'LEX', 'MAT', 'MUS', 'TYD']
+        },
+        'ES-EFP': {
+            '1º ESO': ['BIG', 'EFI', 'EPV', 'GEH', 'LCL', 'LEX', 'MAT', 'MUS'],
+            '2º ESO': ['EFI', 'EVC', 'FQX', 'GEH', 'LCL', 'LEX', 'MAT', 'MUS', 'TYD'],
+            '3º ESO': ['BIG', 'EFI', 'EPV', 'FQX', 'GEH', 'LCL', 'LEX', 'MAT', 'TYD']
+        }
+    };
+
+    /**
+     * Returns the allow-list of subject codes for a given dataset/nivel, or null
+     * when no per-course filter applies (→ show every subject present).
+     */
+    function getCourseSubjectFilter(datasetId, nivel) {
+        var byDataset = ESO_COURSE_SUBJECTS[datasetId];
+        return (byDataset && byDataset[nivel]) || null;
+    }
+
+    /**
+     * Default (Castilian) display names for each LOMLOE competencia clave /
+     * descriptor code. Used as tooltip text (title attribute) on cc-tag and
+     * cc-badge spans.
+     *
+     * This is the SHARED FALLBACK catalogue. A dataset may override any code's
+     * text via its reserved top-level `descriptors` key (e.g. the Comunitat
+     * Valenciana ships its perfil-d'eixida descriptors in Valencian); the
+     * override is resolved per-code by descriptorText() below. See the iDevice
+     * README, "Optional per-dataset descriptor catalogue".
      */
     var CC_DESCRIPTIONS = {
         // Competencia en comunicación lingüística
@@ -99,6 +247,9 @@ var $exeDevice = (function () {
         'STEM3':  'STEM3 — Plantea proyectos de diseño, creando prototipos o modelos para resolver problemas',
         'STEM4':  'STEM4 — Interpreta y transmite elementos relevantes de investigaciones de forma clara y precisa',
         'STEM5':  'STEM5 — Desarrolla proyectos de diseño de forma creativa, evaluando su sostenibilidad e impacto',
+        // Competencia matemática y competencias básicas en ciencia y tecnología
+        // (LOMCE-era family code still used by the Comunitat Valenciana dataset)
+        'CMCT':   'Competencia matemática y competencias básicas en ciencia y tecnología',
         // Competencia digital
         'CD':     'Competencia digital',
         'CD1':    'CD1 — Realiza búsquedas en internet y contrasta información de forma crítica',
@@ -141,12 +292,55 @@ var $exeDevice = (function () {
         'CCEC4.2': 'CCEC4.2 — Participa de forma comprometida y creativa en proyectos culturales y artísticos'
     };
 
+    /**
+     * Resolves a competencia-clave / descriptor code to its display text.
+     * A dataset may ship its own catalog under the reserved top-level
+     * `descriptors` key (e.g. the Comunitat Valenciana publishes the perfil
+     * d'eixida descriptors in Valencian); when present it overrides the shared
+     * Castilian CC_DESCRIPTIONS default, falling back per-code.
+     */
+    function descriptorText(code) {
+        var ov = rawData && rawData.descriptors;
+        return (ov && ov[code]) || CC_DESCRIPTIONS[code] || code;
+    }
+
+    /**
+     * Denormalizes the active dataset's descriptor overrides for the codes
+     * actually used by the current selections; stored on save so the standalone
+     * export renders the right tooltips even through its fallback path.
+     */
+    function collectUsedDescriptors() {
+        var ov = rawData && rawData.descriptors;
+        if (!ov) return {};
+        var used = {};
+        selections.forEach(function (sel) {
+            (sel.competenciasClave || []).forEach(function (cc) {
+                if (ov[cc] != null) used[cc] = ov[cc];
+            });
+        });
+        return used;
+    }
+
     // ════════════════════════════════════════════════════════════════
     // STATE  (one instance per iDevice node on the page)
     // ════════════════════════════════════════════════════════════════
 
     var ideviceBody    = null;  // the <article> DOM element
     var instanceId     = null;  // idevice-id attribute value
+
+    /**
+     * Lifecycle of the open edition, captured in `init()`.
+     *
+     * The editor is written as free functions inside this closure, so they
+     * cannot reach `this.$lifecycle`. Each registration captures the value in a
+     * local first, which binds the resource to the edition that created it even
+     * if a later edition overwrites this variable.
+     *
+     * @type {Object|null}
+     */
+    var lifecycle = null;
+    /** Removes the document-level Escape handler of the current registration. */
+    var removeKeyDownListener = null;
 
     var currentDataset = DEFAULT_DATASET;
     var rawData        = null;  // parsed JSON from active dataset
@@ -167,6 +361,27 @@ var $exeDevice = (function () {
 
     function getDataset(id) {
         return DATASETS.find(function (d) { return d.id === id; });
+    }
+
+    /**
+     * Whether the given dataset maps descriptores operativos individually to
+     * each criterio de evaluación (true → render the criterio's descriptors as
+     * fixed badges) or only at the competencia level (false → let the teacher
+     * pick the applicable descriptors per criterio via checkboxes).
+     */
+    function datasetHasPerCriterionDescriptors(id) {
+        var ds = getDataset(id);
+        return !!(ds && ds.descriptorsPerCriterion);
+    }
+
+    /**
+     * Whether competencia-level descriptor links should be visible while
+     * browsing the curriculum. The selection panel still lets the teacher
+     * choose the descriptors that apply to each selected criterio.
+     */
+    function datasetShowsCompetencyDescriptors(id) {
+        var ds = getDataset(id);
+        return !!(ds && ds.showDescriptorsAtCompetency);
     }
 
     /**
@@ -236,29 +451,66 @@ var $exeDevice = (function () {
 
         var url = resolveEditionResource(ds.file);
 
-        var promise = (function () {
-            if (typeof fetch === 'function') {
-                return fetch(url)
-                    .then(function (r) {
-                        if (!r.ok) throw new Error('HTTP ' + r.status);
-                        return r.json();
-                    })
-                    .catch(function () { return loadViaXHR(url); });
-            }
-            return loadViaXHR(url);
-        }()).then(function (data) {
+        var promise = fetchJsonMaybeGzipped(url).then(function (data) {
             dataCache[datasetId] = data;
             delete dataPromises[datasetId];
             return data;
+        }).catch(function (err) {
+            delete dataPromises[datasetId];
+            throw err;
         });
 
         dataPromises[datasetId] = promise;
         return promise;
     }
 
-    function loadViaXHR(url) {
+    // Tries <url>.zst first (decompressed in-browser via fzstd, see
+    // public/libs/fzstd/fzstd.umd.js), falls back to raw <url> for dev
+    // (uncompressed) and browsers/sessions where fzstd isn't loaded.
+    function fetchJsonMaybeGzipped(url) {
+        // Aborted with the edition, so a dataset download cannot keep running
+        // against an editor that no longer exists.
+        var lc = lifecycle;
+        var opts = lc ? { signal: lc.signal } : {};
+        var canDecompressZstd = typeof window !== 'undefined'
+            && typeof window.fzstd !== 'undefined'
+            && typeof fetch === 'function';
+        var zstPromise = canDecompressZstd
+            ? fetch(url + '.zst', opts).then(function (r) {
+                if (!r.ok) throw new Error('zst HTTP ' + r.status);
+                return r.arrayBuffer();
+            }).then(function (buf) {
+                var decompressed = window.fzstd.decompress(new Uint8Array(buf));
+                return JSON.parse(new TextDecoder().decode(decompressed));
+            })
+            : Promise.reject(new Error('fzstd unavailable'));
+        // An abort is a decision, not a failure: once the edition closed, no
+        // tier may fall back to the next one and start new network work.
+        function stopIfClosed(err) {
+            if (lc && !lc.isActive()) throw (lc.signal && lc.signal.reason) || err;
+        }
+        return zstPromise.catch(function (err) {
+            stopIfClosed(err);
+            if (typeof fetch === 'function') {
+                return fetch(url, opts).then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                }).catch(function (fetchErr) {
+                    stopIfClosed(fetchErr);
+                    return loadViaXHR(url, lc);
+                });
+            }
+            return loadViaXHR(url, lc);
+        });
+    }
+
+    // `lc` is passed in, not read from the module variable: by the time a
+    // fallback runs, a later edition may have replaced `lifecycle`.
+    function loadViaXHR(url, lc) {
         return new Promise(function (resolve, reject) {
             var xhr = new XMLHttpRequest();
+            // Aborted with the edition, like the fetch paths above.
+            if (lc) lc.ownInstance(xhr, 'abort');
             xhr.open('GET', url, true);
             xhr.onload = function () {
                 if (xhr.status >= 200 && xhr.status < 300) {
@@ -277,20 +529,51 @@ var $exeDevice = (function () {
     // DATA ACCESSORS
     // ════════════════════════════════════════════════════════════════
 
-    var ETAPA_ORDER = ['infantil', 'primaria', 'eso', 'bachillerato'];
+    // Canonical stage order. Each entry lists the substrings that identify the
+    // stage. Matching is lower-cased and accent-insensitive (see foldEtapa), so
+    // the Castilian abbreviation ("ESO"), the full official Castilian name
+    // ("Educación Secundaria Obligatoria") and the co-official-language spelling
+    // ("Educació Secundària Obligatòria", "Batxillerat", "Primària",
+    // "Haur Hezkuntza", "Lehen Hezkuntza", "Derrigorrezko Bigarren Hezkuntza")
+    // all resolve to the same rank. Without the full-name/co-official synonyms a
+    // regional dataset that uses official stage names (e.g. Navarra, Comunitat
+    // Valenciana, Euskadi) would mis-sort — "Educación Secundaria Obligatoria"
+    // matched no token and fell behind "Bachillerato" in the stage selector.
+    var ETAPA_ORDER = [
+        ['infantil', 'haur'],
+        ['primaria', 'lehen'],
+        ['eso', 'secundaria', 'bigarren'],
+        ['bachillerato', 'batxillerat', 'batxilergo'],
+    ];
+
+    // Reserved top-level keys in a dataset JSON that are NOT etapa tabs (e.g. a
+    // per-dataset `descriptors` override catalog). Keep in sync with the same
+    // list in edition/lomloe.test.js (walkAreas).
+    var RESERVED_DATASET_KEYS = ['descriptors'];
+    function isEtapaKey(k) { return RESERVED_DATASET_KEYS.indexOf(k) === -1; }
+
+    // Lower-case and strip combining diacritics so accented co-official spellings
+    // ("Primària", "Secundària", "Obligatòria") match the ASCII order tokens.
+    function foldEtapa(s) {
+        return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function etapaRank(name) {
+        var folded = foldEtapa(name);
+        for (var i = 0; i < ETAPA_ORDER.length; i++) {
+            var tokens = ETAPA_ORDER[i];
+            for (var j = 0; j < tokens.length; j++) {
+                if (folded.indexOf(tokens[j]) !== -1) return i;
+            }
+        }
+        return ETAPA_ORDER.length;
+    }
 
     function getEtapas() {
         if (!rawData) return [];
-        return Object.keys(rawData).sort(function (a, b) {
-            var al = a.toLowerCase();
-            var bl = b.toLowerCase();
-            var ai = ETAPA_ORDER.length;
-            var bi = ETAPA_ORDER.length;
-            for (var i = 0; i < ETAPA_ORDER.length; i++) {
-                if (al.indexOf(ETAPA_ORDER[i]) !== -1 && ai === ETAPA_ORDER.length) ai = i;
-                if (bl.indexOf(ETAPA_ORDER[i]) !== -1 && bi === ETAPA_ORDER.length) bi = i;
-            }
-            return ai - bi;
+        // Array.prototype.sort is stable, so unknown stages keep insertion order.
+        return Object.keys(rawData).filter(isEtapaKey).sort(function (a, b) {
+            return etapaRank(a) - etapaRank(b);
         });
     }
 
@@ -298,11 +581,26 @@ var $exeDevice = (function () {
         return (rawData && rawData[etapa]) ? Object.keys(rawData[etapa]) : [];
     }
 
+    /**
+     * Return the user-facing level label while preserving the canonical key used
+     * for data access and persisted selection identifiers.
+     */
+    function getNivelLabel(nivel) {
+        var dataset = getDataset(currentDataset);
+        var labels = dataset && dataset.nivelLabels;
+        return (labels && labels[nivel]) || nivel;
+    }
+
     function getMaterias(etapa, nivel) {
         if (!rawData || !rawData[etapa] || !rawData[etapa][nivel]) return [];
-        return Object.entries(rawData[etapa][nivel]).map(function (pair) {
-            return { codArea: pair[0], denominacion: pair[1].denominacion || pair[0] };
-        });
+        var allow = getCourseSubjectFilter(currentDataset, nivel);
+        return Object.entries(rawData[etapa][nivel])
+            .filter(function (pair) {
+                return !allow || allow.indexOf(pair[0]) !== -1;
+            })
+            .map(function (pair) {
+                return { codArea: pair[0], denominacion: pair[1].denominacion || pair[0] };
+            });
     }
 
     function getSabereBloques(etapa, nivel, codArea) {
@@ -406,6 +704,11 @@ var $exeDevice = (function () {
             if (top + tr.height > vh - 4 && r.top - gap - tr.height >= 4) {
                 top = r.top - gap - tr.height;
             }
+            // Clamp vertically so a tall tooltip (long criteria definitions) is
+            // never clipped at the bottom edge — pin it just inside the viewport
+            // when it fits neither fully below nor above the target.
+            if (vh && top + tr.height > vh - 4) top = Math.max(4, vh - 4 - tr.height);
+            if (top < 4) top = 4;
             var left = r.left + (r.width / 2) - (tr.width / 2);
             if (left < 4) left = 4;
             if (left + tr.width > vw - 4) left = Math.max(4, vw - 4 - tr.width);
@@ -455,6 +758,10 @@ var $exeDevice = (function () {
             if (current) position(current);
         }
 
+        // Deliberately NOT owned by the edition lifecycle: a page-scoped
+        // singleton whose `__lomloeTipBound` guard is shared with export/, so
+        // releasing it on close would kill every other LOMLOE tooltip on the
+        // page with nothing able to reinstall it. It captures no edition state.
         doc.addEventListener('mouseover', onOver, true);
         doc.addEventListener('mouseout',  onOut,  true);
         doc.addEventListener('focusin',   onOver, true);
@@ -484,20 +791,20 @@ var $exeDevice = (function () {
             // ── Header ───────────────────────────────────────────
             '<div class="lomloe-header">',
             '  <label>',
-            '    <span>' + _('Marco legal:') + '</span>',
+            '    <span>' + _('Legal framework:') + '</span>',
             '    <select id="lomloe-fw-' + uid + '" disabled>',
             '      <option value="lomloe">LOMLOE (España)</option>',
             '    </select>',
             '  </label>',
             '  <label>',
-            '    <span>' + _('Concreción:') + '</span>',
+            '    <span>' + _('Specification:') + '</span>',
             '    <select id="lomloe-ds-' + uid + '">' + datasetOptions + '</select>',
             '  </label>',
             '</div>',
 
             // ── Dataset not-available notice (shown when needed) ─
             '<div class="lomloe-dataset-notice" id="lomloe-notice-' + uid + '" hidden>',
-            '  ⚠️ ' + _('Este conjunto de datos no está disponible todavía. Se añadirá en una próxima versión.'),
+            '  ⚠️ ' + _('This dataset is not available yet. It will be added in an upcoming version.'),
             '</div>',
 
             // ── Two-column layout ────────────────────────────────
@@ -505,8 +812,8 @@ var $exeDevice = (function () {
 
             //   LEFT: browser panel
             '  <section class="lomloe-panel lomloe-browser" id="lomloe-browser-' + uid + '">',
-            '    <div class="lomloe-panel-header">' + _('Selector de elementos curriculares') + '</div>',
-            '    <div id="lomloe-loading-' + uid + '" class="lomloe-loading">' + _('Cargando datos curriculares…') + '</div>',
+            '    <div class="lomloe-panel-header">' + _('Curriculum elements selector') + '</div>',
+            '    <div id="lomloe-loading-' + uid + '" class="lomloe-loading">' + _('Loading curriculum data…') + '</div>',
             '    <div id="lomloe-browser-body-' + uid + '" class="lomloe-browser-body" hidden>',
             '      <!-- Etapa buttons -->',
             '      <div class="lomloe-etapa-bar" id="lomloe-etapas-' + uid + '"></div>',
@@ -516,21 +823,21 @@ var $exeDevice = (function () {
             '      <div class="lomloe-materia-content">',
             '        <div class="lomloe-materia-col">',
             '          <input class="lomloe-materia-search" id="lomloe-mat-search-' + uid + '"',
-            '            type="search" placeholder="' + _('Filtrar materias…') + '" autocomplete="off">',
+            '            type="search" placeholder="' + _('Filter…') + '" autocomplete="off">',
             '          <ul class="lomloe-materia-list" id="lomloe-mat-list-' + uid + '"></ul>',
             '        </div>',
             '        <div class="lomloe-content-col">',
             '          <div class="lomloe-tabs">',
             '            <button class="lomloe-tab-btn active" data-tab="competencias" id="lomloe-tab-comp-' + uid + '">',
-            '              🎯 ' + _('Criterios de evaluación'),
+            '              🎯 ' + _('Assessment criteria'),
             '            </button>',
             '            <button class="lomloe-tab-btn" data-tab="saberes" id="lomloe-tab-sab-' + uid + '">',
-            '              📚 ' + _('Saberes Básicos'),
+            '              📚 ' + _('Basic knowledge'),
             '            </button>',
             '          </div>',
             '          <div class="lomloe-tab-content" id="lomloe-content-' + uid + '">',
             '            <div class="lomloe-no-materia" id="lomloe-no-mat-' + uid + '">',
-            '              ← ' + _('Selecciona una materia'),
+            '              ← ' + _('Select a subject'),
             '            </div>',
             '            <div id="lomloe-items-' + uid + '" hidden></div>',
             '          </div>',
@@ -542,18 +849,18 @@ var $exeDevice = (function () {
             //   RIGHT: selections panel
             '  <aside class="lomloe-panel lomloe-selected-panel">',
             '    <div class="lomloe-selected-header">',
-            '      <span>' + _('Seleccionados') + '</span>',
+            '      <span>' + _('Selected') + '</span>',
             '      <span class="lomloe-selected-count" id="lomloe-sel-count-' + uid + '">0</span>',
             '    </div>',
             '    <div class="lomloe-selected-list" id="lomloe-sel-list-' + uid + '">',
-            '      <div class="lomloe-selected-empty">' + _('Aún no hay elementos seleccionados.') + '</div>',
+            '      <div class="lomloe-selected-empty">' + _('No elements selected yet.') + '</div>',
             '    </div>',
             '    <div class="lomloe-actions">',
             '      <button class="lomloe-btn lomloe-btn-primary" id="lomloe-preview-' + uid + '" disabled>',
-            '        👁 ' + _('Vista previa del resumen'),
+            '        👁 ' + _('Summary preview'),
             '      </button>',
             '      <button class="lomloe-btn lomloe-btn-secondary" id="lomloe-reset-' + uid + '">',
-            '        🔄 ' + _('Restablecer selección'),
+            '        🔄 ' + _('Reset selection'),
             '      </button>',
             '    </div>',
             '  </aside>',
@@ -564,8 +871,8 @@ var $exeDevice = (function () {
             '<div class="lomloe-modal-overlay" id="lomloe-modal-' + uid + '" hidden role="dialog" aria-modal="true">',
             '  <div class="lomloe-modal-box">',
             '    <div class="lomloe-modal-top">',
-            '      <h2>' + _('Resumen de la fundamentación curricular') + '</h2>',
-            '      <button class="lomloe-modal-close" id="lomloe-modal-close-' + uid + '" aria-label="' + _('Cerrar') + '">✕</button>',
+            '      <h2>' + _('Curriculum foundations summary') + '</h2>',
+            '      <button class="lomloe-modal-close" id="lomloe-modal-close-' + uid + '" aria-label="' + _('Close') + '">✕</button>',
             '    </div>',
             '    <div class="lomloe-modal-body" id="lomloe-modal-body-' + uid + '"></div>',
             '  </div>',
@@ -670,6 +977,8 @@ var $exeDevice = (function () {
                 if (!selId) return;
                 if (e.target.classList.contains('lomloe-partial-cb')) {
                     onPartialChange(selId, e.target.checked);
+                } else if (e.target.classList.contains('lomloe-desc-cb')) {
+                    onDescriptorToggle(selId, e.target.dataset.cc, e.target.checked);
                 }
             });
             selList.addEventListener('click', function (e) {
@@ -703,9 +1012,16 @@ var $exeDevice = (function () {
             });
         }
 
-        // Global Escape key (remove first to prevent duplicates on re-init)
-        document.removeEventListener('keydown', onKeyDown);
-        document.addEventListener('keydown', onKeyDown);
+        // Global Escape key. `document` outlives the edition form, so the
+        // listener is owned by the lifecycle and removed when the editor
+        // closes; the previous registration is dropped first to prevent
+        // duplicates on re-init.
+        if (removeKeyDownListener) removeKeyDownListener();
+        removeKeyDownListener = lifecycle.addEventListener(
+            document,
+            'keydown',
+            onKeyDown
+        );
     }
 
     function onKeyDown(e) {
@@ -828,7 +1144,9 @@ var $exeDevice = (function () {
             var crit = criterios.find(function (c) { return c.codigo === codigoCriterio; }) || {};
             var matDenom = '';
             try { matDenom = rawData[etapa][nivel][codArea].denominacion || codArea; } catch (e) {}
-            selections.set(selId, {
+            var critDescriptors = crit.competencias_clave || [];
+            var perCriterion = datasetHasPerCriterionDescriptors(currentDataset);
+            var sel = {
                 id: selId,
                 type: 'criterio',
                 dataset: currentDataset,
@@ -840,9 +1158,16 @@ var $exeDevice = (function () {
                 descripcionComp: comp.descripcion || '',
                 codigoCriterio: codigoCriterio,
                 descripcionCriterio: crit.descripcion || '',
-                competenciasClave: crit.competencias_clave || [],
+                // Per-criterion datasets (Canarias): descriptors are an
+                // authoritative fixed list. Other datasets: start empty and let
+                // the teacher choose from descriptorOptions via checkboxes.
+                competenciasClave: perCriterion ? critDescriptors : [],
                 partial: false
-            });
+            };
+            if (!perCriterion) {
+                sel.descriptorOptions = critDescriptors.slice();
+            }
+            selections.set(selId, sel);
         }
         refreshMateriaSelBadge();
         renderSelectedPanel();
@@ -852,6 +1177,26 @@ var $exeDevice = (function () {
         if (selections.has(selId)) {
             selections.get(selId).partial = checked;
         }
+    }
+
+    /**
+     * Adds/removes an operational descriptor code from a criterio selection
+     * (checkbox mode only). Keeps the chosen subset ordered by descriptorOptions.
+     */
+    function onDescriptorToggle(selId, cc, checked) {
+        var sel = selections.get(selId);
+        if (!sel) return;
+        var chosen = sel.competenciasClave || [];
+        if (checked) {
+            if (chosen.indexOf(cc) === -1) chosen.push(cc);
+        } else {
+            chosen = chosen.filter(function (c) { return c !== cc; });
+        }
+        // Preserve the canonical order from the available options.
+        var options = sel.descriptorOptions || chosen;
+        sel.competenciasClave = options.filter(function (c) {
+            return chosen.indexOf(c) !== -1;
+        });
     }
 
     function onRemoveSelection(selId) {
@@ -867,7 +1212,7 @@ var $exeDevice = (function () {
 
     function onReset() {
         if (selections.size === 0) return;
-        if (!window.confirm(_('¿Restablecer toda la selección? Se perderán los cambios.'))) return;
+        if (!window.confirm(_('Reset all selections? Changes will be lost.'))) return;
         selections.clear();
         // Uncheck all visible checkboxes
         qa('input[type="checkbox"][data-id]').forEach(function (cb) { cb.checked = false; });
@@ -922,7 +1267,7 @@ var $exeDevice = (function () {
         var niveles = getNiveles(selectedEtapa);
         bar.innerHTML = niveles.map(function (n) {
             var active = (n === selectedNivel) ? ' active' : '';
-            return '<button class="lomloe-nivel-btn' + active + '" data-nivel="' + esc(n) + '">' + esc(n) + '</button>';
+            return '<button class="lomloe-nivel-btn' + active + '" data-nivel="' + esc(n) + '">' + esc(getNivelLabel(n)) + '</button>';
         }).join('');
     }
 
@@ -931,7 +1276,7 @@ var $exeDevice = (function () {
         if (!list) return;
         if (!selectedEtapa || !selectedNivel) {
             list.innerHTML = '<li class="lomloe-materia-placeholder">' +
-                _('Selecciona etapa y nivel') + '</li>';
+                _('Select stage and level') + '</li>';
             return;
         }
         var materias = getMaterias(selectedEtapa, selectedNivel);
@@ -944,7 +1289,7 @@ var $exeDevice = (function () {
         }
         if (!materias.length) {
             list.innerHTML = '<li class="lomloe-materia-placeholder">' +
-                _('Sin resultados') + '</li>';
+                _('No results') + '</li>';
             return;
         }
         list.innerHTML = materias.map(function (m) {
@@ -1000,7 +1345,7 @@ var $exeDevice = (function () {
         var bloques = getSabereBloques(selectedEtapa, selectedNivel, selectedMateria.codArea);
         var bloqueKeys = Object.keys(bloques);
         if (!bloqueKeys.length) {
-            return '<div class="lomloe-no-materia">' + _('No hay saberes básicos para esta materia.') + '</div>';
+            return '<div class="lomloe-no-materia">' + _('No basic knowledge for this subject.') + '</div>';
         }
         return bloqueKeys.map(function (bloque) {
             var items = bloques[bloque];
@@ -1043,15 +1388,35 @@ var $exeDevice = (function () {
         var comps = getCompetencias(selectedEtapa, selectedNivel, selectedMateria.codArea);
         var compKeys = Object.keys(comps);
         if (!compKeys.length) {
-            return '<div class="lomloe-no-materia">' + _('No hay competencias específicas para esta materia.') + '</div>';
+            return '<div class="lomloe-no-materia">' + _('No specific competencies for this subject.') + '</div>';
         }
+        // Canarias has an authoritative per-criterio descriptor mapping. Euskadi
+        // publishes descriptor links at competencia level, so those are shown
+        // once per competencia while the selected-criterio panel keeps checkbox
+        // mode for choosing the applicable subset.
+        var showCritDescriptors = datasetHasPerCriterionDescriptors(currentDataset);
+        var showCompDescriptors = datasetShowsCompetencyDescriptors(currentDataset);
         return compKeys.map(function (codComp) {
             var comp = comps[codComp];
             var criterios = comp.criterios_evaluacion || [];
+            var compDescriptorCodes = [];
+            if (showCompDescriptors) {
+                criterios.forEach(function (crit) {
+                    (crit.competencias_clave || []).forEach(function (cc) {
+                        if (compDescriptorCodes.indexOf(cc) === -1) {
+                            compDescriptorCodes.push(cc);
+                        }
+                    });
+                });
+            }
+            var compDescriptorTags = compDescriptorCodes.map(function (cc) {
+                return '<span class="lomloe-cc-tag" title="' +
+                    esc(descriptorText(cc)) + '">' + esc(cc) + '</span>';
+            }).join('');
             var criteriosHtml = criterios.map(function (crit) {
                 var selId = criterioSelId(selectedEtapa, selectedNivel, selectedMateria.codArea, codComp, crit.codigo);
-                var ccTags = (crit.competencias_clave || []).map(function (cc) {
-                    var title = CC_DESCRIPTIONS[cc] || cc;
+                var ccTags = !showCritDescriptors ? '' : (crit.competencias_clave || []).map(function (cc) {
+                    var title = descriptorText(cc);
                     return '<span class="lomloe-cc-tag" title="' + esc(title) + '">' + esc(cc) + '</span>';
                 }).join('');
                 return [
@@ -1073,6 +1438,9 @@ var $exeDevice = (function () {
                 '    <span class="lomloe-comp-code">' + esc(codComp) + '</span>',
                 '    <span class="lomloe-comp-desc">' + esc(comp.descripcion) + '</span>',
                 '  </div>',
+                compDescriptorTags
+                    ? '  <div class="lomloe-cc-tags lomloe-comp-cc-tags">' + compDescriptorTags + '</div>'
+                    : '',
                 '  <div class="lomloe-criterios">' + criteriosHtml + '</div>',
                 '</div>'
             ].join('');
@@ -1095,7 +1463,7 @@ var $exeDevice = (function () {
 
         if (count === 0) {
             listEl.innerHTML = '<div class="lomloe-selected-empty">' +
-                _('Aún no hay elementos seleccionados.') + '</div>';
+                _('No elements selected yet.') + '</div>';
             return;
         }
 
@@ -1105,7 +1473,9 @@ var $exeDevice = (function () {
             var key = matGroupKey(sel.etapa, sel.nivel, sel.codArea);
             if (!groups.has(key)) {
                 groups.set(key, {
-                    label: sel.etapa + ' · ' + sel.nivel + ' · ' + sel.denominacion,
+                    // Display the remapped (inclusive) level label; the raw
+                    // sel.nivel remains the canonical grouping key above.
+                    label: sel.etapa + ' · ' + getNivelLabel(sel.nivel) + ' · ' + sel.denominacion,
                     items: []
                 });
             }
@@ -1132,6 +1502,35 @@ var $exeDevice = (function () {
 
     }
 
+    /**
+     * For datasets without a per-criterio descriptor mapping, renders the
+     * available operational descriptors as checkboxes so the teacher chooses
+     * which apply to this criterio. Returns '' for per-criterion datasets
+     * (Canarias) or when there are no descriptor options.
+     */
+    function buildDescriptorPickerHtml(sel) {
+        if (datasetHasPerCriterionDescriptors(sel.dataset)) return '';
+        var options = sel.descriptorOptions || [];
+        if (!options.length) return '';
+        var chosen = sel.competenciasClave || [];
+        var boxes = options.map(function (cc) {
+            var title = descriptorText(cc);
+            var checked = chosen.indexOf(cc) !== -1 ? ' checked' : '';
+            return [
+                '<label class="lomloe-desc-cb-label"' + tipAttr(title) + '>',
+                '  <input type="checkbox" class="lomloe-desc-cb" data-selid="' + esc(sel.id) + '" data-cc="' + esc(cc) + '"' + checked + '>',
+                '  ' + esc(cc),
+                '</label>'
+            ].join('');
+        }).join('');
+        return [
+            '  <div class="lomloe-sel-descriptors">',
+            '    <span class="lomloe-sel-descriptors-caption">' + esc(getCompClaveHeader(sel.etapa)) + ':</span>',
+            '    <div class="lomloe-desc-cb-group">' + boxes + '</div>',
+            '  </div>'
+        ].join('');
+    }
+
     function buildSelItemHtml(sel) {
         var icon = sel.type === 'saber' ? '📚' : '🎯';
         var code = sel.type === 'saber' ? sel.nombre : sel.codigoCriterio;
@@ -1145,9 +1544,10 @@ var $exeDevice = (function () {
                 '  <div class="lomloe-sel-meta">',
                 '    <label class="lomloe-sel-partial-label">',
                 '      <input type="checkbox" class="lomloe-partial-cb" data-selid="' + esc(sel.id) + '"' + (sel.partial ? ' checked' : '') + '>',
-                '      ' + _('Parcial'),
+                '      ' + _('Partial'),
                 '    </label>',
-                '  </div>'
+                '  </div>',
+                buildDescriptorPickerHtml(sel)
             ].join('');
         }
 
@@ -1158,7 +1558,7 @@ var $exeDevice = (function () {
             '    <div class="lomloe-sel-label"' + tipAttr(tooltip) + '>',
             '      <span class="lomloe-sel-code">' + esc(code) + '</span>',
             '    </div>',
-            '    <button class="lomloe-sel-remove" data-selid="' + esc(sel.id) + '" title="' + _('Eliminar') + '">✕</button>',
+            '    <button class="lomloe-sel-remove" data-selid="' + esc(sel.id) + '" title="' + _('Remove') + '">✕</button>',
             '  </div>',
             metaHtml,
             '</div>'
@@ -1179,20 +1579,23 @@ var $exeDevice = (function () {
      * Infantil uses "Comp. Clave", Primaria/ESO/Bachillerato use "Descriptores operativos".
      */
     function isInfantil(etapa) {
-        return etapa && etapa.toLowerCase().indexOf('infantil') !== -1;
+        // 'infantil' covers Castilian/Valencian stage names; 'haur' covers the
+        // Basque "Haur Hezkuntza" (Euskadi dataset).
+        var f = etapa ? etapa.toLowerCase() : '';
+        return f.indexOf('infantil') !== -1 || f.indexOf('haur') !== -1;
     }
 
     function getCompClaveHeader(etapa) {
         if (isInfantil(etapa)) {
-            return _('Comp. Clave');
+            return _('Key Comp.');
         }
-        return _('Descriptores operativos');
+        return _('Operational descriptors');
     }
 
     function generateSummaryHtml() {
         var sels = Array.from(selections.values());
         if (!sels.length) {
-            return '<p>' + _('No hay elementos curriculares seleccionados.') + '</p>';
+            return '<p>' + _('No curriculum elements selected.') + '</p>';
         }
 
         var ds = getDataset(currentDataset);
@@ -1202,14 +1605,14 @@ var $exeDevice = (function () {
         var saberes = sels.filter(function (s) { return s.type === 'saber'; });
 
         var html = '';
-        html += '<h3 class="lomloe-export-title">' + _('Fundamentación Curricular LOMLOE') + '</h3>';
+        html += '<h3 class="lomloe-export-title">' + _('LOMLOE Curriculum Foundations') + '</h3>';
         html += '<p class="lomloe-export-meta">';
-        html += _('Fundamentación') + ': <strong>' + esc(datasetLabel) + '</strong>';
-        html += ' &nbsp;|&nbsp; ' + _('Elementos seleccionados') + ': <strong>' + sels.length + '</strong>';
-        if (criterios.length) html += ' (' + criterios.length + ' ' + _('criterios');
-        if (saberes.length && criterios.length) html += ', ' + saberes.length + ' ' + _('saberes') + ')';
+        html += _('Foundations') + ': <strong>' + esc(datasetLabel) + '</strong>';
+        html += ' &nbsp;|&nbsp; ' + _('Selected elements') + ': <strong>' + sels.length + '</strong>';
+        if (criterios.length) html += ' (' + criterios.length + ' ' + _('criteria');
+        if (saberes.length && criterios.length) html += ', ' + saberes.length + ' ' + _('knowledge') + ')';
         else if (criterios.length) html += ')';
-        else if (saberes.length) html += ' (' + saberes.length + ' ' + _('saberes') + ')';
+        else if (saberes.length) html += ' (' + saberes.length + ' ' + _('knowledge') + ')';
         html += '</p>';
 
         if (criterios.length) {
@@ -1235,15 +1638,15 @@ var $exeDevice = (function () {
 
             html += '<table class="lomloe-export-table">';
             html += '<thead><tr>';
-            html += '<th' + tipAttr(_('Competencias Específicas')) + '>' + _('Comp. Específica') + '</th>';
+            html += '<th' + tipAttr(_('Specific Competencies')) + '>' + _('Spec. Comp.') + '</th>';
             if (infantil) {
-                html += '<th' + tipAttr(_('Competencias Clave')) + '>' + esc(ccHeader) + '</th>';
-                html += '<th' + tipAttr(_('Criterios de evaluación')) + '>' + _('Criterios de Eval.') + '</th>';
+                html += '<th' + tipAttr(_('Key Competencies')) + '>' + esc(ccHeader) + '</th>';
+                html += '<th' + tipAttr(_('Assessment criteria')) + '>' + _('Eval. Criteria') + '</th>';
             } else {
-                html += '<th' + tipAttr(_('Criterios de evaluación')) + '>' + _('Criterios de Eval.') + '</th>';
-                html += '<th' + tipAttr(_('Descriptores operativos')) + '>' + esc(ccHeader) + '</th>';
+                html += '<th' + tipAttr(_('Assessment criteria')) + '>' + _('Eval. Criteria') + '</th>';
+                html += '<th' + tipAttr(_('Operational descriptors')) + '>' + esc(ccHeader) + '</th>';
             }
-            if (hasSaberes) html += '<th>' + _('Saberes Básicos') + '</th>';
+            if (hasSaberes) html += '<th>' + _('Basic knowledge') + '</th>';
             html += '</tr></thead><tbody>';
 
             var isFirstCriterioRow = true;
@@ -1252,7 +1655,7 @@ var $exeDevice = (function () {
                 group.items.forEach(function (sel) {
                     html += '<tr>';
                     if (isFirstInGroup) {
-                        var compTip = [sel.etapa, sel.nivel, sel.denominacion]
+                        var compTip = [sel.etapa, getNivelLabel(sel.nivel), sel.denominacion]
                             .filter(Boolean).join(' · ');
                         if (group.descripcionComp) {
                             compTip += (compTip ? '\n\n' : '') + group.descripcionComp;
@@ -1263,12 +1666,12 @@ var $exeDevice = (function () {
                     var criterioCell = '<td>';
                     criterioCell += '<span class="lomloe-criterio-code-badge"' + tipAttr(sel.descripcionCriterio) + '>' + esc(sel.codigoCriterio) + '</span>';
                     if (sel.partial) {
-                        criterioCell += ' <span class="lomloe-partial-indicator">(' + _('parcial') + ')</span>';
+                        criterioCell += ' <span class="lomloe-partial-indicator">(' + _('partial') + ')</span>';
                     }
                     criterioCell += '</td>';
                     var ccCell = '<td>';
                     (sel.competenciasClave || []).forEach(function (cc) {
-                        var ccTitle = CC_DESCRIPTIONS[cc] || cc;
+                        var ccTitle = descriptorText(cc);
                         ccCell += '<span class="lomloe-cc-badge"' + tipAttr(ccTitle) + '>' + esc(cc) + '</span>';
                     });
                     ccCell += '</td>';
@@ -1300,7 +1703,7 @@ var $exeDevice = (function () {
         if (saberes.length && !criterios.length) {
             html += '<table class="lomloe-export-table">';
             html += '<thead><tr>';
-            html += '<th>' + _('Saberes Básicos') + '</th>';
+            html += '<th>' + _('Basic knowledge') + '</th>';
             html += '</tr></thead><tbody>';
 
             saberes.forEach(function (sel) {
@@ -1343,26 +1746,36 @@ var $exeDevice = (function () {
     // ════════════════════════════════════════════════════════════════
 
     function loadAndRender() {
-        loadData(currentDataset).then(function (data) {
-            rawData = data;
-            showBrowserBody();
-            // Pick first etapa and nivel automatically
-            var etapas = getEtapas();
-            if (etapas.length) {
-                selectedEtapa = selectedEtapa || etapas[0];
-                var niveles = getNiveles(selectedEtapa);
-                selectedNivel = selectedNivel || (niveles.length ? niveles[0] : null);
-            }
-            renderEtapaBar();
-            renderNivelBar();
-            renderMateriaList();
-            // Restore materia if it was previously selected and still exists
-            if (selectedMateria) renderContent();
-            renderSelectedPanel();
-        }).catch(function (err) {
-            var loading = q('lomloe-loading-' + instanceId);
-            if (loading) loading.innerHTML = '❌ ' + _('Error al cargar los datos: ') + esc(err.message);
-        });
+        // Both continuations render into the edition form, so they are bound to
+        // this edition: a dataset that arrives (or is aborted) after the editor
+        // closed must not repaint it or report an error into it.
+        var lc = lifecycle;
+        loadData(currentDataset)
+            .then(
+                lc.bind(function (data) {
+                    rawData = data;
+                    showBrowserBody();
+                    // Pick first etapa and nivel automatically
+                    var etapas = getEtapas();
+                    if (etapas.length) {
+                        selectedEtapa = selectedEtapa || etapas[0];
+                        var niveles = getNiveles(selectedEtapa);
+                        selectedNivel = selectedNivel || (niveles.length ? niveles[0] : null);
+                    }
+                    renderEtapaBar();
+                    renderNivelBar();
+                    renderMateriaList();
+                    // Restore materia if it was previously selected and still exists
+                    if (selectedMateria) renderContent();
+                    renderSelectedPanel();
+                }),
+            )
+            .catch(
+                lc.bind(function (err) {
+                    var loading = q('lomloe-loading-' + instanceId);
+                    if (loading) loading.innerHTML = '❌ ' + _('Error loading data: ') + esc(err.message);
+                }),
+            );
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -1376,6 +1789,7 @@ var $exeDevice = (function () {
          * @param {Object|null} previousData  Previously saved state (null on first creation).
          */
         init: function (element, previousData) {
+            lifecycle      = this.$lifecycle;
             ideviceBody    = element;
             instanceId     = element.getAttribute('idevice-id') || String(Date.now());
             currentDataset = DEFAULT_DATASET;
@@ -1433,6 +1847,7 @@ var $exeDevice = (function () {
                 lomloeSelectedNivel:    selectedNivel,
                 lomloeSelectedMateria:  selectedMateria,
                 lomloeSelections:       Array.from(selections.values()),
+                lomloeDescriptors:      collectUsedDescriptors(),
                 lomloeSummaryHtml:      generateSummaryHtml()
             };
         }

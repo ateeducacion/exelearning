@@ -9,6 +9,19 @@ const fflate = require('fflate');
 const https = require('https');
 
 const { initAutoUpdater } = require('./update-manager');
+const {
+    attachEditorWindowCloseGuard: attachCloseGuard,
+    windowHasUnsavedChanges,
+} = require('./editor-window-close-guard');
+const { checkLink } = require('./link-check');
+const { extractZipEntries } = require('./zip-extract');
+const { createFileReadGrants } = require('./file-read-grants');
+const { savePrintPreviewAsPdf } = require('./print-to-pdf');
+const { printPreview } = require('./print-preview');
+const {
+    createSpellCheckerController,
+    registerSpellCheckerIpc,
+} = require('./spell-checker-settings');
 const contextMenu = require('electron-context-menu').default;
 
 // Register custom protocol BEFORE app.whenReady()
@@ -174,6 +187,8 @@ log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'lo
 
 // files to open after app ready
 let pendingOpenFiles = [];
+// Files the renderer may read back through app:readFile (see file-read-grants.js)
+const fileReadGrants = createFileReadGrants();
 // Pending .elpx path per renderer WebContents id (sent when renderer is ready)
 const pendingOpenFileByWebContentsId = new Map();
 
@@ -202,9 +217,9 @@ console.error = (...args) => {
 process.on('uncaughtException', e => log.error('uncaughtException:', e));
 process.on('unhandledRejection', e => log.error('unhandledRejection:', e));
 
-// Locale detection for fallback strings
-const defaultLocale = app.getLocale().startsWith('es') ? 'es' : 'en';
-console.log(`Default locale: ${defaultLocale}.`);
+// Locale for the fallback strings of the native dialogs. It is read once the app is ready: before
+// that app.getLocale() returns an empty string, and every dialog spoke English on a Spanish system.
+let defaultLocale = 'en';
 
 let appDataPath;
 
@@ -213,8 +228,6 @@ let isShuttingDown = false; // Flag to ensure the app only shuts down once
 let updaterInited = false; // guard
 let youtubeHeadersConfigured = false;
 let protocolHandlerRegistered = false;
-const windowsClosingByConfirmation = new WeakSet();
-const windowsCheckingUnsavedChanges = new WeakSet();
 const UNSAVED_CHANGES_CLOSE_ACTION = Object.freeze({
     STAY: 0,
     DISCARD: 1,
@@ -236,6 +249,10 @@ const {
     pickStoredSaveInfo,
     clearSavedNameCache,
     resolveSaveDir,
+    buildStagingPath,
+    moveStagedFile,
+    safeUnlink,
+    finalizeStagedDownload,
 } = require('./save-utils');
 
 function proposeSavePath(lastDir, effectiveName = null) {
@@ -278,8 +295,9 @@ function writeSettings(obj) {
     try {
         fs.mkdirSync(path.dirname(SETTINGS_FILE()), { recursive: true });
         fs.writeFileSync(SETTINGS_FILE(), JSON.stringify(obj, null, 2), 'utf8');
+        return true;
     } catch (_e) {
-        // Best-effort; ignore
+        return false;
     }
 }
 
@@ -369,6 +387,8 @@ const nextDownloadKeyByWC = new Map();
 const nextDownloadNameByWC = new Map();
 // Deduplicate bursts of downloads for the same WC/URL (prevents double pickers)
 const lastDownloadByWC = new Map(); // wcId -> { url: string, time: number }
+// Monotonic id for temp staging filenames (issue #2039)
+let nextDownloadStagingId = 0;
 
 /**
  * Perform "run-once per version" maintenance.
@@ -627,31 +647,6 @@ function confirmWindowCloseWithUnsavedChanges(ownerWindow, copy) {
     return response === UNSAVED_CHANGES_CLOSE_ACTION.DISCARD;
 }
 
-async function windowHasUnsavedChanges(win) {
-    if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) {
-        return false;
-    }
-
-    try {
-        return await win.webContents.executeJavaScript(
-            `(() => {
-                const bridge = window.eXeLearning?.app?.project?._yjsBridge;
-                const documentManager = bridge?.documentManager;
-                const assetManager = bridge?.assetManager;
-                const hasUnsavedAssets =
-                    assetManager &&
-                    typeof assetManager.hasUnsavedAssets === 'function' &&
-                    assetManager.hasUnsavedAssets();
-                return documentManager?.isDirty === true || Boolean(hasUnsavedAssets);
-            })()`,
-            true,
-        );
-    } catch (error) {
-        console.warn('[Electron] Failed to read unsaved changes state from renderer:', error);
-        return false;
-    }
-}
-
 function getUnsavedChangesCloseCopy() {
     return {
         title: tOrDefault(
@@ -725,46 +720,12 @@ async function getCloseCopyFromRenderer(win) {
  * @returns {void}
  */
 function attachEditorWindowCloseGuard(win) {
-    win.on('close', async (event) => {
-        if (isShuttingDown || windowsClosingByConfirmation.has(win)) return;
-        if (windowsCheckingUnsavedChanges.has(win)) {
-            event.preventDefault();
-            return;
-        }
-
-        event.preventDefault();
-        windowsCheckingUnsavedChanges.add(win);
-
-        try {
-            const hasUnsavedChanges = await windowHasUnsavedChanges(win);
-
-            if (!hasUnsavedChanges) {
-                windowsClosingByConfirmation.add(win);
-                win.close();
-                return;
-            }
-
-            const copy = (await getCloseCopyFromRenderer(win)) 
-                      || getUnsavedChangesCloseCopy();
-
-            const shouldProceed = confirmWindowCloseWithUnsavedChanges(win, copy);
-
-            if (!shouldProceed) {
-                console.log('[Electron] Close cancelled: unsaved changes');
-                return;
-            }
-
-            console.log('[Electron] User confirmed closing with unsaved changes');
-            windowsClosingByConfirmation.add(win);
-            win.close();
-        } finally {
-            windowsCheckingUnsavedChanges.delete(win);
-        }
-    });
-
-    win.on('closed', () => {
-        windowsClosingByConfirmation.delete(win);
-        windowsCheckingUnsavedChanges.delete(win);
+    attachCloseGuard(win, {
+        hasUnsavedChanges: windowHasUnsavedChanges,
+        getCloseCopy: async (ownerWindow) =>
+            (await getCloseCopyFromRenderer(ownerWindow)) || getUnsavedChangesCloseCopy(),
+        confirmClose: confirmWindowCloseWithUnsavedChanges,
+        isShuttingDown: () => isShuttingDown,
     });
 }
 
@@ -861,7 +822,7 @@ async function createWindow() {
                     const firstFile = filesToOpen.shift();
                     if (firstFile) {
                         console.log('[main] Sending file to main window:', firstFile);
-                        mainWindow.webContents.send('app:open-file', firstFile);
+                        mainWindow.webContents.send('app:open-file', fileReadGrants.grant(firstFile));
                     }
                     // Open remaining files in new windows/tabs
                     for (const filePath of filesToOpen) {
@@ -889,8 +850,21 @@ async function createWindow() {
         }
     });
 
-    // Intercept downloads: first time ask path, then overwrite same path
-    session.defaultSession.on('will-download', async (event, item, webContents) => {
+    // Intercept downloads and route them through a single native save dialog.
+    //
+    // The bytes are streamed to a temp *staging* file whose path is set
+    // synchronously below; setting a save path before this handler yields
+    // suppresses Electron's own default save dialog. Once the download is on
+    // disk we prompt exactly once and move the file to the user-chosen path.
+    // This is the root-cause fix for the duplicate save dialog seen when a
+    // client-side download (e.g. jsPDF `doc.save()` inside an asset:// iframe)
+    // reaches will-download instead of the saveBufferAs bypass (issue #2039;
+    // same race previously patched per-flow in #1594/#1875/#1818).
+    //
+    // NOTE: this handler must stay synchronous up to `item.setSavePath()` — do
+    // not `await` before it, or Electron will show its default dialog.
+    session.defaultSession.on('will-download', (event, item, webContents) => {
+        let stagingPath = null;
         try {
             // Use the filename from the request or our override
             const wc =
@@ -917,30 +891,22 @@ async function createWindow() {
             const overrideName = wcId ? nextDownloadNameByWC.get(wcId) : null;
             if (wcId && nextDownloadNameByWC.has(wcId)) nextDownloadNameByWC.delete(wcId);
             const suggestedName = overrideName || item.getFilename() || 'document.elpx';
-            // Determine a safe target WebContents (can be null in some cases)
-            // Allow renderer to define a project key (optional)
-            let projectKey = 'default';
+            // Consume any per-download project-key hint synchronously; the
+            // renderer fallback (executeJavaScript) is resolved later, on 'done'.
+            let projectKeyHint = null;
             if (wcId && nextDownloadKeyByWC.has(wcId)) {
-                projectKey = nextDownloadKeyByWC.get(wcId) || 'default';
+                projectKeyHint = nextDownloadKeyByWC.get(wcId) || 'default';
                 nextDownloadKeyByWC.delete(wcId);
-            } else if (wc) {
-                try {
-                    projectKey = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
-                } catch (_e) {
-                    // ignore, fallback to default
-                }
             }
 
-            // Always prompt — no silent overwrite
-            const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
-            const lastDir = getLastSaveDir(projectKey) || getLastUsedDir();
-            const targetPath = await promptSave(owner, suggestedName, lastDir);
-            if (!targetPath) {
-                event.preventDefault();
-                return;
-            }
-            setLastSaveDir(projectKey, path.dirname(targetPath));
-            item.setSavePath(targetPath);
+            // Stage the download to a temp file synchronously (suppresses the
+            // Electron default dialog). We prompt + move once it completes.
+            stagingPath = buildStagingPath(
+                app.getPath('temp'),
+                suggestedName,
+                `${Date.now()}-${nextDownloadStagingId++}`,
+            );
+            item.setSavePath(stagingPath);
 
             // Progress feedback and auto-resume on interruption
             item.on('updated', (_e, state) => {
@@ -957,30 +923,62 @@ async function createWindow() {
                 }
             });
 
-            item.once('done', (_e, state) => {
+            item.once('done', async (_e, state) => {
                 const send = payload => {
                     if (wc && !wc.isDestroyed?.()) wc.send('download-done', payload);
                     else if (mainWindow && !mainWindow.isDestroyed())
                         mainWindow.webContents.send('download-done', payload);
                 };
-                if (state === 'completed') {
-                    send({ ok: true, path: targetPath });
-                    return;
-                }
-                if (state === 'interrupted') {
-                    try {
-                        const total = item.getTotalBytes() || 0;
-                        const exists = fs.existsSync(targetPath);
-                        const size = exists ? fs.statSync(targetPath).size : 0;
-                        if (exists && (total === 0 || size >= total)) {
-                            send({ ok: true, path: targetPath });
-                            return;
+                try {
+                    // Resolve the project key for the dialog default dir + persistence.
+                    let projectKey = projectKeyHint || 'default';
+                    if (!projectKeyHint && wc && !wc.isDestroyed?.()) {
+                        try {
+                            projectKey = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
+                        } catch (_e) {
+                            // ignore, fallback to default
                         }
-                    } catch (_err) {}
+                    }
+                    const owner = wc && !wc.isDestroyed?.() ? BrowserWindow.fromWebContents(wc) : mainWindow;
+                    const lastDir = getLastSaveDir(projectKey) || getLastUsedDir();
+                    const result = await finalizeStagedDownload({
+                        state,
+                        stagingPath,
+                        suggestedName,
+                        owner,
+                        lastDir,
+                        projectKey,
+                        promptSave,
+                        setLastSaveDir,
+                        move: (src, dest) => moveStagedFile(fs, src, dest),
+                        cleanup: p => safeUnlink(fs, p),
+                        stagedLooksComplete: () => {
+                            try {
+                                const total = item.getTotalBytes() || 0;
+                                const exists = fs.existsSync(stagingPath);
+                                const size = exists ? fs.statSync(stagingPath).size : 0;
+                                return exists && (total === 0 || size >= total);
+                            } catch (_err) {
+                                return false;
+                            }
+                        },
+                    });
+                    if (result.ok) {
+                        send({ ok: true, path: result.path });
+                    } else if (!result.canceled) {
+                        // A user cancel stays silent (matches the prior behavior);
+                        // only genuine failures surface an error.
+                        send({ ok: false, error: result.error });
+                    }
+                } catch (err) {
+                    safeUnlink(fs, stagingPath);
+                    send({ ok: false, error: err.message });
                 }
-                send({ ok: false, error: state });
             });
         } catch (err) {
+            // Staging failed before the download started: cancel it so Electron
+            // does not fall back to its own dialog, and clean up any temp file.
+            safeUnlink(fs, stagingPath);
             event.preventDefault();
             if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.webContents.send('download-done', { ok: false, error: err.message });
@@ -1157,16 +1155,7 @@ ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, sugges
             const uint8Data = new Uint8Array(zipData);
             const unzipped = fflate.unzipSync(uint8Data);
 
-            for (const [relativePath, content] of Object.entries(unzipped)) {
-                const fullPath = path.join(destDir, relativePath);
-                // Skip directories (they end with /)
-                if (relativePath.endsWith('/')) {
-                    fs.mkdirSync(fullPath, { recursive: true });
-                } else {
-                    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-                    fs.writeFileSync(fullPath, Buffer.from(content));
-                }
-            }
+            extractZipEntries(unzipped, destDir);
         } finally {
             try {
                 fs.unlinkSync(tmpZip);
@@ -1205,15 +1194,7 @@ ipcMain.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirN
         const uint8Data = new Uint8Array(buffer);
         const unzipped = fflate.unzipSync(uint8Data);
 
-        for (const [relativePath, content] of Object.entries(unzipped)) {
-            const fullPath = path.join(destDir, relativePath);
-            if (relativePath.endsWith('/')) {
-                fs.mkdirSync(fullPath, { recursive: true });
-            } else {
-                fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-                fs.writeFileSync(fullPath, Buffer.from(content));
-            }
-        }
+        extractZipEntries(unzipped, destDir);
 
         // Notify renderer with final destination
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
@@ -1221,6 +1202,69 @@ ipcMain.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirN
             if (wc && !wc.isDestroyed?.()) wc.send('download-done', { ok: true, path: destDir });
         } catch (_e) {}
         return { ok: true, dir: destDir };
+    } catch (err) {
+        return { ok: false, error: err?.message || 'unknown' };
+    }
+});
+
+// Open an unpacked project folder, walk its contents, and return a
+// base64-encoded zip the renderer can feed into importFromElpxViaYjs.
+// The folder layout is the same one that lives inside an .elpx — this
+// handler is the inverse of app:exportBufferToFolder.
+ipcMain.handle('app:openProjectFolder', async (e) => {
+    const senderWindow = BrowserWindow.fromWebContents(e.sender);
+    const lastUsedDir = getLastUsedDir();
+    const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
+        title: tOrDefault(
+            'open.folderDialogTitle',
+            defaultLocale === 'es' ? 'Abrir proyecto desde carpeta' : 'Open project from folder',
+        ),
+        properties: ['openDirectory'],
+        ...(lastUsedDir ? { defaultPath: lastUsedDir } : {}),
+    });
+    if (canceled || !filePaths || !filePaths.length) {
+        return { ok: false, canceled: true };
+    }
+    const sourceDir = path.resolve(filePaths[0]);
+    setLastUsedDir(sourceDir);
+
+    // Validate that this folder looks like an unpacked project (has content.xml
+    // or contentv3.xml at the root). Done in main so we can show a native
+    // error dialog instead of bouncing through the renderer.
+    const contentXml = path.join(sourceDir, 'content.xml');
+    const contentV3Xml = path.join(sourceDir, 'contentv3.xml');
+    if (!fs.existsSync(contentXml) && !fs.existsSync(contentV3Xml)) {
+        return { ok: false, error: 'not-a-project-folder' };
+    }
+
+    const entries = {};
+    const walk = (currentDir) => {
+        const items = fs.readdirSync(currentDir, { withFileTypes: true });
+        for (const item of items) {
+            // Skip OS noise that would bloat the zip without belonging to the project.
+            if (item.name === '.DS_Store' || item.name === 'Thumbs.db') continue;
+            const absolute = path.join(currentDir, item.name);
+            if (item.isSymbolicLink()) continue; // never follow symlinks out of the root
+            // Defence-in-depth: ensure the absolute path stays under sourceDir.
+            const resolved = path.resolve(absolute);
+            if (!resolved.startsWith(sourceDir + path.sep) && resolved !== sourceDir) {
+                continue;
+            }
+            if (item.isDirectory()) {
+                walk(absolute);
+            } else if (item.isFile()) {
+                const relative = path.relative(sourceDir, absolute).split(path.sep).join('/');
+                entries[relative] = new Uint8Array(fs.readFileSync(absolute));
+            }
+        }
+    };
+
+    try {
+        walk(sourceDir);
+        const zipped = fflate.zipSync(entries, { level: 6 });
+        const base64 = Buffer.from(zipped).toString('base64');
+        const suggestedName = `${path.basename(sourceDir) || 'project'}.elpx`;
+        return { ok: true, base64, suggestedName, sourceDir };
     } catch (err) {
         return { ok: false, error: err?.message || 'unknown' };
     }
@@ -1320,6 +1364,19 @@ app.on('new-window-for-tab', () => {
 });
 
 app.whenReady().then(() => {
+    defaultLocale = app.getLocale().startsWith('es') ? 'es' : 'en';
+    console.log(`Default locale: ${defaultLocale}.`);
+
+    const spellCheckerController = createSpellCheckerController({
+        electronSession: session.defaultSession,
+        platform: process.platform,
+        systemLocale: app.getSystemLocale(),
+        readSettings,
+        writeSettings,
+        onError: error => console.warn('[SpellChecker] Settings operation failed:', error),
+    });
+    registerSpellCheckerIpc(ipcMain, spellCheckerController);
+    spellCheckerController.applyPersisted();
     // A fresh process has no file "currently associated" with the window
     // yet — clear the on-disk slot so a leftover filename from a previous
     // run does not shadow the title-derived suggestedName on first Save.
@@ -1440,19 +1497,18 @@ ipcMain.handle('app:openElp', async e => {
     });
     if (canceled || !filePaths || !filePaths.length) return null;
     setLastUsedDir(path.dirname(filePaths[0]));
-    return filePaths[0];
+    return fileReadGrants.grant(filePaths[0]);
 });
 
-// Read file contents as base64 for upload (renderer builds a File)
-ipcMain.handle('app:readFile', async (_e, { filePath }) => {
-    try {
-        if (!filePath) return { ok: false, error: 'No path' };
-        const data = fs.readFileSync(filePath);
-        const stat = fs.statSync(filePath);
-        return { ok: true, base64: data.toString('base64'), mtimeMs: stat.mtimeMs };
-    } catch (err) {
-        return { ok: false, error: err.message };
-    }
+// Read file contents as base64 for upload (renderer builds a File), only for granted paths
+ipcMain.handle('app:readFile', async (_e, { filePath } = {}) => fileReadGrants.read(filePath));
+
+// Check an external link from the main process, where CORS does not apply,
+// and report the real HTTP status — same outcome as server-side validation.
+// Policy, network-stack rationale (undici primary, net.fetch as proxy
+// fallback) and the private-address guard live in link-check.js.
+ipcMain.handle('app:checkLink', async (_e, { url } = {}) => {
+    return checkLink(url, { fetchImpl: fetch, fallbackFetchImpl: net.fetch.bind(net) });
 });
 
 ipcMain.handle('app:getMemoryUsage', async (e) => {
@@ -1469,6 +1525,18 @@ ipcMain.handle('app:getMemoryUsage', async (e) => {
         process: process.memoryUsage(),
         renderer,
     };
+});
+
+// Close the window that initiated the request (File > Close). The unsaved
+// changes confirmation is handled by the close guard attached in
+// attachEditorWindowCloseGuard(), so we only trigger the close here.
+ipcMain.handle('app:closeCurrentWindow', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (win && !win.isDestroyed()) {
+        win.close();
+        return true;
+    }
+    return false;
 });
 
 function normalizeBinaryPayload(bufferData, base64Data) {
@@ -1599,6 +1667,48 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
 ipcMain.handle('app:saveBuffer', saveBufferWithDialog);
 ipcMain.handle('app:saveBufferAs', saveBufferWithDialog);
 
+ipcMain.handle('app:printPreview', (e, { url } = {}) =>
+    printPreview(url, {
+        owner: e.sender.id,
+        createWindow: () => {
+            const win = new BrowserWindow({
+                show: false,
+                parent: BrowserWindow.fromWebContents(e.sender) || mainWindow,
+                webPreferences: {
+                    session: e.sender.session,
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                    sandbox: true,
+                },
+            });
+            win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+            return win;
+        },
+    }),
+);
+
+// Save the print preview as a PDF: printing needs a print service and a printer, a PDF does not
+// (issue #1398). The PDF is made from the preview's own frame; see print-to-pdf.js.
+ipcMain.handle('app:savePrintPreviewAsPdf', async (e, { frameName, title } = {}) => {
+    const owner = BrowserWindow.fromWebContents(e.sender) || mainWindow;
+    const result = await savePrintPreviewAsPdf(
+        { webContents: e.sender, frameName, title },
+        {
+            showSaveDialog: options => dialog.showSaveDialog(owner, options),
+            writeFile: (filePath, data) => fs.promises.writeFile(filePath, data),
+            defaultDir: getLastUsedDir() || app.getPath('documents'),
+            countryCode: app.getLocaleCountryCode(),
+            dialogText: {
+                title: tOrDefault('save.downloadTitle', defaultLocale === 'es' ? 'Guardar archivo' : 'Save file'),
+                buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
+            },
+        },
+    );
+    if (result.saved) setLastUsedDir(path.dirname(result.filePath));
+    else if (result.error) console.error('[app:savePrintPreviewAsPdf] Error:', result.error);
+    return result;
+});
+
 
 /**
  * Create a new window for a project file
@@ -1661,7 +1771,7 @@ ipcMain.on('app:renderer-ready-for-open-file', (event) => {
     const wcId = event.sender.id;
     const filePath = pendingOpenFileByWebContentsId.get(wcId);
     if (!filePath) return;
-    event.sender.send('app:open-file', filePath);
+    event.sender.send('app:open-file', fileReadGrants.grant(filePath));
     pendingOpenFileByWebContentsId.delete(wcId);
 });
 

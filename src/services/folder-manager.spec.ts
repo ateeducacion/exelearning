@@ -8,6 +8,11 @@ import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 import * as assetQueries from '../db/queries/assets';
 import { createFolderManagerService, type FolderManagerService } from './folder-manager';
+import {
+    getAssetShard,
+    resolveAssetStoragePath as resolveAssetStoragePathPure,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
+} from '../utils/asset-paths';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as fflate from 'fflate';
@@ -40,14 +45,16 @@ describe('Folder Manager Service', () => {
             title: 'Test Project',
         });
 
-        // Create service with injected dependencies
+        // Create service with injected dependencies. The storage resolvers are
+        // bound to tempDir so stored FILES_DIR-relative paths resolve there.
         service = createFolderManagerService({
             db,
             queries: assetQueries,
             fs,
             path,
             fflate,
-            getProjectAssetsDir: (uuid: string) => path.join(tempDir, 'assets', uuid),
+            resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(tempDir, storagePath),
+            tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(tempDir, storagePath),
         });
 
         // Clean temp project directory
@@ -629,6 +636,16 @@ describe('Folder Manager Service', () => {
             expect(result.newAsset!.filename).toBe('test (copy).txt');
             expect(result.newAsset!.folder_path).toBe('docs');
             expect(result.newAsset!.client_id).not.toBe('original-id');
+
+            // The stored path is FILES_DIR-relative and sharded, and the copy
+            // physically exists at the resolved location.
+            const storedPath = result.newAsset!.storage_path;
+            expect(path.isAbsolute(storedPath)).toBe(false);
+            expect(storedPath.startsWith(`assets/${getAssetShard(testProjectUuid)}/${testProjectUuid}/`)).toBe(true);
+            expect(storedPath.endsWith('/test (copy).txt')).toBe(true);
+            const resolved = resolveAssetStoragePathPure(tempDir, storedPath);
+            expect(await fs.pathExists(resolved)).toBe(true);
+            expect(await fs.readFile(resolved, 'utf-8')).toBe('test content');
         });
 
         it('should increment copy number if copy exists', async () => {
@@ -663,6 +680,47 @@ describe('Folder Manager Service', () => {
             const result = await service.duplicateAsset(testProjectId, testProjectUuid, 99999);
             expect(result.success).toBe(false);
             expect(result.error).toContain('not found');
+        });
+
+        it('should distinguish a database failure from a copy failure and not leave an orphaned copy', async () => {
+            const sourceDir = path.join(tempDir, 'assets', testProjectUuid, 'db-fail');
+            await fs.ensureDir(sourceDir);
+            await fs.writeFile(path.join(sourceDir, 'doc.txt'), 'content');
+
+            const original = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'doc.txt',
+                storage_path: path.join(sourceDir, 'doc.txt'),
+                folder_path: 'docs',
+                client_id: 'db-fail-orig',
+            });
+
+            const failingService = createFolderManagerService({
+                db,
+                queries: {
+                    ...assetQueries,
+                    createAsset: async () => {
+                        throw new Error('SQLITE_BUSY: database is locked');
+                    },
+                },
+                fs,
+                path,
+                fflate,
+                resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(tempDir, storagePath),
+                tryResolveAssetStoragePath: (storagePath: string) =>
+                    tryResolveAssetStoragePathPure(tempDir, storagePath),
+            });
+
+            const result = await failingService.duplicateAsset(testProjectId, testProjectUuid, original.id);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('asset record');
+            expect(result.error).not.toContain('Failed to copy file');
+
+            // The physical copy must not linger as an untracked orphan.
+            const projectShardDir = path.join(tempDir, 'assets', getAssetShard(testProjectUuid), testProjectUuid);
+            const leftovers = (await fs.pathExists(projectShardDir)) ? await fs.readdir(projectShardDir) : [];
+            expect(leftovers.length).toBe(0);
         });
     });
 
@@ -705,6 +763,16 @@ describe('Folder Manager Service', () => {
             const indexAsset = await assetQueries.findAssetByPath(db, testProjectId, 'mywebsite', 'index.html');
             expect(indexAsset).toBeDefined();
             expect(indexAsset!.mime_type).toBe('text/html');
+
+            // Extracted assets are stored with FILES_DIR-relative sharded paths
+            // in the nested <clientId>/<filename> layout.
+            expect(path.isAbsolute(indexAsset!.storage_path)).toBe(false);
+            expect(
+                indexAsset!.storage_path.startsWith(`assets/${getAssetShard(testProjectUuid)}/${testProjectUuid}/`),
+            ).toBe(true);
+            expect(indexAsset!.storage_path.endsWith('/index.html')).toBe(true);
+            const resolvedIndex = resolveAssetStoragePathPure(tempDir, indexAsset!.storage_path);
+            expect(await fs.readFile(resolvedIndex, 'utf-8')).toBe('<html></html>');
 
             const cssAsset = await assetQueries.findAssetByPath(db, testProjectId, 'mywebsite/css', 'style.css');
             expect(cssAsset).toBeDefined();
@@ -778,6 +846,57 @@ describe('Folder Manager Service', () => {
             expect(result.extractedCount).toBe(1); // Only index.html
         });
 
+        it('should reject a ZIP that exceeds the decompression limits without extracting anything', async () => {
+            // Stored (uncompressed) entries, so nothing large is allocated. Each central-directory
+            // header then declares 1 GiB uncompressed, as a zip bomb does, above the 200 MiB entry cap.
+            const zipped = fflate.zipSync(
+                { 'index.html': new TextEncoder().encode('<html></html>'), 'a.txt': new Uint8Array(16) },
+                { level: 0 },
+            );
+            const view = new DataView(zipped.buffer, zipped.byteOffset, zipped.byteLength);
+            for (let i = 0; i + 4 <= zipped.length; i++) {
+                if (view.getUint32(i, true) === 0x02014b50) view.setUint32(i + 24, 1024 * 1024 * 1024, true);
+            }
+
+            const zipPath = path.join(tempDir, 'assets', testProjectUuid, 'bomb.zip');
+            await fs.ensureDir(path.dirname(zipPath));
+            await fs.writeFile(zipPath, Buffer.from(zipped));
+            const zipAsset = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'bomb.zip',
+                storage_path: zipPath,
+                folder_path: '',
+                mime_type: 'application/zip',
+                client_id: 'bomb-zip',
+            });
+
+            const result = await service.extractZipAsset(testProjectId, testProjectUuid, zipAsset.id, 'extracted');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('too large when decompressed');
+            expect(result.extractedCount).toBe(0);
+            expect(await assetQueries.findAssetByPath(db, testProjectId, 'extracted', 'index.html')).toBeUndefined();
+        });
+
+        it('should report a corrupted ZIP as invalid', async () => {
+            const zipPath = path.join(tempDir, 'assets', testProjectUuid, 'corrupted.zip');
+            await fs.ensureDir(path.dirname(zipPath));
+            await fs.writeFile(zipPath, 'not a zip archive');
+            const zipAsset = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'corrupted.zip',
+                storage_path: zipPath,
+                folder_path: '',
+                mime_type: 'application/zip',
+                client_id: 'corrupted-zip',
+            });
+
+            const result = await service.extractZipAsset(testProjectId, testProjectUuid, zipAsset.id, 'extracted');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('invalid or corrupted archive');
+        });
+
         it('should fail for non-ZIP asset', async () => {
             const pngAsset = await assetQueries.createAsset(db, {
                 project_id: testProjectId,
@@ -831,6 +950,50 @@ describe('Folder Manager Service', () => {
 
             expect(result.success).toBe(false);
             expect(result.error).toContain('Security error: invalid file paths detected');
+        });
+
+        it('rejects a decompression-bomb ZIP asset before inflating it (zip-bomb DoS guard)', async () => {
+            // 4 MB of zeros compresses to a few KB — a ~1000:1 bomb shape. With a
+            // 1 MB per-entry cap the service must refuse it BEFORE inflation, so the
+            // declared 4 MB is never materialised in memory or written to disk.
+            const bombService = createFolderManagerService({
+                db,
+                queries: assetQueries,
+                fs,
+                path,
+                fflate,
+                resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(tempDir, storagePath),
+                tryResolveAssetStoragePath: (storagePath: string) =>
+                    tryResolveAssetStoragePathPure(tempDir, storagePath),
+                zipLimits: { maxEntryBytes: 1 * 1024 * 1024 },
+            });
+
+            const zipped = fflate.zipSync({ 'bomb.bin': new Uint8Array(4 * 1024 * 1024) }, { level: 6 });
+            // Sanity: the crafted archive is tiny on disk (the DoS vector).
+            expect(zipped.length).toBeLessThan(64 * 1024);
+
+            const zipPath = path.join(tempDir, 'assets', testProjectUuid, 'bomb.zip');
+            await fs.ensureDir(path.dirname(zipPath));
+            await fs.writeFile(zipPath, Buffer.from(zipped));
+
+            const zipAsset = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'bomb.zip',
+                storage_path: zipPath,
+                folder_path: '',
+                mime_type: 'application/zip',
+                client_id: 'bomb-zip',
+            });
+
+            const result = await bombService.extractZipAsset(testProjectId, testProjectUuid, zipAsset.id, 'extracted');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toMatch(/too large when decompressed/);
+            expect(result.extractedCount).toBe(0);
+
+            // The bomb must NOT have been written as an extracted asset.
+            const extracted = await assetQueries.findAssetByPath(db, testProjectId, 'extracted', 'bomb.bin');
+            expect(extracted).toBeFalsy();
         });
     });
 });

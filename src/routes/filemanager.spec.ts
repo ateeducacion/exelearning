@@ -7,13 +7,29 @@ import { createTestDb, cleanTestDb, destroyTestDb, seedTestUser, seedTestProject
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 import * as assetQueries from '../db/queries/assets';
-import { findProjectByUuid, findAssetByClientId, updateAsset } from '../db/queries';
+import { findProjectByUuid, findAssetByClientId, updateAsset, checkProjectAccess } from '../db/queries';
 import { createFileManagerRoutes } from './filemanager';
 import { createFolderManagerService } from '../services/folder-manager';
+import {
+    resolveAssetStoragePath as resolveAssetStoragePathPure,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
+} from '../utils/asset-paths';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
 import * as fflate from 'fflate';
+import { SignJWT } from 'jose';
+
+const TEST_JWT_SECRET = 'dev_secret_change_me';
+
+async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
+    const secret = new TextEncoder().encode(TEST_JWT_SECRET);
+    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('1h')
+        .sign(secret);
+}
 
 describe('File Manager Routes', () => {
     let db: Kysely<Database>;
@@ -22,6 +38,24 @@ describe('File Manager Routes', () => {
     let testProjectUuid: string;
     let tempDir: string;
     let app: ReturnType<typeof createFileManagerRoutes>;
+    let ownerToken: string;
+
+    /** Inject the owner JWT into every request unless one is already supplied. */
+    async function handle(req: Request): Promise<Response> {
+        if (req.headers.has('authorization')) {
+            return app.handle(req);
+        }
+        const headerObj: Record<string, string> = {};
+        req.headers.forEach((v, k) => {
+            headerObj[k] = v;
+        });
+        headerObj.authorization = `Bearer ${ownerToken}`;
+        const init: RequestInit = { method: req.method, headers: headerObj };
+        if (req.body !== null) {
+            init.body = await req.arrayBuffer();
+        }
+        return app.handle(new Request(req.url, init));
+    }
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -33,6 +67,35 @@ describe('File Manager Routes', () => {
         await fs.remove(tempDir);
     });
 
+    describe('Authentication gate', () => {
+        it('GET should return 401 without token', async () => {
+            const response = await app.handle(
+                new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager`),
+            );
+            expect(response.status).toBe(401);
+        });
+
+        it('GET should return 403 for a stranger on a private project', async () => {
+            const strangerToken = await signTestToken(999999);
+            const response = await app.handle(
+                new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager`, {
+                    headers: { Authorization: `Bearer ${strangerToken}` },
+                }),
+            );
+            expect(response.status).toBe(403);
+        });
+
+        it('GET should allow an admin on a private project owned by someone else', async () => {
+            const adminToken = await signTestToken(999998, ['ROLE_USER', 'ROLE_ADMIN']);
+            const response = await app.handle(
+                new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager`, {
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+            expect(response.status).toBe(200);
+        });
+    });
+
     beforeEach(async () => {
         await cleanTestDb(db);
         testUserId = await seedTestUser(db);
@@ -42,14 +105,17 @@ describe('File Manager Routes', () => {
             title: 'Test Project',
         });
 
-        // Create folder manager with injected dependencies
+        // Create folder manager with injected dependencies. The storage
+        // resolvers are bound to tempDir so stored FILES_DIR-relative paths
+        // (and legacy absolute fixtures under tempDir) resolve there.
         const folderManager = createFolderManagerService({
             db,
             queries: assetQueries,
             fs,
             path,
             fflate,
-            getProjectAssetsDir: (uuid: string) => path.join(tempDir, 'assets', uuid),
+            resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(tempDir, storagePath),
+            tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(tempDir, storagePath),
         });
 
         // Create routes with injected dependencies
@@ -60,7 +126,12 @@ describe('File Manager Routes', () => {
             findAssetByClientId: (database, clientId, projectId) =>
                 findAssetByClientId(database as any, clientId, projectId) as any,
             updateAsset: (database, id, data) => updateAsset(database as any, id, data) as any,
+            checkProjectAccess: (database, project, userId) =>
+                checkProjectAccess(database as any, project as any, userId) as any,
         });
+
+        // Issue a JWT for the seeded test user so the new auth gate lets us through.
+        ownerToken = await signTestToken(testUserId);
 
         // Clean temp project directory
         await fs.remove(path.join(tempDir, 'assets', testProjectUuid));
@@ -87,9 +158,7 @@ describe('File Manager Routes', () => {
                 folder_path: 'images',
             });
 
-            const response = await app.handle(
-                new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager`),
-            );
+            const response = await handle(new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager`));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -109,7 +178,7 @@ describe('File Manager Routes', () => {
                 folder_path: 'images/icons',
             });
 
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager?path=images`),
             );
 
@@ -122,9 +191,7 @@ describe('File Manager Routes', () => {
         });
 
         it('should return 404 for non-existent project', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/projects/non-existent-uuid/filemanager'),
-            );
+            const response = await handle(new Request('http://localhost/api/projects/non-existent-uuid/filemanager'));
 
             expect(response.status).toBe(404);
             const data = await response.json();
@@ -132,7 +199,7 @@ describe('File Manager Routes', () => {
         });
 
         it('should return 400 for invalid path', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager?path=invalid:path`),
             );
 
@@ -149,7 +216,7 @@ describe('File Manager Routes', () => {
 
     describe('POST /api/projects/:projectId/filemanager/folder', () => {
         it('should create a folder', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/folder`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -164,7 +231,7 @@ describe('File Manager Routes', () => {
         });
 
         it('should fail for invalid folder name', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/folder`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -187,7 +254,7 @@ describe('File Manager Routes', () => {
                 folder_path: 'delete-me',
             });
 
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/folder`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
@@ -202,7 +269,7 @@ describe('File Manager Routes', () => {
         });
 
         it('should fail when trying to delete root (empty path)', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/folder`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
@@ -227,7 +294,7 @@ describe('File Manager Routes', () => {
                 folder_path: 'old-name',
             });
 
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/folder`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
@@ -242,7 +309,7 @@ describe('File Manager Routes', () => {
         });
 
         it('should fail if source folder does not exist', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/folder`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
@@ -270,7 +337,7 @@ describe('File Manager Routes', () => {
                 client_id: 'move-client-id',
             });
 
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/move`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -295,7 +362,7 @@ describe('File Manager Routes', () => {
                 folder_path: 'source-folder',
             });
 
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/move`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -312,7 +379,7 @@ describe('File Manager Routes', () => {
         });
 
         it('should fail for empty items array', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/move`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -347,7 +414,7 @@ describe('File Manager Routes', () => {
                 folder_path: '',
             });
 
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/duplicate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -363,7 +430,7 @@ describe('File Manager Routes', () => {
         });
 
         it('should fail for non-existent asset', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/duplicate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -387,7 +454,7 @@ describe('File Manager Routes', () => {
                 client_id: 'rename-client-id',
             });
 
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/rename`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
@@ -413,7 +480,7 @@ describe('File Manager Routes', () => {
                 client_id: 'invalid-rename-id',
             });
 
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/rename`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
@@ -431,7 +498,7 @@ describe('File Manager Routes', () => {
         });
 
         it('should fail for non-existent asset', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/rename`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
@@ -475,7 +542,7 @@ describe('File Manager Routes', () => {
                 mime_type: 'application/zip',
             });
 
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/extract-zip`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -502,7 +569,7 @@ describe('File Manager Routes', () => {
                 mime_type: 'image/png',
             });
 
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/extract-zip`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -526,7 +593,7 @@ describe('File Manager Routes', () => {
 
     describe('POST /api/projects/:projectId/filemanager/validate-name', () => {
         it('should validate a valid name', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/validate-name`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -542,7 +609,7 @@ describe('File Manager Routes', () => {
         });
 
         it('should sanitize an invalid name', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/validate-name`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -560,7 +627,7 @@ describe('File Manager Routes', () => {
 
     describe('POST /api/projects/:projectId/filemanager/validate-path', () => {
         it('should validate a valid path', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/validate-path`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -575,7 +642,7 @@ describe('File Manager Routes', () => {
         });
 
         it('should reject an invalid path', async () => {
-            const response = await app.handle(
+            const response = await handle(
                 new Request(`http://localhost/api/projects/${testProjectUuid}/filemanager/validate-path`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

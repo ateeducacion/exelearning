@@ -306,6 +306,67 @@ describe('ComponentImporter', () => {
       expect(result.error).toBe('No content.xml found in component file');
     });
 
+    it('should rewrite embedded ideviceId in jsonProperties when component id is regenerated (#1786)', async () => {
+      // Component XML carries an ideviceId inside jsonProperties (text/quiz
+      // iDevices store it for self-reference). ComponentImporter always mints
+      // a fresh component id on import; the embedded value must follow so the
+      // Y.Map field and the JSON payload stay in sync.
+      const COMPONENT_WITH_EMBEDDED_ID = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>odeComponentsResources</key>
+    <value>true</value>
+  </odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-orig-1</odeBlockId>
+    <blockName>Embedded id</blockName>
+    <iconName></iconName>
+    <odePagStructureOrder>0</odePagStructureOrder>
+    <odePagStructureProperties>{}</odePagStructureProperties>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-orig-1</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;hi&lt;/p&gt;</htmlView>
+        <jsonProperties>{"ideviceId":"idevice-orig-1","textTextarea":"&lt;p&gt;hi&lt;/p&gt;"}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+        <odeComponentsProperties></odeComponentsProperties>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const assetManager = createMockAssetManager();
+      global.window.fflate = createMockFflate(COMPONENT_WITH_EMBEDDED_ID);
+      const importer = new ComponentImporter(docManager, assetManager);
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importComponent(file, 'page-1');
+      expect(result.success).toBe(true);
+
+      // Inspect the inserted component on page-1.
+      const navigation = docManager._navigation;
+      const pageMap = navigation.get(0);
+      const blocks = pageMap.get('blocks');
+      const blockMap = blocks.get(blocks.length - 1); // last appended
+      const components = blockMap.get('components');
+      const compMap = components.get(0);
+      const newCompId = compMap.get('id');
+      const jsonStr = compMap.get('jsonProperties');
+      const parsed = JSON.parse(jsonStr);
+
+      // Outer id was regenerated AND the embedded one followed.
+      expect(newCompId).not.toBe('idevice-orig-1');
+      expect(newCompId).toMatch(/^idevice-/);
+      expect(parsed.ideviceId).toBe(newCompId);
+      expect(parsed.ideviceId).not.toBe('idevice-orig-1');
+    });
+
     it('should generate new IDs for imported block and components', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
       const assetManager = createMockAssetManager();
@@ -409,6 +470,155 @@ describe('ComponentImporter', () => {
     });
   });
 
+  describe('iDevice structure properties (#1991)', () => {
+    // content.xml whose component carries odeComponentsProperties (visibility,
+    // teacherOnly, cssClass). These must be parsed and stored so a re-imported
+    // .block/.idevice keeps "Visible in export", "Teacher only" and CSS classes.
+    const COMPONENT_WITH_STRUCTURE_PROPS = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>odeComponentsResources</key>
+    <value>true</value>
+  </odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-sp</odeBlockId>
+    <blockName>Block With Struct Props</blockName>
+    <iconName></iconName>
+    <odePagStructureOrder>0</odePagStructureOrder>
+    <odePagStructureProperties>{}</odePagStructureProperties>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-sp</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;Hidden teacher content&lt;/p&gt;</htmlView>
+        <jsonProperties>{"textTextarea":"Hidden teacher content"}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+        <odeComponentsProperties>
+          <odeComponentsProperty>
+            <key>visibility</key>
+            <value>false</value>
+          </odeComponentsProperty>
+          <odeComponentsProperty>
+            <key>teacherOnly</key>
+            <value>true</value>
+          </odeComponentsProperty>
+          <odeComponentsProperty>
+            <key>cssClass</key>
+            <value>my-custom-class another-class</value>
+          </odeComponentsProperty>
+        </odeComponentsProperties>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+    it('parseComponentFromXml should extract structureProperties', () => {
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(COMPONENT_WITH_STRUCTURE_PROPS, 'text/xml');
+      const compNode = xmlDoc.querySelector('odeComponent');
+
+      const compData = importer.parseComponentFromXml(compNode);
+
+      expect(compData.structureProperties).toEqual({
+        visibility: 'false',
+        teacherOnly: 'true',
+        cssClass: 'my-custom-class another-class',
+      });
+    });
+
+    it('parseComponentFromXml should omit structureProperties when the block is empty', () => {
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(SAMPLE_COMPONENT_XML, 'text/xml');
+      const compNode = xmlDoc.querySelector('odeComponent');
+
+      const compData = importer.parseComponentFromXml(compNode);
+
+      expect(compData.structureProperties).toBeUndefined();
+    });
+
+    it('parseComponentFromXml should omit structureProperties when the element is absent', () => {
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+
+      const NO_PROPS_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odePagStructures>
+  <odePagStructure>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-noprops</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;No props&lt;/p&gt;</htmlView>
+        <jsonProperties>{}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(NO_PROPS_XML, 'text/xml');
+      const compNode = xmlDoc.querySelector('odeComponent');
+
+      const compData = importer.parseComponentFromXml(compNode);
+
+      expect(compData.structureProperties).toBeUndefined();
+    });
+
+    it('should store structure properties in the component properties Y.Map on import', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const assetManager = createMockAssetManager();
+      global.window.fflate = createMockFflate(COMPONENT_WITH_STRUCTURE_PROPS);
+
+      const importer = new ComponentImporter(docManager, assetManager);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.block');
+
+      const result = await importer.importComponent(file, 'page-1');
+      expect(result.success).toBe(true);
+
+      const navigation = docManager._navigation;
+      const blocks = navigation.get(0).get('blocks');
+      const blockMap = blocks.get(blocks.length - 1);
+      const compMap = blockMap.get('components').get(0);
+
+      const propsMap = compMap.get('properties');
+      expect(propsMap).toBeDefined();
+      expect(propsMap.get('visibility')).toBe('false');
+      expect(propsMap.get('teacherOnly')).toBe('true');
+      expect(propsMap.get('cssClass')).toBe('my-custom-class another-class');
+    });
+
+    it('should not create a properties map when component has no structure properties', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const assetManager = createMockAssetManager();
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+
+      const importer = new ComponentImporter(docManager, assetManager);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.block');
+
+      const result = await importer.importComponent(file, 'page-1');
+      expect(result.success).toBe(true);
+
+      const navigation = docManager._navigation;
+      const blocks = navigation.get(0).get('blocks');
+      const blockMap = blocks.get(blocks.length - 1);
+      const compMap = blockMap.get('components').get(0);
+
+      expect(compMap.get('properties')).toBeUndefined();
+    });
+  });
+
   describe('generateId', () => {
     it('should generate unique IDs with prefix', () => {
       const docManager = createMockDocumentManager();
@@ -422,6 +632,13 @@ describe('ComponentImporter', () => {
       expect(id2).toMatch(/^block-/);
       expect(id3).toMatch(/^idevice-/);
       expect(id1).not.toBe(id2); // Should be unique
+    });
+
+    it('should throw on empty prefix (mirrors src/shared/ids.ts)', () => {
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+      expect(() => importer.generateId('')).toThrow('generateId: prefix is required');
+      expect(() => importer.generateId(undefined)).toThrow('generateId: prefix is required');
     });
   });
 

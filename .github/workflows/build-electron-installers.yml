@@ -6,7 +6,30 @@ on:
   push:
     branches:
       - main
+  # Until now this workflow only ran after a merge, so nothing that breaks the
+  # desktop build could be caught while it was still reviewable — which is how
+  # the crash fixed in #2204 reached a reviewer, and the same structural gap
+  # #2225 hit on the database matrix. Dependency bumps are the main risk: the
+  # deps that ship inside the asar (electron, electron-builder, and app/'s own
+  # electron-updater / electron-log / electron-context-menu / fflate) are only
+  # exercised by this workflow. Restricted to the paths that actually affect
+  # packaging so ordinary PRs do not pay for a 3-OS build.
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'packaging/**'
+      - 'scripts/assert-app-booted.ts'
+      - '.github/workflows/build-electron-installers.yml'
   workflow_dispatch: # Allows manually triggering
+
+# One installer build per pull request: a rebase or a follow-up push supersedes
+# the run already in flight instead of queueing another 3-OS build. Release and
+# main builds are never cancelled — those publish artifacts.
+concurrency:
+  group: installers-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   package:
@@ -15,13 +38,14 @@ jobs:
       contents: write
 
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-15, windows-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Install Bun
       - name: Set up Bun
@@ -67,8 +91,10 @@ jobs:
         run: choco install make --yes
         shell: pwsh
 
+      # Skipped on pull requests: those build unsigned, so writing the
+      # certificate to disk would serve no purpose.
       - name: Decode Windows certificate
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest' && github.event_name != 'pull_request'
         run: |
           if [ -n "${{ secrets.CERT_P12 }}" ]; then
             echo "${{ secrets.CERT_P12 }}" | base64 --decode > windows-cert.pfx
@@ -89,7 +115,14 @@ jobs:
           # GitHub Releases API token for electron-builder
           export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
 
-          if [ "${{ github.repository_owner }}" = "exelearning" ]; then
+          # Pull requests take the unsigned path on purpose. electron-builder
+          # refuses to code sign a PR build ("Current build is a part of pull
+          # request, code signing will be skipped"), so the app comes out
+          # ad-hoc signed; running the notarization hook on top of that fails
+          # with "code object is not signed at all". A PR only needs to prove
+          # that packaging and startup work, and keeping signing material out
+          # of PR builds is the safer default anyway.
+          if [ "${{ github.repository_owner }}" = "exelearning" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "Official repo detected. Enabling signing/notarization only when secrets are available."
 
             if [ -n "${{ secrets.MAC_CERT_P12 }}" ]; then
@@ -114,7 +147,7 @@ jobs:
               export WIN_CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
             fi
           else
-            echo "Fork detected. Building unsigned installers (no macOS signing/notarization)."
+            echo "Fork or pull request. Building unsigned installers (no macOS signing/notarization)."
             export CSC_IDENTITY_AUTO_DISCOVERY=false
             export SKIP_NOTARIZE=1
             unset CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
@@ -149,9 +182,19 @@ jobs:
     needs: package
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]        
+        os: [ubuntu-latest, macos-15, windows-latest]
     steps:
+      # Needed by the boot assertion below, which lives in scripts/.
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Download installers
         uses: actions/download-artifact@v8
         with:
@@ -216,7 +259,7 @@ jobs:
 
       # ---------- macOS test ----------
       - name: Test install on macOS
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-15'
         run: |
           set -euo pipefail
 
@@ -275,26 +318,151 @@ jobs:
           $port           = [int]($env:APP_PORT ?? 41309)
           $bootTimeout    = [int]($env:APP_BOOT_TIMEOUT ?? 300)
           $shotDelay      = [int]($env:SCREENSHOT_DELAY ?? 6)
+          $installTimeout = [int]($env:INSTALL_POLL_TIMEOUT ?? 240)
+          $installPoll    = [int]($env:INSTALL_POLL_INTERVAL ?? 2)
 
-          # -------- Find installer and install silently --------
+          # -------- Find installer --------
           $installer = Get-ChildItem installers\*Setup*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $installer) { throw "No Windows installer found in 'installers'." }
 
-          # /S = silent for NSIS oneClick; avoids UI + autolaunch races
-          Start-Process $installer.FullName -ArgumentList '/S' -Wait -NoNewWindow
+          # Deterministic per-user install dir (NSIS perMachine:false default base).
+          $installDir = Join-Path $env:LOCALAPPDATA 'Programs\eXeLearning'
 
-          # -------- Locate installed EXE --------
-          $exePath = @(
-            (Join-Path $env:LOCALAPPDATA 'Programs\eXeLearning\eXeLearning.exe'),
+          $candidatePaths = @(
+            (Join-Path $installDir 'eXeLearning.exe'),
             (Join-Path ${env:ProgramFiles} 'eXeLearning\eXeLearning.exe'),
             (Join-Path ${env:ProgramFiles(x86)} 'eXeLearning\eXeLearning.exe')
-          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          ) | Select-Object -Unique
 
-          if (-not $exePath) {
-            $exePath = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 3 -Filter 'eXeLearning.exe' -ErrorAction SilentlyContinue |
-              Select-Object -First 1 | ForEach-Object FullName
+          # -------- Defender exclusions (best-effort) --------
+          # The 240s poll added in #1894 assumed a slow "NSIS extraction race",
+          # but the step kept failing on main *after the full timeout* - the EXE
+          # never appears at all on some runs, so the silent install is genuinely
+          # failing, not racing. The most likely cause on windows-latest is
+          # Windows Defender real-time scanning quarantining/locking the freshly
+          # extracted Electron binary mid-install, which NSIS silent mode swallows.
+          # Exclude the install/temp dirs before installing to rule it out.
+          foreach ($p in @($installDir, (Join-Path $env:LOCALAPPDATA 'Programs'), $env:TEMP, $installer.DirectoryName)) {
+            try { Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue } catch {}
           }
-          if (-not $exePath) { throw "Installed EXE not found to launch." }
+          try { Add-MpPreference -ExclusionProcess 'eXeLearning.exe' -ErrorAction SilentlyContinue } catch {}
+
+          function Test-ExeInstalled {
+            param([string[]]$Paths)
+            $hit = $Paths | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if (-not $hit) {
+              $hit = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 3 `
+                       -Filter 'eXeLearning.exe' -ErrorAction SilentlyContinue |
+                     Select-Object -First 1 | ForEach-Object FullName
+            }
+            return $hit
+          }
+
+          function Invoke-SilentInstall {
+            param([string]$Installer, [string]$Dir)
+            # /S = silent (NSIS oneClick). /D=<dir> MUST be the last arg and UNQUOTED.
+            $exeArgs = "/S", "/D=$Dir"
+            Write-Host "Running installer: $Installer $($exeArgs -join ' ')"
+            $proc = Start-Process -FilePath $Installer -ArgumentList $exeArgs -Wait -NoNewWindow -PassThru
+            Write-Host "Installer exit code: $($proc.ExitCode)"
+            return $proc.ExitCode
+          }
+
+          function Wait-ForExe {
+            param([string[]]$Paths, [int]$TimeoutSec, [int]$PollSec)
+            $deadline = (Get-Date).AddSeconds($TimeoutSec)
+            do {
+              $exe = Test-ExeInstalled -Paths $Paths
+              if ($exe) { return $exe }
+              # Wait for any lingering Setup processes, then retry until the EXE
+              # shows up or we hit the install timeout.
+              Get-Process -Name '*Setup*' -ErrorAction SilentlyContinue | ForEach-Object {
+                try { $_.WaitForExit($PollSec * 1000) | Out-Null } catch {}
+              }
+              Start-Sleep -Seconds $PollSec
+            } until ((Get-Date) -ge $deadline)
+            return $null
+          }
+
+          # -------- Install (1 attempt + 1 automatic retry) --------
+          $exePath      = $null
+          $maxAttempts  = 2
+          $lastExitCode = $null
+          for ($attempt = 1; $attempt -le $maxAttempts -and -not $exePath; $attempt++) {
+            Write-Host "=== Install attempt $attempt of $maxAttempts ==="
+
+            $lastExitCode = Invoke-SilentInstall -Installer $installer.FullName -Dir $installDir
+
+            # Neutralize runAfterFinish:true - kill any app the installer auto-launched
+            # (CI-only; package.json keeps runAfterFinish for the shipped installer).
+            Get-Process -Name 'eXeLearning' -ErrorAction SilentlyContinue |
+              ForEach-Object { try { $_.Kill() } catch {} }
+
+            $exePath = Wait-ForExe -Paths $candidatePaths -TimeoutSec $installTimeout -PollSec $installPoll
+            if (-not $exePath) {
+              Write-Warning "Attempt $attempt produced no eXeLearning.exe (installer exit=$lastExitCode)."
+            }
+          }
+
+          # -------- Diagnostics dump on total failure (best-effort, never throws) --------
+          if (-not $exePath) {
+            Write-Host "##[group]Windows install failure diagnostics"
+            Write-Host "Installer: $($installer.FullName)  size=$($installer.Length)  lastExitCode=$lastExitCode"
+
+            try {
+              Write-Host "--- Recursive listing: %LOCALAPPDATA%\Programs ---"
+              Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 4 -ErrorAction SilentlyContinue |
+                Select-Object FullName, Length, LastWriteTime | Format-Table -AutoSize | Out-String -Width 4096 | Write-Host
+            } catch { Write-Host "Programs listing failed: $_" }
+
+            try {
+              Write-Host "--- Top-level listing: %LOCALAPPDATA% ---"
+              Get-ChildItem -Path $env:LOCALAPPDATA -ErrorAction SilentlyContinue |
+                Select-Object Name, LastWriteTime | Format-Table -AutoSize | Out-String -Width 4096 | Write-Host
+            } catch { Write-Host "LOCALAPPDATA listing failed: $_" }
+
+            try {
+              Write-Host "--- eXeLearning* under Program Files / Program Files(x86) ---"
+              @(${env:ProgramFiles}, ${env:ProgramFiles(x86)}) | Where-Object { $_ } | ForEach-Object {
+                Get-ChildItem -Path $_ -Filter 'eXeLearning*' -ErrorAction SilentlyContinue |
+                  Select-Object FullName | Format-Table -AutoSize | Out-String -Width 4096 | Write-Host
+              }
+            } catch { Write-Host "Program Files listing failed: $_" }
+
+            try {
+              Write-Host "--- NSIS install log (if any) ---"
+              Get-ChildItem -Path $installDir -Filter '*.log' -Recurse -ErrorAction SilentlyContinue |
+                ForEach-Object { Write-Host "### $($_.FullName)"; Get-Content $_.FullName -Tail 200 -ErrorAction SilentlyContinue }
+            } catch { Write-Host "NSIS log read failed: $_" }
+
+            try {
+              Write-Host "--- Running processes matching eXeLearning|Setup ---"
+              Get-Process -ErrorAction SilentlyContinue |
+                Where-Object { $_.ProcessName -match 'eXeLearning|Setup' } |
+                Select-Object Id, ProcessName, StartTime | Format-Table -AutoSize | Out-String -Width 4096 | Write-Host
+            } catch { Write-Host "Process listing failed: $_" }
+
+            try {
+              Write-Host "--- Windows Defender threat detections ---"
+              Get-MpThreatDetection -ErrorAction SilentlyContinue |
+                Select-Object ThreatID, ActionSuccess, InitialDetectionTime, Resources |
+                Format-List | Out-String -Width 4096 | Write-Host
+            } catch { Write-Host "Get-MpThreatDetection failed: $_" }
+
+            try {
+              Write-Host "--- Defender Operational event log (last 25) ---"
+              Get-WinEvent -FilterHashtable @{
+                LogName = 'Microsoft-Windows-Windows Defender/Operational'
+              } -MaxEvents 25 -ErrorAction SilentlyContinue |
+                Select-Object TimeCreated, Id, LevelDisplayName, Message |
+                Format-List | Out-String -Width 4096 | Write-Host
+            } catch { Write-Host "Get-WinEvent (Defender) failed: $_" }
+
+            Write-Host "##[endgroup]"
+            throw "Installed EXE not found after $maxAttempts attempt(s); install timeout ${installTimeout}s each. Last installer exit code: $lastExitCode. See diagnostics above."
+          }
+
+          Write-Host "Found installed EXE: $exePath"
 
           # -------- Launch with deterministic env for CI --------
           $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -384,7 +552,30 @@ jobs:
           } catch {}
 
 
+      # A visible window is NOT proof of a healthy boot. When the main process
+      # throws before app.whenReady() Electron shows a native error dialog: the
+      # process stays alive and owns a window, so `xdotool search`, `pgrep` and
+      # `MainWindowHandle -ne 0` all report success. That is exactly how the
+      # asar packaging crash fixed in #2204 shipped green on all three
+      # platforms while its own screenshots showed the error dialog.
+      # The app serves its UI over app:// rather than HTTP, so the main-process
+      # log is the only signal that tells a real boot from a crash.
+      - name: Assert the app booted cleanly
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.os }}" in
+            ubuntu-latest)  log=ubuntu-app.log ;;
+            macos-15)       log=mac-app.log ;;
+            windows-latest) log=windows-app.log ;;
+            *) echo "::error::Unknown runner '${{ matrix.os }}'"; exit 1 ;;
+          esac
+          bun run scripts/assert-app-booted.ts "$log"
+
+      # Runs even when the assertion above fails, so the screenshots and logs
+      # needed to diagnose the failure are still published.
       - name: Upload screenshots and logs (per OS)
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: screenshots-and-logs-${{ matrix.os }}

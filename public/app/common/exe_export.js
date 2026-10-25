@@ -27,9 +27,48 @@ function translateI18nElement(key, defaultText) {
 if (typeof window.$exeExport === 'undefined') {
 window.$exeExport = {
 
+    /**
+     * Whether this document is one eXeLearning generated to be printed, and which one.
+     *
+     * Null in an ordinary exported resource, even while the reader is printing it: this answers
+     * "was this page built for paper", which is a different question from "is the browser
+     * paginating right now" — ask `isPrinting()` for that one.
+     *
+     * When it is not null it carries:
+     *   kind        'document'  the project, with its pages and prose
+     *               'worksheet' only the activities, rebuilt as exercises
+     *   activities  what became of the interactive activities, for kind 'document':
+     *               'omit' | 'in-place' | 'appendix', or null when the author was not asked
+     *
+     * A script inserted in a resource can therefore do either:
+     *   if ($exeExport.printing) { ... }
+     *   if ($exeExport.printing && $exeExport.printing.kind === 'worksheet') { ... }
+     *
+     * The print document overwrites this from a script of its own; nothing else writes to it.
+     */
+    printing: null,
+
+    // Remember individual feedback elements without keeping removed iDevices alive.
+    openedPrintFeedback: new WeakSet(),
+
+    /**
+     * Whether the browser is laying this page out for paper at this moment.
+     *
+     * True during `window.print()`, during the browser's own print dialog and under print media
+     * emulation, and false the rest of the time — including while an eXeLearning print preview is
+     * on screen. Pair it with the `beforeprint` and `afterprint` events to prepare and restore.
+     *
+     * @returns {boolean} true while the page is being printed
+     */
+    isPrinting: function () {
+        return typeof window.matchMedia === 'function' && window.matchMedia('print').matches;
+    },
+
     isTogglingBox: false,
     delayLoadingPageTime: 200,
     delayLoadingIdevicesJson: 50,
+    // Give up after 30 s (600 × 50 ms) if an iDevice script never loads
+    maxLoadingIdevicesJsonAttempts: 600,
     delayLoadScorm: 50,
     scormAPIwrapper: 'SCORM_API_wrapper.js',
     scormFunctions: 'SCOFunctions.js',
@@ -92,35 +131,133 @@ window.$exeExport = {
     initExe: function () {
         window.eXe.app.init();
     },
-    
+
+    // Set one query param on an href (null removes it), keeping the rest and the fragment.
+    setUrlParam : function (href, name, value) {
+        if (!href || !name) return href;
+        // A query would turn a fragment-only jump into a page load.
+        if (href.charAt(0) === '#') return href;
+        var hash = '';
+        var i = href.indexOf('#');
+        if (i !== -1) {
+            hash = href.slice(i);
+            href = href.slice(0, i);
+        }
+        var query = '';
+        i = href.indexOf('?');
+        if (i !== -1) {
+            query = href.slice(i + 1);
+            href = href.slice(0, i);
+        }
+        var parts = query ? query.split('&') : [];
+        var kept = [];
+        for (i = 0; i < parts.length; i++) {
+            if (parts[i] && parts[i].split('=')[0] !== name) kept.push(parts[i]);
+        }
+        if (value !== null && value !== undefined) kept.push(name + '=' + value);
+        return href + (kept.length ? '?' + kept.join('&') : '') + hash;
+    },
+
     /**
      * Teacher Mode
+     *
+     * Teacher-only content (.teacher-only) is HIDDEN by default in exports (see the rule in
+     * base.css). It is revealed by the `mode-teacher` class on <html>, which the in-page
+     * self-serve toggle adds/removes. The toggle is opt-in via URL parameter, so host
+     * integrations (LMS/CMS) only need to change the iframe URL — no injected CSS/JS:
+     *
+     *   ?exe-teacher=1|true|yes   show the Teacher Mode toggle (alias: ?teacher-mode=1, or
+     *                             the legacy ?exe-teacher-toggler=1). The toggle is OFF by
+     *                             default and remembers the viewer's choice in localStorage;
+     *                             the viewer activates it to reveal teacher content. The
+     *                             parameter never reveals content on its own.
+     *   (no parameter)            no toggle; teacher content stays hidden (student view).
+     *
+     * NOTE: this is an opt-in PRESENTATION mode, not access control and not a security
+     * boundary. Truly sensitive answer keys need a separate authenticated/password-gated
+     * feature.
      */
     teacherMode : {
         STORAGE_KEY : 'exeTeacherMode',
+        _showToggler : false,
+        _navParams : '',
+        _truthy : function(v){ return v === '1' || v === 'true' || v === 'yes'; },
+        /**
+         * Decide — as early as possible, since this file runs in <head> — whether the
+         * self-serve toggle should be available, and restore the viewer's stored choice
+         * flicker-free. The parameter only makes the toggle AVAILABLE; it never reveals
+         * content on its own. Vanilla JS only; never throws (safe default = student view).
+         */
+        bootstrap : function(){
+            var root = document.documentElement;
+            try {
+                var params = new URLSearchParams(window.location.search);
+                var teacher = params.get('exe-teacher');
+                if (teacher === null) teacher = params.get('teacher-mode'); // documented alias
+                var toggler = params.get('exe-teacher-toggler'); // legacy alias, same effect
+                this._showToggler = this._truthy(teacher) || this._truthy(toggler);
+                this._navParams = this._showToggler ? 'exe-teacher=1' : '';
+                if (this._showToggler) {
+                    // Restore the viewer's stored choice (OFF by default), flicker-free.
+                    try {
+                        if (localStorage.getItem(this.STORAGE_KEY) === '1') root.classList.add('mode-teacher');
+                    } catch (e) {}
+                }
+            } catch (e) {
+                // Keep student mode (no toggle) as the safe default.
+            }
+        },
+        /**
+         * Append the active teacher params to an in-package navigation href so the chosen
+         * view survives navigation between pages — works in same-origin AND opaque-origin
+         * iframes (where storage is unavailable). Leaves external links, non-relative
+         * schemes and pure fragments untouched.
+         */
+        withTeacherParams : function(href){
+            if (!href || !this._navParams) return href;
+            if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return href;
+            var eq = this._navParams.indexOf('=');
+            var name = eq === -1 ? this._navParams : this._navParams.slice(0, eq);
+            var value = eq === -1 ? '' : this._navParams.slice(eq + 1);
+            return $exeExport.setUrlParam(href, name, value);
+        },
+        /** Rewrite the menu and prev/next links so navigation keeps the teacher view. */
+        propagateNavParams : function(){
+            if (!this._navParams) return;
+            var self = this;
+            var links = document.querySelectorAll('#siteNav a[href], .nav-buttons a[href]');
+            links.forEach(function(a){
+                a.setAttribute('href', self.withTeacherParams(a.getAttribute('href')));
+            });
+        },
         init : function(){
+            // Reveal is already applied by bootstrap() (flicker-free); here we only carry
+            // the params across navigation and manage the optional self-serve toggle.
+            this.propagateNavParams();
             if (typeof(localStorage)!='object') return;
             if ($(".box.teacher-only").length==0 && $(".idevice_node.teacher-only").length==0) return;
             if (document.getElementById("teacher-mode-toggler")) return;
             if ($("body").hasClass("exe-epub")) return;
+            // The self-serve toggle is opt-in: shown only when the teacher URL parameter
+            // made it available (?exe-teacher=1, alias ?teacher-mode=1, or the legacy
+            // ?exe-teacher-toggler=1) — see bootstrap(). _showToggler captures that decision.
+            if (this._showToggler !== true) return;
             document.body.classList.add('exe-teacher-mode-toggler');
             var btn = '<div class="form-check form-switch" id="teacher-mode-toggler-wrapper"><input class="form-check-input" type="checkbox" role="switch" id="teacher-mode-toggler"><label class="form-check-label" for="teacher-mode-toggler">'+$exe_i18n.teacher_mode+'</label></div>';
             if ($("body").hasClass("exe-single-page")) $(".package-header").before(btn);
             else $(".page-header").prepend(btn);
             this.toggler = $("#teacher-mode-toggler");
-            var enabled = this.isEnabled();
-            if (enabled) {
+            if (document.documentElement.classList.contains('mode-teacher')) {
                 this.toggler.prop("checked", true);
-                document.documentElement.classList.add('mode-teacher');
             }
             this.toggler.on("change", function(){
                 var root = document.documentElement;
                 var key = $exeExport.teacherMode.STORAGE_KEY;
                 if (this.checked) {
-                    localStorage.setItem(key, '1');
+                    try { localStorage.setItem(key, '1'); } catch (e) {}
                     root.classList.add('mode-teacher');
                 } else {
-                    localStorage.removeItem(key);
+                    try { localStorage.removeItem(key); } catch (e) {}
                     root.classList.remove('mode-teacher');
                 }
             });
@@ -184,15 +321,51 @@ window.$exeExport = {
                             }
                             
                             // Check for SCORM data if jsonData is valid
-                            if (jsonData && jsonData.exportScorm && jsonData.exportScorm.saveScore) {
+                            if (
+                                jsonData &&
+                                (
+                                    (jsonData.exportScorm && jsonData.exportScorm.saveScore) ||
+                                    Number(jsonData.isScorm) > 0
+                                )
+                            ) {
                                 isSCORM = true;
                             }
                             break;
                     }
                 }
             })
-            window.loadPage()
-            window.addEventListener('unload', () => window.unloadPage(isSCORM));
+            if (window.exeScorm12 && typeof window.exeScorm12.setPageHasScoredActivities === 'function') {
+                // Scan before loadPage() so applyEntryPolicy() sees whether
+                // scored iDevices exist (a presentation iDevice may already
+                // have registered on jQuery ready). The runtime owns
+                // end-of-session handling; no unload handler is registered.
+                window.exeScorm12.setPageHasScoredActivities(isSCORM);
+                window.loadPage();
+            } else {
+                window.loadPage();
+                // Legacy runtime (SCORM 2004 packages and packages exported
+                // before the SCORM 1.2 runtime rewrite). `pagehide` rather
+                // than `unload`: this file also ships inside SCORM 1.2
+                // packages, where an unload-family listener anywhere on the
+                // page would disable the back/forward cache the SCORM 1.2
+                // runtime depends on. `pagehide` fires immediately before
+                // `unload`, and the legacy unloadPage() is guarded to run only
+                // once, so the end-of-session behaviour is unchanged.
+                //
+                // `event.persisted === true` means the page is being frozen
+                // into the back/forward cache and may come back: ending the
+                // LMS session then would be wrong, so the bridge stands down.
+                window.addEventListener('pagehide', (event) => {
+                    if (event && event.persisted) return;
+                    window.unloadPage(isSCORM);
+                });
+            }
+            // loadPage() has just read the LMS's own pass mark, if it sets
+            // one, after the iDevices drew the page's minimum score.
+            const scorm = window.$exeDevices?.iDevice?.gamification?.scorm;
+            if (scorm && typeof scorm.showPagePassScore === 'function') {
+                scorm.showPagePassScore();
+            }
         }
     },
 
@@ -223,9 +396,13 @@ window.$exeExport = {
      */
     initJsonIdeviceInterval: function (ideviceType) {
         let intervalName = 'eXe_idevice_init_interval_' + ideviceType;
-        window[intervalName] = setInterval(
-            () => this.initJsonIdevice(ideviceType, intervalName),
-            this.delayLoadingIdevicesJson);
+        let attempts = 0;
+        window[intervalName] = setInterval(() => {
+            if (this.initJsonIdevice(ideviceType, intervalName) !== false) return;
+            if (++attempts < this.maxLoadingIdevicesJsonAttempts) return;
+            clearInterval(window[intervalName]);
+            console.warn(`[exe_export] ${ideviceType} iDevice script did not load; giving up.`);
+        }, this.delayLoadingIdevicesJson);
     },
 
     /**
@@ -286,7 +463,16 @@ window.$exeExport = {
             // JSON-only iDevices that store ALL content in jsonProperties (not in htmlView)
             // and need renderView to generate the complete interface.
             // 'trueorfalse' added for legacy imports that have empty htmlView.
-            const jsonOnlyIdevices = ['casestudy', 'form', 'image-gallery', 'magnifier', 'trueorfalse'];
+            const jsonOnlyIdevices = [
+                'casestudy',
+                'file-attachment',
+                'form',
+                'image-gallery',
+                'magnifier',
+                'three-sixty-viewer',
+                'trueorfalse',
+                'adaptative-quiz',
+            ];
             const ideviceType = ideviceNode.getAttribute('data-idevice-type');
             const needsJsonRender = isJsonIdevice && jsonOnlyIdevices.includes(ideviceType);
             if (needsJsonRender || ideviceNode.classList.contains('db-no-data')) {
@@ -296,6 +482,7 @@ window.$exeExport = {
                 // No renderView needed, just behaviour and init
                 exportIdevice.renderBehaviour(jsonData, accesibility);
                 exportIdevice.init(jsonData, accesibility);
+                this.afterIdeviceRendered(ideviceNode);
                 ideviceNode.classList.add('loaded');
                 setTimeout(() => { ideviceNode.classList.remove('loading') }, 100);
             }
@@ -347,11 +534,48 @@ window.$exeExport = {
         exportIdevice.renderBehaviour(jsonData, accesibility);
         // Idevice export function 3: init
         exportIdevice.init(jsonData, accesibility);
+        this.afterIdeviceRendered(ideviceNode);
         // Loaded
         ideviceNode.classList.add('loaded');
         setTimeout(() => { ideviceNode.classList.remove('loading') }, 100);
     },
 
+    /**
+     * Apply the enhancements shared by every iDevice to content an iDevice has just
+     * rendered.
+     *
+     * JSON iDevices build their markup from data long after the page-wide
+     * initialization has run, so rich text they generate (which authors write in
+     * TinyMCE, effects included) would never be processed. This is the export-side
+     * counterpart of the editor's `loadLegacyExeFunctionalitiesExport()`: iDevices
+     * stay unaware of the common libraries, and a new shared enhancement only has to
+     * be registered here. See #2170.
+     *
+     * @param {HTMLElement} ideviceNode
+     */
+    afterIdeviceRendered: function (ideviceNode) {
+        if (!ideviceNode) return;
+        // Legacy $exe_effects object: initialize the effects inside this iDevice only,
+        // leaving the ones already initialized elsewhere on the page untouched.
+        if (typeof $exeFX !== 'undefined' && typeof $exeFX.init === 'function') {
+            $exeFX.init(ideviceNode);
+        }
+        // Lightbox links (rel^='lightbox'): the page-wide binding may have run on markup
+        // this iDevice has since replaced. See #2510.
+        if (typeof $exe !== 'undefined') {
+            if (typeof $exe.setMultimediaGalleries === 'function') $exe.setMultimediaGalleries(ideviceNode);
+            if (typeof $exe.setModalWindowContentSize === 'function') $exe.setModalWindowContentSize(ideviceNode);
+        }
+        // JSON iDevices can create feedback after the print exporter has opened the initial HTML.
+        // Open it once, then leave subsequent user folds alone, including on repeated initialization.
+        if (this.printing && this.printing.kind === 'document') {
+            ideviceNode.querySelectorAll('.feedback.js-hidden').forEach(feedback => {
+                if (this.openedPrintFeedback.has(feedback)) return;
+                this.openedPrintFeedback.add(feedback);
+                if (feedback.style.display === 'none') feedback.style.removeProperty('display');
+            });
+        }
+    },
 
     /**
      * Get idevice export object
@@ -447,6 +671,10 @@ window.$exeExport = {
 
 // Use local reference for cleaner code
 var $exeExport = window.$exeExport;
+
+// Apply the Teacher Mode reveal as early as possible. This script runs in <head>, so
+// doing it now (before DOMContentLoaded and the first paint) avoids any content flicker.
+try { $exeExport.teacherMode.bootstrap(); } catch (e) { /* student mode is the safe default */ }
 
 $(function () {
     $exeExport.init();
@@ -624,16 +852,19 @@ $exeExport.searchBar = {
             spans.remove();
         }
         $("#exe-client-search-results-list a").on("click", function(){
+            // Hits come from the search index, so they inherit no params.
+            var href = $exeExport.teacherMode.withTeacherParams(this.getAttribute('href'));
             if (!$("#siteNav").is(":visible")) {
-                // Use & if URL already has parameters, otherwise use ?
-                var separator = this.href.indexOf('?') !== -1 ? '&' : '?';
-                this.href += separator + 'nav=false';
+                // Deep links: the param goes before the fragment.
+                href = $exeExport.setUrlParam(href, 'nav', 'false');
             }
+            this.setAttribute('href', href);
             // Close search box and restore page content
             $("main > header, main div.page-content").show();
             $("#exe-client-search-reset").removeClass("visible");
             $('#exe-client-search-results-list').html('');
             $('#exe-client-search').hide();
+            $('#searchBarToggler').attr('aria-expanded', 'false');
             $('#exe-client-search-text').val('');
         });
     },
@@ -705,21 +936,7 @@ $exeExport.searchBar = {
     // Add search parameter to a link
     addSearchParam : function(lnk) {
         if (!this.query) return lnk;
-        var searchParam = encodeURIComponent(this.query);
-        // Handle hash
-        var hashIndex = lnk.indexOf('#');
-        var hash = '';
-        if (hashIndex !== -1) {
-            hash = lnk.substring(hashIndex);
-            lnk = lnk.substring(0, hashIndex);
-        }
-        // Add parameter
-        if (lnk.indexOf('?') !== -1) {
-            lnk += '&q=' + searchParam;
-        } else {
-            lnk += '?q=' + searchParam;
-        }
-        return lnk + hash;
+        return $exeExport.setUrlParam(lnk, 'q', encodeURIComponent(this.query));
     },
 
     // Check URL for search parameter and highlight matches

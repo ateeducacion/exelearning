@@ -2,7 +2,7 @@
  * Auth Routes Tests
  * Tests for authentication endpoints using DI pattern
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, spyOn } from 'bun:test';
 import { Elysia } from 'elysia';
 import { Kysely } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
@@ -16,8 +16,16 @@ import {
 } from '../db/migrations/005_user_id_nullable';
 import { up as migration006Up } from '../db/migrations/006_impersonation_audit_log';
 import { now } from '../db/types';
-import { createAuthRoutes, verifyToken, getJwtSecret, shouldAutoCreateUsers, type AuthDependencies } from './auth';
+import {
+    createAuthRoutes,
+    verifyToken,
+    verifyUserPassword,
+    getJwtSecret,
+    shouldAutoCreateUsers,
+    type AuthDependencies,
+} from './auth';
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
+import { resetOidcDiscoveryCache } from '../services/oidc-discovery';
 
 let testDb: Kysely<Database>;
 let originalEnv: Record<string, string | undefined>;
@@ -38,6 +46,19 @@ function createTestApp(db: Kysely<Database>) {
     return new Elysia().use(createAuthRoutes(deps));
 }
 
+// OIDC callbacks must carry the oidc_state cookie set by GET /login/openid and echo its state.
+const OIDC_TEST_STATE = 'test-state';
+const OIDC_TEST_NONCE = 'test-nonce';
+function oidcCallbackRequest(query: string, extraCookie?: string): Request {
+    const oidcState = encodeURIComponent(
+        JSON.stringify({ codeVerifier: 'test-verifier', state: OIDC_TEST_STATE, nonce: OIDC_TEST_NONCE }),
+    );
+    const cookie = [`oidc_state=${oidcState}`, extraCookie].filter(Boolean).join('; ');
+    return new Request(`http://localhost/login/openid/callback?${query}&state=${OIDC_TEST_STATE}`, {
+        headers: { Cookie: cookie },
+    });
+}
+
 // Helper to create a hashed password
 async function hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
@@ -53,6 +74,7 @@ describe('Auth Routes', () => {
             JWT_SECRET: process.env.JWT_SECRET,
             API_JWT_SECRET: process.env.API_JWT_SECRET,
             CAS_URL: process.env.CAS_URL,
+            OIDC_ISSUER: process.env.OIDC_ISSUER,
             OIDC_AUTHORIZATION_ENDPOINT: process.env.OIDC_AUTHORIZATION_ENDPOINT,
             AUTH_TEMP_EMAIL_DOMAIN: process.env.AUTH_TEMP_EMAIL_DOMAIN,
         };
@@ -60,6 +82,11 @@ describe('Auth Routes', () => {
         // Set test environment
         process.env.APP_AUTH_METHODS = 'password,guest';
         process.env.JWT_SECRET = 'test-secret-for-auth-tests';
+        // Disable OIDC Discovery by default so endpoint resolution stays hermetic.
+        // Bun autoloads `.env`, which sets a real `OIDC_ISSUER`; leaving it set
+        // would make the resolver perform real network discovery. The dedicated
+        // discovery tests below opt back in with a mocked `fetch`.
+        delete process.env.OIDC_ISSUER;
 
         testDb = new Kysely<Database>({
             dialect: new BunSqliteDialect({ url: ':memory:' }),
@@ -204,6 +231,173 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(200);
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie).toContain('auth=');
+        });
+
+        it('marks the auth cookie Secure in production and not in development', async () => {
+            const hashedPw = await hashPassword('password');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'securecookie@example.com',
+                    user_id: 'securecookie-user',
+                    password: hashedPw,
+                    roles: '[]',
+                    is_lopd_accepted: 1,
+                    is_active: 1,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const login = () =>
+                app.handle(
+                    new Request('http://localhost/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: 'securecookie@example.com', password: 'password' }),
+                    }),
+                );
+
+            const prevAppEnv = process.env.APP_ENV;
+            const prevNodeEnv = process.env.NODE_ENV;
+            try {
+                // Production (APP_ENV=prod) → the session cookie must carry Secure.
+                process.env.APP_ENV = 'prod';
+                process.env.NODE_ENV = 'test';
+                const prodCookie = (await login()).headers.get('set-cookie') ?? '';
+                expect(prodCookie).toContain('auth=');
+                expect(prodCookie.toLowerCase()).toContain('secure');
+
+                // Development → no Secure flag (cookies work over plain http://localhost).
+                process.env.APP_ENV = 'dev';
+                const devCookie = (await login()).headers.get('set-cookie') ?? '';
+                expect(devCookie).toContain('auth=');
+                expect(devCookie.toLowerCase()).not.toContain('secure');
+            } finally {
+                if (prevAppEnv !== undefined) process.env.APP_ENV = prevAppEnv;
+                else delete process.env.APP_ENV;
+                if (prevNodeEnv !== undefined) process.env.NODE_ENV = prevNodeEnv;
+                else delete process.env.NODE_ENV;
+            }
+        });
+
+        it('should return 403 with "Account deactivated" for disabled user with correct password', async () => {
+            const hashedPw = await hashPassword('correct-password');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'disabled@example.com',
+                    user_id: 'disabled-user',
+                    password: hashedPw,
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 0,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'disabled@example.com',
+                        password: 'correct-password',
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(403);
+            const data = (await response.json()) as { error: string; message: string };
+            expect(data.error).toBe('Forbidden');
+            expect(data.message).toBe('Account deactivated');
+            const setCookie = response.headers.get('set-cookie');
+            expect(setCookie ?? '').not.toContain('auth=');
+        });
+    });
+
+    // =========================================================================
+    // Username-enumeration timing oracle (constant-time login)
+    //
+    // A failed login MUST run exactly one Bun.password.verify whether or not the
+    // email exists, otherwise the fast "user not found" path (no verify) leaks
+    // account existence through response latency. See security finding
+    // "no-rate-limit-auth-brute-force" and ADR-2255-02.
+    // =========================================================================
+    describe('login is constant-time for unknown vs existing accounts', () => {
+        it('POST /api/auth/login runs password verify even when the email does not exist', async () => {
+            const verifySpy = spyOn(Bun.password, 'verify');
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: 'ghost-does-not-exist@example.com',
+                            password: 'whatever',
+                        }),
+                    }),
+                );
+
+                expect(response.status).toBe(401);
+                // Vulnerable code returns before verify when the user is
+                // absent, so the spy is never called and this assertion fails.
+                expect(verifySpy).toHaveBeenCalledTimes(1);
+            } finally {
+                verifySpy.mockRestore();
+            }
+        });
+
+        it('POST /login_check runs password verify even when the email does not exist', async () => {
+            const verifySpy = spyOn(Bun.password, 'verify');
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/login_check', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            email: 'ghost-does-not-exist-2@example.com',
+                            password: 'whatever',
+                        }).toString(),
+                    }),
+                );
+
+                // Symfony-compatible form login redirects on failure.
+                expect(response.status).toBe(302);
+                expect(verifySpy).toHaveBeenCalledTimes(1);
+            } finally {
+                verifySpy.mockRestore();
+            }
+        });
+    });
+
+    describe('verifyUserPassword (constant-time helper)', () => {
+        it('returns false for a missing user even if password verify would succeed', async () => {
+            // Boolean(user) must gate the result: a non-existent account can never
+            // authenticate, even though a decoy compare runs (timing parity).
+            const verifySpy = spyOn(Bun.password, 'verify').mockResolvedValue(true as never);
+            try {
+                expect(await verifyUserPassword(null, 'anything')).toBe(false);
+                expect(await verifyUserPassword(undefined, 'anything')).toBe(false);
+                // The decoy compare still ran (one call per invocation) — timing parity.
+                expect(verifySpy).toHaveBeenCalledTimes(2);
+            } finally {
+                verifySpy.mockRestore();
+            }
+        });
+
+        it('returns true only for an existing user with the correct password', async () => {
+            const hash = await hashPassword('correct-horse');
+            expect(await verifyUserPassword({ password: hash }, 'correct-horse')).toBe(true);
+            expect(await verifyUserPassword({ password: hash }, 'wrong-horse')).toBe(false);
+        });
+
+        it('returns false for a user whose password is null (SSO/guest rows) without throwing', async () => {
+            // A null/empty stored password falls back to the decoy hash, so it can
+            // never match — password login is impossible for password-less accounts.
+            expect(await verifyUserPassword({ password: null }, 'anything')).toBe(false);
+            expect(await verifyUserPassword({ password: '' }, 'anything')).toBe(false);
         });
     });
 
@@ -512,6 +706,59 @@ describe('Auth Routes', () => {
     // Form-based login routes
     // =========================================================================
 
+    describe('POST /login_check Origin guard', () => {
+        it('redirects with error when Origin header does not match the request host', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Origin: 'https://evil.example.com',
+                    },
+                    body: '_username=x@example.com&_password=irrelevant',
+                }),
+            );
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).toContain('/login');
+            expect(location).toContain('Invalid%20request%20origin');
+        });
+
+        it('redirects with error when Referer header cannot be parsed as a URL', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Referer: 'not-a-url',
+                    },
+                    body: '_username=x@example.com&_password=irrelevant',
+                }),
+            );
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).toContain('Invalid%20request%20origin');
+        });
+
+        it('accepts Origin that matches the request host', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        Origin: 'http://localhost',
+                    },
+                    body: '_username=nobody@example.com&_password=irrelevant',
+                }),
+            );
+            // Origin check passes; flow continues to the "invalid credentials"
+            // redirect (302 to /login?error=...), not the origin-error redirect.
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') || '';
+            expect(location).not.toContain('Invalid%20request%20origin');
+        });
+    });
+
     describe('POST /login_check', () => {
         it('should redirect to login with error for invalid credentials', async () => {
             const response = await app.handle(
@@ -554,6 +801,39 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(302);
             const location = response.headers.get('location');
             expect(location).toContain('/workarea');
+        });
+
+        it('should redirect to login with "Account deactivated" error for disabled user', async () => {
+            const hashedPw = await hashPassword('password');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'form-disabled@example.com',
+                    user_id: 'form-disabled-user',
+                    password: hashedPw,
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 0,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: '_username=form-disabled@example.com&_password=password',
+                }),
+            );
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location');
+            expect(location).toContain('/login');
+            expect(location).toContain(`error=${encodeURIComponent('Account deactivated')}`);
+            expect(location).not.toContain('/workarea');
+            const setCookie = response.headers.get('set-cookie');
+            expect(setCookie ?? '').not.toContain('auth=');
         });
     });
 
@@ -700,7 +980,7 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(404);
         });
 
-        it('should redirect to OpenID when properly configured', async () => {
+        it('should redirect to OpenID without forcing consent when properly configured', async () => {
             const prevMethods = process.env.APP_AUTH_METHODS;
             const prevEndpoint = process.env.OIDC_AUTHORIZATION_ENDPOINT;
             const prevClientId = process.env.OIDC_CLIENT_ID;
@@ -718,6 +998,14 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(302);
             const location = response.headers.get('location');
             expect(location).toContain('oidc.example.com');
+            const params = new URL(location!).searchParams;
+            expect(params.has('prompt')).toBe(false);
+            expect(params.get('client_id')).toBe('test-client-id');
+            expect(params.get('response_type')).toBe('code');
+            expect(params.get('code_challenge_method')).toBe('S256');
+            expect(params.get('code_challenge')).toBeTruthy();
+            expect(params.get('state')).toBeTruthy();
+            expect(params.get('nonce')).toBeTruthy();
         });
 
         it('should handle proxy headers gracefully (proxy trust verified in proxy-url.util.spec.ts)', async () => {
@@ -752,6 +1040,75 @@ describe('Auth Routes', () => {
             const location = response.headers.get('location');
             expect(location).toContain('redirect_uri=');
             expect(location).toContain('oidc.example.com');
+        });
+    });
+
+    // OIDC Discovery wiring: OIDC_ISSUER should drive endpoint resolution.
+    // The resolver itself is unit-tested in services/oidc-discovery.spec.ts;
+    // these tests confirm auth routes consult it via the global fetch.
+    describe('GET /login/openid (OIDC Discovery)', () => {
+        const issuer = 'https://idp.discovery-test.example.com';
+        const originalFetch = globalThis.fetch;
+
+        function mockWellKnown() {
+            globalThis.fetch = (async (url: string | URL | Request) => {
+                const href = url.toString();
+                if (href.endsWith('/.well-known/openid-configuration')) {
+                    return {
+                        ok: true,
+                        status: 200,
+                        json: async () => ({
+                            issuer,
+                            authorization_endpoint: `${issuer}/authorize`,
+                            token_endpoint: `${issuer}/token`,
+                            userinfo_endpoint: `${issuer}/userinfo`,
+                            end_session_endpoint: `${issuer}/logout`,
+                        }),
+                    } as unknown as Response;
+                }
+                throw new Error(`Unexpected fetch in discovery test: ${href}`);
+            }) as unknown as typeof fetch;
+        }
+
+        beforeEach(() => {
+            resetOidcDiscoveryCache();
+        });
+
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+            delete process.env.OIDC_ISSUER;
+            delete process.env.OIDC_AUTHORIZATION_ENDPOINT;
+        });
+
+        it('redirects to the discovered authorization endpoint when only the issuer is set', async () => {
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_ISSUER = issuer;
+            delete process.env.OIDC_AUTHORIZATION_ENDPOINT;
+            mockWellKnown();
+
+            const response = await app.handle(new Request('http://localhost/login/openid'));
+
+            process.env.APP_AUTH_METHODS = 'password,guest';
+
+            expect(response.status).toBe(302);
+            expect(response.headers.get('location')).toContain(`${issuer}/authorize`);
+            expect(new URL(response.headers.get('location')!).searchParams.has('prompt')).toBe(false);
+        });
+
+        it('prefers an explicit authorization endpoint over the discovered one', async () => {
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_ISSUER = issuer;
+            process.env.OIDC_AUTHORIZATION_ENDPOINT = 'https://explicit.example.com/authorize';
+            mockWellKnown();
+
+            const response = await app.handle(new Request('http://localhost/login/openid'));
+
+            process.env.APP_AUTH_METHODS = 'password,guest';
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') ?? '';
+            expect(location).toContain('explicit.example.com/authorize');
+            expect(location).not.toContain(issuer);
         });
     });
 
@@ -1340,7 +1697,7 @@ describe('Auth Routes', () => {
             const prevMethods = process.env.APP_AUTH_METHODS;
             process.env.APP_AUTH_METHODS = 'password,guest';
 
-            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=abc123'));
+            const response = await app.handle(oidcCallbackRequest('code=abc123'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             expect(response.status).toBe(404);
@@ -1426,7 +1783,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,openid';
             delete process.env.OIDC_TOKEN_ENDPOINT;
 
-            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=abc123'));
+            const response = await app.handle(oidcCallbackRequest('code=abc123'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1448,6 +1805,7 @@ describe('Auth Routes', () => {
             // Create mock ID token with email in payload
             const idTokenPayload = Buffer.from(
                 JSON.stringify({
+                    nonce: OIDC_TEST_NONCE,
                     sub: 'oidc-user-123',
                     email: 'oidcuser@example.com',
                     iat: Math.floor(Date.now() / 1000),
@@ -1464,7 +1822,7 @@ describe('Auth Routes', () => {
                     }),
                 );
 
-            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=valid-code'));
+            const response = await app.handle(oidcCallbackRequest('code=valid-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1496,6 +1854,7 @@ describe('Auth Routes', () => {
             // ID token without email
             const idTokenPayload = Buffer.from(
                 JSON.stringify({
+                    nonce: OIDC_TEST_NONCE,
                     sub: 'userinfo-user-123',
                     iat: Math.floor(Date.now() / 1000),
                 }),
@@ -1522,7 +1881,7 @@ describe('Auth Routes', () => {
                 );
             };
 
-            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=userinfo-code'));
+            const response = await app.handle(oidcCallbackRequest('code=userinfo-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1549,6 +1908,7 @@ describe('Auth Routes', () => {
             // ID token with subject as email but no email field
             const idTokenPayload = Buffer.from(
                 JSON.stringify({
+                    nonce: OIDC_TEST_NONCE,
                     sub: 'subject@asdomain.com',
                     iat: Math.floor(Date.now() / 1000),
                 }),
@@ -1563,9 +1923,7 @@ describe('Auth Routes', () => {
                     }),
                 );
 
-            const response = await app.handle(
-                new Request('http://localhost/login/openid/callback?code=subject-email-code'),
-            );
+            const response = await app.handle(oidcCallbackRequest('code=subject-email-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1589,10 +1947,7 @@ describe('Auth Routes', () => {
 
             // ID token with only subject (not an email)
             const idTokenPayload = Buffer.from(
-                JSON.stringify({
-                    sub: 'user-no-email',
-                    iat: Math.floor(Date.now() / 1000),
-                }),
+                JSON.stringify({ nonce: OIDC_TEST_NONCE, sub: 'user-no-email', iat: Math.floor(Date.now() / 1000) }),
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
@@ -1604,7 +1959,7 @@ describe('Auth Routes', () => {
                     }),
                 );
 
-            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=no-email-code'));
+            const response = await app.handle(oidcCallbackRequest('code=no-email-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1631,7 +1986,7 @@ describe('Auth Routes', () => {
                 throw new Error('Network error');
             };
 
-            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=error-code'));
+            const response = await app.handle(oidcCallbackRequest('code=error-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1647,10 +2002,7 @@ describe('Auth Routes', () => {
             process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
 
             const idTokenPayload = Buffer.from(
-                JSON.stringify({
-                    sub: 'return-user',
-                    email: 'return@oidc.example.com',
-                }),
+                JSON.stringify({ nonce: OIDC_TEST_NONCE, sub: 'return-user', email: 'return@oidc.example.com' }),
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
@@ -1663,11 +2015,7 @@ describe('Auth Routes', () => {
                 );
 
             const response = await app.handle(
-                new Request('http://localhost/login/openid/callback?code=return-code', {
-                    headers: {
-                        Cookie: 'sso_return_url=%2Fprojects%2F789',
-                    },
-                }),
+                oidcCallbackRequest('code=return-code', 'sso_return_url=%2Fprojects%2F789'),
             );
 
             process.env.APP_AUTH_METHODS = prevMethods;
@@ -1686,10 +2034,7 @@ describe('Auth Routes', () => {
             process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
 
             const idTokenPayload = Buffer.from(
-                JSON.stringify({
-                    sub: 'idtoken-user',
-                    email: 'idtoken@example.com',
-                }),
+                JSON.stringify({ nonce: OIDC_TEST_NONCE, sub: 'idtoken-user', email: 'idtoken@example.com' }),
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
@@ -1701,7 +2046,7 @@ describe('Auth Routes', () => {
                     }),
                 );
 
-            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=idtoken-code'));
+            const response = await app.handle(oidcCallbackRequest('code=idtoken-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1709,6 +2054,235 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(302);
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie).toContain('oidc_id_token=');
+        });
+
+        describe('rejects callbacks without a valid exchange or state', () => {
+            let prevMethods: string | undefined;
+            let prevTokenEndpoint: string | undefined;
+            let prevUserinfoEndpoint: string | undefined;
+            let tokenRequests: number;
+
+            const idTokenFor = (claims: Record<string, unknown>) =>
+                `header.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.signature`;
+
+            const countUsers = async () =>
+                (
+                    await testDb
+                        .selectFrom('users')
+                        .select(eb => eb.fn.countAll().as('n'))
+                        .executeTakeFirstOrThrow()
+                ).n;
+
+            beforeEach(() => {
+                prevMethods = process.env.APP_AUTH_METHODS;
+                prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+                prevUserinfoEndpoint = process.env.OIDC_USERINFO_ENDPOINT;
+                process.env.APP_AUTH_METHODS = 'password,openid';
+                process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
+                delete process.env.OIDC_USERINFO_ENDPOINT;
+                tokenRequests = 0;
+            });
+
+            afterEach(() => {
+                if (prevMethods === undefined) delete process.env.APP_AUTH_METHODS;
+                else process.env.APP_AUTH_METHODS = prevMethods;
+                if (prevTokenEndpoint === undefined) delete process.env.OIDC_TOKEN_ENDPOINT;
+                else process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+                if (prevUserinfoEndpoint === undefined) delete process.env.OIDC_USERINFO_ENDPOINT;
+                else process.env.OIDC_USERINFO_ENDPOINT = prevUserinfoEndpoint;
+            });
+
+            const respondWith = (body: Record<string, unknown>, status = 200) => {
+                globalThis.fetch = (async () => {
+                    tokenRequests++;
+                    return new Response(JSON.stringify(body), { status });
+                }) as unknown as typeof fetch;
+            };
+
+            it('returns 401 and creates no account when the token endpoint rejects the code', async () => {
+                respondWith({ error: 'invalid_grant' }, 400);
+                const before = await countUsers();
+
+                const response = await app.handle(oidcCallbackRequest('code=rejected-code'));
+
+                expect(response.status).toBe(401);
+                expect(response.headers.get('set-cookie') ?? '').not.toContain('auth=');
+                expect(await countUsers()).toBe(before);
+            });
+
+            it('returns 401 when a 200 token response carries an error', async () => {
+                respondWith({ error: 'invalid_grant' });
+                const before = await countUsers();
+
+                const response = await app.handle(oidcCallbackRequest('code=error-body-code'));
+
+                expect(response.status).toBe(401);
+                expect(await countUsers()).toBe(before);
+            });
+
+            it('returns 401 when the token endpoint answers with a non-JSON error page', async () => {
+                globalThis.fetch = (async () => {
+                    tokenRequests++;
+                    return new Response('<html>Bad Gateway</html>', { status: 502 });
+                }) as unknown as typeof fetch;
+
+                const response = await app.handle(oidcCallbackRequest('code=html-error-code'));
+
+                expect(response.status).toBe(401);
+                expect(tokenRequests).toBe(1);
+            });
+
+            it('returns 401 when the token response yields no identity', async () => {
+                respondWith({ access_token: 'opaque-token' });
+                const before = await countUsers();
+
+                const response = await app.handle(oidcCallbackRequest('code=no-identity-code'));
+
+                expect(response.status).toBe(401);
+                expect(await countUsers()).toBe(before);
+            });
+
+            it('returns 401 when the id_token does not echo the nonce', async () => {
+                respondWith({ id_token: idTokenFor({ sub: 'nonce-user', email: 'nonce-user@example.com' }) });
+
+                const response = await app.handle(oidcCallbackRequest('code=no-nonce-code'));
+
+                expect(response.status).toBe(401);
+                const user = await testDb
+                    .selectFrom('users')
+                    .where('email', '=', 'nonce-user@example.com')
+                    .selectAll()
+                    .executeTakeFirst();
+                expect(user).toBeUndefined();
+            });
+
+            it('returns 400 without contacting the provider when the state cookie is missing', async () => {
+                respondWith({ id_token: idTokenFor({ sub: 'x', email: 'x@example.com', nonce: OIDC_TEST_NONCE }) });
+
+                const response = await app.handle(
+                    new Request(`http://localhost/login/openid/callback?code=no-cookie&state=${OIDC_TEST_STATE}`),
+                );
+
+                expect(response.status).toBe(400);
+                expect(((await response.json()) as { message: string }).message).toContain('state');
+                expect(tokenRequests).toBe(0);
+            });
+
+            it('returns 400 when the query state is missing', async () => {
+                respondWith({ id_token: idTokenFor({ sub: 'x', email: 'x@example.com', nonce: OIDC_TEST_NONCE }) });
+                const valid = oidcCallbackRequest('code=no-query-state');
+
+                const response = await app.handle(
+                    new Request('http://localhost/login/openid/callback?code=no-query-state', {
+                        headers: { Cookie: valid.headers.get('cookie') ?? '' },
+                    }),
+                );
+
+                expect(response.status).toBe(400);
+                expect(tokenRequests).toBe(0);
+            });
+
+            it('returns 400 when the state cookie is malformed', async () => {
+                respondWith({ id_token: idTokenFor({ sub: 'x', email: 'x@example.com', nonce: OIDC_TEST_NONCE }) });
+
+                const response = await app.handle(
+                    new Request(`http://localhost/login/openid/callback?code=bad-cookie&state=${OIDC_TEST_STATE}`, {
+                        headers: { Cookie: 'oidc_state=%7Bnot-json' },
+                    }),
+                );
+
+                expect(response.status).toBe(400);
+                expect(tokenRequests).toBe(0);
+            });
+        });
+
+        it('discovers jwks_uri from the issuer and verifies the id_token signature against it', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevIssuer = process.env.OIDC_ISSUER;
+            const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+            const prevJwks = process.env.OIDC_JWKS_URI;
+            const prevClientId = process.env.OIDC_CLIENT_ID;
+
+            const issuer = 'https://idp.jwks-discovery.example.com';
+            const jwksUri = `${issuer}/jwks`;
+
+            // Minimal config: ONLY the issuer is set. No explicit endpoints, no
+            // explicit OIDC_JWKS_URI. Discovery must supply both the token
+            // endpoint and the jwks_uri.
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_ISSUER = issuer;
+            delete process.env.OIDC_TOKEN_ENDPOINT;
+            delete process.env.OIDC_JWKS_URI;
+            process.env.OIDC_CLIENT_ID = 'jwks-client';
+
+            resetOidcDiscoveryCache();
+
+            // Mock id_token with a structurally valid (RS256) header so the JWKS
+            // verifier proceeds to resolve the signing key from the discovered
+            // jwks_uri. The signature is bogus, so verification must reject it.
+            // (If the unverified base64 fallback were used instead, this token
+            // would be accepted and the request would succeed with a 302.)
+            const idTokenHeader = Buffer.from(JSON.stringify({ alg: 'RS256', kid: 'test-kid', typ: 'JWT' })).toString(
+                'base64url',
+            );
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({ nonce: OIDC_TEST_NONCE, sub: 'jwks-user', email: 'jwks@example.com' }),
+            ).toString('base64url');
+            const mockIdToken = `${idTokenHeader}.${idTokenPayload}.unverifiable-signature`;
+
+            let jwksFetched = false;
+            globalThis.fetch = (async (url: string | URL | Request) => {
+                const href = url.toString();
+                if (href.endsWith('/.well-known/openid-configuration')) {
+                    return {
+                        ok: true,
+                        status: 200,
+                        json: async () => ({
+                            issuer,
+                            authorization_endpoint: `${issuer}/authorize`,
+                            token_endpoint: `${issuer}/token`,
+                            userinfo_endpoint: `${issuer}/userinfo`,
+                            jwks_uri: jwksUri,
+                        }),
+                    } as unknown as Response;
+                }
+                if (href === jwksUri) {
+                    jwksFetched = true;
+                    // Empty key set so signature verification cannot succeed.
+                    return new Response(JSON.stringify({ keys: [] }), {
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+                }
+                if (href.endsWith('/token')) {
+                    return new Response(JSON.stringify({ access_token: 'access-token-jwks', id_token: mockIdToken }));
+                }
+                throw new Error(`Unexpected fetch in jwks discovery test: ${href}`);
+            }) as unknown as typeof fetch;
+
+            const response = await app.handle(oidcCallbackRequest('code=jwks-code'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevIssuer !== undefined) process.env.OIDC_ISSUER = prevIssuer;
+            else delete process.env.OIDC_ISSUER;
+            if (prevTokenEndpoint !== undefined) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+            if (prevJwks !== undefined) process.env.OIDC_JWKS_URI = prevJwks;
+            if (prevClientId !== undefined) process.env.OIDC_CLIENT_ID = prevClientId;
+            else delete process.env.OIDC_CLIENT_ID;
+            resetOidcDiscoveryCache();
+
+            // The discovered jwks_uri was used for verification...
+            expect(jwksFetched).toBe(true);
+            // ...and because the token is not actually signed by that JWKS, the
+            // signature verification rejected it (instead of silently trusting
+            // an unverified base64-decoded payload).
+            expect(response.status).toBe(401);
+            // The user must NOT have been created from an unverified token.
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'jwks@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeUndefined();
         });
     });
 
@@ -1758,18 +2332,77 @@ describe('Auth Routes', () => {
             expect(loginResponse.status).toBe(200);
         });
 
-        it('should redirect to OpenID logout when authMethod is openid', async () => {
+        // Mint a JWT with authMethod 'openid' so /logout takes the OIDC branch.
+        async function openidAuthCookie(): Promise<string> {
+            const { SignJWT } = await import('jose');
+            const secret = new TextEncoder().encode(getJwtSecret());
+            const token = await new SignJWT({
+                sub: 1,
+                email: 'oidclogout@example.com',
+                roles: ['ROLE_USER'],
+                authMethod: 'openid',
+            })
+                .setProtectedHeader({ alg: 'HS256' })
+                .setExpirationTime('1h')
+                .sign(secret);
+            return `auth=${token}`;
+        }
+
+        it('should redirect to the explicit OIDC end_session endpoint on logout', async () => {
             const prevEndSessionEndpoint = process.env.OIDC_END_SESSION_ENDPOINT;
             const prevClientId = process.env.OIDC_CLIENT_ID;
-
             process.env.OIDC_END_SESSION_ENDPOINT = 'https://oidc.example.com/logout';
             process.env.OIDC_CLIENT_ID = 'test-client';
 
-            // Just test that the environment variables are read properly
-            expect(process.env.OIDC_END_SESSION_ENDPOINT).toBe('https://oidc.example.com/logout');
+            const response = await app.handle(
+                new Request('http://localhost/logout', { headers: { cookie: await openidAuthCookie() } }),
+            );
 
-            process.env.OIDC_END_SESSION_ENDPOINT = prevEndSessionEndpoint;
-            process.env.OIDC_CLIENT_ID = prevClientId;
+            if (prevEndSessionEndpoint) process.env.OIDC_END_SESSION_ENDPOINT = prevEndSessionEndpoint;
+            else delete process.env.OIDC_END_SESSION_ENDPOINT;
+            if (prevClientId) process.env.OIDC_CLIENT_ID = prevClientId;
+            else delete process.env.OIDC_CLIENT_ID;
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location') ?? '';
+            expect(location).toContain('oidc.example.com/logout');
+            expect(location).toContain('client_id=test-client');
+        });
+
+        it('should redirect to a discovered end_session endpoint on logout', async () => {
+            const issuer = 'https://idp.discovery-logout.example.com';
+            const originalFetch = globalThis.fetch;
+            resetOidcDiscoveryCache();
+            process.env.OIDC_ISSUER = issuer;
+            delete process.env.OIDC_END_SESSION_ENDPOINT;
+            process.env.OIDC_CLIENT_ID = 'test-client';
+            globalThis.fetch = (async (url: string | URL | Request) => {
+                if (url.toString().endsWith('/.well-known/openid-configuration')) {
+                    return {
+                        ok: true,
+                        status: 200,
+                        json: async () => ({
+                            issuer,
+                            authorization_endpoint: `${issuer}/authorize`,
+                            token_endpoint: `${issuer}/token`,
+                            userinfo_endpoint: `${issuer}/userinfo`,
+                            end_session_endpoint: `${issuer}/endsession`,
+                        }),
+                    } as unknown as Response;
+                }
+                throw new Error(`Unexpected fetch: ${url}`);
+            }) as unknown as typeof fetch;
+
+            const response = await app.handle(
+                new Request('http://localhost/logout', { headers: { cookie: await openidAuthCookie() } }),
+            );
+
+            globalThis.fetch = originalFetch;
+            delete process.env.OIDC_ISSUER;
+            delete process.env.OIDC_CLIENT_ID;
+
+            expect(response.status).toBe(302);
+            expect(response.headers.get('location') ?? '').toContain(`${issuer}/endsession`);
         });
 
         it('should handle SAML logout configuration', async () => {
@@ -2098,10 +2731,7 @@ describe('Auth Routes', () => {
             process.env.DEFAULT_QUOTA = '1024';
 
             const idTokenPayload = Buffer.from(
-                JSON.stringify({
-                    sub: 'oidc_quota_user',
-                    email: 'oidc_quota@example.com',
-                }),
+                JSON.stringify({ nonce: OIDC_TEST_NONCE, sub: 'oidc_quota_user', email: 'oidc_quota@example.com' }),
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
@@ -2113,7 +2743,7 @@ describe('Auth Routes', () => {
                     }),
                 );
 
-            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=quota-code'));
+            const response = await app.handle(oidcCallbackRequest('code=quota-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -2252,6 +2882,7 @@ describe('Auth Routes', () => {
             // ID token with subject but no email
             const idTokenPayload = Buffer.from(
                 JSON.stringify({
+                    nonce: OIDC_TEST_NONCE,
                     sub: 'tempdomain_oidc_user',
                     iat: Math.floor(Date.now() / 1000),
                 }),
@@ -2266,9 +2897,7 @@ describe('Auth Routes', () => {
                     }),
                 );
 
-            const response = await app.handle(
-                new Request('http://localhost/login/openid/callback?code=tempdomain-code'),
-            );
+            const response = await app.handle(oidcCallbackRequest('code=tempdomain-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -2307,7 +2936,7 @@ describe('Auth Routes', () => {
             expect(guestUser?.email).toMatch(/^[0-9a-f]{8}@domain\.local$/);
         });
 
-        it('should use random hex for OIDC fallback email when subject is missing', async () => {
+        it('should reject OIDC login when the provider returns neither subject nor email', async () => {
             const prevMethods = process.env.APP_AUTH_METHODS;
             const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
 
@@ -2316,9 +2945,7 @@ describe('Auth Routes', () => {
 
             // ID token with no subject and no email
             const idTokenPayload = Buffer.from(
-                JSON.stringify({
-                    iat: Math.floor(Date.now() / 1000),
-                }),
+                JSON.stringify({ nonce: OIDC_TEST_NONCE, iat: Math.floor(Date.now() / 1000) }),
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
@@ -2330,24 +2957,16 @@ describe('Auth Routes', () => {
                     }),
                 );
 
-            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=nosub-code'));
+            const response = await app.handle(oidcCallbackRequest('code=nosub-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
 
-            expect(response.status).toBe(302);
+            expect(response.status).toBe(401);
 
-            // Verify user was created with random hex email (16 hex chars for 8 bytes)
-            const user = await testDb
-                .selectFrom('users')
-                .where('email', 'like', `%@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
-                .where('user_id', 'like', 'oidc:%')
-                .selectAll()
-                .execute();
-
-            // Should have at least one user with random hex email
-            const randomHexUser = user.find(u => /^[0-9a-f]{16}@domain\.local$/.test(u.email));
-            expect(randomHexUser).toBeDefined();
+            // No account may be synthesized without a provider identity
+            const users = await testDb.selectFrom('users').where('user_id', 'like', 'oidc:%').selectAll().execute();
+            expect(users.some(u => /^[0-9a-f]{16}@/.test(u.email))).toBe(false);
         });
     });
 
@@ -2536,6 +3155,7 @@ describe('Auth Routes', () => {
         const mockIdToken = (() => {
             const payload = Buffer.from(
                 JSON.stringify({
+                    nonce: OIDC_TEST_NONCE,
                     sub: 'new-oidc-sub',
                     email: 'newoidcuser@example.com',
                     iat: Math.floor(Date.now() / 1000),
@@ -2590,9 +3210,7 @@ describe('Auth Routes', () => {
                 }),
             );
 
-            const response = await trackingApp.handle(
-                new Request('http://localhost/login/openid/callback?code=oidc-create-true'),
-            );
+            const response = await trackingApp.handle(oidcCallbackRequest('code=oidc-create-true'));
 
             expect(response.status).toBe(302);
             expect(createUserCalls).toBe(1);
@@ -2623,9 +3241,7 @@ describe('Auth Routes', () => {
                 }),
             );
 
-            const response = await trackingApp.handle(
-                new Request('http://localhost/login/openid/callback?code=oidc-create-false'),
-            );
+            const response = await trackingApp.handle(oidcCallbackRequest('code=oidc-create-false'));
 
             expect(response.status).toBe(401);
             expect(createUserCalls).toBe(0);

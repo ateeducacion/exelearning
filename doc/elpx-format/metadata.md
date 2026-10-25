@@ -75,7 +75,7 @@ function generateOdeResourcesXml(odeId: string, versionId: string): string {
 | Key | Description |
 |---|---|
 | `odeId` | Stable project identifier. Retrieved from `meta.odeIdentifier` on export; generated once via `generateOdeId()` if absent. |
-| `odeVersionId` | Regenerated on every export/save via `generateOdeId()`. Acts as a change cursor. |
+| `odeVersionId` | Stable per-version identifier. Read from `meta.odeVersionId` on export; generated once via `generateOdeId()` only when absent. Imported from `<odeResources>` so a round-trip without content changes preserves the value. |
 | `exe_version` | The ODE format version string, currently `'3.0'` (constant `ODE_VERSION` from `constants.ts:1000`). |
 
 **Legacy keys observed in older fixtures:** the v4 generator writes exactly three resources (`odeId`, `odeVersionId`, `exe_version`). Some older fixtures additionally carry `odeVersionName`, `isDownload`, or the misspelling `eXeVersion`. The importer accepts all of these for backward compatibility, but **`generateOdeResourcesXml()` never emits them in v4** — treat them as informational legacy keys when reading older `.elpx` files.
@@ -128,6 +128,8 @@ The single source of truth for every property is `METADATA_PROPERTIES` in `metad
 | `addMathJax` | `pp_addMathJax` | boolean | `false` | export | Load MathJax for LaTeX rendering |
 | `exportSource` | `exportSource` | boolean | `true` | export | Include editable source in export (no `pp_` prefix — legacy compatibility) |
 | `globalFont` | `pp_globalFont` | string | `'default'` | export | Global font override |
+| `passScore` | `pp_passScore` | number | `5` | export | Mark out of 10 (one decimal) an activity needs to be passed. Inherited by every iDevice that does not define its own |
+| `passScoreEveryActivity` | `pp_passScoreEveryActivity` | boolean | `false` | export | A SCORM page passes only when each of its activities reaches its own mark. When `false`, the weighted mean of the scores is compared with that of the marks |
 | `extraHeadContent` | `pp_extraHeadContent` | string | `''` | content | Custom HTML injected into `<head>` of all pages |
 | `footer` | `footer` | string | `''` | content | Custom footer HTML (no `pp_` prefix — legacy compatibility) |
 
@@ -246,6 +248,9 @@ Legacy `.elp` files use Python pickle XML (`contentv3.xml`), not ODE 2.0. Metada
     <!-- exportSource has no pp_ prefix (legacy compatibility) -->
     <odeProperty><key>exportSource</key><value>true</value></odeProperty>
     <odeProperty><key>pp_globalFont</key><value>default</value></odeProperty>
+    <!-- Pass score: a number 0-10 with at most one decimal -->
+    <odeProperty><key>pp_passScore</key><value>5</value></odeProperty>
+    <odeProperty><key>pp_passScoreEveryActivity</key><value>false</value></odeProperty>
 
     <!-- Custom content: HTML-escaped (stored in XML text nodes) -->
     <odeProperty>

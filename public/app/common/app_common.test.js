@@ -1,3 +1,4 @@
+vi.mock('./app_tooltip.js', () => ({ default: vi.fn((element) => window.bootstrap.Tooltip.getOrCreateInstance(element)) }));
 import Common from './app_common.js';
 
 describe('Common', () => {
@@ -264,6 +265,28 @@ describe('Common', () => {
       const result = common.markdownToHTML('test');
       expect(typeof result).toBe('string');
     });
+
+    it('preserves inline LaTeX \\(...\\) intact', () => {
+      const result = common.markdownToHTML('Equation \\(x^2 + y_1\\) here');
+      expect(result).toContain('\\(x^2 + y_1\\)');
+    });
+
+    it('preserves display LaTeX $$...$$ intact', () => {
+      const result = common.markdownToHTML('Block: $$\\int_0^1 dx$$ end');
+      expect(result).toContain('$$\\int_0^1 dx$$');
+    });
+
+    it('preserves \\[...\\] block math intact', () => {
+      const result = common.markdownToHTML('Block: \\[x_1 + x_2\\] end');
+      expect(result).toContain('\\[x_1 + x_2\\]');
+    });
+
+    it('preserves \\begin{...}...\\end{...} environments', () => {
+      const result = common.markdownToHTML(
+        'Aligned: \\begin{align}a_1 &= b_1 \\\\ c &= d\\end{align}'
+      );
+      expect(result).toContain('\\begin{align}a_1 &= b_1 \\\\ c &= d\\end{align}');
+    });
   });
 
   describe('initTooltips', () => {
@@ -321,6 +344,8 @@ describe('Common', () => {
         expect.any(Function),
         { passive: true }
       );
+      mockElements[0].addEventListener.mock.calls.find(([event]) => event === 'click')[1]();
+      expect(mockTooltipInstance.hide).toHaveBeenCalled();
     });
 
     it('should add mouseleave event listener to hide tooltip', () => {
@@ -330,6 +355,8 @@ describe('Common', () => {
         expect.any(Function),
         { passive: true }
       );
+      mockElements[0].addEventListener.mock.calls.find(([event]) => event === 'mouseleave')[1]();
+      expect(mockTooltipInstance.hide).toHaveBeenCalled();
     });
 
     it('should not create tooltip if one already exists', () => {

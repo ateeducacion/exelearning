@@ -4,14 +4,129 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     #change-block-icon-modal-content {
-        .option-block-icon.exe-icon {
-            content: "select_all";
-            font-family: var(--icons-ff);
-            border-radius: var(--radius);
-            transition: var(--tr-02);
-            opacity: .5;
+        display: flex;
+        flex-direction: column;
+        gap: var(--margin-m);
+
+        .icon-picker-toolbar {
+            display: flex;
+            align-items: stretch;
+            gap: var(--margin-s);
+
+            #block-icon-search-input {
+                flex: 1 1 auto;
+                min-width: 0;
+            }
         }
 
+        .option-block-icon.exe-icon {
+            border-radius: var(--radius);
+            transition: var(--tr-02);
+            // Resting contrast bumped to .8 for the icon selector (#1995).
+            opacity: .8;
+            width: 40px;
+            height: 40px;
+            padding: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--modal-icon-color, var(--modal-icon-default));
+            cursor: pointer;
+            background-color: var(--main-background-color);
+            border: 1px solid var(--gray-border-light);
+        }
+
+        .icon-options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+            gap: var(--margin-s);
+            max-height: min(60vh, 540px);
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .icon-options-section-title {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: var(--margin-s);
+            // Separates the title from the previous section, its own rule, and the
+            // first row of icons. The grid gap adds 4px more above and below.
+            // Tuned by eye, so no margin token matches.
+            margin-top: 19px;
+            padding-bottom: var(--margin-m);
+            margin-bottom: var(--margin-m);
+            border-bottom: 1px solid var(--gray-border-light);
+            font-size: .75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--icon-gray);
+
+            &:first-child {
+                margin-top: 0;
+            }
+        }
+
+        .icon-picker-custom-button {
+            flex: 0 0 auto;
+            min-width: 132px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--modal-icon-color, var(--modal-icon-default));
+            border: 1px solid var(--gray-border-light);
+            background: var(--main-background-color);
+
+            svg, img {
+                width: 24px;
+                height: 24px;
+                flex: 0 0 auto;
+                object-fit: contain;
+            }
+
+            &.selected {
+                border-color: var(--modal-icon-color, var(--modal-icon-default));
+                box-shadow: 0 0 0 2px color-mix(in srgb, var(--modal-icon-color, var(--modal-icon-default)) 18%, transparent);
+            }
+        }
+
+        .option-block-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .option-block-icon .exe-material-icon {
+            width: 100%;
+            height: 100%;
+            background-color: currentColor;
+            -webkit-mask-image: var(--exe-material-icon-url);
+            mask-image: var(--exe-material-icon-url);
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-position: center;
+            -webkit-mask-size: contain;
+            mask-size: contain;
+            // Material Symbols are drawn inside a 20px live area on a 24px grid,
+            // so with mask-size: contain the glyph ink fills only 20/24 ≈ 83.3%
+            // of the cell and renders optically smaller than the edge-to-edge
+            // theme (Style) icons next to it. Scale by 24/20 = 1.2 so the glyph
+            // ink matches the Style icon exactly.
+            transform: scale(1.2);
+        }
+
+        .option-block-icon .exe-material-icon-sprite {
+            width: 100%;
+            height: 100%;
+            display: block;
+            fill: currentColor;
+            // Match the edge-to-edge theme (Style) icons: Material Symbols fill
+            // only their 20/24 live area, so scale by 24/20 = 1.2.
+            transform: scale(1.2);
+        }
         .box-icon-value {
             height: 100%;
             width: 100%;
@@ -22,6 +137,15 @@
         .option-block-icon {
             &.empty-block-icon.exe-icon {
                 background-color: var(--main-background-color);
+                // "No icon" removes the icon rather than picking one, so it stays red
+                // whether or not it is the current selection.
+                color: var(--remove);
+            }
+
+            &.theme-block-icon img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
             }
 
             &:hover, &:focus {
@@ -30,19 +154,31 @@
 
             &[selected="true"] {
                 opacity: 1;
+                color: var(--main-background-color);
+                background-color: var(--modal-icon-color, var(--modal-icon-default));
+                border-color: var(--modal-icon-color, var(--modal-icon-default));
 
-                &.selected-provisional {
-                    color: var(--icon-gray);
-                    background-color: var(--work-area-bg-color);
-                    border: 2px dotted var(--dark-exe-color);
-                    height: 36px;
-                    width: 36px;
+                // Theme icons render as <img> with their own colors, so the
+                // invert-on-fill trick used for Material icons would hide them.
+                // Keep a light background and mark the selection with a border.
+                &.theme-block-icon {
+                    color: var(--modal-icon-color, var(--modal-icon-default));
+                    background-color: var(--main-background-color);
+                    border: 2px solid var(--modal-icon-color, var(--modal-icon-default));
+                }
+
+                // Same treatment for "no icon": the filled accent would bury its red,
+                // so mark the selection with the border instead.
+                &.empty-block-icon {
+                    background-color: var(--main-background-color);
+                    border: 2px solid var(--modal-icon-color, var(--modal-icon-default));
                 }
             }
-        }
 
-        .empty-block-icon[selected="true"] {
-            color: var(--remove);
+            &.original-icon-selection:not([selected="true"]) {
+                outline: 2px solid var(--gray-400);
+                outline-offset: 2px;
+            }
         }
     }
 
@@ -58,6 +194,109 @@
         .progress-bar{
             background-color:var(--brand-primary);
         }
+    }
+}
+
+#modalConfirm:has(.modal-body[modal-content-id="block-icon-picker"]) {
+    .modal-dialog,
+    .modal-dialog.modal-dialog-centered {
+        max-width: min(1320px, calc(100vw - 24px));
+        width: min(1320px, calc(100vw - 24px));
+    }
+
+    .modal-content {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+    }
+
+    .modal-body {
+        width: 100%;
+    }
+}
+
+/* The interactive activities the print options panel lets the user pick from */
+.print-activities-selection {
+    /* Height of one activity. */
+    --print-activity-row: 1.75rem;
+
+    /* A column, so that the list takes the height left to it while the title, the hint and
+       "Select all" stay where they are. */
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    margin: 1rem 0 0;
+    padding: 0;
+    border: 0;
+
+    // Floated, as the panel's other titles are, below the rule above the section rather than on it
+    .print-activities-selection-title {
+        float: left;
+        width: 100%;
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .print-activities-selection-hint {
+        margin: 0 0 0.5rem;
+        font-size: 13px;
+        color: var(--gray-600);
+    }
+
+    /* A flex row, so no margin inherited by the label can collapse through it and add height. */
+    .form-check {
+        display: flex;
+        align-items: center;
+        height: var(--print-activity-row);
+        margin: 0;
+        padding-left: 0;
+
+        .form-check-input {
+            flex: none;
+            float: none;
+            margin: 0 var(--margin-m) 0 0;
+        }
+
+        /* One line per activity; the whole title is in the tooltip. */
+        .form-check-label {
+            min-width: 0;
+            margin: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        /* At the end of the line of an activity that can never be printed; the title gives way. */
+        .print-activities-title-only {
+            flex: none;
+            margin-left: auto;
+            padding-left: 0.5rem;
+            font-size: 12px;
+            color: var(--gray-600);
+            white-space: nowrap;
+        }
+    }
+
+    .print-activities-select-all {
+        flex: none;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--elements-hover);
+        box-sizing: content-box;
+    }
+
+    /* Only the list scrolls, and only when its activities do not fit. It keeps three in view when
+       the window is too short for more; the panel's body scrolls then. Its side padding, taken
+       back by the margins, keeps the focus ring of a checkbox from being cut off. */
+    .print-activities-list {
+        min-height: calc(3 * var(--print-activity-row));
+        margin: 0 -0.25rem;
+        padding: 0 0.25rem;
+        overflow-y: auto;
+        scrollbar-color: var(--gray-border-dark) transparent;
+        scrollbar-width: thin;
     }
 }
 
@@ -387,30 +626,6 @@
 .modal-open {
     #modalConfirm .modal-content {
         width: 400px;
-    }
-
-    #change-block-icon-modal-content {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-        gap: var(--margin-m);
-        grid-auto-flow: dense;
-
-        > .exe-icon {
-            width: 40px;
-            height: 40px;
-            font-size: 30px;
-            line-height: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: var(--icon-gray);
-            transition: var(--tr-02);
-            cursor: pointer;
-
-            &:hover {
-                transition: var(--tr-02);
-            }
-        }
     }
 
     #change-block-title-input {
@@ -1389,21 +1604,15 @@
     min-height: 50px;
 }
 
+// The alert sits in the flow instead of overlaying the body: as an absolutely
+// positioned box it covered the search field underneath and left no room before
+// the content, and no margin could separate them.
 :is(#modalStyleManager, #modalIdeviceManager) .modal-content .modal-body .alert-danger.show {
     padding: var(--margin-m);
-    position: absolute;
-    z-index: 2;
+    margin-bottom: var(--margin-m);
     display: flex !important;
     justify-content: space-between;
     align-items: center;
-}
-
-#modalStyleManager .modal-content .modal-body .alert-danger.show {
-    width: calc(750px - var(--margin-m) - var(--margin-m));
-}
-
-#modalIdeviceManager .modal-content .modal-body .alert-danger.show {
-    width: calc(100% - 72px);
 }
 
 :is(#modalStyleManager, #modalIdeviceManager) .modal-content .modal-body .alert-danger {
@@ -1417,17 +1626,42 @@
     }
 
     .text {
+        // Stack the paragraphs: a row layout made a two-message alert render as
+        // two columns and overflow the alert box.
         display: flex;
-        width: max-content;
+        flex-direction: column;
+        width: auto;
+        min-width: 0;
     }
 
-    button {
+    .close-alert {
         padding: 0;
         height: 24px;
         width: 24px;
         display: flex;
         justify-content: center;
         align-items: center;
+        flex-shrink: 0;
+        margin-left: var(--margin-m);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        background: url("images/icons/exe-close-icon.svg") transparent center / 16px no-repeat;
+
+        &:hover {
+            background-color: var(--gray-100);
+        }
+
+        &:focus,
+        &:focus-visible {
+            border: none;
+            outline: none;
+        }
+
+        // The icon comes from the background image, not from the &times; glyph.
+        span {
+            display: none;
+        }
     }
 }
 
@@ -1675,12 +1909,6 @@
 
                 &:last-child > td {
                     border-bottom: none;
-                }
-
-                .theme-action-export[downloadable="false"] {
-                    color: var(--icon-bg-gray);
-                    pointer-events: none;
-                    cursor: default;
                 }
             }
         }
@@ -1950,6 +2178,14 @@
     #odeBrokenLinks {
         overflow: auto;
         margin-bottom: 20px;
+
+        /* The default link color has poor contrast on the amber and red row
+           backgrounds. Inheriting the row's own text color gives the same
+           contrast as `.alert-link` would, without turning links bold. */
+        tr.table-warning a,
+        tr.table-danger a {
+            color: inherit;
+        }
     }
 }
 
@@ -2305,9 +2541,15 @@
                                             .btn-danger {
                                                 background: var(--red-600, #dc2626);
                                                 border-color: var(--red-600, #dc2626);
+                                                // .btn defaults to var(--text) (dark); force white over the red fill.
+                                                color: var(--white, #fff);
+                                                span {
+                                                    color: var(--white, #fff);
+                                                }
                                                 &:hover {
                                                     background: var(--red-700, #b91c1c);
                                                     border-color: var(--red-700, #b91c1c);
+                                                    color: var(--white, #fff);
                                                 }
                                                 &:disabled {
                                                     opacity: 0.7;
@@ -3382,14 +3624,51 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
             font-size: 20px;
         }
 
-        &:hover {
+        &:hover:not(:disabled) {
             background: var(--brand-primary-dark);
             border-color: var(--brand-primary-dark);
         }
+
+        // Nothing to print yet: the preview is being drawn again, or no activity is left to print
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+
+    // Printing did not start: said where it cannot be missed, with a way out where there is one
+    .print-preview-notice {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 24px;
+        background: #fef3f2;
+        border-bottom: 1px solid #fecdca;
+        color: #b42318;
+        flex-shrink: 0;
+
+        &[hidden] {
+            display: none;
+        }
+
+        .print-preview-notice-text {
+            margin: 0;
+            font-size: 14px;
+        }
+    }
+
+    // The preview and, when there is something to choose, the options beside it
+    .print-preview-body {
+        position: relative;
+        display: flex;
+        flex: 1;
+        min-height: 0;
     }
 
     .print-preview-content {
         flex: 1;
+        min-width: 0;
         display: flex;
         justify-content: center;
         align-items: flex-start;
@@ -3470,6 +3749,129 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
             font-size: 16px;
         }
     }
+
+    // The options panel: the look of the Styles panel, docked beside the preview, and 30% wider
+    // so that the activities' titles fit
+    .print-options-panel {
+        display: flex;
+        flex: 0 0 416px;
+        flex-direction: column;
+        width: 416px;
+        min-height: 0;
+        padding: 20px 15px;
+        background: var(--white, white);
+        border-left: 1px solid #eaecf0;
+        box-shadow: 0 20px 24px -4px rgba(16, 24, 40, 0.08), 0 8px 8px -4px rgba(16, 24, 40, 0.03);
+        color: var(--text-black);
+
+        &[hidden] {
+            display: none;
+        }
+
+        .print-options-header {
+            display: flex;
+            flex-flow: row nowrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .print-options-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .print-options-close {
+            display: inline-flex;
+            padding: 4px;
+            background: transparent;
+            border: 0;
+            border-radius: 6px;
+            line-height: 0;
+            cursor: pointer;
+
+            &:hover {
+                background: var(--gray-100);
+            }
+        }
+
+        // A column: the options keep their height and the activity list takes what they leave, so
+        // that only the list scrolls. The body scrolls as a whole only when the window is too short
+        // for the options and a few activities. Its side padding, taken back by the margins, keeps
+        // focus rings from being cut off.
+        .print-options-body {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            min-height: 0;
+            margin: 0 -0.25rem;
+            padding: 0 0.25rem;
+            overflow-y: auto;
+            scrollbar-color: var(--gray-border-dark) transparent;
+            scrollbar-width: thin;
+        }
+
+        // What to print, then which activities: the list at its end is what gives way
+        .print-options-activities {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .print-options-group {
+            min-width: 0;
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+
+        // Floated, as Bootstrap floats a legend, so that it sits below the rule above its section
+        // rather than on it; Bootstrap also clears what follows it.
+        .print-options-group-title {
+            float: left;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        // A note above the options, its icon beside the first line
+        .print-options-intro {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+
+        .print-options-intro-icon {
+            flex: none;
+            margin-top: 2.5px;
+            color: var(--gray-600);
+        }
+
+        .print-options-intro-text {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        // The sections run down the panel, each set off from the one above by a rule: the note,
+        // the document options, then what to print, then which activities
+        .print-options-intro + .print-options-document,
+        .print-options-activities > .print-options-group,
+        .print-options-activities > .print-activities-selection {
+            margin-top: 1.25rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--elements-hover);
+        }
+
+        .print-options-status {
+            min-height: 1.25rem;
+            margin: 0.75rem 0 0;
+            font-size: 13px;
+            color: #b42318;
+        }
+    }
 }
 
 @keyframes spin {
@@ -3510,6 +3912,16 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
             height: calc(100vh - 60px);
             border-radius: 0;
             box-shadow: none;
+        }
+
+        // Too narrow to sit beside the preview: it covers it until closed
+        .print-options-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 20;
+            width: min(416px, 100%);
         }
     }
 }
@@ -4027,4 +4439,50 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 .media-library-file-count .media-library-count-value {
     font-weight: 600;
     color: #495057;
+}
+
+/* -------------------------------------------------------------------------
+   Change password dialog (#2261)
+   ------------------------------------------------------------------------- */
+
+.modal-change-password .change-password-feedback {
+    margin-bottom: 1rem;
+}
+
+.modal-change-password .change-password-strength {
+    margin-top: 0.5rem;
+}
+
+.modal-change-password .change-password-strength .progress {
+    height: 6px;
+    background-color: var(--gray-200);
+}
+
+.modal-change-password .change-password-strength-label {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--bold-gray);
+    font-size: 12px;
+}
+
+/* Advisory only: the colours describe the password, they never block it. */
+.modal-change-password .change-password-strength-bar {
+    transition: width 0.2s ease-in-out;
+}
+
+.modal-change-password .change-password-strength-bar.strength-too-short,
+.modal-change-password .change-password-strength-bar.strength-weak {
+    background-color: var(--system-red);
+}
+
+.modal-change-password .change-password-strength-bar.strength-fair {
+    background-color: #e0a800;
+}
+
+.modal-change-password .change-password-strength-bar.strength-good {
+    background-color: var(--brand-primary-500);
+}
+
+.modal-change-password .change-password-strength-bar.strength-strong {
+    background-color: var(--brand-primary-700);
 }

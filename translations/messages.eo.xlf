@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="eo" datatype="plaintext" original="file.ext">
-    <header>
-      <tool tool-id="symfony" tool-name="Symfony"/>
-    </header>
     <body>
       <trans-unit id="cBwQM6_" resname="Permissions error">
         <source>Permissions error</source>
@@ -1783,11 +1780,11 @@
       </trans-unit>
       <trans-unit id="okBpgji" resname="Down arrow">
         <source>Down arrow</source>
-        <target>~Malsupra flago</target>
+        <target>~Sago malsupren</target>
       </trans-unit>
       <trans-unit id="V6Dm6uX" resname="Up arrow">
         <source>Up arrow</source>
-        <target>~Malsupra flago</target>
+        <target>~Sago supren</target>
       </trans-unit>
       <trans-unit id="2xUlg0C" resname="Right loop arrow">
         <source>Right loop arrow</source>
@@ -1803,11 +1800,11 @@
       </trans-unit>
       <trans-unit id="rtCVSEI" resname="Arrow with text above">
         <source>Arrow with text above</source>
-        <target>~Sago kun teksto sube</target>
+        <target>~Sago kun teksto supre</target>
       </trans-unit>
       <trans-unit id="2xsg9dy" resname="Arrow with text above and below">
         <source>Arrow with text above and below</source>
-        <target>~Sago kun teksto sube kaj sube</target>
+        <target>~Sago kun teksto supre kaj sube</target>
       </trans-unit>
       <trans-unit id="fkj1H3d" resname="Right curve arrow">
         <source>Right curve arrow</source>
@@ -2055,10 +2052,6 @@
       </trans-unit>
       <trans-unit id="U33cqMv" resname="Huge text">
         <source>Huge text</source>
-        <target>~Giganta teksto</target>
-      </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Extra large text">
-        <source>Extra large text</source>
         <target>~Giganta teksto</target>
       </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
@@ -3729,14 +3722,6 @@
         <source>Info</source>
         <target>~Informo</target>
       </trans-unit>
-      <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
-        <source>Show or hide the node's children</source>
-        <target>~Montru aŭ kaŝu la infanajn nodojn</target>
-      </trans-unit>
-      <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
-        <source>Start working on a new mind map</source>
-        <target>~Komencu labori pri nova mensa mapo</target>
-      </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
         <target>~Eraro dum alŝuto de dosiero</target>
@@ -3857,10 +3842,6 @@
         <source>Project properties</source>
         <target>~Projekto-eco</target>
       </trans-unit>
-      <trans-unit id="W7h4Kea" resname="Share link">
-        <source>Share link</source>
-        <target>~Kopii ligilon</target>
-      </trans-unit>
       <trans-unit id="Uom6tJO" resname="Information and presentation">
         <source>Information and presentation</source>
         <target>~Informo kaj prezento</target>
@@ -3953,10 +3934,6 @@
         <source>New file</source>
         <target>~Nova dosiero</target>
       </trans-unit>
-      <trans-unit id="t6INLEU" resname="Create new file without saving">
-        <source>Create new file without saving</source>
-        <target>~Krei novan dosieron sen konservi</target>
-      </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
         <target>~Konservas la projekton...</target>
@@ -3977,17 +3954,9 @@
         <source>Please enter the project title:</source>
         <target>~Bonvolu enigi la titolon de la projekto:</target>
       </trans-unit>
-      <trans-unit id="cPW6CJ0" resname="Google Drive error">
-        <source>Google Drive error</source>
-        <target>~Eraro en Google Drive</target>
-      </trans-unit>
       <trans-unit id="KEhkI6s" resname="Unknown">
         <source>Unknown</source>
         <target>~Nekonata</target>
-      </trans-unit>
-      <trans-unit id="crz7e6x" resname="Dropbox error">
-        <source>Dropbox error</source>
-        <target>~Eraro en Dropbox</target>
       </trans-unit>
       <trans-unit id="d2WU0Ah" resname="Error opening">
         <source>Error opening</source>
@@ -4397,22 +4366,6 @@
         <source>Upload</source>
         <target>~Elŝuti</target>
       </trans-unit>
-      <trans-unit id="JcEtEhk" resname="Upload to Dropbox">
-        <source>Upload to Dropbox</source>
-        <target>~Elŝuti al Dropbox</target>
-      </trans-unit>
-      <trans-unit id="JOFdorq" resname="Select the Dropbox directory where the project will be uploaded:">
-        <source>Select the Dropbox directory where the project will be uploaded:</source>
-        <target>~Elektu la Dropbox-dosierujon kie la projekto estos alŝutita:</target>
-      </trans-unit>
-      <trans-unit id="9a1eDpd" resname="Upload to Google Drive">
-        <source>Upload to Google Drive</source>
-        <target>~Elŝuti al Google Drive</target>
-      </trans-unit>
-      <trans-unit id="HMP7DeK" resname="Select the Google Drive directory where the project will be uploaded:">
-        <source>Select the Google Drive directory where the project will be uploaded:</source>
-        <target>~Elektu la Google Drive-dosierujon kie la projekto estos alŝutita:</target>
-      </trans-unit>
       <trans-unit id="9Mm2eRT" resname="An error occurred while saving block's properties in database">
         <source>An error occurred while saving block's properties in database</source>
         <target>~Eraro okazis dum konservado de la propraĵoj de la bloko en la datumbazo</target>
@@ -4548,10 +4501,6 @@
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
         <target>~Vi ne povas aldoni iDevice en la ĉefpaĝo</target>
-      </trans-unit>
-      <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
-        <source>Problem adding iDevice</source>
-        <target>~Problemo aldoni iDevice</target>
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
@@ -6029,14 +5978,6 @@
         <source>This content was created with eXeLearning, your free and open source editor to create educational resources.</source>
         <target>~Ĉi tiu enhavo estis kreita kun eXeLearning, via libera kaj malfermfonta redaktilo por krei edukajn rimedojn.</target>
       </trans-unit>
-      <trans-unit id="V7aVH8i" resname="Download .elp file">
-        <source>Download .elp file</source>
-        <target>~Elŝuti elp-dosieron</target>
-      </trans-unit>
-      <trans-unit id="dap6H5j" resname="This block will create a link to download the elp file. Write some use instructions and customize your download link.">
-        <source>This block will create a link to download the elp file. Write some use instructions and customize your download link.</source>
-        <target>~Ĉi tiu bloko kreos ligilon por elŝuti la elp-dosieron. Skribu kelkajn uzinstrukciojn kaj personecigu vian elŝutan ligilon.</target>
-      </trans-unit>
       <trans-unit id="vaXcPZz" resname="Download link">
         <source>Download link</source>
         <target>~Ligiloj por elŝuto</target>
@@ -6389,10 +6330,6 @@
         <source>No questions in the form</source>
         <target>~Neniuj demandoj en la formularo</target>
       </trans-unit>
-      <trans-unit id="DCmDkZO" resname="Set the pass mark">
-        <source>Set the pass mark</source>
-        <target>~Elekti pasantecon</target>
-      </trans-unit>
       <trans-unit id="jkH6U0E" resname="Include a button to display the answers">
         <source>Include a button to display the answers</source>
         <target>~Inkluzivi butonon por montri la respondojn</target>
@@ -6616,14 +6553,6 @@
       <trans-unit id="kVirQpc" resname="Border color">
         <source>Border color</source>
         <target>~Kovra koloro</target>
-      </trans-unit>
-      <trans-unit id="yWj5Kfm" resname="Save score button">
-        <source>Save score button</source>
-        <target>~Konservi poentaron</target>
-      </trans-unit>
-      <trans-unit id=".Rk8uO0" resname="The button will only be displayed when exporting as SCORM and while editing in eXeLearning.">
-        <source>The button will only be displayed when exporting as SCORM and while editing in eXeLearning.</source>
-        <target>~La butono estos nur montrata kiam vi eksportas kiel SCORM kaj dum redaktado en eXeLearning.</target>
       </trans-unit>
       <trans-unit id="LjhASK4" resname="Provide a valid GeoGebra URL or activity ID.">
         <source>Provide a valid GeoGebra URL or activity ID.</source>
@@ -7509,10 +7438,6 @@
         <source>Absolute error</source>
         <target>~ Averaĝa eraro</target>
       </trans-unit>
-      <trans-unit id="DpYu48b" resname="% right to see the feedback">
-        <source>% right to see the feedback</source>
-        <target>~ % ĝuste por vidi la reagojn</target>
-      </trans-unit>
       <trans-unit id="ye8G32n" resname="Please specify the number of operations">
         <source>Please specify the number of operations</source>
         <target>~ Bonvolu specifii la nombron de operacioj</target>
@@ -7563,15 +7488,15 @@
       </trans-unit>
       <trans-unit id="2n0zHIr" resname="Question text:">
         <source>Question text:</source>
-        <target>~Kalkulu en kvadrataj metroj la surfacon de triangulo kun bazo de {b}m kaj alto de {h}m</target>
+        <target>~Teksto de la demando:</target>
       </trans-unit>
       <trans-unit id="oMsapmn" resname="Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m">
         <source>Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m</source>
-        <target>~Difinu la domajno de ĉiu variablo</target>
+        <target>~Kalkulu en kvadrataj metroj la surfacon de triangulo kun bazo de {b}m kaj alto de {h}m</target>
       </trans-unit>
       <trans-unit id="0vtKYu1" resname="Define the domain of each variable">
         <source>Define the domain of each variable</source>
-        <target>~Plej granda nombro:</target>
+        <target>~Difinu la domajnon de ĉiu variablo</target>
       </trans-unit>
       <trans-unit id="F7TCatN" resname="Smallest number">
         <source>Smallest number</source>
@@ -7587,7 +7512,7 @@
       </trans-unit>
       <trans-unit id="Ke5uJZY" resname="No decimals">
         <source>No decimals</source>
-        <target>~Respondo (opcia)</target>
+        <target>~Sen decimaloj</target>
       </trans-unit>
       <trans-unit id="4PgfFKC" resname="Feedback (optional)">
         <source>Feedback (optional)</source>
@@ -10733,102 +10658,6 @@
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
         <target>~Ŝanĝu la tekston de la langetoj aldonante titolon al ĉiu Kapitolo 2 kun la opcio "Enmetu/Redaktu Atribuojn":</target>
       </trans-unit>
-      <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
-        <source>From Wikipedia, the free encyclopedia.</source>
-        <target>~De Vikipedio, la libera enciklopedio.</target>
-      </trans-unit>
-      <trans-unit id="178jFkN" resname="Redirected from">
-        <source>Redirected from</source>
-        <target>~Re-direktita de</target>
-      </trans-unit>
-      <trans-unit id="D.N0TPy" resname="Wikipedia does not have an article with this exact name.">
-        <source>Wikipedia does not have an article with this exact name.</source>
-        <target>~Vikipedio ne havas artikolon kun ĉi tiu preciza nomo.</target>
-      </trans-unit>
-      <trans-unit id="vWtWulw" resname="search for">
-        <source>search for</source>
-        <target>~serĉu por</target>
-      </trans-unit>
-      <trans-unit id="ReLHScr" resname="in Wikipedia">
-        <source>in Wikipedia</source>
-        <target>~en Vikipedio</target>
-      </trans-unit>
-      <trans-unit id="uLQ19JQ" resname="to check for alternative titles or spellings.">
-        <source>to check for alternative titles or spellings.</source>
-        <target>~por kontroli alternativajn titlojn aŭ literumojn.</target>
-      </trans-unit>
-      <trans-unit id="Uy3s6Ik" resname="Wikipedia Article">
-        <source>Wikipedia Article</source>
-        <target>~Vikipedio Artikolo</target>
-      </trans-unit>
-      <trans-unit id="8RTGAQT" resname="Article">
-        <source>Article</source>
-        <target>~Artikolo</target>
-      </trans-unit>
-      <trans-unit id="NR2RdXC" resname="English">
-        <source>English</source>
-        <target>~Angla</target>
-      </trans-unit>
-      <trans-unit id="VNPyy5F" resname="Basque">
-        <source>Basque</source>
-        <target>~Baskona</target>
-      </trans-unit>
-      <trans-unit id="6xS7ahk" resname="Catalan">
-        <source>Catalan</source>
-        <target>~Kataluna</target>
-      </trans-unit>
-      <trans-unit id="dY9PyfQ" resname="Chinese">
-        <source>Chinese</source>
-        <target>~Ĉina</target>
-      </trans-unit>
-      <trans-unit id="AdxkL_L" resname="Dutch">
-        <source>Dutch</source>
-        <target>~Nederlanda</target>
-      </trans-unit>
-      <trans-unit id="pMwerq8" resname="French">
-        <source>French</source>
-        <target>~Franca</target>
-      </trans-unit>
-      <trans-unit id="_PBILaW" resname="Galician">
-        <source>Galician</source>
-        <target>~Galicia</target>
-      </trans-unit>
-      <trans-unit id="HqedDt2" resname="German">
-        <source>German</source>
-        <target>~Germana</target>
-      </trans-unit>
-      <trans-unit id="xuAMUN9" resname="Italian">
-        <source>Italian</source>
-        <target>~Italiana</target>
-      </trans-unit>
-      <trans-unit id="1PzOojp" resname="Japanese">
-        <source>Japanese</source>
-        <target>~Japana</target>
-      </trans-unit>
-      <trans-unit id=".af6ZfV" resname="Magyar">
-        <source>Magyar</source>
-        <target>~Hungara</target>
-      </trans-unit>
-      <trans-unit id="ZYhMxlL" resname="Polish">
-        <source>Polish</source>
-        <target>~Polanda</target>
-      </trans-unit>
-      <trans-unit id="jJYRmbQ" resname="Portuguese">
-        <source>Portuguese</source>
-        <target>~Portugala</target>
-      </trans-unit>
-      <trans-unit id="b0hwZlf" resname="Slovenian">
-        <source>Slovenian</source>
-        <target>~Slovena</target>
-      </trans-unit>
-      <trans-unit id="YHU6HyX" resname="Spanish">
-        <source>Spanish</source>
-        <target>~Hispana</target>
-      </trans-unit>
-      <trans-unit id="OCwplzN" resname="Swedish">
-        <source>Swedish</source>
-        <target>~Sveda</target>
-      </trans-unit>
       <trans-unit id="zJxoJ__" resname="Emphasis">
         <source>Emphasis</source>
         <target>~Emfazo</target>
@@ -10952,6 +10781,10 @@
       <trans-unit id="OToz6k0" resname="Help us spreading eXeLearning. Checking this option, a &quot;Made with eXeLearning&quot; link will be displayed in your pages.">
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>~Helpu nin disvastigi eXeLearning. Se vi markos ĉi tiun opcion, "Farita kun eXeLearning" ligilo aperos en viaj paĝoj.</target>
+      </trans-unit>
+      <trans-unit id="MwExe01" resname="Made with eXeLearning">
+        <source>Made with eXeLearning</source>
+        <target>~Farita kun eXeLearning</target>
       </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
@@ -11248,10 +11081,6 @@
       <trans-unit id="qHaNrGf" resname="Changelog">
         <source>Changelog</source>
         <target>~Ĝisdonaĵoj</target>
-      </trans-unit>
-      <trans-unit id="rFqGW9s" resname="Upload to Drive">
-        <source>Upload to Drive</source>
-        <target>~Alŝuti al Drive</target>
       </trans-unit>
       <trans-unit id="6C92oaM" resname="System">
         <source>System</source>
@@ -12209,10 +12038,6 @@
         <source>Send to %s</source>
         <target>~Sendi al %s</target>
       </trans-unit>
-      <trans-unit id="finish_001" resname="Finish">
-        <source>Finish</source>
-        <target>~Fini</target>
-      </trans-unit>
       <trans-unit id="h72md8e" resname="Unsaved changes">
         <source>Unsaved changes</source>
         <target>~Nesavitaĵoj</target>
@@ -12561,22 +12386,6 @@
         <source>People with access</source>
         <target>~Havantoj kun aliro</target>
       </trans-unit>
-      <trans-unit id="gkvgh2w" resname="General access">
-        <source>General access</source>
-        <target>~Ĝenerala aliro</target>
-      </trans-unit>
-      <trans-unit id="46p14w1" resname="Restricted (Private)">
-        <source>Restricted (Private)</source>
-        <target>~Restriktita (Private)</target>
-      </trans-unit>
-      <trans-unit id="v1pds98" resname="Anyone with the link (Public)">
-        <source>Anyone with the link (Public)</source>
-        <target>~Ĉiuj kun la ligilo (Publika)</target>
-      </trans-unit>
-      <trans-unit id="71qdwgy" resname="Anyone who has the link can view and edit in real time">
-        <source>Anyone who has the link can view and edit in real time</source>
-        <target>~Ĉiu persono kun la ligo povas vidi kaj redakti en tempo real</target>
-      </trans-unit>
       <trans-unit id="ck26cxi" resname="Print preview">
         <source>Print preview</source>
         <target>~Antaŭrigardo de presado</target>
@@ -12624,18 +12433,6 @@
       <trans-unit id="t1w87ga" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
         <target>~ Skribu la ĝustan vorton aŭ frazon kaj alklaku la butonon "Respondi".</target>
-      </trans-unit>
-      <trans-unit id="84avriw" resname="Timeout">
-        <source>Timeout</source>
-        <target>~Tempa limdato elĉerpita</target>
-      </trans-unit>
-      <trans-unit id="iml7r85" resname="Network error">
-        <source>Network error</source>
-        <target>~Retera eraro</target>
-      </trans-unit>
-      <trans-unit id="u6ftl4b" resname="Invalid URL">
-        <source>Invalid URL</source>
-        <target>~Nevalida URL</target>
       </trans-unit>
       <trans-unit id="x4yfmx9" resname="Session Expired">
         <source>Session Expired</source>
@@ -12748,10 +12545,6 @@
       <trans-unit id="q7rrd9g" resname="An error occurred while cloning the block">
         <source>An error occurred while cloning the block</source>
         <target>~Eraro dum klonado de la kesto</target>
-      </trans-unit>
-      <trans-unit id="8obh827" resname="Being edited by">
-        <source>Being edited by</source>
-        <target>~Redaktita de</target>
       </trans-unit>
       <trans-unit id="cku1tvg" resname="An error occurred while creating the page">
         <source>An error occurred while creating the page</source>
@@ -13012,10 +12805,6 @@
       <trans-unit id="tbkygy8" resname="Error validating links">
         <source>Error validating links</source>
         <target>~Eraro dum validiĝo de la ligoj</target>
-      </trans-unit>
-      <trans-unit id="3e5lsew" resname="No broken links to export">
-        <source>No broken links to export</source>
-        <target>~Sen rompitaj ne-eksporteblaj ligiloj</target>
       </trans-unit>
       <trans-unit id="v69fwx3" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
@@ -13401,10 +13190,6 @@
         <source>config.xml not found in ZIP</source>
         <target>~config.xml ne trovita en la ZIP</target>
       </trans-unit>
-      <trans-unit id="6g70xum" resname="This style cannot be downloaded">
-        <source>This style cannot be downloaded</source>
-        <target>~Ĉi tiu stilo ne povas esti elŝutita</target>
-      </trans-unit>
       <trans-unit id="pfq6z0d" resname="Style already exists">
         <source>Style already exists</source>
         <target>~La stilo jam ekzistas</target>
@@ -13484,14 +13269,6 @@
       <trans-unit id="9w78mzz" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
         <target>~Ili estos aŭtomate redirektitaj al la superrega paĝo.</target>
-      </trans-unit>
-      <trans-unit id="04ta28o" resname="Preferences will be applied after refreshing the page.">
-        <source>Preferences will be applied after refreshing the page.</source>
-        <target>~La preferoj estos aplikitaj post la paĝa ĝisdatigo.</target>
-      </trans-unit>
-      <trans-unit id="2yatdge" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
-        <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target>~Estas necesas reŝargi la paĝon por apliki la ŝanĝojn. Unue elŝutu vian projekton por ne perdi laboron. Poste reŝarĝu la paĝon.</target>
       </trans-unit>
       <trans-unit id="6l88wq6" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
@@ -13700,18 +13477,6 @@
       <trans-unit id="3vx4js8" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
         <target>~Via aliro al ĉi tiu projekto estis nuligita.</target>
-      </trans-unit>
-      <trans-unit id="kn5ig14" resname="Mind map saved">
-        <source>Mind map saved</source>
-        <target>~Menskartoj konservitaj</target>
-      </trans-unit>
-      <trans-unit id="c957e2f" resname="source">
-        <source>source</source>
-        <target>~fonto</target>
-      </trans-unit>
-      <trans-unit id="q4yo54h" resname="target">
-        <source>target</source>
-        <target>~celo</target>
       </trans-unit>
       <trans-unit id="l2pgrp0" resname="Create new formula toolbar">
         <source>Create new formula toolbar</source>
@@ -14125,10 +13890,6 @@
         <source>Close without saving</source>
         <target>~Ĉu fermi sen konservi</target>
       </trans-unit>
-      <trans-unit id="pmcify3" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
-        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
-        <target>~Ne povis esti kontrolita: HTTP-enhavo estas blokita en HTTPS-paĝoj.</target>
-      </trans-unit>
       <trans-unit id="3oxnt5a" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>
         <target>~Vi povas aldoni nur unu Rubrik-iDevice por paĝo.</target>
@@ -14224,6 +13985,2026 @@
       <trans-unit id="21qeoch" resname="Your score will be automatically saved after each change.">
         <source>Your score will be automatically saved after each change.</source>
         <target>~Via poentaro estos aŭtomate konservita post ĉiu ŝanĝo.</target>
+      </trans-unit>
+      <trans-unit id="2dmkqos" resname="Use the default style of the site">
+        <source>Use the default style of the site</source>
+        <target>~Uzi la defaŭltan stilon de la retejo</target>
+      </trans-unit>
+      <trans-unit id="7n2p1wc" resname="Pick a style that will be preselected when you create a new project. Overrides the site default.">
+        <source>Pick a style that will be preselected when you create a new project. Overrides the site default.</source>
+        <target>~Elektu stilon kiu estos antaŭselektita kiam vi kreas novan projekton. Anstataŭas la defaŭlton de la retejo.</target>
+      </trans-unit>
+      <trans-unit id="2is7uwd" resname="Toggle mobile preview">
+        <source>Toggle mobile preview</source>
+        <target>~Baskuli moveblan antaŭrigardon</target>
+      </trans-unit>
+      <trans-unit id="4p1i3wq" resname="Open from folder">
+        <source>Open from folder</source>
+        <target>~Malfermi el dosierujo</target>
+      </trans-unit>
+      <trans-unit id="9x3ogy8" resname="Save to folder">
+        <source>Save to folder</source>
+        <target>~Konservi en dosierujon</target>
+      </trans-unit>
+      <trans-unit id="i1xa5kf" resname="3D Model">
+        <source>3D Model</source>
+        <target>~3D Modelo</target>
+      </trans-unit>
+      <trans-unit id="sh771g1" resname="3D Models">
+        <source>3D Models</source>
+        <target>~3D Modeloj</target>
+      </trans-unit>
+      <trans-unit id="zxr74ll" resname="The selected folder is not a valid eXeLearning project.">
+        <source>The selected folder is not a valid eXeLearning project.</source>
+        <target>~La elektita dosierujo ne enhavas validan eXeLearning-projekton.</target>
+      </trans-unit>
+      <trans-unit id="u2ax50l" resname="Not supported">
+        <source>Not supported</source>
+        <target>~Ne subtenata</target>
+      </trans-unit>
+      <trans-unit id="v5k4vlj" resname="Opening a project from a folder is not available in this browser.">
+        <source>Opening a project from a folder is not available in this browser.</source>
+        <target>~Ĉi tiu retumilo ne subtenas malferman projektojn el dosierujo.</target>
+      </trans-unit>
+      <trans-unit id="he4a6pi" resname="Folder save requires the Yjs export pipeline.">
+        <source>Folder save requires the Yjs export pipeline.</source>
+        <target>~Konservado en dosierujon postulas la Yjs-eksportan kanalon.</target>
+      </trans-unit>
+      <trans-unit id="b0ffrjd" resname="Generating folder project...">
+        <source>Generating folder project...</source>
+        <target>~Generante dosierujan projekton...</target>
+      </trans-unit>
+      <trans-unit id="z1xceyw" resname="Saving to a folder is not available in this browser.">
+        <source>Saving to a folder is not available in this browser.</source>
+        <target>~Ĉi tiu retumilo ne subtenas konservadon en dosierujon.</target>
+      </trans-unit>
+      <trans-unit id="4zxqbfc" resname="Folder saved.">
+        <source>Folder saved.</source>
+        <target>~Dosierujo konservita.</target>
+      </trans-unit>
+      <trans-unit id="apq0z0q" resname="An error occurred while exporting the project: ">
+        <source>An error occurred while exporting the project: </source>
+        <target>~Okazis eraro dum eksportado de la projekto: </target>
+      </trans-unit>
+      <trans-unit id="ned79sw" resname="Sending to the platform...">
+        <source>Sending to the platform...</source>
+        <target>~Sendante al la platformo...</target>
+      </trans-unit>
+      <trans-unit id="3serw6f" resname="Could not send the project to the platform: ">
+        <source>Could not send the project to the platform: </source>
+        <target>~Ne eblis sendi la projekton al la platformo: </target>
+      </trans-unit>
+      <trans-unit id="50debki" resname="TikZ code">
+        <source>TikZ code</source>
+        <target>~TikZ-kodo</target>
+      </trans-unit>
+      <trans-unit id="j8rcqrb" resname="One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.">
+        <source>One question per line. Fields separated by #. Description: short text describing the circuit. TikZ code: circuitikz code for the diagram. Solution: any combination of A, B, C and D (e.g. A, AC, BD). Question: the question text. Then 2 to 4 answer options.</source>
+        <target>~Unu demando por linio. Kampoj apartigitaj per #. Priskribo: mallonga teksto priskribanta la cirkvito. TikZ-kodo: circuitikz-kodo por la diagramo. Solvo: iu ajn kombinaĵo de A, B, C kaj D (ekz. A, AC, BD). Demando: la teksto de la demando. Poste 2 ĝis 4 respondaj opcioj.</target>
+      </trans-unit>
+      <trans-unit id="2aje58y" resname="Simple resistor circuit">
+        <source>Simple resistor circuit</source>
+        <target>~Simpla rezistora cirkvito</target>
+      </trans-unit>
+      <trans-unit id="tvbwljv" resname="What is the resistance value?">
+        <source>What is the resistance value?</source>
+        <target>~Kia estas la rezistanca valoro?</target>
+      </trans-unit>
+      <trans-unit id="cwdyfvp" resname="Battery and lamp circuit">
+        <source>Battery and lamp circuit</source>
+        <target>~Cirkvito kun baterio kaj lampo</target>
+      </trans-unit>
+      <trans-unit id="623gi23" resname="What happens when the switch is closed?">
+        <source>What happens when the switch is closed?</source>
+        <target>~Kio okazas kiam la ŝaltilo estas fermita?</target>
+      </trans-unit>
+      <trans-unit id="z9zp06f" resname="Nothing">
+        <source>Nothing</source>
+        <target>~Nenio</target>
+      </trans-unit>
+      <trans-unit id="cm6ewbi" resname="The lamp turns on">
+        <source>The lamp turns on</source>
+        <target>~La lampo ekbrulas</target>
+      </trans-unit>
+      <trans-unit id="ieiu5ij" resname="The battery drains">
+        <source>The battery drains</source>
+        <target>~La baterio malpleniĝas</target>
+      </trans-unit>
+      <trans-unit id="z57mgwp" resname="Drop an .elpx file here to open it">
+        <source>Drop an .elpx file here to open it</source>
+        <target>~Trenu .elpx-dosieron ĉi tien por malfermi ĝin</target>
+      </trans-unit>
+      <trans-unit id="393s194" resname="360° panorama viewer">
+        <source>360° panorama viewer</source>
+        <target>~360°-panorama rigardilo</target>
+      </trans-unit>
+      <trans-unit id="ig1yto1" resname="Scene">
+        <source>Scene</source>
+        <target>~Sceno</target>
+      </trans-unit>
+      <trans-unit id="3ch8ki0" resname="Hotspot">
+        <source>Hotspot</source>
+        <target>~Varmpunkto</target>
+      </trans-unit>
+      <trans-unit id="wsawxsz" resname="Initial view">
+        <source>Initial view</source>
+        <target>~Komenca vidaĵo</target>
+      </trans-unit>
+      <trans-unit id="0986d67" resname="Yaw">
+        <source>Yaw</source>
+        <target>~Iaw (horizontala rotacio)</target>
+      </trans-unit>
+      <trans-unit id="t0rbnaw" resname="Pitch">
+        <source>Pitch</source>
+        <target>~Klinado (vertikala klino)</target>
+      </trans-unit>
+      <trans-unit id="sem6wi1" resname="Field of view">
+        <source>Field of view</source>
+        <target>~Vidkampo</target>
+      </trans-unit>
+      <trans-unit id="ggg95i6" resname="Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.">
+        <source>Add equirectangular 360° images (2:1 aspect), or uncheck “360° panorama image” to use a regular flat photo. The viewer uses WebGL for 360° scenes.</source>
+        <target>~Aldonu ekvirectangulajn 360°-bildojn (proporcio 2:1), aŭ malmarku «360°-panorama bildo» por uzi normalan plaĉan fotografon. La rigardilo uzas WebGL por 360°-scenoj.</target>
+      </trans-unit>
+      <trans-unit id="8eoxbji" resname="Scenes">
+        <source>Scenes</source>
+        <target>~Scenoj</target>
+      </trans-unit>
+      <trans-unit id="irv173b" resname="Add scene">
+        <source>Add scene</source>
+        <target>~Aldoni scenon</target>
+      </trans-unit>
+      <trans-unit id="mylp0mp" resname="Active scene">
+        <source>Active scene</source>
+        <target>~Aktiva sceno</target>
+      </trans-unit>
+      <trans-unit id="7n250in" resname="Panorama image">
+        <source>Panorama image</source>
+        <target>~Panorama bildo</target>
+      </trans-unit>
+      <trans-unit id="bs1zzvv" resname="Choose image…">
+        <source>Choose image…</source>
+        <target>~Elekti bildon…</target>
+      </trans-unit>
+      <trans-unit id="tla93uk" resname="No image selected">
+        <source>No image selected</source>
+        <target>~Neniu bildo elektita</target>
+      </trans-unit>
+      <trans-unit id="wfcb0fg" resname="Clear">
+        <source>Clear</source>
+        <target>~Forviŝi</target>
+      </trans-unit>
+      <trans-unit id="c6xzgbv" resname="360° panorama image">
+        <source>360° panorama image</source>
+        <target>~360°-panorama bildo</target>
+      </trans-unit>
+      <trans-unit id="t6wi5v8" resname="Uncheck for a regular flat photo (no 360° effect).">
+        <source>Uncheck for a regular flat photo (no 360° effect).</source>
+        <target>~Malmarku por uzi normalan plaĉan fotografon (sen 360°-efiko).</target>
+      </trans-unit>
+      <trans-unit id="60f20ze" resname="Hotspots">
+        <source>Hotspots</source>
+        <target>~Varmpunktoj</target>
+      </trans-unit>
+      <trans-unit id="d9w0eae" resname="Click on the image to place a hotspot, or drag an existing hotspot to move it.">
+        <source>Click on the image to place a hotspot, or drag an existing hotspot to move it.</source>
+        <target>~Alklaku la bildon por meti varmpunkton, aŭ trenu ekzistantan varmpunkton por movi ĝin.</target>
+      </trans-unit>
+      <trans-unit id="jh6900z" resname="Click on the panorama to place a hotspot, or drag an existing hotspot to move it.">
+        <source>Click on the panorama to place a hotspot, or drag an existing hotspot to move it.</source>
+        <target>~Alklaku la panoramon por meti varmpunkton, aŭ trenu ekzistantan varmpunkton por movi ĝin.</target>
+      </trans-unit>
+      <trans-unit id="foja27s" resname="Place hotspot by clicking">
+        <source>Place hotspot by clicking</source>
+        <target>~Meti varmpunkton per klako</target>
+      </trans-unit>
+      <trans-unit id="ippl4t4" resname="…or add at current view">
+        <source>…or add at current view</source>
+        <target>~…aŭ aldoni en la aktuala vidaĵo</target>
+      </trans-unit>
+      <trans-unit id="rx57i0d" resname="Controls">
+        <source>Controls</source>
+        <target>~Regiloj</target>
+      </trans-unit>
+      <trans-unit id="02eqbim" resname="Auto-rotate">
+        <source>Auto-rotate</source>
+        <target>~Aŭtomata rotacio</target>
+      </trans-unit>
+      <trans-unit id="zdq653h" resname="Speed">
+        <source>Speed</source>
+        <target>~Rapideco</target>
+      </trans-unit>
+      <trans-unit id="122kx37" resname="Allow zoom">
+        <source>Allow zoom</source>
+        <target>~Permesi zumadon</target>
+      </trans-unit>
+      <trans-unit id="hqa6q3r" resname="Show fullscreen button">
+        <source>Show fullscreen button</source>
+        <target>~Montri plenanekranan butonon</target>
+      </trans-unit>
+      <trans-unit id="4j737mt" resname="Show hotspot labels">
+        <source>Show hotspot labels</source>
+        <target>~Montri varmpunktajn etikedojn</target>
+      </trans-unit>
+      <trans-unit id="7ulct16" resname="Show navigation arrows">
+        <source>Show navigation arrows</source>
+        <target>~Montri navigaciajn sagojn</target>
+      </trans-unit>
+      <trans-unit id="9qninea" resname="Select an image to see a live preview.">
+        <source>Select an image to see a live preview.</source>
+        <target>~Elektu bildon por vidi antan antaŭrigardon.</target>
+      </trans-unit>
+      <trans-unit id="piw4i8e" resname="Scene actions">
+        <source>Scene actions</source>
+        <target>~Scenaj agoj</target>
+      </trans-unit>
+      <trans-unit id="zddqm2w" resname="Set as start scene">
+        <source>Set as start scene</source>
+        <target>~Agordi kiel komenca sceno</target>
+      </trans-unit>
+      <trans-unit id="mgyjce7" resname="Duplicate scene">
+        <source>Duplicate scene</source>
+        <target>~Duobligi scenon</target>
+      </trans-unit>
+      <trans-unit id="0840yr4" resname="Remove scene">
+        <source>Remove scene</source>
+        <target>~Forigi scenon</target>
+      </trans-unit>
+      <trans-unit id="0y8hql7" resname="No hotspots in this scene yet.">
+        <source>No hotspots in this scene yet.</source>
+        <target>~Ankoraŭ neniuj varmpunktoj en ĉi tiu sceno.</target>
+      </trans-unit>
+      <trans-unit id="f6ydf06" resname="Label">
+        <source>Label</source>
+        <target>~Etikedo</target>
+      </trans-unit>
+      <trans-unit id="x80ik84" resname="Remove hotspot">
+        <source>Remove hotspot</source>
+        <target>~Forigi varmpunkton</target>
+      </trans-unit>
+      <trans-unit id="wlnvx86" resname="Action">
+        <source>Action</source>
+        <target>~Ago</target>
+      </trans-unit>
+      <trans-unit id="f2xm69y" resname="Go to scene">
+        <source>Go to scene</source>
+        <target>~Iri al sceno</target>
+      </trans-unit>
+      <trans-unit id="l11dv5m" resname="External link">
+        <source>External link</source>
+        <target>~Ekstera ligilo</target>
+      </trans-unit>
+      <trans-unit id="xzgwee5" resname="Target scene">
+        <source>Target scene</source>
+        <target>~Cela sceno</target>
+      </trans-unit>
+      <trans-unit id="tu3eri1" resname="Video URL">
+        <source>Video URL</source>
+        <target>~Videa URL</target>
+      </trans-unit>
+      <trans-unit id="zv1ahpj" resname="Choose video…">
+        <source>Choose video…</source>
+        <target>~Elekti videon…</target>
+      </trans-unit>
+      <trans-unit id="ildawz5" resname="Paste a YouTube, Vimeo or Educamadrid Mediateca page URL to embed it, or choose an uploaded video file.">
+        <source>Paste a YouTube, Vimeo or Educamadrid Mediateca page URL to embed it, or choose an uploaded video file.</source>
+        <target>~Algluu URL de paĝo el YouTube, Vimeo aŭ Mediateca de Educamadrid por enkonstrui ĝin, aŭ elektu alŝutitan videodosieron.</target>
+      </trans-unit>
+      <trans-unit id="r84vj2g" resname="Open in a new tab">
+        <source>Open in a new tab</source>
+        <target>~Malfermi en nova langeto</target>
+      </trans-unit>
+      <trans-unit id="ec8uugz" resname="Loading 3D preview…">
+        <source>Loading 3D preview…</source>
+        <target>~Ŝargante 3D-antaŭrigardon…</target>
+      </trans-unit>
+      <trans-unit id="tnt610b" resname="Drag to move">
+        <source>Drag to move</source>
+        <target>~Trenu por movi</target>
+      </trans-unit>
+      <trans-unit id="c9zjxld" resname="Pan navigation">
+        <source>Pan navigation</source>
+        <target>~Panorama navigacio</target>
+      </trans-unit>
+      <trans-unit id="6gg7ulk" resname="Pan left">
+        <source>Pan left</source>
+        <target>~Panorami maldekstren</target>
+      </trans-unit>
+      <trans-unit id="8unx04s" resname="Pan up">
+        <source>Pan up</source>
+        <target>~Panorami supren</target>
+      </trans-unit>
+      <trans-unit id="6dvdu57" resname="Pan down">
+        <source>Pan down</source>
+        <target>~Panorami suben</target>
+      </trans-unit>
+      <trans-unit id="vwbwqdj" resname="Pan right">
+        <source>Pan right</source>
+        <target>~Panorami dekstren</target>
+      </trans-unit>
+      <trans-unit id="ky1rsp8" resname="3D Viewer">
+        <source>3D Viewer</source>
+        <target>~3D-Rigardilo</target>
+      </trans-unit>
+      <trans-unit id="go5aulh" resname="Exit fullscreen">
+        <source>Exit fullscreen</source>
+        <target>~Eliri plenan ekranon</target>
+      </trans-unit>
+      <trans-unit id="whobotp" resname="Select a 3D model to preview">
+        <source>Select a 3D model to preview</source>
+        <target>~Elektu 3D-modelon por antaŭrigardi</target>
+      </trans-unit>
+      <trans-unit id="g3eg6pk" resname="Rotate model">
+        <source>Rotate model</source>
+        <target>~Rotacii modelon</target>
+      </trans-unit>
+      <trans-unit id="om6oh04" resname="Rotate left">
+        <source>Rotate left</source>
+        <target>~Rotacii maldekstren</target>
+      </trans-unit>
+      <trans-unit id="g89jkap" resname="Tilt up">
+        <source>Tilt up</source>
+        <target>~Klini supren</target>
+      </trans-unit>
+      <trans-unit id="bixqiag" resname="Tilt down">
+        <source>Tilt down</source>
+        <target>~Klini suben</target>
+      </trans-unit>
+      <trans-unit id="pygeq59" resname="Rotate right">
+        <source>Rotate right</source>
+        <target>~Rotacii dekstren</target>
+      </trans-unit>
+      <trans-unit id="amds0nx" resname="Select a GLB, GLTF or STL file">
+        <source>Select a GLB, GLTF or STL file</source>
+        <target>~Elektu GLB-, GLTF- aŭ STL-dosieron</target>
+      </trans-unit>
+      <trans-unit id="o64bsvu" resname="Describe the 3D model for accessibility">
+        <source>Describe the 3D model for accessibility</source>
+        <target>~Priskribu la 3D-modelon por alirebleco</target>
+      </trans-unit>
+      <trans-unit id="tw1x374" resname="Describe the 3D model for screen readers and accessibility">
+        <source>Describe the 3D model for screen readers and accessibility</source>
+        <target>~Priskribu la 3D-modelon por ekranlegantoj kaj alirebleco</target>
+      </trans-unit>
+      <trans-unit id="j1ihcub" resname="Display Options">
+        <source>Display Options</source>
+        <target>~Ekranigaj opcioj</target>
+      </trans-unit>
+      <trans-unit id="rww53qx" resname="Choose background color">
+        <source>Choose background color</source>
+        <target>~Elekti fonkoloron</target>
+      </trans-unit>
+      <trans-unit id="47cpjps" resname="STL model color">
+        <source>STL model color</source>
+        <target>~Koloro de STL-modelo</target>
+      </trans-unit>
+      <trans-unit id="yhp45db" resname="Choose STL model color">
+        <source>Choose STL model color</source>
+        <target>~Elekti koloron de STL-modelo</target>
+      </trans-unit>
+      <trans-unit id="9pny0cd" resname="Only used for STL files; ignored for GLB/GLTF (materials come from the model).">
+        <source>Only used for STL files; ignored for GLB/GLTF (materials come from the model).</source>
+        <target>~Uzata nur por STL-dosieroj; ignorata por GLB/GLTF (materialoj venas el la modelo).</target>
+      </trans-unit>
+      <trans-unit id="6reci5g" resname="Enable camera controls">
+        <source>Enable camera controls</source>
+        <target>~Ebligi regilojn de fotilo</target>
+      </trans-unit>
+      <trans-unit id="bphedlo" resname="Auto-rotate model">
+        <source>Auto-rotate model</source>
+        <target>~Aŭtomate rotacii modelon</target>
+      </trans-unit>
+      <trans-unit id="o3fjoz6" resname="Show navigation controls (fullscreen + arrows)">
+        <source>Show navigation controls (fullscreen + arrows)</source>
+        <target>~Montri navigaciajn regilojn (plena ekrano + sagoj)</target>
+      </trans-unit>
+      <trans-unit id="qmf7yf7" resname="Mutually exclusive with auto-rotate.">
+        <source>Mutually exclusive with auto-rotate.</source>
+        <target>~Reciproke ekskluziva kun aŭtomata rotacio.</target>
+      </trans-unit>
+      <trans-unit id="uf7jdu2" resname="Animation">
+        <source>Animation</source>
+        <target>~Animacio</target>
+      </trans-unit>
+      <trans-unit id="4byaxoj" resname="Play animation">
+        <source>Play animation</source>
+        <target>~Ludi animacion</target>
+      </trans-unit>
+      <trans-unit id="ciijtw4" resname="Animation paused">
+        <source>Animation paused</source>
+        <target>~Animacio paŭzigita</target>
+      </trans-unit>
+      <trans-unit id="5dmwn1s" resname="Playing animation">
+        <source>Playing animation</source>
+        <target>~Animacio ludanta</target>
+      </trans-unit>
+      <trans-unit id="atjy7s3" resname="Please select a 3D model file">
+        <source>Please select a 3D model file</source>
+        <target>~Bonvolu elekti 3D-modelan dosieron</target>
+      </trans-unit>
+      <trans-unit id="53msd3t" resname="Please select a valid 3D model file (GLB, GLTF, or STL)">
+        <source>Please select a valid 3D model file (GLB, GLTF, or STL)</source>
+        <target>~Bonvolu elekti validan 3D-modelan dosieron (GLB, GLTF aŭ STL)</target>
+      </trans-unit>
+      <trans-unit id="vgmvvnz" resname="Loading editor…">
+        <source>Loading editor…</source>
+        <target>~Ŝargante redaktilon…</target>
+      </trans-unit>
+      <trans-unit id="0gsmsff" resname="Could not load the slide editor. Please reload the page.">
+        <source>Could not load the slide editor. Please reload the page.</source>
+        <target>~Ne eblis ŝargi la diapozitivan redaktilon. Bonvolu reŝargi la paĝon.</target>
+      </trans-unit>
+      <trans-unit id="re4h2bm" resname="Markdown text">
+        <source>Markdown text</source>
+        <target>~Markdown-teksto</target>
+      </trans-unit>
+      <trans-unit id="ycqr6uu" resname="Markdown content">
+        <source>Markdown content</source>
+        <target>~Markdown-enhavo</target>
+      </trans-unit>
+      <trans-unit id="1gfclqp" resname="Electrical Circuits">
+        <source>Electrical Circuits</source>
+        <target>~Elektraj Cirkvitoj</target>
+      </trans-unit>
+      <trans-unit id="c2mqcn0" resname="Please write the question">
+        <source>Please write the question</source>
+        <target>~Bonvolu skribi la demandon</target>
+      </trans-unit>
+      <trans-unit id="0593bc6" resname="Please complete all options">
+        <source>Please complete all options</source>
+        <target>~Bonvolu plenigi ĉiujn opciojn</target>
+      </trans-unit>
+      <trans-unit id="h8ibt28" resname="Please write the word/phrase">
+        <source>Please write the word/phrase</source>
+        <target>~Bonvolu skribi la vorton/frazon</target>
+      </trans-unit>
+      <trans-unit id="af2kmes" resname="The selected file is not a valid game">
+        <source>The selected file is not a valid game</source>
+        <target>~La elektita dosiero ne enhavas validan ludon</target>
+      </trans-unit>
+      <trans-unit id="tvn8e7g" resname="Please indicate the time to display the solution">
+        <source>Please indicate the time to display the solution</source>
+        <target>~Bonvolu indiki la tempon por montri la solvon</target>
+      </trans-unit>
+      <trans-unit id="dg8w45c" resname="Please provide the word or phrase">
+        <source>Please provide the word or phrase</source>
+        <target>~Bonvolu provizi la vorton aŭ frazon</target>
+      </trans-unit>
+      <trans-unit id="2phs5kq" resname="Create quiz activities based on electrical circuit diagrams drawn with TikZ.">
+        <source>Create quiz activities based on electrical circuit diagrams drawn with TikZ.</source>
+        <target>~Kreu demandejajn agadojn bazitajn sur elektraj cirkvitaj diagramoj desegnitaj per TikZ.</target>
+      </trans-unit>
+      <trans-unit id="5q8wnmg" resname="&amp;percnt; right to see the feedback">
+        <source>&amp;percnt; right to see the feedback</source>
+        <target>~&amp;percnt; de ĝustaj por vidi la reaktigon</target>
+      </trans-unit>
+      <trans-unit id="aj51xg5" resname="% Questions">
+        <source>% Questions</source>
+        <target>~% Demandoj</target>
+      </trans-unit>
+      <trans-unit id="19t540j" resname="No circuit">
+        <source>No circuit</source>
+        <target>~Neniu cirkvito</target>
+      </trans-unit>
+      <trans-unit id="ea5a82z" resname="Circuit code (TikZ)">
+        <source>Circuit code (TikZ)</source>
+        <target>~Cirkvita kodo (TikZ)</target>
+      </trans-unit>
+      <trans-unit id="r8duy90" resname="Preview circuit">
+        <source>Preview circuit</source>
+        <target>~Antaŭrigardi cirkvito</target>
+      </trans-unit>
+      <trans-unit id="zrqyk0a" resname="You answered all the questions.">
+        <source>You answered all the questions.</source>
+        <target>~Vi respondis ĉiujn demandojn.</target>
+      </trans-unit>
+      <trans-unit id="rhnj9vp" resname="You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.">
+        <source>You need at least &amp;percnt;s&amp;percnt; of correct answers to get the information. Please try again.</source>
+        <target>~Vi bezonas almenaŭ &amp;percnt;s&amp;percnt; da ĝustaj respondoj por ricevi la informon. Bonvolu reprovi.</target>
+      </trans-unit>
+      <trans-unit id="nckzhup" resname="The score can not be saved because this page is not part of a SCORM package.">
+        <source>The score can not be saved because this page is not part of a SCORM package.</source>
+        <target>~La poentaro ne povas esti konservita ĉar ĉi tiu paĝo ne estas parto de SCORM-pakaĵo.</target>
+      </trans-unit>
+      <trans-unit id="8h3mvk3" resname="You can only save the score once">
+        <source>You can only save the score once</source>
+        <target>~Vi povas konservi la poentaron nur unufoje</target>
+      </trans-unit>
+      <trans-unit id="o393xnv" resname="Please start the activity before saving your score.">
+        <source>Please start the activity before saving your score.</source>
+        <target>~Bonvolu komenci la agadon antaŭ ol konservi vian poentaron.</target>
+      </trans-unit>
+      <trans-unit id="x81d7tz" resname="Electrical Circuits Quiz">
+        <source>Electrical Circuits Quiz</source>
+        <target>~Demandejo de Elektraj Cirkvitoj</target>
+      </trans-unit>
+      <trans-unit id="ctnbm1s" resname="Observe the electrical circuit and answer the questions.">
+        <source>Observe the electrical circuit and answer the questions.</source>
+        <target>~Observu la elektran cirkvito kaj respondu la demandojn.</target>
+      </trans-unit>
+      <trans-unit id="3r9hpww" resname="What type of circuit is shown?">
+        <source>What type of circuit is shown?</source>
+        <target>~Kia tipo de cirkvito estas montrata?</target>
+      </trans-unit>
+      <trans-unit id="spdplg0" resname="Series circuit">
+        <source>Series circuit</source>
+        <target>~Seria cirkvito</target>
+      </trans-unit>
+      <trans-unit id="oxa4444" resname="Parallel circuit">
+        <source>Parallel circuit</source>
+        <target>~Paralela cirkvito</target>
+      </trans-unit>
+      <trans-unit id="9x8jkoc" resname="Mixed circuit">
+        <source>Mixed circuit</source>
+        <target>~Miksita cirkvito</target>
+      </trans-unit>
+      <trans-unit id="zouxnrn" resname="Open circuit">
+        <source>Open circuit</source>
+        <target>~Malfermita cirkvito</target>
+      </trans-unit>
+      <trans-unit id="ra55qez" resname="Circuit with a battery connected in series with two resistors">
+        <source>Circuit with a battery connected in series with two resistors</source>
+        <target>~Cirkvito kun baterio konektita sere kun du rezistiloj</target>
+      </trans-unit>
+      <trans-unit id="i36z8df" resname="3Dmol">
+        <source>3Dmol</source>
+        <target>~3Dmol</target>
+      </trans-unit>
+      <trans-unit id="7ckwnw9" resname="Please upload a valid 3D model file">
+        <source>Please upload a valid 3D model file</source>
+        <target>~Bonvolu alŝuti validan 3D-modelan dosieron</target>
+      </trans-unit>
+      <trans-unit id="i9iha4l" resname="Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz">
+        <source>Unsupported 3D model format. Supported formats: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</source>
+        <target>~Nesubtenata 3D-modela formato. Subtenataj formatoj: pdb, sdf, mol2, xyz, cif, mmcif, zip, tgz, gz</target>
+      </trans-unit>
+      <trans-unit id="pq4eu6o" resname="Could not render the selected 3D model">
+        <source>Could not render the selected 3D model</source>
+        <target>~Ne eblis renderigi la elektitan 3D-modelon</target>
+      </trans-unit>
+      <trans-unit id="bpsdltw" resname="Large model file. This may affect performance.">
+        <source>Large model file. This may affect performance.</source>
+        <target>~Granda modeldosiero. Ĉi tio povas influi rendimenton.</target>
+      </trans-unit>
+      <trans-unit id="2zc9zer" resname="3D model">
+        <source>3D model</source>
+        <target>~3D-modelo</target>
+      </trans-unit>
+      <trans-unit id="fq7szgb" resname="No 3D model">
+        <source>No 3D model</source>
+        <target>~Neniu 3D-modelo</target>
+      </trans-unit>
+      <trans-unit id="y65u0pv" resname="Camera enabled">
+        <source>Camera enabled</source>
+        <target>~Fotilo ebligita</target>
+      </trans-unit>
+      <trans-unit id="usr5r5l" resname="Click to disable">
+        <source>Click to disable</source>
+        <target>~Alklaku por malaktivigi</target>
+      </trans-unit>
+      <trans-unit id="6dcnpho" resname="Camera disabled">
+        <source>Camera disabled</source>
+        <target>~Fotilo malebligita</target>
+      </trans-unit>
+      <trans-unit id="1l3vjeb" resname="Click to enable">
+        <source>Click to enable</source>
+        <target>~Alklaku por aktivigi</target>
+      </trans-unit>
+      <trans-unit id="l3w6b9r" resname="Dark background">
+        <source>Dark background</source>
+        <target>~Malhela fono</target>
+      </trans-unit>
+      <trans-unit id="zd0rkfl" resname="Click to switch to light">
+        <source>Click to switch to light</source>
+        <target>~Alklaku por ŝanĝi al hela</target>
+      </trans-unit>
+      <trans-unit id="k1kq8xw" resname="Light background">
+        <source>Light background</source>
+        <target>~Hela fono</target>
+      </trans-unit>
+      <trans-unit id="ldgc2no" resname="Click to switch to dark">
+        <source>Click to switch to dark</source>
+        <target>~Alklaku por ŝanĝi al malhela</target>
+      </trans-unit>
+      <trans-unit id="j8arl6m" resname="Atom legend visible">
+        <source>Atom legend visible</source>
+        <target>~Atoma legendo videbla</target>
+      </trans-unit>
+      <trans-unit id="naxmcrx" resname="Click to hide">
+        <source>Click to hide</source>
+        <target>~Alklaku por kaŝi</target>
+      </trans-unit>
+      <trans-unit id="49dl1pn" resname="Atom legend hidden">
+        <source>Atom legend hidden</source>
+        <target>~Atoma legendo kaŝita</target>
+      </trans-unit>
+      <trans-unit id="nnb74v8" resname="Click to show">
+        <source>Click to show</source>
+        <target>~Alklaku por montri</target>
+      </trans-unit>
+      <trans-unit id="tt96fno" resname="Create quiz activities based on interactive 3D models.">
+        <source>Create quiz activities based on interactive 3D models.</source>
+        <target>~Kreu demandejajn agadojn bazitajn sur interagaj 3D-modeloj.</target>
+      </trans-unit>
+      <trans-unit id="wz0w8rx" resname="3D model preview">
+        <source>3D model preview</source>
+        <target>~Antaŭrigardo de 3D-modelo</target>
+      </trans-unit>
+      <trans-unit id="863qpv9" resname="Molecule style">
+        <source>Molecule style</source>
+        <target>~Molekula stilo</target>
+      </trans-unit>
+      <trans-unit id="hlwpd2x" resname="Smaller">
+        <source>Smaller</source>
+        <target>~Pli malgranda</target>
+      </trans-unit>
+      <trans-unit id="632k7bf" resname="Bigger">
+        <source>Bigger</source>
+        <target>~Pli granda</target>
+      </trans-unit>
+      <trans-unit id="hhbog03" resname="Reset camera view">
+        <source>Reset camera view</source>
+        <target>~Restarigi fotilan vidaĵon</target>
+      </trans-unit>
+      <trans-unit id="ep03efi" resname="Save initial view">
+        <source>Save initial view</source>
+        <target>~Konservi komencan vidaĵon</target>
+      </trans-unit>
+      <trans-unit id="5ccfqcs" resname="Download image">
+        <source>Download image</source>
+        <target>~Elŝuti bildon</target>
+      </trans-unit>
+      <trans-unit id="iv7ar47" resname="3D model file">
+        <source>3D model file</source>
+        <target>~3D-modela dosiero</target>
+      </trans-unit>
+      <trans-unit id="i0zy3fv" resname="Preview model">
+        <source>Preview model</source>
+        <target>~Antaŭrigardi modelon</target>
+      </trans-unit>
+      <trans-unit id="9r60x5d" resname="Line">
+        <source>Line</source>
+        <target>~Linio</target>
+      </trans-unit>
+      <trans-unit id="2z7sgal" resname="Cross">
+        <source>Cross</source>
+        <target>~Kruco</target>
+      </trans-unit>
+      <trans-unit id="m0gm9h6" resname="Stick">
+        <source>Stick</source>
+        <target>~Stango</target>
+      </trans-unit>
+      <trans-unit id="dtjx6za" resname="Sphere">
+        <source>Sphere</source>
+        <target>~Sfero</target>
+      </trans-unit>
+      <trans-unit id="9n9aujn" resname="Cartoon">
+        <source>Cartoon</source>
+        <target>~Cartoon</target>
+      </trans-unit>
+      <trans-unit id="cmcmrsm" resname="Surface">
+        <source>Surface</source>
+        <target>~Surfaco</target>
+      </trans-unit>
+      <trans-unit id="ci75c2e" resname="Toggle background">
+        <source>Toggle background</source>
+        <target>~Baskuli fonon</target>
+      </trans-unit>
+      <trans-unit id="1qy9g63" resname="3D Model Quiz">
+        <source>3D Model Quiz</source>
+        <target>~Demandejo de 3D-Modelo</target>
+      </trans-unit>
+      <trans-unit id="j3akqrt" resname="Chemical composition">
+        <source>Chemical composition</source>
+        <target>~Kemia kompozicio</target>
+      </trans-unit>
+      <trans-unit id="bdx6dkg" resname="Observe the 3D model and answer the questions.">
+        <source>Observe the 3D model and answer the questions.</source>
+        <target>~Observu la 3D-modelon kaj respondu la demandojn.</target>
+      </trans-unit>
+      <trans-unit id="97fp5m6" resname="You can rotate the 3D model by clicking on it and dragging.">
+        <source>You can rotate the 3D model by clicking on it and dragging.</source>
+        <target>~Vi povas rotacii la 3D-modelon per klako kaj trenado.</target>
+      </trans-unit>
+      <trans-unit id="lzuwk2v" resname="What is the central atom in the model?">
+        <source>What is the central atom in the model?</source>
+        <target>~Kiu estas la centra atomo en la modelo?</target>
+      </trans-unit>
+      <trans-unit id="x2cw8qx" resname="How many hydroxyl groups (–OH) does a glucose molecule have?">
+        <source>How many hydroxyl groups (–OH) does a glucose molecule have?</source>
+        <target>~Kiom da hidroksidaj grupoj (–OH) havas glukozo-molekulo?</target>
+      </trans-unit>
+      <trans-unit id="cfwjutq" resname="Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.">
+        <source>Glucose (C₆H₁₂O₆) is the most abundant monosaccharide and the primary source of cellular energy. Rotate the model to explore its structure.</source>
+        <target>~Glukozo (C₆H₁₂O₆) estas la plej abunda monosakarido kaj la ĉefa fonto de ĉela energio. Rotaciu la modelon por esplori ĝian strukturon.</target>
+      </trans-unit>
+      <trans-unit id="ui66upm" resname="Default style for new documents">
+        <source>Default style for new documents</source>
+        <target>~Defaŭlta stilo por novaj dokumentoj</target>
+      </trans-unit>
+      <trans-unit id="1y9aqxi" resname="Only STL files use this color; the current file is not STL">
+        <source>Only STL files use this color; the current file is not STL</source>
+        <target>~Nur STL-dosieroj uzas ĉi tiun koloron; la aktuala dosiero ne estas STL</target>
+      </trans-unit>
+      <trans-unit id="ca269zo" resname="Please select the correct answer for each question">
+        <source>Please select the correct answer for each question</source>
+        <target>~Bonvolu elekti la ĝustan respondon por ĉiu demando</target>
+      </trans-unit>
+      <trans-unit id="j3zkuxt" resname="Enter TikZ circuit code…">
+        <source>Enter TikZ circuit code…</source>
+        <target>~Enigi TikZ-cirkvitan kodon…</target>
+      </trans-unit>
+      <trans-unit id="vj6742l" resname="Legal framework:">
+        <source>Legal framework:</source>
+        <target>~Leĝa kadro:</target>
+      </trans-unit>
+      <trans-unit id="459658r" resname="Specification:">
+        <source>Specification:</source>
+        <target>~Konkretigo:</target>
+      </trans-unit>
+      <trans-unit id="8drknzb" resname="This dataset is not available yet. It will be added in an upcoming version.">
+        <source>This dataset is not available yet. It will be added in an upcoming version.</source>
+        <target>~Ĉi tiu dataro ne estas ankoraŭ disponebla. Ĝi estos aldonita en venonta versio.</target>
+      </trans-unit>
+      <trans-unit id="72jv3z5" resname="Curriculum elements selector">
+        <source>Curriculum elements selector</source>
+        <target>~Elektilo de kurrikulaj elementoj</target>
+      </trans-unit>
+      <trans-unit id="tbi7q3a" resname="Loading curriculum data…">
+        <source>Loading curriculum data…</source>
+        <target>~Ŝargante kurrikulajn datojn…</target>
+      </trans-unit>
+      <trans-unit id="zc23s20" resname="Filter…">
+        <source>Filter…</source>
+        <target>~Filtri…</target>
+      </trans-unit>
+      <trans-unit id="u0qhspn" resname="Basic knowledge">
+        <source>Basic knowledge</source>
+        <target>~Bazaj Scioj</target>
+      </trans-unit>
+      <trans-unit id="q94r3mv" resname="Select a subject">
+        <source>Select a subject</source>
+        <target>~Elektu fakon</target>
+      </trans-unit>
+      <trans-unit id="41ho4qx" resname="No elements selected yet.">
+        <source>No elements selected yet.</source>
+        <target>~Ankoraŭ neniuj elementoj elektitaj.</target>
+      </trans-unit>
+      <trans-unit id="93nb0ay" resname="Summary preview">
+        <source>Summary preview</source>
+        <target>~Antaŭrigardo de resumo</target>
+      </trans-unit>
+      <trans-unit id="bwbsihh" resname="Curriculum foundations summary">
+        <source>Curriculum foundations summary</source>
+        <target>~Resumo de kurrikulaj fundamentoj</target>
+      </trans-unit>
+      <trans-unit id="gbo93pl" resname="Reset all selections? Changes will be lost.">
+        <source>Reset all selections? Changes will be lost.</source>
+        <target>~Ĉu restarigi ĉiujn elektojn? La ŝanĝoj perdiĝos.</target>
+      </trans-unit>
+      <trans-unit id="yh6dese" resname="Select stage and level">
+        <source>Select stage and level</source>
+        <target>~Elektu etapon kaj nivelon</target>
+      </trans-unit>
+      <trans-unit id="45y37cp" resname="No results">
+        <source>No results</source>
+        <target>~Neniuj rezultoj</target>
+      </trans-unit>
+      <trans-unit id="9mkpp5m" resname="No basic knowledge for this subject.">
+        <source>No basic knowledge for this subject.</source>
+        <target>~Neniaj bazaj scioj por ĉi tiu fako.</target>
+      </trans-unit>
+      <trans-unit id="325aio6" resname="No specific competencies for this subject.">
+        <source>No specific competencies for this subject.</source>
+        <target>~Neniaj specifaj kompetentecoj por ĉi tiu fako.</target>
+      </trans-unit>
+      <trans-unit id="bh130z3" resname="Partial">
+        <source>Partial</source>
+        <target>~Parta</target>
+      </trans-unit>
+      <trans-unit id="etr8q03" resname="Key Comp.">
+        <source>Key Comp.</source>
+        <target>~Ŝlosila Komp.</target>
+      </trans-unit>
+      <trans-unit id="kte1h07" resname="Operational descriptors">
+        <source>Operational descriptors</source>
+        <target>~Operaciaj priskribistoj</target>
+      </trans-unit>
+      <trans-unit id="jyg3na1" resname="No curriculum elements selected.">
+        <source>No curriculum elements selected.</source>
+        <target>~Neniuj kurrikulaj elementoj elektitaj.</target>
+      </trans-unit>
+      <trans-unit id="mqw9zvn" resname="LOMLOE Curriculum Foundations">
+        <source>LOMLOE Curriculum Foundations</source>
+        <target>~LOMLOE Kurrikulaj Fundamentoj</target>
+      </trans-unit>
+      <trans-unit id="fkj38h6" resname="Foundations">
+        <source>Foundations</source>
+        <target>~Fundamentoj</target>
+      </trans-unit>
+      <trans-unit id="ypftg3k" resname="Selected elements">
+        <source>Selected elements</source>
+        <target>~Elektitaj elementoj</target>
+      </trans-unit>
+      <trans-unit id="2s6akda" resname="criteria">
+        <source>criteria</source>
+        <target>~kriterioj</target>
+      </trans-unit>
+      <trans-unit id="imd1ql3" resname="knowledge">
+        <source>knowledge</source>
+        <target>~scioj</target>
+      </trans-unit>
+      <trans-unit id="4kcpfbk" resname="Specific Competencies">
+        <source>Specific Competencies</source>
+        <target>~Specifaj Kompetentecoj</target>
+      </trans-unit>
+      <trans-unit id="v7eqjjc" resname="Spec. Comp.">
+        <source>Spec. Comp.</source>
+        <target>~Spec. Komp.</target>
+      </trans-unit>
+      <trans-unit id="oafbbxs" resname="Key Competencies">
+        <source>Key Competencies</source>
+        <target>~Ŝlosilaj Kompetentecoj</target>
+      </trans-unit>
+      <trans-unit id="fypnn6x" resname="Eval. Criteria">
+        <source>Eval. Criteria</source>
+        <target>~Taksaj Kriterioj</target>
+      </trans-unit>
+      <trans-unit id="3wrs9io" resname="partial">
+        <source>partial</source>
+        <target>~parta</target>
+      </trans-unit>
+      <trans-unit id="dm92m3e" resname="Error loading data: ">
+        <source>Error loading data: </source>
+        <target>~Eraro dum ŝargado de datoj: </target>
+      </trans-unit>
+      <trans-unit id="ag4u5l2" resname="Only .elpx, .elp or .zip project files can be opened by dragging them here.">
+        <source>Only .elpx, .elp or .zip project files can be opened by dragging them here.</source>
+        <target>~Per trenado, nur .elpx-, .elp- aŭ .zip-projektaj dosieroj povas esti malfermitaj ĉi tien.</target>
+      </trans-unit>
+      <trans-unit id="s4q4729" resname="Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).">
+        <source>Level: 0 (low), 1 (medium), 2 (high), 3 (expert) or 4 (master).</source>
+        <target>~Nivelo: 0 (malalta), 1 (meza), 2 (alta), 3 (spertulo) aŭ 4 (majstro).</target>
+      </trans-unit>
+      <trans-unit id="7wuyn6r" resname="Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).">
+        <source>Level: 0 (low), 1 (medium), 2 (high) or 3 (expert).</source>
+        <target>~Nivelo: 0 (malalta), 1 (meza), 2 (alta) aŭ 3 (spertulo).</target>
+      </trans-unit>
+      <trans-unit id="q4wupex" resname="Level: 0 (low), 1 (medium) or 2 (high).">
+        <source>Level: 0 (low), 1 (medium) or 2 (high).</source>
+        <target>~Nivelo: 0 (malalta), 1 (meza) aŭ 2 (alta).</target>
+      </trans-unit>
+      <trans-unit id="8de24hs" resname="OptionE">
+        <source>OptionE</source>
+        <target>~OpcioE</target>
+      </trans-unit>
+      <trans-unit id="8m9rm96" resname="OptionF">
+        <source>OptionF</source>
+        <target>~OpcioF</target>
+      </trans-unit>
+      <trans-unit id="m5c1n1u" resname="Which of the following are prime numbers?">
+        <source>Which of the following are prime numbers?</source>
+        <target>~Kiuj el la jenaj estas primoj?</target>
+      </trans-unit>
+      <trans-unit id="x7jrypc" resname="Sort from largest to smallest">
+        <source>Sort from largest to smallest</source>
+        <target>~Ordigu de plej granda al plej malgranda</target>
+      </trans-unit>
+      <trans-unit id="i4sdmwf" resname="Elephant">
+        <source>Elephant</source>
+        <target>~Elefanto</target>
+      </trans-unit>
+      <trans-unit id="kp4t0c8" resname="Mouse">
+        <source>Mouse</source>
+        <target>~Muso</target>
+      </trans-unit>
+      <trans-unit id="vkouumy" resname="Which of these are transcendental numbers?">
+        <source>Which of these are transcendental numbers?</source>
+        <target>~Kiuj el ĉi tiuj estas transcendaj nombroj?</target>
+      </trans-unit>
+      <trans-unit id="f1w39zp" resname="Liouville constant">
+        <source>Liouville constant</source>
+        <target>~Konstanto de Liouville</target>
+      </trans-unit>
+      <trans-unit id="4uau8e4" resname="Champernowne constant">
+        <source>Champernowne constant</source>
+        <target>~Konstanto de Champernowne</target>
+      </trans-unit>
+      <trans-unit id="stmm32q" resname="Sort these chemical elements from lowest to highest atomic number">
+        <source>Sort these chemical elements from lowest to highest atomic number</source>
+        <target>~Ordigu ĉi tiujn kemiajn elementojn de la plej malalta al la plej alta atomnumero</target>
+      </trans-unit>
+      <trans-unit id="9t42e80" resname="Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:">
+        <source>Three question types are accepted. Every line must start with the type number, followed by @, the level, and the rest of the fields separated with #:</source>
+        <target>~Tri demandtipoj estas akceptataj. Ĉiu linio devas komenci per la tipnumero, sekvata de @, la nivelo kaj la ceteraj kampoj apartigitaj per #:</target>
+      </trans-unit>
+      <trans-unit id="mm7ciof" resname="Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.">
+        <source>Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF]. Solution is an uppercase combination of A, B, C, D, E, F matching the correct options (e.g. A, AB, ACD, ABCDEF). Use up to 6 letters and never more than the number of options. Leave Solution empty if no option is correct.</source>
+        <target>~Tipo 0 (plurelekta): 0@Nivelo#Solvo#Demando#OpcioA#OpcioB[#OpcioC][#OpcioD][#OpcioE][#OpcioF]. La solvo estas majuskla kombinaĵo de A, B, C, D, E, F kiu identigas la ĝustajn opciojn (ekz. A, AB, ACD, ABCDEF). Uzu ĝis 6 literojn kaj neniam pli ol la nombro da opcioj. Lasu Solvon malplena se neniu opcio estas ĝusta.</target>
+      </trans-unit>
+      <trans-unit id="54j7zi1" resname="Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.">
+        <source>Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6]. Provide between 3 and 6 items already listed in the correct order according to the question criterion.</source>
+        <target>~Tipo 1 (ordigi): 1@Nivelo#Demando#Ero1#Ero2#Ero3[#Ero4][#Ero5][#Ero6]. Provizu inter 3 kaj 6 erojn jam listigitajn en la ĝusta ordo laŭ la kriterio de la demando.</target>
+      </trans-unit>
+      <trans-unit id="vvmcuez" resname="Type 2 (word/definition): 2@Level#Word#Definition.">
+        <source>Type 2 (word/definition): 2@Level#Word#Definition.</source>
+        <target>~Tipo 2 (vorto/difino): 2@Nivelo#Vorto#Difino.</target>
+      </trans-unit>
+      <trans-unit id="00o2hy2" resname="Do not include the # character inside any field.">
+        <source>Do not include the # character inside any field.</source>
+        <target>~Ne inkluzivu la signon # ene de iu ajn kampo.</target>
+      </trans-unit>
+      <trans-unit id="fttvne2" resname="balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)">
+        <source>balanced across the 5 levels (0=low, 1=medium, 2=high, 3=expert, 4=master)</source>
+        <target>~egale distribuitaj inter la 5 niveloj (0=malalta, 1=meza, 2=alta, 3=spertulo, 4=majstro)</target>
+      </trans-unit>
+      <trans-unit id="z45bnhl" resname="balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)">
+        <source>balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)</source>
+        <target>~egale distribuitaj inter la 4 niveloj (0=malalta, 1=meza, 2=alta, 3=spertulo)</target>
+      </trans-unit>
+      <trans-unit id="z6qy2h5" resname="balanced across the 3 levels (0=low, 1=medium, 2=high)">
+        <source>balanced across the 3 levels (0=low, 1=medium, 2=high)</source>
+        <target>~egale distribuitaj inter la 3 niveloj (0=malalta, 1=meza, 2=alta)</target>
+      </trans-unit>
+      <trans-unit id="xm6elne" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.</source>
+        <target>~Nivelo 0 devas enhavi la plej facilajn demandojn (bazaj faktoj kaj simpla rememorado); ĉiu sekva nivelo devas esti strikte pli malfacila ol la antaŭa (pli da rezonado, pli longaj aŭ pli ruzaj opcioj, pli abstrakta vortprovizo), kaj nivelo 4 (majstro) devas enhavi la plej malfacilajn demandojn.</target>
+      </trans-unit>
+      <trans-unit id="tqdf6r5" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 3 (expert) must contain the hardest questions.</source>
+        <target>~Nivelo 0 devas enhavi la plej facilajn demandojn (bazaj faktoj kaj simpla rememorado); ĉiu sekva nivelo devas esti strikte pli malfacila ol la antaŭa (pli da rezonado, pli longaj aŭ pli ruzaj opcioj, pli abstrakta vortprovizo), kaj nivelo 3 (spertulo) devas enhavi la plej malfacilajn demandojn.</target>
+      </trans-unit>
+      <trans-unit id="neahg43" resname="Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.">
+        <source>Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 2 (high) must contain the hardest questions.</source>
+        <target>~Nivelo 0 devas enhavi la plej facilajn demandojn (bazaj faktoj kaj simpla rememorado); ĉiu sekva nivelo devas esti strikte pli malfacila ol la antaŭa (pli da rezonado, pli longaj aŭ pli ruzaj opcioj, pli abstrakta vortprovizo), kaj nivelo 2 (alta) devas enhavi la plej malfacilajn demandojn.</target>
+      </trans-unit>
+      <trans-unit id="ndzqm25" resname="Your browser is not compatible with this type of activity.">
+        <source>Your browser is not compatible with this type of activity.</source>
+        <target>~Via retumilo ne kongruas kun ĉi tiu tipo de agado.</target>
+      </trans-unit>
+      <trans-unit id="1mpkyj3" resname="You must add at least one question.">
+        <source>You must add at least one question.</source>
+        <target>~Vi devas aldoni almenaŭ unu demandon.</target>
+      </trans-unit>
+      <trans-unit id="nbf4air" resname="You must have at least one question.">
+        <source>You must have at least one question.</source>
+        <target>~Vi devas havi almenaŭ unu demandon.</target>
+      </trans-unit>
+      <trans-unit id="byj8s8x" resname="Question %s: the question text cannot be empty.">
+        <source>Question %s: the question text cannot be empty.</source>
+        <target>~Demando %s: la teksto de la demando ne povas esti malplena.</target>
+      </trans-unit>
+      <trans-unit id="zgmwwq7" resname="Question %s: please fill in all answer options.">
+        <source>Question %s: please fill in all answer options.</source>
+        <target>~Demando %s: bonvolu plenigi ĉiujn respondajn opciojn.</target>
+      </trans-unit>
+      <trans-unit id="ciym7ab" resname="Question %s: please mark which option is the correct answer.">
+        <source>Question %s: please mark which option is the correct answer.</source>
+        <target>~Demando %s: bonvolu marki kiu opcio estas la ĝusta respondo.</target>
+      </trans-unit>
+      <trans-unit id="jaxeu4c" resname="You must add at least %s questions.">
+        <source>You must add at least %s questions.</source>
+        <target>~Vi devas aldoni almenaŭ %s demandojn.</target>
+      </trans-unit>
+      <trans-unit id="34oskgf" resname="Warning: the selected initial level has no questions. The quiz will start using the fallback level.">
+        <source>Warning: the selected initial level has no questions. The quiz will start using the fallback level.</source>
+        <target>~Averto: la elektita komenca nivelo ne havas demandojn. La kvizo komenciĝos uzante la rezervan nivelon.</target>
+      </trans-unit>
+      <trans-unit id="h0h1ia1" resname="Please provide a name for every level.">
+        <source>Please provide a name for every level.</source>
+        <target>~Bonvolu provizi nomon por ĉiu nivelo.</target>
+      </trans-unit>
+      <trans-unit id="l1fpjm6" resname="Level &quot;%s&quot; must have at least 2 questions.">
+        <source>Level "%s" must have at least 2 questions.</source>
+        <target>~La nivelo «%s» devas havi almenaŭ 2 demandojn.</target>
+      </trans-unit>
+      <trans-unit id="1y93sry" resname="Please indicate the time the solution will be displayed.">
+        <source>Please indicate the time the solution will be displayed.</source>
+        <target>~Bonvolu indiki la tempon dum kiu la solvo estos montrata.</target>
+      </trans-unit>
+      <trans-unit id="ohfjf0s" resname="Question %s: please mark at least one correct answer.">
+        <source>Question %s: please mark at least one correct answer.</source>
+        <target>~Demando %s: bonvolu marki almenaŭ unu ĝustan respondon.</target>
+      </trans-unit>
+      <trans-unit id="670parr" resname="Question %s: please provide the solution word or phrase.">
+        <source>Question %s: please provide the solution word or phrase.</source>
+        <target>~Demando %s: bonvolu provizi la solvan vorton aŭ frazon.</target>
+      </trans-unit>
+      <trans-unit id="ghdw590" resname="Question %s: please provide the definition.">
+        <source>Question %s: please provide the definition.</source>
+        <target>~Demando %s: bonvolu provizi la difinon.</target>
+      </trans-unit>
+      <trans-unit id="tjg6rbf" resname="Question %s: please specify a unique order from 1 to %n for every option.">
+        <source>Question %s: please specify a unique order from 1 to %n for every option.</source>
+        <target>~Demando %s: bonvolu specifi unikan ordon de 1 ĝis %n por ĉiu opcio.</target>
+      </trans-unit>
+      <trans-unit id="6lot0xo" resname="Audio URL">
+        <source>Audio URL</source>
+        <target>~Aŭdio-URL</target>
+      </trans-unit>
+      <trans-unit id="szh4xug" resname="Show audio options">
+        <source>Show audio options</source>
+        <target>~Montri aŭdajn opciojn</target>
+      </trans-unit>
+      <trans-unit id="kee8n3r" resname="Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.">
+        <source>Create a multiple-choice quiz whose difficulty adapts to the learner. Choose the number of difficulty levels (3, 4 or 5) and assign one to each question; the quiz goes up a level after two correct answers in a row and down after two wrong answers in a row.</source>
+        <target>~Kreu plurelektan kvizon, kies malfacileco adaptiĝas al la lernanto. Elektu la nombron da malfacilecaj niveloj (3, 4 aŭ 5) kaj atribuu unu al ĉiu demando; la kvizo supreniras unu nivelon post du ĝustaj respondoj sinsekve kaj malsupreniras post du malĝustaj respondoj sinsekve.</target>
+      </trans-unit>
+      <trans-unit id="2hu0r7z" resname="Number of levels">
+        <source>Number of levels</source>
+        <target>~Nombro da niveloj</target>
+      </trans-unit>
+      <trans-unit id="c42j9lu" resname="Level 1 name">
+        <source>Level 1 name</source>
+        <target>~Nomo de nivelo 1</target>
+      </trans-unit>
+      <trans-unit id="zxtvixa" resname="Easy">
+        <source>Easy</source>
+        <target>~Facila</target>
+      </trans-unit>
+      <trans-unit id="eze7cwy" resname="Level 2 name">
+        <source>Level 2 name</source>
+        <target>~Nomo de nivelo 2</target>
+      </trans-unit>
+      <trans-unit id="v17txvx" resname="Level 3 name">
+        <source>Level 3 name</source>
+        <target>~Nomo de nivelo 3</target>
+      </trans-unit>
+      <trans-unit id="xkd9ip7" resname="Hard">
+        <source>Hard</source>
+        <target>~Malfacila</target>
+      </trans-unit>
+      <trans-unit id="uhnbtgy" resname="Level 4 name">
+        <source>Level 4 name</source>
+        <target>~Nomo de nivelo 4</target>
+      </trans-unit>
+      <trans-unit id="ufjlxyh" resname="Expert">
+        <source>Expert</source>
+        <target>~Spertulo</target>
+      </trans-unit>
+      <trans-unit id="5hmrb1h" resname="Level 5 name">
+        <source>Level 5 name</source>
+        <target>~Nomo de nivelo 5</target>
+      </trans-unit>
+      <trans-unit id="3kkfxiy" resname="Master">
+        <source>Master</source>
+        <target>~Majstro</target>
+      </trans-unit>
+      <trans-unit id="l2w5rn2" resname="Initial level">
+        <source>Initial level</source>
+        <target>~Komenca nivelo</target>
+      </trans-unit>
+      <trans-unit id="hhg0n7d" resname="Set to 0 to disable the time limit.">
+        <source>Set to 0 to disable the time limit.</source>
+        <target>~Agordu al 0 por malŝalti la tempolimon.</target>
+      </trans-unit>
+      <trans-unit id="rgukwpc" resname="Shuffle answer options at runtime">
+        <source>Shuffle answer options at runtime</source>
+        <target>~Miksi respondajn opciojn dum la rulado</target>
+      </trans-unit>
+      <trans-unit id="zcj6s17" resname="Case-sensitive answer matching (word type)">
+        <source>Case-sensitive answer matching (word type)</source>
+        <target>~Uskleca komparo de respondoj (vorta tipo)</target>
+      </trans-unit>
+      <trans-unit id="v087cv1" resname="Require correct accents (word type)">
+        <source>Require correct accents (word type)</source>
+        <target>~Postuli ĝustajn supersignojn (vorta tipo)</target>
+      </trans-unit>
+      <trans-unit id="nra2y6n" resname="Level filter">
+        <source>Level filter</source>
+        <target>~Nivela filtrilo</target>
+      </trans-unit>
+      <trans-unit id="8qcuhan" resname="Reload image">
+        <source>Reload image</source>
+        <target>~Reŝargi la bildon</target>
+      </trans-unit>
+      <trans-unit id="a8zmkhu" resname="Adaptative Quiz">
+        <source>Adaptative Quiz</source>
+        <target>~Adaptiĝema kvizo</target>
+      </trans-unit>
+      <trans-unit id="6240n3r" resname="Click on an option to choose your answer.">
+        <source>Click on an option to choose your answer.</source>
+        <target>~Klaku opcion por elekti vian respondon.</target>
+      </trans-unit>
+      <trans-unit id="wesp0ul" resname="Highest level reached">
+        <source>Highest level reached</source>
+        <target>~Plej alta atingita nivelo</target>
+      </trans-unit>
+      <trans-unit id="vachwiy" resname="Level up!">
+        <source>Level up!</source>
+        <target>~Vi supreniras nivelon!</target>
+      </trans-unit>
+      <trans-unit id="jt1zj5a" resname="Level down">
+        <source>Level down</source>
+        <target>~Vi malsupreniras nivelon</target>
+      </trans-unit>
+      <trans-unit id="4qgd1jd" resname="Final report">
+        <source>Final report</source>
+        <target>~Fina raporto</target>
+      </trans-unit>
+      <trans-unit id="verqjd5" resname="Excellent. You dominate the highest-level contents.">
+        <source>Excellent. You dominate the highest-level contents.</source>
+        <target>~Bonege. Vi regas la enhavojn de la plej alta nivelo.</target>
+      </trans-unit>
+      <trans-unit id="bim8k85" resname="Good job. You have achieved the intermediate level.">
+        <source>Good job. You have achieved the intermediate level.</source>
+        <target>~Bona laboro. Vi atingis la mezan nivelon.</target>
+      </trans-unit>
+      <trans-unit id="jgwsnab" resname="You need a bit more practice. Review the basic contents.">
+        <source>You need a bit more practice. Review the basic contents.</source>
+        <target>~Vi bezonas iom pli da praktiko. Revizu la bazajn enhavojn.</target>
+      </trans-unit>
+      <trans-unit id="qfjevpc" resname="Pause audio">
+        <source>Pause audio</source>
+        <target>~Paŭzigi aŭdion</target>
+      </trans-unit>
+      <trans-unit id="qacbfe9" resname="Illustration">
+        <source>Illustration</source>
+        <target>~Ilustraĵo</target>
+      </trans-unit>
+      <trans-unit id="x9rfzw6" resname="Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.">
+        <source>Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.</source>
+        <target>~Elektu la ĝustan respondon por ĉiu demando. Por supreniri al la sekva nivelo, vi devas respondi du demandojn ĝuste sinsekve. Se vi malĝustas du sinsekve, vi malsupreniros al la antaŭa nivelo.</target>
+      </trans-unit>
+      <trans-unit id="f9ots6y" resname="Time&apos;s up!">
+        <source>Time's up!</source>
+        <target>~La tempo finiĝis!</target>
+      </trans-unit>
+      <trans-unit id="nzr5nvw" resname="Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.">
+        <source>Create %total% mixed adaptative-quiz questions %distribution% and across the three supported question types. Every line must start with the type number followed by @, then the level, then the remaining fields separated with #. Never put # inside a field. The three accepted line shapes are: Type 0 (multiple-choice): 0@Level#Solution#Question#OptionA#OptionB[#OptionC][#OptionD][#OptionE][#OptionF] — Solution is an uppercase combination of the letters A, B, C, D, E, F identifying the correct options (e.g. A, AB, ACD, ABCDEF); use up to 6 letters and never more than the number of options; leave Solution empty if no option is correct. Type 1 (sort/order): 1@Level#Question#Item1#Item2#Item3[#Item4][#Item5][#Item6] — provide between 3 and 6 items already listed in the correct order according to the question criterion. Type 2 (word/definition): 2@Level#Word#Definition. Difficulty must increase with the level: %ladder% Inside every single level you must include questions of all three types (Type 0, Type 1 and Type 2): produce around %perLevel% questions per level and make sure each level mixes select/multiple-choice (Type 0), sort/order (Type 1) and word/definition (Type 2). Do not put all the same type together; interleave the three types within each level.</source>
+        <target>~Kreu %total% miksitajn demandojn de adaptiĝema kvizo %distribution% kaj el la tri subtenataj demandtipoj. Ĉiu linio devas komenci per la tipnumero sekvata de @, poste la nivelo kaj poste la ceteraj kampoj apartigitaj per #. Neniam metu # ene de kampo. La tri akceptataj linioformoj estas: Tipo 0 (plurelekta): 0@Nivelo#Solvo#Demando#OpcioA#OpcioB[#OpcioC][#OpcioD][#OpcioE][#OpcioF] — La solvo estas majuskla kombinaĵo de la literoj A, B, C, D, E, F kiu identigas la ĝustajn opciojn (ekz. A, AB, ACD, ABCDEF); uzu ĝis 6 literojn kaj neniam pli ol la nombro da opcioj; lasu la solvon malplena se neniu opcio estas ĝusta. Tipo 1 (ordigi): 1@Nivelo#Demando#Ero1#Ero2#Ero3[#Ero4][#Ero5][#Ero6] — provizu inter 3 kaj 6 erojn jam listigitajn en la ĝusta ordo laŭ la kriterio de la demando. Tipo 2 (vorto/difino): 2@Nivelo#Vorto#Difino. La malfacileco devas pliiĝi kun la nivelo: %ladder% Ene de ĉiu unuopa nivelo vi devas inkluzivi demandojn de ĉiuj tri tipoj (Tipo 0, Tipo 1 kaj Tipo 2): produktu ĉirkaŭ %perLevel% demandojn po nivelo kaj certigu ke ĉiu nivelo miksas plurelektajn (Tipo 0), ordigajn (Tipo 1) kaj vorto/difinajn (Tipo 2). Ne metu ĉiujn samtipajn kune; interplektu la tri tipojn ene de ĉiu nivelo.</target>
+      </trans-unit>
+      <trans-unit id="y6inhkv" resname="Please render the circuit preview before saving.">
+        <source>Please render the circuit preview before saving.</source>
+        <target>~Bonvolu generi la antaŭrigardon de la cirkvito antaŭ ol konservi</target>
+      </trans-unit>
+      <trans-unit id="y2fg8e5" resname="Screenshot">
+        <source>Screenshot</source>
+        <target>~Ekrankopio</target>
+      </trans-unit>
+      <trans-unit id="kbvvdgi" resname="Current project screenshot preview">
+        <source>Current project screenshot preview</source>
+        <target>~Antaŭrigardo de ekrankopio de la aktuala projekto</target>
+      </trans-unit>
+      <trans-unit id="yycim2g" resname="No screenshot yet. It will be auto-generated when you save or export.">
+        <source>No screenshot yet. It will be auto-generated when you save or export.</source>
+        <target>~Ankoraŭ neniu ekrankopio. Ĝi estos aŭtomate generita dum konservado aŭ eksportado.</target>
+      </trans-unit>
+      <trans-unit id="ozehezc" resname="Upload custom image">
+        <source>Upload custom image</source>
+        <target>~Alŝuti propran bildon</target>
+      </trans-unit>
+      <trans-unit id="z4rfgd6" resname="Screenshot must be smaller than 2 MB.">
+        <source>Screenshot must be smaller than 2 MB.</source>
+        <target>~La ekrankopio devas esti malpli ol 2 MB.</target>
+      </trans-unit>
+      <trans-unit id="hdlrwro" resname="Invalid image">
+        <source>Invalid image</source>
+        <target>~Nevalida bildo</target>
+      </trans-unit>
+      <trans-unit id="udyb9um" resname="The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.">
+        <source>The image does not meet the minimum requirements: 16:9 aspect ratio and at least 600 pixels wide.</source>
+        <target>~La bildo ne plenumas la minimumajn postulojn: proporciumo 16:9 kaj almenaŭ 600 pikseloj larĝe.</target>
+      </trans-unit>
+      <trans-unit id="kscxl0d" resname="Generate from content">
+        <source>Generate from content</source>
+        <target>~Generi el enhavo</target>
+      </trans-unit>
+      <trans-unit id="s98c6kv" resname="Not available">
+        <source>Not available</source>
+        <target>~Ne disponebla</target>
+      </trans-unit>
+      <trans-unit id="uwrpxot" resname="Screenshot generation is not available.">
+        <source>Screenshot generation is not available.</source>
+        <target>~La generado de ekrankopionoj ne estas disponebla.</target>
+      </trans-unit>
+      <trans-unit id="m0ul6em" resname="Generation failed">
+        <source>Generation failed</source>
+        <target>~Generado malsukcesis</target>
+      </trans-unit>
+      <trans-unit id="o7tgeey" resname="Could not generate screenshot from content. Try uploading an image instead.">
+        <source>Could not generate screenshot from content. Try uploading an image instead.</source>
+        <target>~Ne eblis generi ekrankopio el enhavo. Provu anstataŭe alŝuti bildon.</target>
+      </trans-unit>
+      <trans-unit id="b6b7fbm" resname="Replace screenshot">
+        <source>Replace screenshot</source>
+        <target>~Anstataŭigi ekrankopio</target>
+      </trans-unit>
+      <trans-unit id="bfogsw2" resname="This will delete the current image. Do you want to continue?">
+        <source>This will delete the current image. Do you want to continue?</source>
+        <target>~Ĉi tio forigos la aktualan bildon. Ĉu vi volas daŭrigi?</target>
+      </trans-unit>
+      <trans-unit id="v1xulcp" resname="Delete screenshot">
+        <source>Delete screenshot</source>
+        <target>~Forigi ekrankopio</target>
+      </trans-unit>
+      <trans-unit id="9hl1i3s" resname="Delete the current image? This action cannot be undone.">
+        <source>Delete the current image? This action cannot be undone.</source>
+        <target>~Forigi la aktualan bildon? Ĉi tiu ago ne povas esti nuligita.</target>
+      </trans-unit>
+      <trans-unit id="k2m7qyi" resname="Recommendations">
+        <source>Recommendations</source>
+        <target>~Rekomendoj</target>
+      </trans-unit>
+      <trans-unit id="avbkh8c" resname="Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.">
+        <source>Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.</source>
+        <target>~Uzu bildon 16:9 (rekomendate 1280×720 px) kiu klare reprezentas la ĉefan enhavon de la lernresurso. Evitu malordon kaj malgrandan tekston, kaj certigu bonan kontraston por legebleco ĉe malgrandaj grandecoj.</target>
+      </trans-unit>
+      <trans-unit id="ca80gu5" resname="The image will be used as a preview of this educational resource across different platforms.">
+        <source>The image will be used as a preview of this educational resource across different platforms.</source>
+        <target>~La bildo estos uzata kiel antaŭrigardo de ĉi tiu eduka resurso sur diversaj platformoj.</target>
+      </trans-unit>
+      <trans-unit id="es50bwi" resname="3D Molecule">
+        <source>3D Molecule</source>
+        <target>~3D-molekulo</target>
+      </trans-unit>
+      <trans-unit id="vhqs629" resname="3D Molecules">
+        <source>3D Molecules</source>
+        <target>~3D-molekuloj</target>
+      </trans-unit>
+      <trans-unit id="9xkm21o" resname="Max. width (optional)">
+        <source>Max. width (optional)</source>
+        <target>~Maks. larĝo (laŭvola)</target>
+      </trans-unit>
+      <trans-unit id="q5q2ln0" resname="Max. height (optional)">
+        <source>Max. height (optional)</source>
+        <target>~Maks. alto (laŭvola)</target>
+      </trans-unit>
+      <trans-unit id="41tf78e" resname="e.g. 800px, 50%, 40em, 30rem">
+        <source>e.g. 800px, 50%, 40em, 30rem</source>
+        <target>~eks. 800px, 50%, 40em, 30rem</target>
+      </trans-unit>
+      <trans-unit id="o4sioy0" resname="Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).">
+        <source>Max. width must be greater than 0 and use px, em, rem, or % (e.g. 800px, 50%, 40em, 30rem).</source>
+        <target>~La maks. larĝo devas esti pli granda ol 0 kaj uzi px, em, rem aŭ % (eks. 800px, 50%, 40em, 30rem).</target>
+      </trans-unit>
+      <trans-unit id="uf7uhfc" resname="Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).">
+        <source>Max. height must be greater than 0 and use px, em, rem, or % (e.g. 600px, 70%, 30em, 20rem).</source>
+        <target>~La maks. alto devas esti pli granda ol 0 kaj uzi px, em, rem aŭ % (eks. 600px, 70%, 30em, 20rem).</target>
+      </trans-unit>
+      <trans-unit id="y44ibxy" resname="Sorry, that&apos;s incorrect... The right answer is:">
+        <source>Sorry, that's incorrect... The right answer is:</source>
+        <target>~Bedaŭrinde, tio estas malĝusta... La ĝusta respondo estas:</target>
+      </trans-unit>
+      <trans-unit id="4cfg707" resname="Style installed">
+        <source>Style installed</source>
+        <target>~Stilo instalita</target>
+      </trans-unit>
+      <trans-unit id="2zaf14c" resname="The style has been installed successfully.">
+        <source>The style has been installed successfully.</source>
+        <target>~La stilo estis instalita sukcese.</target>
+      </trans-unit>
+      <trans-unit id="eq721gg" resname="Editing iDevice. Other actions are disabled until you save or discard.">
+        <source>Editing iDevice. Other actions are disabled until you save or discard.</source>
+        <target>~Redaktante la iDevice. Aliaj agoj estas malaktivigitaj ĝis vi konservas aŭ forĵetas.</target>
+      </trans-unit>
+      <trans-unit id="dewmtcn" resname="Finished editing the iDevice.">
+        <source>Finished editing the iDevice.</source>
+        <target>~Finita redaktado de la iDevice.</target>
+      </trans-unit>
+      <trans-unit id="9r1333v" resname="Save or discard the open iDevice before saving the project.">
+        <source>Save or discard the open iDevice before saving the project.</source>
+        <target>~Konservu aŭ forĵetu la malfermitan iDevice antaŭ ol konservi la projekton.</target>
+      </trans-unit>
+      <trans-unit id="v9t53on" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
+        <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
+        <target>~Lingvaj ŝanĝoj eble postulos reŝargi aŭ remalfermi eXeLearning por ĝisdatigi la tutan interfacon.</target>
+      </trans-unit>
+      <trans-unit id="4re14mj" resname="The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.">
+        <source>The language preference has been saved. Some interface texts may not update until you reload or reopen eXeLearning. Save or download your project before reloading or closing the app to avoid losing changes.</source>
+        <target>~La lingva prefero estis konservita. Kelkaj interfacaj tekstoj eble ne ĝisdatiĝos ĝis vi reŝargas aŭ remalfermas eXeLearning. Konservu aŭ elŝutu vian projekton antaŭ reŝargado aŭ fermado de la programo por eviti perdi ŝanĝojn.</target>
+      </trans-unit>
+      <trans-unit id="n3p5eoo" resname="Do you want to save changes before creating a new file?">
+        <source>Do you want to save changes before creating a new file?</source>
+        <target>~Ĉu vi volas konservi ŝanĝojn antaŭ ol krei novan dosieron?</target>
+      </trans-unit>
+      <trans-unit id="h5sfm77" resname="Don&apos;t Save">
+        <source>Don't Save</source>
+        <target>~Ne konservi</target>
+      </trans-unit>
+      <trans-unit id="g2efejz" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
+        <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
+        <target>~Kelkaj kunlaboraj ŝanĝoj ankoraŭ ne estis konservitaj. Alklaku Konservi antaŭ ol eliri por eviti perdi ilin.</target>
+      </trans-unit>
+      <trans-unit id="irszm81" resname="Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.">
+        <source>Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.</source>
+        <target>~Enhavo markita kiel nur por instruistoj estas kaŝita defaŭlte en eksportoj kaj antaŭrigardoj. Malfermu ĝin per ?exe-teacher=1 por montri ĝin.</target>
+      </trans-unit>
+      <trans-unit id="9m1poar" resname="The file &quot;%1&quot; contains a large asset (%2).">
+        <source>The file "%1" contains a large asset (%2).</source>
+        <target>~La dosiero "%1" enhavas grandan rimedon (%2).</target>
+      </trans-unit>
+      <trans-unit id="v28feys" resname="Importing it may use a large amount of memory.">
+        <source>Importing it may use a large amount of memory.</source>
+        <target>~Importi ĝin povas uzi grandan kvanton da memoro.</target>
+      </trans-unit>
+      <trans-unit id="txh26ok" resname="The desktop application can open assets up to %1.">
+        <source>The desktop application can open assets up to %1.</source>
+        <target>~La labortabla aplikaĵo povas malfermi rimedojn ĝis %1.</target>
+      </trans-unit>
+      <trans-unit id="a3busd9" resname="Protection against malformed or malicious archives remains active.">
+        <source>Protection against malformed or malicious archives remains active.</source>
+        <target>~La protekto kontraŭ misformitaj aŭ malicaj arkivoj restas aktiva.</target>
+      </trans-unit>
+      <trans-unit id="e2tqfob" resname="Import large file?">
+        <source>Import large file?</source>
+        <target>~Ĉu importi grandan dosieron?</target>
+      </trans-unit>
+      <trans-unit id="m4lnfvr" resname="The file &quot;%1&quot; (%2) is larger than the maximum this application can open (%3).">
+        <source>The file "%1" (%2) is larger than the maximum this application can open (%3).</source>
+        <target>~La dosiero "%1" (%2) estas pli granda ol la maksimumo kiun ĉi tiu aplikaĵo povas malfermi (%3).</target>
+      </trans-unit>
+      <trans-unit id="bkdc8m2" resname="This project (%1) is larger than the maximum this application can open (%2).">
+        <source>This project (%1) is larger than the maximum this application can open (%2).</source>
+        <target>~Ĉi tiu projekto (%1) estas pli granda ol la maksimumo kiun ĉi tiu aplikaĵo povas malfermi (%2).</target>
+      </trans-unit>
+      <trans-unit id="kq81qcv" resname="This project has too many files to open (%1 of a maximum %2).">
+        <source>This project has too many files to open (%1 of a maximum %2).</source>
+        <target>~Ĉi tiu projekto havas tro multajn dosierojn por esti malfermita (%1 el maksimume %2).</target>
+      </trans-unit>
+      <trans-unit id="3pawwdy" resname="The project was not imported.">
+        <source>The project was not imported.</source>
+        <target>~La projekto ne estis importita.</target>
+      </trans-unit>
+      <trans-unit id="i6bcbd7" resname="To reduce its size, open the File Manager and:">
+        <source>To reduce its size, open the File Manager and:</source>
+        <target>~Por redukti ĝian grandecon, malfermu la Dosieran administrilon kaj:</target>
+      </trans-unit>
+      <trans-unit id="5s79mc8" resname="Sort by &quot;Largest first&quot; and review each asset&apos;s references.">
+        <source>Sort by "Largest first" and review each asset's references.</source>
+        <target>~Ordigu laŭ "Plej grandaj unue" kaj kontrolu la referencojn de ĉiu rimedo.</target>
+      </trans-unit>
+      <trans-unit id="yuj76zg" resname="Remove an unused older version of a large asset.">
+        <source>Remove an unused older version of a large asset.</source>
+        <target>~Forigu neuzatan pli malnovan version de granda rimedo.</target>
+      </trans-unit>
+      <trans-unit id="i0nj2nq" resname="Optimise, replace, or remove the large file.">
+        <source>Optimise, replace, or remove the large file.</source>
+        <target>~Optimumigu, anstataŭigu aŭ forigu la grandan dosieron.</target>
+      </trans-unit>
+      <trans-unit id="i0bdnaz" resname="File too large to open">
+        <source>File too large to open</source>
+        <target>~Dosiero tro granda por malfermi</target>
+      </trans-unit>
+      <trans-unit id="ey65dwx" resname="The asset &quot;%1&quot; (%2) exceeds the maximum size the desktop application can open (%3).">
+        <source>The asset "%1" (%2) exceeds the maximum size the desktop application can open (%3).</source>
+        <target>~La rimedo "%1" (%2) superas la maksimuman grandecon kiun la labortabla aplikaĵo povas malfermi (%3).</target>
+      </trans-unit>
+      <trans-unit id="yzgmosn" resname="This project (%1) exceeds the maximum size the desktop application can open (%2).">
+        <source>This project (%1) exceeds the maximum size the desktop application can open (%2).</source>
+        <target>~Ĉi tiu projekto (%1) superas la maksimuman grandecon kiun la labortabla aplikaĵo povas malfermi (%2).</target>
+      </trans-unit>
+      <trans-unit id="q34s2on" resname="The resulting ELPX may not open in the desktop application.">
+        <source>The resulting ELPX may not open in the desktop application.</source>
+        <target>~La rezulta ELPX eble ne malfermiĝos en la labortabla aplikaĵo.</target>
+      </trans-unit>
+      <trans-unit id="8qbmff9" resname="Do you want to continue exporting anyway?">
+        <source>Do you want to continue exporting anyway?</source>
+        <target>~Ĉu vi volas tamen daŭrigi la eksporton?</target>
+      </trans-unit>
+      <trans-unit id="xf8ren3" resname="Large ELPX export">
+        <source>Large ELPX export</source>
+        <target>~Granda ELPX-eksporto</target>
+      </trans-unit>
+      <trans-unit id="tqnxbbt" resname="Export anyway">
+        <source>Export anyway</source>
+        <target>~Eksporti tamen</target>
+      </trans-unit>
+      <trans-unit id="s86l1ib" resname="Page title">
+        <source>Page title</source>
+        <target>~Titolo de la paĝo</target>
+      </trans-unit>
+      <trans-unit id="f1mk83f" resname="This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.">
+        <source>This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.</source>
+        <target>~Ĉi tiu iDevice ne povas esti redaktita ĉar ĝiaj konservitaj datumoj estas difektitaj. Ĝia ekzistanta enhavo estis konservita.</target>
+      </trans-unit>
+      <trans-unit id="dhbckz7" resname="Invalid iDevice data. The save was discarded.">
+        <source>Invalid iDevice data. The save was discarded.</source>
+        <target>~Nevalidaj datumoj de iDevice. La konservo estis forĵetita.</target>
+      </trans-unit>
+      <trans-unit id="dimzf9g" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).">
+        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).</source>
+        <target>~Generu 5 plurelektajn demandojn pri elektraj cirkvitoj. Unu demando por ĉiu linio. Ĉiu linio devas enhavi ĉiujn kampojn apartigitajn per #: mallongan priskribon, la TikZ-kodon (uzante circuitikz) por la cirkvita skemo, la ĝustan respondon per literoj (ekzemple, A, AB), la demandon, kaj 2 ĝis 4 respondelektojn. Ne uzu la signon # ene de iu kampo. Ne aldonu liniorompojn ene de demando. GRAVE: La TikZ-kodo devas esti kongrua kun circuitikz versio 0.9.6. Uzu nur komponantojn disponeblajn en ĉi tiu versio: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diodo), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (kun t=A por ampermetro, t=V por voltmetro), and gate, or gate, not gate, nand gate, nor gate. NE uzu komponantojn el circuitikz 1.0 aŭ pli nova, kiel dipchip, qfpchip, muxdemux, flipflop, latch aŭ 7-segmentaj ekranoj. La skemon bildigas TikZJax, kiu ŝargas nur la LaTeX-pakaĵojn circuitikz, amsmath kaj amssymb; NE uzu komandojn el iu alia pakaĵo. Skribu unuojn kiel platan tekston aŭ Unikodon (ekzemple Ω, µ, V, A, W, F, H, Hz, kΩ, µF), neniam kiel makroojn de siunitx aŭ gensymb kiel \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} aŭ \\qty{...}{...}, kaj neniam ĉirkaŭu unuon per angulaj krampoj (skribu 100 Ω, ne 100&lt;\\ohm&gt;).</target>
+      </trans-unit>
+      <trans-unit id="tn28c9r" resname="Attachment">
+        <source>Attachment</source>
+        <target>~Aldonaĵo</target>
+      </trans-unit>
+      <trans-unit id="wob954w" resname="No files attached.">
+        <source>No files attached.</source>
+        <target>~Neniu dosiero aldonita.</target>
+      </trans-unit>
+      <trans-unit id="w1racla" resname="File unavailable">
+        <source>File unavailable</source>
+        <target>~Dosiero ne disponebla</target>
+      </trans-unit>
+      <trans-unit id="iezxsq3" resname="File attachments">
+        <source>File attachments</source>
+        <target>~Dosieraj aldonaĵoj</target>
+      </trans-unit>
+      <trans-unit id="abtbpol" resname="Show file descriptions">
+        <source>Show file descriptions</source>
+        <target>~Montri la priskribojn de la dosieroj</target>
+      </trans-unit>
+      <trans-unit id="e8wyn4c" resname="No files attached yet.">
+        <source>No files attached yet.</source>
+        <target>~Ankoraŭ neniu dosiero aldonita.</target>
+      </trans-unit>
+      <trans-unit id="cglpj44" resname="Unknown file">
+        <source>Unknown file</source>
+        <target>~Nekonata dosiero</target>
+      </trans-unit>
+      <trans-unit id="gbk61gb" resname="The attached file is missing. Re-add it from the Media Library.">
+        <source>The attached file is missing. Re-add it from the Media Library.</source>
+        <target>~La aldonita dosiero mankas. Realdonu ĝin el la Medialibro.</target>
+      </trans-unit>
+      <trans-unit id="350ysjm" resname="The Media Library is not available.">
+        <source>The Media Library is not available.</source>
+        <target>~La Medialibro ne estas disponebla.</target>
+      </trans-unit>
+      <trans-unit id="p9kh8rn" resname="The file could not be uploaded.">
+        <source>The file could not be uploaded.</source>
+        <target>~La dosiero ne povis esti alŝutita.</target>
+      </trans-unit>
+      <trans-unit id="94s8wi3" resname="File properties">
+        <source>File properties</source>
+        <target>~Dosieraj ecoj</target>
+      </trans-unit>
+      <trans-unit id="1g8w64n" resname="Please wait">
+        <source>Please wait</source>
+        <target>~Bonvolu atendi</target>
+      </trans-unit>
+      <trans-unit id="7rhcvly" resname="Generating the circuit images, this may take a few minutes, please wait…">
+        <source>Generating the circuit images, this may take a few minutes, please wait…</source>
+        <target>~Generado de la cirkvitaj bildoj; tio povas daŭri kelkajn minutojn, bonvolu atendi…</target>
+      </trans-unit>
+      <trans-unit id="62tq38i" resname="Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.">
+        <source>Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.</source>
+        <target>~Kelkaj demandoj ne povis esti aldonitaj ĉar ilia cirkvito ne povis esti generita. Ili restis en la teksta kampo por ke vi korektu ilin kaj reprovu.</target>
+      </trans-unit>
+      <trans-unit id="kyqjue8" resname="Requires manual review">
+        <source>Requires manual review</source>
+        <target>~Postulas manan kontrolon</target>
+      </trans-unit>
+      <trans-unit id="4pke2g5" resname="Broken">
+        <source>Broken</source>
+        <target>~Difektita</target>
+      </trans-unit>
+      <trans-unit id="p33la67" resname="Listing links...">
+        <source>Listing links...</source>
+        <target>~Listigado de ligiloj...</target>
+      </trans-unit>
+      <trans-unit id="j1sgvqp" resname="Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.">
+        <source>Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.</source>
+        <target>~Pro sekurecaj limigoj de la retumilo, ĉi tiu versio de eXeLearning ne povas kontroli eksterajn ligilojn aŭtomate. Malfermu ĉiun ligilon por kontroli ĝin mane.</target>
+      </trans-unit>
+      <trans-unit id="29aar5m" resname="the status of these links could not be checked automatically; open them to confirm.">
+        <source>the status of these links could not be checked automatically; open them to confirm.</source>
+        <target>~Ĉi tiuj ligiloj ne povis esti kontrolitaj aŭtomate.</target>
+      </trans-unit>
+      <trans-unit id="gccrr2u" resname="A check mark means the server responded: some sites answer 200 even for pages that do not exist.">
+        <source>A check mark means the server responded: some sites answer 200 even for pages that do not exist.</source>
+        <target>~Marko signifas ke la servilo respondis, sed iuj retejoj respondas 200 eĉ por paĝoj kiuj ne ekzistas.</target>
+      </trans-unit>
+      <trans-unit id="2k76fhc" resname="Links listed">
+        <source>Links listed</source>
+        <target>~Listigitaj ligiloj</target>
+      </trans-unit>
+      <trans-unit id="1y2lgyr" resname="to review manually">
+        <source>to review manually</source>
+        <target>~por mane kontroli</target>
+      </trans-unit>
+      <trans-unit id="srtbrzq" resname="to review">
+        <source>to review</source>
+        <target>~por kontroli</target>
+      </trans-unit>
+      <trans-unit id="0ejbf9i" resname="No links to export">
+        <source>No links to export</source>
+        <target>~Neniu ligilo por eksporti</target>
+      </trans-unit>
+      <trans-unit id="pjhoys5" resname="External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.">
+        <source>External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.</source>
+        <target>~Eksteraj ligiloj ne povas esti kontrolitaj aŭtomate en ĉi tiu versio de eXeLearning: vi ricevos liston de ligiloj por mane kontroli.</target>
+      </trans-unit>
+      <trans-unit id="bz6yh80" resname="Not checked automatically: open the link to review it">
+        <source>Not checked automatically: open the link to review it</source>
+        <target>~Ne kontrolita aŭtomate; malfermu por kontroli</target>
+      </trans-unit>
+      <trans-unit id="87ozze8" resname="Local or private address: open the link to review it manually">
+        <source>Local or private address: open the link to review it manually</source>
+        <target>~Loka aŭ privata adreso; malfermu por kontroli</target>
+      </trans-unit>
+      <trans-unit id="x1u7s0c" resname="Redirects to another site — open the link to verify it">
+        <source>Redirects to another site — open the link to verify it</source>
+        <target>~Alidirektas al alia retejo; malfermu por kontroli</target>
+      </trans-unit>
+      <trans-unit id="jftz7f6" resname="Could not be fully verified: open the link to confirm it">
+        <source>Could not be fully verified: open the link to confirm it</source>
+        <target>~Nekompleta kontrolo; malfermu por kontroli</target>
+      </trans-unit>
+      <trans-unit id="rusuym5" resname="Redirects could not be followed: open the link to review it">
+        <source>Redirects could not be followed: open the link to review it</source>
+        <target>~Ne eblis sekvi la alidirektojn; malfermu por kontroli</target>
+      </trans-unit>
+      <trans-unit id="hpobut5" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~kaj %1 pli</target>
+      </trans-unit>
+      <trans-unit id="41ib2vk" resname="Missing files">
+        <source>Missing files</source>
+        <target>~Mankantaj dosieroj</target>
+      </trans-unit>
+      <trans-unit id="ued0rzd" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>~Ĉi tiuj agadoj referencas dosierojn, kiuj ne estas inkluzivitaj en la importita pakaĵo. La referencoj estas konservitaj, do realdono de la dosieroj restarigos ilin.</target>
+      </trans-unit>
+      <trans-unit id="7u1m5hz" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target>~Formuloj estas montrataj eĉ se ĉi tiu opcio estas malŝaltita. Ŝaltu ĝin por inkluzivi la kompletan bibliotekon MathJax en la eksportojn. Tio aldonas ĝian kuntekstan menuon kaj ĝiajn interagajn funkciojn.</target>
+      </trans-unit>
+      <trans-unit id="r8ipagi" resname="Change password">
+        <source>Change password</source>
+        <target>~Ŝanĝi pasvorton</target>
+      </trans-unit>
+      <trans-unit id="544n3bw" resname="Current password">
+        <source>Current password</source>
+        <target>~Nuna pasvorto</target>
+      </trans-unit>
+      <trans-unit id="oh3bj07" resname="New password">
+        <source>New password</source>
+        <target>~Nova pasvorto</target>
+      </trans-unit>
+      <trans-unit id="735sajl" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target>~Almenaŭ 4 signoj. Pli longaj pasvortoj, kiuj kombinas literojn, ciferojn kaj simbolojn, estas pli sekuraj.</target>
+      </trans-unit>
+      <trans-unit id="k9rgmfq" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target>~Konfirmi la novan pasvorton</target>
+      </trans-unit>
+      <trans-unit id="wpgn4cn" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target>~Difektitaj aktivadoj</target>
+      </trans-unit>
+      <trans-unit id="r8rnqle" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target>~La datumoj de ĉi tiuj aktivadoj estas difektitaj kaj ne legeblis. Ili estis importitaj senŝanĝe: ilia lasta enhavo plu montriĝas, sed ili ne redakteblas ĝis oni rekreos ilin.</target>
+      </trans-unit>
+      <trans-unit id="vxk7zv6" resname="Import warnings">
+        <source>Import warnings</source>
+        <target>~Avertoj pri importado</target>
+      </trans-unit>
+      <trans-unit id="ql1n6f2" resname="Search icon">
+        <source>Search icon</source>
+        <target>~Serĉi piktogramon</target>
+      </trans-unit>
+      <trans-unit id="3nz7tkc" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target>~Elekti bildon el la dosiera administrilo</target>
+      </trans-unit>
+      <trans-unit id="5zb9hbn" resname="Icon">
+        <source>Icon</source>
+        <target>~Piktogramo</target>
+      </trans-unit>
+      <trans-unit id="i89gf4b" resname="Style icons">
+        <source>Style icons</source>
+        <target>~Piktogramoj de la stilo</target>
+      </trans-unit>
+      <trans-unit id="lotr6re" resname="General icons">
+        <source>General icons</source>
+        <target>~Ĝeneralaj piktogramoj</target>
+      </trans-unit>
+      <trans-unit id="vmq43oa" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target>~Forteco de la pasvorto: tro mallonga</target>
+      </trans-unit>
+      <trans-unit id="v6oridg" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target>~Forteco de la pasvorto: malforta</target>
+      </trans-unit>
+      <trans-unit id="tyx7vp1" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target>~Forteco de la pasvorto: akceptebla</target>
+      </trans-unit>
+      <trans-unit id="mt5sb7o" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target>~Forteco de la pasvorto: bona</target>
+      </trans-unit>
+      <trans-unit id="m371l58" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target>~Forteco de la pasvorto: forta</target>
+      </trans-unit>
+      <trans-unit id="19elp90" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target>~La nuna pasvorto ne estas ĝusta</target>
+      </trans-unit>
+      <trans-unit id="au1s8di" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target>~La nova pasvorto ne povas esti malplena.</target>
+      </trans-unit>
+      <trans-unit id="nrpgy68" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target>~La pasvortoj ne kongruas</target>
+      </trans-unit>
+      <trans-unit id="xtheuzk" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target>~La pasvorto sukcese ŝanĝiĝis</target>
+      </trans-unit>
+      <trans-unit id="gj3sfg8" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target>~Okazis eraro. Bonvolu reprovi.</target>
+      </trans-unit>
+      <trans-unit id="ffxoz40" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target>~Ĉi tiu konto ne permesas ŝanĝi la pasvorton.</target>
+      </trans-unit>
+      <trans-unit id="8i97041" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target>~La nova pasvorto ne validas.</target>
+      </trans-unit>
+      <trans-unit id="jf93bq3" resname="Huger text">
+        <source>Huger text</source>
+        <target>~Grandega teksto</target>
+      </trans-unit>
+      <trans-unit id="y5yx6pf" resname="To save the score, the activity needs at least one question.">
+        <source>To save the score, the activity needs at least one question.</source>
+        <target>~Por konservi la poentaron, la aktiveco bezonas almenaŭ unu demandon.</target>
+      </trans-unit>
+      <trans-unit id="jfsj1wt" resname="Minimum score to pass">
+        <source>Minimum score to pass</source>
+        <target>~Minimuma poentaro por sukcesi</target>
+      </trans-unit>
+      <trans-unit id="gpliknn" resname="Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.">
+        <source>Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.</source>
+        <target>~Noto el 10, kiun la lernantoj devas atingi por ke aktiveco validu kiel sukcesita. Ĉiuj iDevices uzas ĉi tiun valoron, krom se ili difinas sian propran.</target>
+      </trans-unit>
+      <trans-unit id="63v6o3b" resname="Each SCORM activity must reach its minimum score">
+        <source>Each SCORM activity must reach its minimum score</source>
+        <target>~Ĉiu SCORM-aktiveco devas atingi sian minimuman poentaron</target>
+      </trans-unit>
+      <trans-unit id="pdmn0yb" resname="A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.">
+        <source>A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.</source>
+        <target>~SCORM-paĝo estas sukcesita nur se ĉiuj ĝiaj aktivecoj atingas sian minimuman poentaron. Se ĉi tiu opcio ne estas markita, sufiĉas ke la pezigita mezumo de la poentaroj atingu tiun de la minimumaj poentaroj, do alta noto povas kompensi malaltan.</target>
+      </trans-unit>
+      <trans-unit id="yshe9bi" resname="Edit access">
+        <source>Edit access</source>
+        <target>~Kiu rajtas redakti</target>
+      </trans-unit>
+      <trans-unit id="iwloa3n" resname="Only invited people">
+        <source>Only invited people</source>
+        <target>~Nur invititaj personoj</target>
+      </trans-unit>
+      <trans-unit id="7qkes0o" resname="Anyone with the edit link">
+        <source>Anyone with the edit link</source>
+        <target>~Ĉiu kun la redakta ligilo</target>
+      </trans-unit>
+      <trans-unit id="kd9tf3f" resname="Only the people added above can open and edit this resource.">
+        <source>Only the people added above can open and edit this resource.</source>
+        <target>~Nur rajtigitaj personoj povas malfermi kaj redakti ĉi tiun rimedon.</target>
+      </trans-unit>
+      <trans-unit id="ahws0sn" resname="Edit link">
+        <source>Edit link</source>
+        <target>~Redakta ligilo</target>
+      </trans-unit>
+      <trans-unit id="nhmih9z" resname="Public read-only link">
+        <source>Public read-only link</source>
+        <target>~Publika ligilo (nur legebla)</target>
+      </trans-unit>
+      <trans-unit id="gdtwgxm" resname="Disabled">
+        <source>Disabled</source>
+        <target>~Malŝaltita</target>
+      </trans-unit>
+      <trans-unit id="e1jagrh" resname="Enabled">
+        <source>Enabled</source>
+        <target>~Ŝaltita</target>
+      </trans-unit>
+      <trans-unit id="fsirwcs" resname="This resource has no public read-only link.">
+        <source>This resource has no public read-only link.</source>
+        <target>~Ĉi tiu rimedo ne havas publikan ligilon.</target>
+      </trans-unit>
+      <trans-unit id="mdnlwv7" resname="Public link">
+        <source>Public link</source>
+        <target>~Publika ligilo</target>
+      </trans-unit>
+      <trans-unit id="ha42zw3" resname="Regenerate link">
+        <source>Regenerate link</source>
+        <target>~Regeneri ligilon</target>
+      </trans-unit>
+      <trans-unit id="pockj64" resname="Regenerate the public link? The previous link will stop working.">
+        <source>Regenerate the public link? The previous link will stop working.</source>
+        <target>~Ĉu regeneri la publikan ligilon? La antaŭa ĉesos funkcii.</target>
+      </trans-unit>
+      <trans-unit id="5p2oxzq" resname="Yes, regenerate">
+        <source>Yes, regenerate</source>
+        <target>~Jes, regeneri</target>
+      </trans-unit>
+      <trans-unit id="ceuxdj1" resname="Print options">
+        <source>Print options</source>
+        <target>~Presaj opcioj</target>
+      </trans-unit>
+      <trans-unit id="sntfvs9" resname="Save as PDF">
+        <source>Save as PDF</source>
+        <target>~Konservi kiel PDF</target>
+      </trans-unit>
+      <trans-unit id="4uxthu9" resname="Printing did not start. Printing may be disabled in this browser or on this device.">
+        <source>Printing did not start. Printing may be disabled in this browser or on this device.</source>
+        <target>~La presado ne komenciĝis. Eble ĝi estas malŝaltita en ĉi tiu retumilo aŭ en la aparato.</target>
+      </trans-unit>
+      <trans-unit id="k9fv6h6" resname="The PDF could not be saved.">
+        <source>The PDF could not be saved.</source>
+        <target>~Ne eblis konservi la PDF-on.</target>
+      </trans-unit>
+      <trans-unit id="iapy0gq" resname="All visible content will be printed.">
+        <source>All visible content will be printed.</source>
+        <target>~La tuta videbla enhavo estos presita.</target>
+      </trans-unit>
+      <trans-unit id="947he6m" resname="You can choose which activities to include and whether to show hidden content.">
+        <source>You can choose which activities to include and whether to show hidden content.</source>
+        <target>~Vi povas elekti, kiujn aktivecojn inkluzivi kaj ĉu montri la kaŝitan enhavon.</target>
+      </trans-unit>
+      <trans-unit id="j34accu" resname="You can choose whether to show hidden content.">
+        <source>You can choose whether to show hidden content.</source>
+        <target>~Vi povas elekti, ĉu montri la kaŝitan enhavon.</target>
+      </trans-unit>
+      <trans-unit id="zdw4fit" resname="Document">
+        <source>Document</source>
+        <target>~Dokumento</target>
+      </trans-unit>
+      <trans-unit id="mk5kag9" resname="Show link URLs">
+        <source>Show link URLs</source>
+        <target>~Montri la URL-on de ligiloj</target>
+      </trans-unit>
+      <trans-unit id="vwb8nfg" resname="Print the content of minimized boxes">
+        <source>Print the content of minimized boxes</source>
+        <target>~Presi la enhavon de minimumigitaj skatoloj</target>
+      </trans-unit>
+      <trans-unit id="y99k1oo" resname="Print teacher-only content">
+        <source>Print teacher-only content</source>
+        <target>~Presi enhavon nur por instruistoj</target>
+      </trans-unit>
+      <trans-unit id="c9i73l9" resname="Loading preview...">
+        <source>Loading preview...</source>
+        <target>~Ŝargante antaŭrigardon...</target>
+      </trans-unit>
+      <trans-unit id="lkvkffr" resname="Spell checker languages">
+        <source>Spell checker languages</source>
+        <target>~Lingvoj de la literumilo</target>
+      </trans-unit>
+      <trans-unit id="zetrvmv" resname="Choose languages">
+        <source>Choose languages</source>
+        <target>~Elekti lingvojn</target>
+      </trans-unit>
+      <trans-unit id="qs174di" resname="System default">
+        <source>System default</source>
+        <target>~Sistema defaŭlto</target>
+      </trans-unit>
+      <trans-unit id="m621ikd" resname="iDevice %1">
+        <source>iDevice %1</source>
+        <target>~iDevice %1</target>
+      </trans-unit>
+      <trans-unit id="sai1wv0" resname="%1 on page &quot;%2&quot;">
+        <source>%1 on page "%2"</source>
+        <target>~%1 en la paĝo "%2"</target>
+      </trans-unit>
+      <trans-unit id="s5rz81q" resname="Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.">
+        <source>Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.</source>
+        <target>~Taksindaj aktivecoj uzas la minimuman poentaron en ĉiuj eksportformoj. La SCORM-opcio validas nur por SCORM-kongruaj eksportoj.</target>
+      </trans-unit>
+      <trans-unit id="cw2qvig" resname="Server unavailable">
+        <source>Server unavailable</source>
+        <target>~Servilo ne disponebla</target>
+      </trans-unit>
+      <trans-unit id="vb001hc" resname="the server took too long to respond, try again later">
+        <source>the server took too long to respond, try again later</source>
+        <target>~la servilo tro longe respondis, reprovu poste</target>
+      </trans-unit>
+      <trans-unit id="m0v4o6q" resname="too many requests to this site, try again later">
+        <source>too many requests to this site, try again later</source>
+        <target>~tro da petoj al ĉi tiu retejo, reprovu poste</target>
+      </trans-unit>
+      <trans-unit id="4m1wlfj" resname="server error, try again later">
+        <source>server error, try again later</source>
+        <target>~servila eraro, reprovu poste</target>
+      </trans-unit>
+      <trans-unit id="5pewoyd" resname="the site did not answer in time or was busy; the link may still work, try again later.">
+        <source>the site did not answer in time or was busy; the link may still work, try again later.</source>
+        <target>~la retejo ne respondis ĝustatempe aŭ estis okupita; la ligilo eble tamen funkcias, reprovu poste.</target>
+      </trans-unit>
+      <trans-unit id="ev2xs2h" resname="unavailable">
+        <source>unavailable</source>
+        <target>~ne disponebla</target>
+      </trans-unit>
+      <trans-unit id="xnypldg" resname="Print iDevices">
+        <source>Print iDevices</source>
+        <target>~Presi iDevices</target>
+      </trans-unit>
+      <trans-unit id="750ohri" resname="Content without activities">
+        <source>Content without activities</source>
+        <target>~Enhavo sen aktivecoj</target>
+      </trans-unit>
+      <trans-unit id="evp7z5l" resname="Content with activities">
+        <source>Content with activities</source>
+        <target>~Enhavo kun aktivecoj</target>
+      </trans-unit>
+      <trans-unit id="7zd83tf" resname="Content with activities in an appendix">
+        <source>Content with activities in an appendix</source>
+        <target>~Enhavo kun la aktivecoj en aldono</target>
+      </trans-unit>
+      <trans-unit id="6e5ibjn" resname="Activities only (no other content)">
+        <source>Activities only (no other content)</source>
+        <target>~Nur la aktivecoj (sen la cetera enhavo)</target>
+      </trans-unit>
+      <trans-unit id="7cj9733" resname="What would you like to print?">
+        <source>What would you like to print?</source>
+        <target>~Kion vi volas presi?</target>
+      </trans-unit>
+      <trans-unit id="g83vvco" resname="Shown when a printing mode that includes activities is selected.">
+        <source>Shown when a printing mode that includes activities is selected.</source>
+        <target>~Montrata kiam oni elektas presreĝimon, kiu inkluzivas aktivecojn.</target>
+      </trans-unit>
+      <trans-unit id="ivdu4be" resname="Title only">
+        <source>Title only</source>
+        <target>~Nur la titolo</target>
+      </trans-unit>
+      <trans-unit id="fn46yv9" resname="Select at least one activity to print.">
+        <source>Select at least one activity to print.</source>
+        <target>~Elektu almenaŭ unu aktivecon por presi.</target>
+      </trans-unit>
+      <trans-unit id="k7tz24s" resname="Requires multimedia">
+        <source>Requires multimedia</source>
+        <target>~Bezonas plurmedion</target>
+      </trans-unit>
+      <trans-unit id="ruscmbx" resname="Invalid or empty activity data">
+        <source>Invalid or empty activity data</source>
+        <target>~Nevalidaj aŭ malplenaj datumoj de aktiveco</target>
+      </trans-unit>
+      <trans-unit id="2wly7n8" resname="Words that could not be placed">
+        <source>Words that could not be placed</source>
+        <target>~Vortoj, kiujn ne eblis meti</target>
+      </trans-unit>
+      <trans-unit id="c9rwosr" resname="This project has no printable activities yet.">
+        <source>This project has no printable activities yet.</source>
+        <target>~Ĉi tiu projekto ankoraŭ ne havas preseblajn aktivecojn.</target>
+      </trans-unit>
+      <trans-unit id="rjy68c3" resname="Left out of this worksheet">
+        <source>Left out of this worksheet</source>
+        <target>~Ne inkluzivitaj en ĉi tiu laborfolio</target>
+      </trans-unit>
+      <trans-unit id="ab35rq5" resname="Not available in print">
+        <source>Not available in print</source>
+        <target>~Ne disponebla en la presita versio</target>
+      </trans-unit>
+      <trans-unit id="4twh68q" resname="Operation">
+        <source>Operation</source>
+        <target>~Operacio</target>
+      </trans-unit>
+      <trans-unit id="66ou989" resname="Flip cards">
+        <source>Flip cards</source>
+        <target>~Memorkartoj</target>
+      </trans-unit>
+      <trans-unit id="egotyg3" resname="Electrical circuits">
+        <source>Electrical circuits</source>
+        <target>~Elektraj cirkvitoj</target>
+      </trans-unit>
+      <trans-unit id="yanvs9k" resname="3D molecules">
+        <source>3D molecules</source>
+        <target>~3D-molekuloj</target>
+      </trans-unit>
+      <trans-unit id="ast7w8h" resname="Select multimedia">
+        <source>Select multimedia</source>
+        <target>~Elektu mediajn dosierojn</target>
+      </trans-unit>
+      <trans-unit id="hu47r07" resname="Adaptative quiz">
+        <source>Adaptative quiz</source>
+        <target>~Adaptiĝema kvizo</target>
+      </trans-unit>
+      <trans-unit id="ekcvgiq" resname="Print iDevices is not available.">
+        <source>Print iDevices is not available.</source>
+        <target>~Presi iDevices ne estas disponebla.</target>
+      </trans-unit>
+      <trans-unit id="nk2b65z" resname="Appendix">
+        <source>Appendix</source>
+        <target>~Aldono</target>
+      </trans-unit>
+      <trans-unit id="8b5yk1q" resname="See appendix, activity %s">
+        <source>See appendix, activity %s</source>
+        <target>~Vidu la aldonon, aktiveco %s</target>
+      </trans-unit>
+      <trans-unit id="cztjx0c" resname="Not available in print.">
+        <source>Not available in print.</source>
+        <target>~Ne disponebla en la presita versio.</target>
+      </trans-unit>
+      <trans-unit id="20xocbn" resname="Anyone with this link can open and edit in real time.">
+        <source>Anyone with this link can open and edit in real time.</source>
+        <target>~Ĉiu kun ĉi tiu ligilo povas malfermi kaj redakti en reala tempo.</target>
+      </trans-unit>
+      <trans-unit id="56hsil2" resname="Anyone with this link can view this resource, but not edit it.">
+        <source>Anyone with this link can view this resource, but not edit it.</source>
+        <target>~Ĉiu kun ĉi tiu ligilo povas vidi ĉi tiun rimedon, sed ne redakti ĝin.</target>
+      </trans-unit>
+      <trans-unit id="6lyuc4z" resname="Public read-only link enabled">
+        <source>Public read-only link enabled</source>
+        <target>~Publika ligilo (nur legebla) ŝaltita</target>
+      </trans-unit>
+      <trans-unit id="m0mrwv9" resname="Public read-only link disabled">
+        <source>Public read-only link disabled</source>
+        <target>~Publika ligilo (nur legebla) malŝaltita</target>
+      </trans-unit>
+      <trans-unit id="rdpcf6z" resname="Failed to update the public read-only link">
+        <source>Failed to update the public read-only link</source>
+        <target>~Ne eblis ĝisdatigi la publikan ligilon</target>
+      </trans-unit>
+      <trans-unit id="5u39pxv" resname="The public link has been regenerated. The previous link will stop working.">
+        <source>The public link has been regenerated. The previous link will stop working.</source>
+        <target>~La publika ligilo estis regenerita. La antaŭa ĉesos funkcii.</target>
+      </trans-unit>
+      <trans-unit id="2seanxm" resname="Failed to regenerate the public link">
+        <source>Failed to regenerate the public link</source>
+        <target>~Ne eblis regeneri la publikan ligilon</target>
+      </trans-unit>
+      <trans-unit id="1lqhpsb" resname="Minimum score to pass the activity">
+        <source>Minimum score to pass the activity</source>
+        <target>~Minimuma poentaro por sukcesi la aktivecon</target>
+      </trans-unit>
+      <trans-unit id="9dw6nw8" resname="Global value">
+        <source>Global value</source>
+        <target>~Ĝenerala valoro</target>
+      </trans-unit>
+      <trans-unit id="kqbhe0g" resname="Customize">
+        <source>Customize</source>
+        <target>~Agordi propran</target>
+      </trans-unit>
+      <trans-unit id="3550xof" resname="Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.">
+        <source>Global value: the activity uses the mark set in the project properties. If you change it there, this activity follows.</source>
+        <target>~Ĝenerala valoro: la aktiveco uzas la noton difinitan en la projektaj agordoj. Se vi ŝanĝas ĝin tie, ĉi tiu aktiveco sekvas.</target>
+      </trans-unit>
+      <trans-unit id="vnny5rp" resname="Customize: the activity uses its own mark and ignores the project one.">
+        <source>Customize: the activity uses its own mark and ignores the project one.</source>
+        <target>~Agordi propran: la aktiveco uzas sian propran noton kaj ignoras tiun de la projekto.</target>
+      </trans-unit>
+      <trans-unit id="0l49k1i" resname="Grading">
+        <source>Grading</source>
+        <target>~Taksado</target>
+      </trans-unit>
+      <trans-unit id="s0jarts" resname="The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.">
+        <source>The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.</source>
+        <target>~La aktiveco sendas neniun poentaron al la LMS, eĉ ne kiam ĝi estas eksportita kiel SCORM. La uzanto povas fari ĝin kaj vidi sian rezulton, sed nenio estas registrata en la platformo.</target>
+      </trans-unit>
+      <trans-unit id="bgmmxcm" resname="The progress report is not affected: it is kept in the learner&apos;s own browser and works whatever you choose here.">
+        <source>The progress report is not affected: it is kept in the learner's own browser and works whatever you choose here.</source>
+        <target>~La progresraporto ne estas tuŝita: ĝi estas konservata en la retumilo mem kaj funkcias kion ajn vi elektas ĉi tie.</target>
+      </trans-unit>
+      <trans-unit id="p9v8ubv" resname="The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.">
+        <source>The activity reports its score by itself, as the learner answers and again when it ends. There is nothing for the learner to press.</source>
+        <target>~La aktiveco mem sendas sian poentaron, dum oni respondas kaj denove je la fino. La uzanto devas premi nenion.</target>
+      </trans-unit>
+      <trans-unit id="9lwdipi" resname="A learner who leaves halfway still has the work done so far recorded, because the score was already sent.">
+        <source>A learner who leaves halfway still has the work done so far recorded, because the score was already sent.</source>
+        <target>~Se iu foriras duonvoje, la ĝis tiam farita laboro restas registrita, ĉar la poentaro jam estis sendita.</target>
+      </trans-unit>
+      <trans-unit id="8y06450" resname="Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.">
+        <source>Nothing reaches the LMS until the learner presses the button. They decide when -- or whether -- their score is recorded, so an activity done without pressing it leaves no trace on the platform.</source>
+        <target>~Nenio atingas la LMS ĝis oni premas la butonon. La uzanto decidas, ĉu kaj kiam lia poentaro estas registrata, do aktiveco farita sen premi ĝin lasas neniun spuron en la platformo.</target>
+      </trans-unit>
+      <trans-unit id="xi3n6a2" resname="Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.">
+        <source>Pressing the button publishes the score so far, but does not close the activity: the learner can carry on and save again.</source>
+        <target>~Premi la butonon publikigas la ĝisnunan poentaron, sed ne fermas la aktivecon: oni povas daŭrigi kaj denove konservi.</target>
+      </trans-unit>
+      <trans-unit id="wej3h2g" resname="The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.">
+        <source>The weight decides how much this activity counts towards the page score, compared with the other activities on the same page.</source>
+        <target>~La pezo decidas, kiom ĉi tiu aktiveco kalkuliĝas en la poentaro de la paĝo, kompare kun la aliaj aktivecoj de la sama paĝo.</target>
+      </trans-unit>
+      <trans-unit id="01g37ph" resname="What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.">
+        <source>What matters is the proportion between the weights, not the number itself. If a page has a single activity, the weight makes no difference: it is worth the whole score.</source>
+        <target>~Gravas la proporcio inter la pezoj, ne la nombro mem. Se paĝo havas nur unu aktivecon, la pezo ne influas: ĝi valoras la tutan poentaron.</target>
+      </trans-unit>
+      <trans-unit id="hgwd4or" resname="For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.">
+        <source>For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.</source>
+        <target>~Ekzemple, tri aktivecoj kun pezoj 100, 100 kaj 50 kalkuliĝas je 40%, 40% kaj 20% de la poentaro de la paĝo. Aktivecoj, kiuj ne konservas sian poentaron, restas ekster la kalkulo.</target>
+      </trans-unit>
+      <trans-unit id="0r9x4x6" resname="Minimum score needed to pass this activity: %s">
+        <source>Minimum score needed to pass this activity: %s</source>
+        <target>~Minimuma poentaro necesa por sukcesi ĉi tiun aktivecon: %s</target>
+      </trans-unit>
+      <trans-unit id="adndxbg" resname="Minimum score to pass: %s">
+        <source>Minimum score to pass: %s</source>
+        <target>~Minimuma poentaro por sukcesi: %s</target>
+      </trans-unit>
+      <trans-unit id="hg9jmjj" resname="Each activity must reach its minimum score">
+        <source>Each activity must reach its minimum score</source>
+        <target>~Ĉiu aktiveco devas atingi sian minimuman poentaron</target>
+      </trans-unit>
+      <trans-unit id="la4o7zd" resname="This block will create a link to download the .elpx file. Write some use instructions and customize your download link.">
+        <source>This block will create a link to download the .elpx file. Write some use instructions and customize your download link.</source>
+        <target>~Ĉi tiu bloko kreos ligilon por elŝuti la .elpx-dosieron. Skribu kelkajn uzinstrukciojn kaj personecigu vian elŝutan ligilon.</target>
+      </trans-unit>
+      <trans-unit id="uo1nvod" resname="Download .elpx file">
+        <source>Download .elpx file</source>
+        <target>~Elŝuti .elpx-dosieron</target>
+      </trans-unit>
+      <trans-unit id="tq6nbiv" resname="System default uses the operating system language. It is also used when no language is checked.">
+        <source>System default uses the operating system language. It is also used when no language is checked.</source>
+        <target>~La defaŭlta opcio uzas la lingvon de la operaciumo. Ĝi ankaŭ estas uzata, kiam neniu lingvo estas markita.</target>
       </trans-unit>
     </body>
   </file>

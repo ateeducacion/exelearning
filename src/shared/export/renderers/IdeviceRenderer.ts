@@ -17,7 +17,10 @@ import type {
     ExportBlockProperties,
     ExportComponentProperties,
 } from '../interfaces';
-import { getIdeviceConfig, getIdeviceExportFiles } from '../../../services/idevice-config';
+import { getIdeviceConfig, getIdeviceExportFiles, isIdeviceJsModule } from '../../../services/idevice-config';
+import { isComponentVisible, isTeacherOnly } from '../utils/visibility';
+import { deriveBlockIcon, resolveRenamedThemeIcon } from '../../block-icon';
+import { HELP_ICON_FALLBACK_DATA_URI, MATERIAL_ICON_FALLBACK } from '../../material-icons/spriteParser';
 
 /**
  * CSS link for an iDevice
@@ -68,14 +71,77 @@ export class IdeviceRenderer {
     /**
      * Resolve icon baseName to filename with extension.
      * Returns baseName + '.png' as fallback if not found (backwards compatibility).
+     *
+     * A project can store a name a theme has since renamed its file away from, and this is
+     * the point where the export would silently emit a 404 for it, so the rename table is
+     * consulted before giving up. `deriveBlockIcon` covers legacy `iconName` strings; a block
+     * whose structured descriptor was stored back then reaches the renderer untouched.
      */
     private resolveIconName(baseName: string): string {
         const resolved = this.iconResolutionMap.get(baseName);
         if (resolved) {
             return resolved;
         }
+
+        // The rename also has to reach the fallback. `PrintPreviewExporter` and
+        // `Html5Exporter` continue with an empty resolution map when `fetchTheme` fails, so
+        // this branch is the one that runs; emitting `objetives.png` there is a 404 next to
+        // the `objectives.png` the theme ships.
+        const renamed = resolveRenamedThemeIcon(baseName);
+        const resolvedRenamed = renamed === baseName ? undefined : this.iconResolutionMap.get(renamed);
+        if (resolvedRenamed) {
+            return resolvedRenamed;
+        }
+
         // Fallback to .png for backwards compatibility with legacy themes
-        return `${baseName}.png`;
+        return `${renamed}.png`;
+    }
+
+    private resolveBlockAssetIconPath(
+        assetUrl: string,
+        basePath: string,
+        assetExportPathMap?: Map<string, string>,
+    ): string {
+        if (!assetUrl) return '';
+
+        if (assetUrl.startsWith('/')) {
+            return `${basePath}${assetUrl.replace(/^\//, '')}`;
+        }
+
+        if (!assetUrl.startsWith('asset://')) {
+            return assetUrl;
+        }
+
+        const fixed = this.fixAssetUrls(`src="${this.escapeAttr(assetUrl)}"`, basePath, false, assetExportPathMap);
+        const match = fixed.match(/src="([^"]+)"/);
+        return match?.[1] || assetUrl;
+    }
+
+    private resolveAssetExportPath(assetPath: string, assetExportPathMap?: Map<string, string>): string | null {
+        if (!assetExportPathMap || !assetPath) return null;
+
+        const candidates = new Set<string>([assetPath]);
+        const basename = assetPath.includes('/') ? assetPath.split('/').pop() || assetPath : assetPath;
+        candidates.add(basename);
+
+        const basenameWithoutExtension = basename.replace(/\.[a-z0-9]+$/i, '');
+        if (basenameWithoutExtension && basenameWithoutExtension !== basename) {
+            candidates.add(basenameWithoutExtension);
+        }
+
+        const pathWithoutExtension = assetPath.replace(/\.[a-z0-9]+$/i, '');
+        if (pathWithoutExtension && pathWithoutExtension !== assetPath) {
+            candidates.add(pathWithoutExtension);
+        }
+
+        for (const candidate of candidates) {
+            const exportPath = assetExportPathMap.get(candidate) || assetExportPathMap.get(`resources/${candidate}`);
+            if (exportPath) {
+                return exportPath;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -104,15 +170,11 @@ export class IdeviceRenderer {
         if (!htmlContent) {
             classes.push('db-no-data');
         }
-        // Handle both boolean and string values (Yjs stores booleans, ELP uses strings)
-        if (structProps.visibility === false || structProps.visibility === 'false') {
+        // Both flag spellings are handled in one place: Yjs stores booleans, ELP uses strings.
+        if (!isComponentVisible(component)) {
             classes.push('novisible');
         }
-        if (
-            structProps.teacherOnly === true ||
-            structProps.teacherOnly === 'true' ||
-            (jsonProps as Record<string, unknown>).visibilityType === 'teacher'
-        ) {
+        if (isTeacherOnly(component)) {
             classes.push('teacher-only');
         }
         if (structProps.cssClass && typeof structProps.cssClass === 'string') {
@@ -171,12 +233,52 @@ export class IdeviceRenderer {
         // Escape HTML entities inside <pre><code> blocks to display code examples correctly
         const escapedContent = this.escapePreCodeContent(fixedContent);
 
-        const contentHtml = escapedContent;
+        // Ensure YouTube/Vimeo iframes carry referrerpolicy so they play when the package
+        // is embedded in a host with a restrictive Referrer-Policy (YouTube Error 153).
+        const contentHtml = this.addReferrerPolicyToEmbeds(escapedContent);
 
         // Generate HTML
         return `<div id="${this.escapeAttr(ideviceId)}" class="${classes.join(' ')}"${dataAttrs}>
 ${contentHtml}
 </div>`;
+    }
+
+    /**
+     * Add `referrerpolicy="strict-origin-when-cross-origin"` to YouTube/Vimeo `<iframe>`
+     * elements that lack it. Those providers need the HTTP Referer header to identify the
+     * embedding page; without the attribute, a host page with a restrictive Referrer-Policy
+     * makes YouTube return "Error 153". Only provider iframes are touched, and an existing
+     * `referrerpolicy` is left as-is.
+     */
+    addReferrerPolicyToEmbeds(html: string): string {
+        if (!html || !/<iframe/i.test(html)) return html;
+        const POLICY = ' referrerpolicy="strict-origin-when-cross-origin"';
+        // Quoted attribute values are consumed whole, so a ">" inside one does not end the tag.
+        const IFRAME_TAG = /<iframe\b(?:"[^"]*"|'[^']*'|[^"'>])*>/gi;
+        return html.replace(IFRAME_TAG, tag => {
+            if (/\breferrerpolicy\s*=/i.test(tag)) return tag;
+            const srcMatch = tag.match(/\bsrc\s*=\s*["']([^"']+)["']/i);
+            if (!srcMatch || !this.isReferrerSensitiveEmbed(srcMatch[1])) return tag;
+            return tag.endsWith('/>') ? `${tag.slice(0, -2)}${POLICY} />` : `${tag.slice(0, -1)}${POLICY}>`;
+        });
+    }
+
+    /**
+     * Whether an iframe `src` points at a provider that needs the Referer header. Compared on the
+     * parsed hostname — exact match or a subdomain — rather than a substring, so a lookalike host
+     * such as `vimeo.com.example.org` is not mistaken for the provider.
+     */
+    private isReferrerSensitiveEmbed(src: string): boolean {
+        const PROVIDER_HOSTS = ['youtube.com', 'youtube-nocookie.com', 'youtu.be', 'vimeo.com'];
+        let hostname: string;
+        try {
+            // The base resolves protocol-relative URLs; genuinely relative ones land on the
+            // placeholder host and are correctly rejected.
+            hostname = new URL(src, 'https://exe-local.invalid').hostname.toLowerCase();
+        } catch {
+            return false;
+        }
+        return PROVIDER_HOSTS.some(host => hostname === host || hostname.endsWith(`.${host}`));
     }
 
     /**
@@ -189,13 +291,20 @@ ${contentHtml}
         block: ExportBlock,
         options: BlockRenderOptions = { basePath: '', includeDataAttributes: true },
     ): string {
-        const { basePath = '', includeDataAttributes = true, themeIconBasePath, assetExportPathMap } = options;
+        const {
+            basePath = '',
+            includeDataAttributes = true,
+            themeIconBasePath,
+            assetExportPathMap,
+            materialIconDataUris,
+        } = options;
 
         const blockId = block.id;
         const blockName = block.name || '';
         const components = block.components || [];
         const properties: ExportBlockProperties = block.properties || {};
         const iconName = block.iconName || '';
+        const icon = block.icon || deriveBlockIcon(iconName);
 
         // Build CSS classes for block
         const classes = ['box'];
@@ -219,7 +328,7 @@ ${contentHtml}
         }
 
         // Build block header - always render icon and toggle if enabled, even without title text
-        const hasIcon = iconName && iconName.trim() !== '';
+        const hasIcon = !!(icon.value && icon.value.trim() !== '' && icon.source !== 'none');
         const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
 
         // Build icon HTML if iconName exists
@@ -227,15 +336,36 @@ ${contentHtml}
         // We use resolveIconName() to resolve to actual filename with extension (e.g., "share.svg")
         let iconHtml = '';
         if (hasIcon) {
-            // Resolve icon baseName to actual filename with extension
-            const resolvedIconName = this.resolveIconName(iconName);
-            const iconPath = themeIconBasePath
-                ? `${themeIconBasePath}${resolvedIconName}`
-                : `${basePath}theme/icons/${resolvedIconName}`;
-            iconHtml = `<div class="box-icon exe-icon">
-<img src="${this.escapeAttr(iconPath)}" alt="">
+            if (icon.source === 'material') {
+                // The loose per-icon SVG files no longer exist on disk (only the
+                // single sprite does), so there is no `libs/.../icons/{name}.svg`
+                // path to fall back to. When the inlined map lacks this icon
+                // (unknown name) or is empty entirely (the sprite could not be
+                // fetched), emit the self-contained `help` data URI instead.
+                const iconPath =
+                    materialIconDataUris?.get(icon.value || '') ||
+                    materialIconDataUris?.get(MATERIAL_ICON_FALLBACK) ||
+                    HELP_ICON_FALLBACK_DATA_URI;
+                iconHtml = `<div class="box-icon exe-icon">
+<span class="exe-material-icon" style="--exe-material-icon-url:url('${this.escapeAttr(iconPath)}');" aria-hidden="true"></span>
 </div>
 `;
+            } else if (icon.source === 'asset') {
+                const iconPath = this.resolveBlockAssetIconPath(icon.value, basePath, assetExportPathMap);
+                iconHtml = `<div class="box-icon exe-icon">
+<img src="${this.escapeAttr(iconPath)}" alt="" style="display:block;object-fit:contain;">
+</div>
+`;
+            } else {
+                const resolvedIconName = this.resolveIconName(icon.value);
+                const iconPath = themeIconBasePath
+                    ? `${themeIconBasePath}${resolvedIconName}`
+                    : `${basePath}theme/icons/${resolvedIconName}`;
+                iconHtml = `<div class="box-icon exe-icon">
+<img src="${this.escapeAttr(iconPath)}" alt="" style="display:block;object-fit:contain;">
+</div>
+`;
+            }
         }
 
         // Build toggle button if allowToggle is enabled (default: true when undefined)
@@ -343,10 +473,11 @@ ${contentHtml}
                 // Legacy format: uuid/path - extract path after UUID
                 const slashIndex = fullPath.indexOf('/');
                 if (slashIndex === -1) {
-                    // No path after UUID, keep original
-                    return _match;
+                    const exportPath = this.resolveAssetExportPath(fullPath, assetExportPathMap);
+                    return exportPath ? `${basePath}content/resources/${exportPath}` : _match;
                 }
-                const exportPath = fullPath.substring(slashIndex + 1);
+                const exportPath =
+                    this.resolveAssetExportPath(fullPath, assetExportPathMap) || fullPath.substring(slashIndex + 1);
                 return `${basePath}content/resources/${exportPath}`;
             });
         }
@@ -561,7 +692,13 @@ ${contentHtml}
                 // Get ALL JS files from export folder (main file first, then dependencies)
                 const jsFiles = getIdeviceExportFiles(typeName, '.js');
                 for (const jsFile of jsFiles) {
-                    scripts.push(`<script src="${basePath}idevices/${typeName}/${jsFile}"></script>`);
+                    // Plugins like the 3D Viewer iDevice (issue #1810) ship ES module
+                    // scripts (three.module.min.js, STLLoader.js, OrbitControls.js).
+                    // Without type="module" the browser throws a SyntaxError on
+                    // `import`/`export`, which cascades into the failure to load STL
+                    // assets at runtime.
+                    const typeAttr = isIdeviceJsModule(typeName, jsFile) ? ' type="module"' : '';
+                    scripts.push(`<script${typeAttr} src="${basePath}idevices/${typeName}/${jsFile}"></script>`);
                 }
             }
         }
@@ -622,9 +759,10 @@ ${contentHtml}
                 const jsFiles = getIdeviceExportFiles(typeName, '.js');
                 for (const jsFile of jsFiles) {
                     const src = `${basePath}idevices/${typeName}/${jsFile}`;
+                    const typeAttr = isIdeviceJsModule(typeName, jsFile) ? ' type="module"' : '';
                     scripts.push({
                         src,
-                        tag: `<script src="${src}"></script>`,
+                        tag: `<script${typeAttr} src="${src}"></script>`,
                     });
                 }
             }

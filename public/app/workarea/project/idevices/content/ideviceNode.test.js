@@ -98,7 +98,34 @@ global.eXeLearning = {
 };
 
 // Import after setting up mocks
-import IdeviceNode from './ideviceNode.js';
+import { JSDOM } from 'jsdom';
+import createDOMPurify from '../../../../../libs/dompurify/purify.min.js';
+import IdeviceNode, { parseIdeviceJsonProperties } from './ideviceNode.js';
+
+describe('parseIdeviceJsonProperties', () => {
+    it('returns an empty object for missing values', () => {
+        expect(parseIdeviceJsonProperties('')).toEqual({
+            value: {},
+            error: null,
+        });
+    });
+
+    it('preserves values that are already parsed', () => {
+        const value = { questions: [] };
+
+        expect(parseIdeviceJsonProperties(value)).toEqual({
+            value,
+            error: null,
+        });
+    });
+
+    it('returns the parsing error for malformed JSON', () => {
+        const result = parseIdeviceJsonProperties('{"broken":');
+
+        expect(result.value).toEqual({});
+        expect(result.error).toBeInstanceOf(SyntaxError);
+    });
+});
 
 describe('IdeviceNode', () => {
     let idevice;
@@ -254,6 +281,22 @@ describe('IdeviceNode', () => {
             idevice.setParams({ jsonProperties: '{}' });
             expect(typeof idevice.jsonProperties).toBe('object');
             expect(Object.keys(idevice.jsonProperties).length).toBe(0);
+        });
+
+        it('keeps loading when jsonProperties contains malformed JSON', () => {
+            const malformedJson =
+                '{"questions":[{"question":"<audio src=\\""><a href=\\"">audio.webm</a></audio>"}]}';
+
+            expect(() =>
+                idevice.setParams({
+                    htmlView: '<p>Previously rendered activity</p>',
+                    jsonProperties: malformedJson,
+                })
+            ).not.toThrow();
+            expect(idevice.jsonProperties).toEqual({});
+            expect(idevice.malformedJsonPropertiesRaw).toBe(malformedJson);
+            expect(idevice.getJsonProperties(true)).toBe(malformedJson);
+            expect(idevice.htmlView).toBe('<p>Previously rendered activity</p>');
         });
     });
 
@@ -464,6 +507,40 @@ describe('IdeviceNode', () => {
             expect(idevice.ideviceContent.classList.contains('class1')).toBe(true);
             expect(idevice.ideviceContent.classList.contains('class2')).toBe(true);
             expect(idevice.ideviceContent.classList.contains('class3')).toBe(true);
+        });
+
+        // Browsers (unlike jsdom) throw on classList.add('') with a SyntaxError.
+        // Make the test element strict so it reproduces the real-browser behaviour.
+        function makeClassListStrict(el) {
+            const realAdd = el.classList.add.bind(el.classList);
+            vi.spyOn(el.classList, 'add').mockImplementation((...tokens) => {
+                for (const token of tokens) {
+                    if (token === '') {
+                        throw new Error(
+                            "Failed to execute 'add' on 'DOMTokenList': The token provided must not be empty."
+                        );
+                    }
+                }
+                return realAdd(...tokens);
+            });
+        }
+
+        it('does not throw and skips empty tokens when cssClass has extra spaces', () => {
+            makeClassListStrict(idevice.ideviceContent);
+            idevice.properties.cssClass.value = '  a  b  ';
+
+            expect(() => idevice.setPropertiesClassesToElement()).not.toThrow();
+            expect(idevice.ideviceContent.classList.contains('a')).toBe(true);
+            expect(idevice.ideviceContent.classList.contains('b')).toBe(true);
+            expect(idevice.ideviceContent.classList.contains('')).toBe(false);
+        });
+
+        it('does not throw when cssClass contains a pasted CSS rule', () => {
+            makeClassListStrict(idevice.ideviceContent);
+            idevice.properties.cssClass.value =
+                '.lista_de_cotejo {     border: 1px solid #d4d4d4;     border-radius: 6px; }';
+
+            expect(() => idevice.setPropertiesClassesToElement()).not.toThrow();
         });
 
         it('adds exe-teacher-highlight class when teacherOnly is true', () => {
@@ -1045,6 +1122,18 @@ describe('IdeviceNode', () => {
             expect(select.children[1].value).toBe('page-2');
         });
 
+        it('renders page names as indented text, not HTML', () => {
+            const pageName = '<img src=x onerror="alert(1)">';
+            eXeLearning.app.project.structure.getAllNodesOrderByView.mockReturnValueOnce([
+                { id: 'page-1', deep: 2, pageName },
+            ]);
+            const body = idevice.generateModalMoveToPageBody();
+            const option = body.querySelector('.select-move-to-page option');
+
+            expect(option.querySelector('img')).toBeNull();
+            expect(option.textContent).toBe(`${'  '.repeat(2)} ${pageName}`);
+        });
+
         it('marks current page as selected', () => {
             const body = idevice.generateModalMoveToPageBody();
             const select = body.querySelector('.select-move-to-page');
@@ -1121,6 +1210,29 @@ describe('IdeviceNode', () => {
             idevice.restartExeIdeviceValue();
 
             expect(global.$exeDevice).toBeUndefined();
+        });
+
+        it('keeps $exeDevice when another iDevice is being edited locally (#2427)', () => {
+            idevice.isSync = false;
+            const editing = { id: 'other-idevice', mode: 'edition' };
+            mockEngine.isIdeviceInEdition = vi.fn(() => editing);
+            global.$exeDevice = { save: vi.fn() };
+
+            idevice.restartExeIdeviceValue();
+
+            expect(global.$exeDevice).toBeDefined();
+            delete mockEngine.isIdeviceInEdition;
+        });
+
+        it('clears $exeDevice when this iDevice is the one being edited', () => {
+            idevice.isSync = false;
+            mockEngine.isIdeviceInEdition = vi.fn(() => idevice);
+            global.$exeDevice = { save: vi.fn() };
+
+            idevice.restartExeIdeviceValue();
+
+            expect(global.$exeDevice).toBeUndefined();
+            delete mockEngine.isIdeviceInEdition;
         });
     });
 
@@ -2806,6 +2918,20 @@ describe('IdeviceNode', () => {
             });
         });
 
+        it('blocks edition when the saved jsonProperties are malformed', () => {
+            idevice.jsonPropertiesParseError = new SyntaxError('Invalid JSON');
+
+            idevice.edition();
+
+            expect(idevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+            expect(idevice.goWindowToIdevice).not.toHaveBeenCalled();
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'iDevice error',
+                body: 'This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.',
+                contentId: 'error',
+            });
+        });
+
         it('sets editing component in Yjs when enabled', () => {
             eXeLearning.app.project._yjsEnabled = true;
             idevice.yjsComponentId = 'yjs-comp-id';
@@ -3227,6 +3353,22 @@ describe('IdeviceNode', () => {
             const result = await idevice.apiSaveIdeviceJson(false);
 
             expect(result).toBe(false);
+        });
+
+        it('does not overwrite malformed saved jsonProperties', async () => {
+            idevice.jsonPropertiesParseError = new SyntaxError('Invalid JSON');
+            idevice.malformedJsonPropertiesRaw = '{"broken":';
+            global.$exeDevice = {
+                save: vi.fn().mockReturnValue({ replacement: true }),
+            };
+
+            const result = await idevice.apiSaveIdeviceJson(true);
+
+            expect(result).toBe(false);
+            expect(global.$exeDevice.save).not.toHaveBeenCalled();
+            expect(idevice.apiSendDataService).not.toHaveBeenCalled();
+            expect(idevice.getJsonProperties(true)).toBe('{"broken":');
+            delete global.$exeDevice;
         });
     });
 
@@ -4397,6 +4539,17 @@ describe('IdeviceNode', () => {
             expect(editBtn).not.toBeNull();
         });
 
+        it('does not request edition for malformed saved jsonProperties', () => {
+            idevice.jsonPropertiesParseError = new SyntaxError('Invalid JSON');
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn();
+
+            idevice.addBehaviourEditionIdeviceButton();
+            idevice.ideviceButtons.querySelector('#editIdeviceidevice-123').click();
+
+            expect(eXeLearning.app.project.changeUserFlagOnEdit).not.toHaveBeenCalled();
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+        });
+
         it('expands minimized iDevice before entering edit mode', async () => {
             // Set up iDevice with minify button and icon (collapsed state)
             idevice.ideviceButtons.innerHTML = `
@@ -4461,6 +4614,19 @@ describe('IdeviceNode', () => {
 
         it('adds dblclick event listener without throwing', () => {
             expect(() => idevice.addBehaviourEditionIdeviceDoubleClick()).not.toThrow();
+        });
+
+        it('does not request edition on double click for malformed saved jsonProperties', () => {
+            idevice.jsonPropertiesParseError = new SyntaxError('Invalid JSON');
+            idevice.isLockedByOtherUser = vi.fn(() => false);
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn();
+
+            idevice.addBehaviourEditionIdeviceDoubleClick();
+            idevice.ideviceBody.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+
+            expect(eXeLearning.app.project.changeUserFlagOnEdit).not.toHaveBeenCalled();
+            expect(idevice.isLockedByOtherUser).not.toHaveBeenCalled();
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
         });
     });
 
@@ -5071,6 +5237,177 @@ describe('IdeviceNode', () => {
         it('sets up file picker functionality without throwing', () => {
             expect(() => idevice.legacyExeIdevicesFilePicker()).not.toThrow();
         });
+
+        it('should detect 3D file picker from input id containing "3d"', () => {
+            // Create input with id containing "3d"
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'threeD3DModelFile';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method (actual code uses window.eXeLearning.app.modals.filemanager.show)
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            // Click the generated button
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('3d');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
+
+        it('should detect 3D file picker from input id containing "model"', () => {
+            // Create input with id containing "model"
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'modelFileInput';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            // Click the generated button
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('3d');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
+
+        it('should detect audio file picker from input id containing "audio"', () => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'audioFileInput';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('audio');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
+
+        it('should detect video file picker from input id containing "video"', () => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'videoFileInput';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            // Mock the filemanager.show method
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('video');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
+
+        it('should honour an explicit data-filemanager-accept over the id heuristic', () => {
+            // 3Dmol's input id contains "model" (would map to '3d'), but it
+            // opts into the molecule filter via data-filemanager-accept.
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'dmoleModelFile';
+            input.dataset.filemanagerAccept = 'molecule';
+            input.classList.add('exe-file-picker');
+            idevice.ideviceBody.appendChild(input);
+
+            let capturedAccept = null;
+            const originalEXeLearning = global.eXeLearning;
+            global.eXeLearning = {
+                app: {
+                    modals: {
+                        filemanager: {
+                            show: vi.fn((options) => {
+                                capturedAccept = options?.accept;
+                            })
+                        }
+                    }
+                }
+            };
+
+            idevice.legacyExeIdevicesFilePicker();
+
+            const browseBtn = idevice.ideviceBody.querySelector('input[type="button"]');
+            expect(browseBtn).toBeTruthy();
+            browseBtn.click();
+            expect(capturedAccept).toBe('molecule');
+
+            // Restore
+            global.eXeLearning = originalEXeLearning;
+        });
     });
 
     describe('initExeDeviceEdition', () => {
@@ -5440,5 +5777,208 @@ describe('IdeviceNode', () => {
 
             expect(idevice.block.id).toBe(newKey);
         });
+    });
+
+    /**
+     * Every editor render of stored iDevice HTML goes through exportHtmlView(),
+     * and that content is shared over Yjs, so a collaborator controls it. These
+     * tests pin the chokepoint: what reaches the editor DOM is sanitized, while
+     * the stored htmlView (which exports and the edition form read) stays as is.
+     */
+    describe('collaborator content is sanitized on every editor render path', () => {
+        const PAYLOADS = [
+            '<img src=x onerror="window.__xss=1">',
+            '<script>window.__xss=1</script>',
+            '<a href="javascript:window.__xss=1">x</a>',
+            '<a href="JaVa&#x09;ScRiPt:window.__xss=1">x</a>',
+            '<iframe srcdoc="<script>window.__xss=1</script>"></iframe>',
+            '<svg onload="window.__xss=1"><a xlink:href="javascript:window.__xss=1"><text>t</text></a></svg>',
+            '<input autofocus onfocus="window.__xss=1">',
+            '<noscript><p title="</noscript><img src=x onerror=window.__xss=1>"></noscript>',
+            '<math><mtext><table><mglyph><style><img src=x onerror="window.__xss=1">',
+            '<form action="javascript:window.__xss=1"><button formaction="javascript:window.__xss=1">b</button></form>',
+        ];
+
+        const expectInertBody = (body) => {
+            expect(body.querySelectorAll('base, meta').length).toBe(0);
+            // A <script> may survive only as text no browser runs.
+            for (const script of body.querySelectorAll('script')) {
+                expect(script.getAttribute('type')).toBe('text/plain');
+                expect(script.hasAttribute('src')).toBe(false);
+            }
+            for (const el of body.querySelectorAll('*')) {
+                for (const attr of Array.from(el.attributes)) {
+                    const name = attr.name.toLowerCase();
+                    expect(name.startsWith('on'), `${el.tagName}[${name}]`).toBe(false);
+                    expect(name).not.toBe('srcdoc');
+                    expect(attr.value.replace(/[\u0000- ]+/g, '')).not.toMatch(/^(javascript|vbscript):/i);
+                }
+            }
+        };
+
+        const withPurify = (enabled) => {
+            beforeEach(() => {
+                if (enabled) {
+                    const { window: purifyWindow } = new JSDOM('<!doctype html><html><body></body></html>');
+                    window.DOMPurify = createDOMPurify(purifyWindow);
+                } else {
+                    delete window.DOMPurify;
+                }
+                vi.spyOn(console, 'warn').mockImplementation(() => {});
+                idevice.ideviceBody = document.createElement('div');
+                eXeLearning.app.themes = { selected: null };
+            });
+            afterEach(() => {
+                delete window.DOMPurify;
+                delete window.resolveAssetUrls;
+                vi.restoreAllMocks();
+            });
+        };
+
+        for (const [label, enabled] of [
+            ['with DOMPurify', true],
+            ['with the DOM fallback', false],
+        ]) {
+            describe(label, () => {
+                withPurify(enabled);
+
+                it.each(PAYLOADS)('exportHtmlView neutralizes %s', (payload) => {
+                    idevice.htmlView = `<p>before</p>${payload}<p>after</p>`;
+                    const body = document.createElement('div');
+                    body.innerHTML = idevice.exportHtmlView();
+                    expectInertBody(body);
+                    // Text before the payload survives (unclosed payloads may swallow what follows).
+                    expect(body.textContent).toContain('before');
+                });
+
+                it.each(PAYLOADS)('html iDevice render neutralizes %s', async (payload) => {
+                    idevice.htmlView = payload;
+                    await idevice.exportProcessIdeviceHtml();
+                    expectInertBody(idevice.ideviceBody);
+                });
+
+                it('keeps the stored htmlView untouched (exports and edition read it)', async () => {
+                    const raw = '<p onclick="go()">x</p><script>legacy()</script>';
+                    idevice.htmlView = raw;
+                    await idevice.exportProcessIdeviceHtml();
+                    expect(idevice.htmlView).toBe(raw);
+                });
+
+                it('sanitizes a theme iDevice template together with the content', () => {
+                    eXeLearning.app.themes = {
+                        selected: { templateIdevice: '<div class="themed" onmouseover="x()">{idevice-content}</div>' },
+                    };
+                    idevice.htmlView = '<p>ok</p><img src=x onerror="window.__xss=1">';
+                    const body = document.createElement('div');
+                    body.innerHTML = idevice.exportHtmlView();
+                    expectInertBody(body);
+                    expect(body.querySelector('.themed p').textContent).toBe('ok');
+                });
+
+                it('sanitizes after the URL transforms, so a transform cannot reintroduce active content', () => {
+                    window.resolveAssetUrls = vi.fn((html) => `${html}<img src=x onerror="window.__xss=1">`);
+                    idevice.htmlView = '<p>ok</p>';
+                    const body = document.createElement('div');
+                    body.innerHTML = idevice.exportHtmlView();
+                    expect(window.resolveAssetUrls).toHaveBeenCalled();
+                    expectInertBody(body);
+                });
+
+                it('keeps resolved blob: and app-internal URLs', () => {
+                    window.resolveAssetUrls = vi.fn((html) => html.replace('asset://uuid/a.png', 'blob:http://localhost/1'));
+                    idevice.htmlView =
+                        '<img src="asset://uuid/a.png"><img src="asset://uuid/b.png"><a href="exe-node:page-2">p</a>';
+                    const body = document.createElement('div');
+                    body.innerHTML = idevice.exportHtmlView();
+                    const [first, second] = body.querySelectorAll('img');
+                    expect(first.getAttribute('src')).toBe('blob:http://localhost/1');
+                    expect(second.getAttribute('src')).toBe('asset://uuid/b.png');
+                    expect(body.querySelector('a').getAttribute('href')).toBe('exe-node:page-2');
+                });
+
+                it('keeps legitimate authored content renderable', () => {
+                    idevice.htmlView =
+                        '<p><strong>Bold</strong> <em>it</em> \\(x^2\\)</p>' +
+                        '<iframe src="https://www.youtube.com/embed/abc" allowfullscreen></iframe>' +
+                        '<table><tbody><tr><td>1</td></tr></tbody></table>' +
+                        '<a href="https://example.org" target="_blank">link</a>';
+                    const body = document.createElement('div');
+                    body.innerHTML = idevice.exportHtmlView();
+                    expect(body.querySelector('strong').textContent).toBe('Bold');
+                    expect(body.querySelector('iframe').getAttribute('src')).toBe('https://www.youtube.com/embed/abc');
+                    expect(body.querySelector('td').textContent).toBe('1');
+                    expect(body.querySelector('a').getAttribute('target')).toBe('_blank');
+                    expect(body.textContent).toContain('\\(x^2\\)');
+                });
+
+                it.each([
+                    ['null', null],
+                    ['undefined', undefined],
+                    ['empty', ''],
+                ])('renders an empty body for %s htmlView', (_label, value) => {
+                    idevice.htmlView = value;
+                    expect(idevice.exportHtmlView()).toBe('');
+                });
+
+                it('JSON iDevice: sanitizes renderView output built from collaborator jsonProperties', async () => {
+                    const exportObject = {
+                        renderView: vi.fn((data) => `<div class="game"><h3>${data.title}</h3></div>`),
+                        renderBehaviour: vi.fn(),
+                        init: vi.fn(),
+                    };
+                    window.__testJsonExport = exportObject;
+                    idevice.idevice = { exportObject: '__testJsonExport', exportTemplateContent: '' };
+                    idevice.mode = 'export';
+                    idevice.jsonProperties = { title: '<img src=x onerror="window.__xss=1">Quiz' };
+
+                    await idevice.exportProcessIdeviceJson();
+
+                    expectInertBody(idevice.ideviceBody);
+                    expect(idevice.ideviceBody.querySelector('h3').textContent).toBe('Quiz');
+                    // The iDevice runtime still initializes on the sanitized markup.
+                    expect(exportObject.renderBehaviour).toHaveBeenCalled();
+                    expect(exportObject.init).toHaveBeenCalled();
+                    // The stored view keeps renderView's output for the export pipeline.
+                    expect(idevice.htmlView).toContain('onerror');
+                    delete window.__testJsonExport;
+                });
+
+                it('JSON iDevice without data: sanitizes the stored fallback view', async () => {
+                    const exportObject = { renderView: vi.fn(), renderBehaviour: vi.fn(), init: vi.fn() };
+                    window.__testJsonExport = exportObject;
+                    idevice.idevice = { exportObject: '__testJsonExport' };
+                    idevice.jsonProperties = {};
+                    idevice.htmlView = '<p>saved</p><img src=x onerror="window.__xss=1">';
+
+                    await idevice.exportProcessIdeviceJson();
+
+                    expectInertBody(idevice.ideviceBody);
+                    expect(idevice.ideviceBody.textContent).toContain('saved');
+                    expect(exportObject.init).toHaveBeenCalled();
+                    delete window.__testJsonExport;
+                });
+
+                it('apiGetHtmlView sanitizes the HTML returned by the API', async () => {
+                    eXeLearning.app.api.getSaveHtmlView = vi
+                        .fn()
+                        .mockResolvedValue({ htmlView: '<p>v</p><img src=x onerror="window.__xss=1">' });
+                    const result = await idevice.apiGetHtmlView();
+                    expectInertBody(idevice.ideviceBody);
+                    expect(result).toContain('onerror');
+                });
+
+                it('a remote update that lands in htmlView renders inert on the next render', async () => {
+                    // IdevicesEngine.updateRemoteIdeviceContent stores the incoming HTML
+                    // and then re-runs the export render; that second render must not
+                    // undo the sanitization it applied first.
+                    idevice.htmlView = '<p>local</p>';
+                    await idevice.exportProcessIdeviceHtml();
+                    idevice.htmlView = '<p>remote</p><img src=x onerror="window.__xss=1">';
+                    await idevice.exportProcessIdeviceHtml();
+                    expectInertBody(idevice.ideviceBody);
+                    expect(idevice.ideviceBody.textContent).toBe('remote');
+                });
+            });
+        }
     });
 });

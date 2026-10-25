@@ -81,24 +81,31 @@ var $exeDevice = {
         this.summaryTextHtml =
             this.idevicePreviousData.digcompeduSummaryTextHtml || '';
 
+        // Both continuations render into the edition form, so they are bound to
+        // this edition: a download that finishes (or is aborted) after the
+        // editor closed must not build a form or report an error.
         this.loadFrameworkData(this.activeLang)
-            .then((data) => {
-                this.frameworkData = data;
-                this.prepareLookupStructures();
-                this.ensureGranularityCompatibility();
-                this.createForm();
-                this.renderTable();
-                this.restoreInterfaceState();
-                this.updateSelectionCounter();
-                this.updateSummaryPreview();
-            })
-            .catch((error) => {
-                console.error('DigCompEdu data loading failed:', error);
-                this.ideviceBody.innerHTML = `
+            .then(
+                this.$lifecycle.bind((data) => {
+                    this.frameworkData = data;
+                    this.prepareLookupStructures();
+                    this.ensureGranularityCompatibility();
+                    this.createForm();
+                    this.renderTable();
+                    this.restoreInterfaceState();
+                    this.updateSelectionCounter();
+                    this.updateSummaryPreview();
+                })
+            )
+            .catch(
+                this.$lifecycle.bind((error) => {
+                    console.error('DigCompEdu data loading failed:', error);
+                    this.ideviceBody.innerHTML = `
                     <div class="digcompedu-editor">
                         <p class="digcompedu-error">${_('Framework data could not be loaded. Please verify the data file is available.')}</p>
                     </div>`;
-            });
+                })
+            );
     },
 
     /**
@@ -142,6 +149,7 @@ var $exeDevice = {
      * @returns {Promise<Object>}
      */
     loadFrameworkData: function (lang) {
+        const lifecycle = this.$lifecycle;
         if (this.frameworkDataCache[lang]) {
             return Promise.resolve(
                 this.cloneFrameworkData(this.frameworkDataCache[lang])
@@ -158,7 +166,15 @@ var $exeDevice = {
             this.jsonPathTemplate.replace('{lang}', lang)
         );
 
-        const loadViaXHR = () =>
+        // An abort is a decision, not a failure: once the edition closed, no
+        // tier may fall back to the next one and start new network work.
+        const stopIfClosed = (error) => {
+            if (!lifecycle.isActive()) {
+                throw (lifecycle.signal && lifecycle.signal.reason) || error;
+            }
+        };
+
+        const loadViaXHR = (targetUrl) =>
             new Promise((resolve, reject) => {
                 if (typeof XMLHttpRequest === 'undefined') {
                     reject(
@@ -169,7 +185,9 @@ var $exeDevice = {
                     return;
                 }
                 const request = new XMLHttpRequest();
-                request.open('GET', url, true);
+                // Aborted with the edition, like the fetch paths below.
+                lifecycle.ownInstance(request, 'abort');
+                request.open('GET', targetUrl, true);
                 if (typeof request.overrideMimeType === 'function') {
                     request.overrideMimeType('application/json');
                 }
@@ -189,13 +207,13 @@ var $exeDevice = {
                     } else {
                         reject(
                             new Error(
-                                `Failed to load ${url}: ${request.status}`
+                                `Failed to load ${targetUrl}: ${request.status}`
                             )
                         );
                     }
                 };
                 request.onerror = function () {
-                    reject(new Error(`Network error while loading ${url}`));
+                    reject(new Error(`Network error while loading ${targetUrl}`));
                 };
                 request.send();
             });
@@ -206,25 +224,60 @@ var $exeDevice = {
                 !window.location ||
                 window.location.protocol !== 'file:');
 
-        const fetchPromise = shouldUseFetch
-            ? fetch(url, { cache: 'no-cache' })
+        // Try <url>.zst first via fzstd (production / static build, see
+        // public/libs/fzstd/fzstd.umd.js), fall back to raw <url> for dev
+        // and sessions where fzstd isn't loaded.
+        const canDecompressZstd =
+            shouldUseFetch &&
+            typeof window !== 'undefined' &&
+            typeof window.fzstd !== 'undefined';
+        // Every request is aborted when the editor closes, so a framework
+        // download cannot keep running against an edition that is gone.
+        const zstPromise = canDecompressZstd
+            ? fetch(url + '.zst', {
+                  cache: 'no-cache',
+                  signal: lifecycle.signal,
+              })
                   .then((response) => {
                       if (!response.ok) {
-                          throw new Error(
-                              `Failed to load ${response.url || url}: ${response.status}`
-                          );
+                          throw new Error(`zst HTTP ${response.status}`);
                       }
-                      return response.json();
+                      return response.arrayBuffer();
                   })
-                  .catch((error) => {
-                      if (typeof XMLHttpRequest === 'function') {
-                          return loadViaXHR().catch((xhrError) => {
-                              throw xhrError || error;
-                          });
-                      }
-                      throw error;
+                  .then((buffer) => {
+                      const decompressed = window.fzstd.decompress(
+                          new Uint8Array(buffer)
+                      );
+                      return JSON.parse(new TextDecoder().decode(decompressed));
                   })
-            : loadViaXHR();
+            : Promise.reject(new Error('fzstd unavailable'));
+
+        const rawJsonPromise = () =>
+            shouldUseFetch
+                ? fetch(url, { cache: 'no-cache', signal: lifecycle.signal })
+                      .then((response) => {
+                          if (!response.ok) {
+                              throw new Error(
+                                  `Failed to load ${response.url || url}: ${response.status}`
+                              );
+                          }
+                          return response.json();
+                      })
+                      .catch((error) => {
+                          stopIfClosed(error);
+                          if (typeof XMLHttpRequest === 'function') {
+                              return loadViaXHR(url).catch((xhrError) => {
+                                  throw xhrError || error;
+                              });
+                          }
+                          throw error;
+                      })
+                : loadViaXHR(url);
+
+        const fetchPromise = zstPromise.catch((error) => {
+            stopIfClosed(error);
+            return rawJsonPromise();
+        });
 
         this.dataLoadPromises[lang] = fetchPromise
             .then((data) => {
@@ -818,10 +871,20 @@ var $exeDevice = {
             );
         }
 
-        document.addEventListener(
+        // `document` outlives the edition form, so this listener is owned by
+        // the lifecycle and removed when the editor closes.
+        this.$lifecycle.addEventListener(
+            document,
             'keydown',
-            this.handleGlobalKeydown.bind(this)
+            this.handleGlobalKeydown
         );
+
+        // The overlay class is set on <body>, again outside the form: drop it
+        // on teardown so an editor closed while the fullscreen view or the
+        // summary modal was open does not leave the page locked.
+        this.$lifecycle.own(() => {
+            document.body.classList.remove('digcompedu-overlay-open');
+        });
 
         this.updateGranularityControls();
     },
@@ -1667,50 +1730,56 @@ var $exeDevice = {
 
         this.ideviceBody.classList.add('digcompedu-loading');
 
+        // A framework switch that resolves after the editor closed must not
+        // re-render the form, nor alert the user about an abort it caused.
         return this.loadFrameworkData(newLang)
-            .then((data) => {
-                this.activeLang = newLang;
-                this.frameworkData = data;
-                this.prepareLookupStructures();
-                this.ensureGranularityCompatibility();
+            .then(
+                this.$lifecycle.bind((data) => {
+                    this.activeLang = newLang;
+                    this.frameworkData = data;
+                    this.prepareLookupStructures();
+                    this.ensureGranularityCompatibility();
 
-                const mappedSelections = this.transitionSelections(
-                    previousSelections,
-                    previousHadIndicators
-                );
-
-                this.selectedIds = mappedSelections;
-                this.renderTable();
-                this.updateSelectionInputs();
-                this.updateSelectionCounter();
-                this.summaryTableHtml = '';
-                this.summaryTextHtml = '';
-                this.updateSummaryPreview();
-                this.updateGranularityControls();
-                this.ideviceBody.classList.remove('digcompedu-loading');
-            })
-            .catch((error) => {
-                console.error('DigCompEdu framework change failed:', error);
-                if (
-                    typeof eXe !== 'undefined' &&
-                    eXe.app &&
-                    typeof eXe.app.alert === 'function'
-                ) {
-                    eXe.app.alert(
-                        _(
-                            'Unable to change framework. The previous data will remain loaded.'
-                        )
+                    const mappedSelections = this.transitionSelections(
+                        previousSelections,
+                        previousHadIndicators
                     );
-                }
-                const frameworkSelect = this.ideviceBody.querySelector(
-                    `#${this.dataLangSelectId}`
-                );
-                if (frameworkSelect) {
-                    frameworkSelect.value = previousLang;
-                }
-                this.ideviceBody.classList.remove('digcompedu-loading');
-                throw error;
-            });
+
+                    this.selectedIds = mappedSelections;
+                    this.renderTable();
+                    this.updateSelectionInputs();
+                    this.updateSelectionCounter();
+                    this.summaryTableHtml = '';
+                    this.summaryTextHtml = '';
+                    this.updateSummaryPreview();
+                    this.updateGranularityControls();
+                    this.ideviceBody.classList.remove('digcompedu-loading');
+                })
+            )
+            .catch(
+                this.$lifecycle.bind((error) => {
+                    console.error('DigCompEdu framework change failed:', error);
+                    if (
+                        typeof eXe !== 'undefined' &&
+                        eXe.app &&
+                        typeof eXe.app.alert === 'function'
+                    ) {
+                        eXe.app.alert(
+                            _(
+                                'Unable to change framework. The previous data will remain loaded.'
+                            )
+                        );
+                    }
+                    const frameworkSelect = this.ideviceBody.querySelector(
+                        `#${this.dataLangSelectId}`
+                    );
+                    if (frameworkSelect) {
+                        frameworkSelect.value = previousLang;
+                    }
+                    this.ideviceBody.classList.remove('digcompedu-loading');
+                    throw error;
+                })
+            );
     },
 
     /**

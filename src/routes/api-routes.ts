@@ -111,6 +111,9 @@ export const API_ROUTES: RouteMap = {
     api_user_preferences_get: { path: '/api/user/preferences', methods: ['GET'] },
     api_user_preferences_save: { path: '/api/user/preferences', methods: ['PUT'] },
     api_user_storage_get: { path: '/api/user/storage', methods: ['GET'] },
+    // Self-service password change. Deliberately absent from STATIC_ROUTES:
+    // static/offline builds have no accounts and no password to change.
+    api_user_password_change: { path: '/api/user/password', methods: ['PATCH'] },
 
     // Translations
     api_translations_lists: { path: '/api/translations/lists', methods: ['GET'] },
@@ -123,6 +126,10 @@ export const API_ROUTES: RouteMap = {
         methods: ['POST'],
     },
     open_platform_elp: { path: '/api/platform/integration/openPlatformElp', methods: ['POST'] },
+    confirm_platform_elp_import: {
+        path: '/api/platform/integration/confirmPlatformElpImport',
+        methods: ['POST'],
+    },
 
     // Config
     api_config_upload_limits: { path: '/api/config/upload-limits', methods: ['GET'] },

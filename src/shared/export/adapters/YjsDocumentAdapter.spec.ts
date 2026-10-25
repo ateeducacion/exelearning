@@ -193,6 +193,63 @@ describe('YjsDocumentAdapter', () => {
             expect(metadata.theme).toBe('base');
         });
 
+        describe('passScore', () => {
+            it('should read the stored value', () => {
+                manager = new MockYjsDocumentManager({ passScore: 7.5 });
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                expect(adapter.getMetadata().passScore).toBe(7.5);
+            });
+
+            it('should accept a value stored as a string', () => {
+                manager = new MockYjsDocumentManager({ passScore: '7.5' });
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                expect(adapter.getMetadata().passScore).toBe(7.5);
+            });
+
+            it('should default to 5 when the project never set it', () => {
+                manager = new MockYjsDocumentManager({});
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                expect(adapter.getMetadata().passScore).toBe(5);
+            });
+
+            it('should keep zero, which means "any mark passes"', () => {
+                manager = new MockYjsDocumentManager({ passScore: 0 });
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                expect(adapter.getMetadata().passScore).toBe(0);
+            });
+
+            it('should clamp a value outside the 0-10 domain', () => {
+                manager = new MockYjsDocumentManager({ passScore: 42 });
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                expect(adapter.getMetadata().passScore).toBe(10);
+            });
+        });
+
+        describe('passScoreEveryActivity', () => {
+            it.each([
+                ['the string the properties form stores', 'true', true],
+                ['a boolean', true, true],
+                ['"false"', 'false', false],
+            ])('should read %s', (_label, stored, expected) => {
+                manager = new MockYjsDocumentManager({ passScoreEveryActivity: stored });
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                expect(adapter.getMetadata().passScoreEveryActivity).toBe(expected);
+            });
+
+            it('should be off when the project never set it', () => {
+                manager = new MockYjsDocumentManager({});
+                adapter = new YjsDocumentAdapter(manager as any);
+
+                expect(adapter.getMetadata().passScoreEveryActivity).toBe(false);
+            });
+        });
+
         it('should fall back to APP_VERSION env var when neither yjs field nor window are set', () => {
             const originalAppVersion = process.env.APP_VERSION;
             process.env.APP_VERSION = 'v9.9.9-test';
@@ -475,6 +532,71 @@ describe('YjsDocumentAdapter', () => {
             // Verify feedback properties are preserved
             expect(comp.properties.textFeedbackInput).toBe('Show Feedback');
             expect(comp.properties.textFeedbackTextarea).toBe('<p>Feedback content here</p>');
+        });
+
+        it('should convert nested Yjs icon maps on blocks', () => {
+            const block = new MockYMap({
+                id: 'b1',
+                name: 'Block 1',
+                blockName: 'Block 1',
+                order: 0,
+                iconName: 'mi-info',
+                icon: new MockYMap({
+                    source: 'material',
+                    value: 'info',
+                }),
+                components: new MockYArray([]),
+            });
+            const page = createMockPage('p1', 'Page 1', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].blocks[0].iconName).toBe('mi-info');
+            expect(pages[0].blocks[0].icon).toEqual({
+                source: 'material',
+                value: 'info',
+            });
+        });
+
+        it('should keep the raw payload when stored jsonProperties cannot be parsed (#2190)', () => {
+            // The #2177 corruption shape: unescaped quotes inside a JSON string.
+            const malformed = '{"questionsData":[{"baseText":"<audio src="broken.webm"></audio>"}]}';
+            const component = new MockYMap({
+                id: 'c1',
+                type: 'trueorfalse',
+                ideviceType: 'trueorfalse',
+                content: '<p>Damaged</p>',
+                htmlContent: '<p>Damaged</p>',
+                order: 0,
+                jsonProperties: malformed,
+            });
+            const block = createMockBlock('b1', 'Block', [component]);
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const comp = adapter.getNavigation()[0].blocks[0].components[0];
+
+            expect(comp.properties).toEqual({});
+            expect(comp.malformedProperties).toBe(malformed);
+        });
+
+        it('should leave malformedProperties unset when jsonProperties parses (#2190)', () => {
+            const component = createMockComponent('c1', 'trueorfalse', '<p>Fine</p>', { answer: 'True' });
+            const block = createMockBlock('b1', 'Block', [component]);
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const comp = adapter.getNavigation()[0].blocks[0].components[0];
+
+            expect(comp.properties).toEqual({ answer: 'True' });
+            expect(comp.malformedProperties).toBeUndefined();
         });
     });
 
@@ -1152,5 +1274,91 @@ describe('YjsDocumentAdapter', () => {
             expect(xml).toBeDefined();
             expect(xml.length).toBeGreaterThan(100);
         });
+    });
+});
+
+describe('YjsDocumentAdapter.getMetadata - stable identifiers (#1784)', () => {
+    it('forwards odeIdentifier, odeVersionId and scormIdentifier from the Y.Map (mocked)', () => {
+        const manager = new MockYjsDocumentManager({
+            title: 'Stable IDs',
+            odeIdentifier: '20251201123456ABCDEF',
+            odeVersionId: '20251201123456FEDCBA',
+            scormIdentifier: 'CUSTOM-SCORM-XYZ',
+        });
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+        const meta = adapter.getMetadata();
+        expect(meta.odeIdentifier).toBe('20251201123456ABCDEF');
+        expect(meta.odeVersionId).toBe('20251201123456FEDCBA');
+        expect(meta.scormIdentifier).toBe('CUSTOM-SCORM-XYZ');
+    });
+
+    it('returns undefined for unset stable identifiers (legacy projects)', () => {
+        const manager = new MockYjsDocumentManager({ title: 'Legacy' });
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+        const meta = adapter.getMetadata();
+        expect(meta.odeIdentifier).toBeUndefined();
+        expect(meta.odeVersionId).toBeUndefined();
+        expect(meta.scormIdentifier).toBeUndefined();
+    });
+
+    it('returns undefined for stable identifiers on a completely empty real Y.Map', async () => {
+        // Defensive: brand-new project Y.Doc has no metadata at all. The adapter
+        // must not throw and must leave odeIdentifier / odeVersionId / scormIdentifier
+        // unset so the export-side fallback (`BaseExporter.getManifestIdentifier`)
+        // runs instead of inheriting garbage from a partially-initialized map.
+        const Y = await import('yjs');
+        const doc = new Y.Doc();
+        doc.getMap('metadata'); // touch but don't write anything
+        doc.getArray('navigation');
+
+        const manager = {
+            getMetadata: () => doc.getMap('metadata'),
+            getNavigation: () => doc.getArray('navigation'),
+            getDoc: () => doc,
+            projectId: 'empty-yjs-project',
+        };
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+        const exportMeta = adapter.getMetadata();
+        expect(exportMeta.odeIdentifier).toBeUndefined();
+        expect(exportMeta.odeVersionId).toBeUndefined();
+        expect(exportMeta.scormIdentifier).toBeUndefined();
+        // Sanity: defaults for required fields still apply.
+        expect(exportMeta.title).toBe('eXeLearning');
+        expect(exportMeta.theme).toBe('base');
+
+        doc.destroy();
+    });
+
+    it('reads stable identifiers from a real Y.Doc through YjsDocumentAdapter (no mocks)', async () => {
+        const Y = await import('yjs');
+        const doc = new Y.Doc();
+        const meta = doc.getMap('metadata');
+        meta.set('title', 'Real Y.Doc');
+        meta.set('odeIdentifier', '20251201123456ABCDEF');
+        meta.set('odeVersionId', '20251201123456FEDCBA');
+        // Minimal navigation so the adapter is happy.
+        doc.getArray('navigation');
+
+        const manager = {
+            getMetadata: () => meta,
+            getNavigation: () => doc.getArray('navigation'),
+            getDoc: () => doc,
+            projectId: 'real-yjs-project',
+        };
+        const adapter = new YjsDocumentAdapter(
+            manager as unknown as ConstructorParameters<typeof YjsDocumentAdapter>[0],
+        );
+
+        const exportMeta = adapter.getMetadata();
+        expect(exportMeta.odeIdentifier).toBe('20251201123456ABCDEF');
+        expect(exportMeta.odeVersionId).toBe('20251201123456FEDCBA');
+
+        doc.destroy();
     });
 });

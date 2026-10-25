@@ -20,6 +20,9 @@
 import type { ExportMetadata, ExportPage, ExportBlock, ExportComponent } from '../interfaces';
 import { ODE_DTD_FILENAME } from '../constants';
 import { isExcludedFromXml, getXmlKeyForProperty, valueToXmlString } from '../metadata-properties';
+import { generateOdeId } from '../utils/odeId';
+
+export { generateOdeId };
 
 /**
  * Options for ODE XML generation
@@ -42,7 +45,7 @@ export interface OdeXmlOptions {
  */
 export function generateOdeXml(meta: ExportMetadata, pages: ExportPage[], options?: OdeXmlOptions): string {
     const odeId = options?.odeId || meta.odeIdentifier || generateOdeId();
-    const versionId = options?.versionId || generateOdeId();
+    const versionId = options?.versionId || meta.odeVersionId || generateOdeId();
     const includeDoctype = options?.includeDoctype ?? true;
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
@@ -55,7 +58,12 @@ export function generateOdeXml(meta: ExportMetadata, pages: ExportPage[], option
     xml += generateUserPreferencesXml(meta);
 
     // ODE resources (version info, IDs)
-    xml += generateOdeResourcesXml(odeId, versionId, normalizeExeVersion(meta.exelearningVersion));
+    xml += generateOdeResourcesXml(
+        odeId,
+        versionId,
+        normalizeExeVersion(meta.exelearningVersion),
+        meta.scormIdentifier,
+    );
 
     // ODE properties (metadata)
     xml += generateOdePropertiesXml(meta);
@@ -92,13 +100,26 @@ function generateUserPreferenceEntry(key: string, value: string): string {
 }
 
 /**
- * Generate ODE resources section (identifiers, version)
+ * Generate ODE resources section (identifiers, version).
+ *
+ * `scormIdentifier` is the optional LMS-tracking override; it lives in
+ * `<odeResources>` (alongside `odeId`) rather than `<odeProperties>` because
+ * it is a SCORM-specific manifest hint, not user-visible content metadata.
+ * Emitting it here makes the override survive an ELPX round-trip (#1786).
  */
-function generateOdeResourcesXml(odeId: string, versionId: string, exeVersion: string): string {
+function generateOdeResourcesXml(
+    odeId: string,
+    versionId: string,
+    exeVersion: string,
+    scormIdentifier?: string,
+): string {
     let xml = '<odeResources>\n';
     xml += generateOdeResourceEntry('odeId', odeId);
     xml += generateOdeResourceEntry('odeVersionId', versionId);
     xml += generateOdeResourceEntry('exe_version', exeVersion);
+    if (scormIdentifier) {
+        xml += generateOdeResourceEntry('scormIdentifier', scormIdentifier);
+    }
     xml += '</odeResources>\n';
     return xml;
 }
@@ -280,7 +301,12 @@ function generateOdeComponentXml(component: ExportComponent, pageId: string, blo
     xml += `          <htmlView><![CDATA[${escapeCdata(htmlContent)}]]></htmlView>\n`;
 
     // JSON properties - transform asset:// URLs to content/resources/ (wrapped in CDATA)
-    if (component.properties && Object.keys(component.properties).length > 0) {
+    if (typeof component.malformedProperties === 'string') {
+        // A payload the adapter could not parse (#2190) is written back
+        // verbatim: it is the only copy of the damaged activity's data, and
+        // escapeCdata keeps the XML well-formed regardless of its content.
+        xml += `          <jsonProperties><![CDATA[${escapeCdata(component.malformedProperties)}]]></jsonProperties>\n`;
+    } else if (component.properties && Object.keys(component.properties).length > 0) {
         const jsonStr = transformAssetUrlsForXml(JSON.stringify(component.properties));
         xml += `          <jsonProperties><![CDATA[${escapeCdata(jsonStr)}]]></jsonProperties>\n`;
     } else {
@@ -316,29 +342,6 @@ function generateComponentPropertyEntry(key: string, value: string): string {
               <key>${escapeXml(key)}</key>
               <value>${escapeXml(value)}</value>
             </odeComponentsProperty>\n`;
-}
-
-/**
- * Generate ODE identifier
- * Format: YYYYMMDDHHmmss + 6 random alphanumeric chars
- */
-export function generateOdeId(): string {
-    const now = new Date();
-    const timestamp =
-        now.getFullYear().toString() +
-        String(now.getMonth() + 1).padStart(2, '0') +
-        String(now.getDate()).padStart(2, '0') +
-        String(now.getHours()).padStart(2, '0') +
-        String(now.getMinutes()).padStart(2, '0') +
-        String(now.getSeconds()).padStart(2, '0');
-
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let random = '';
-    for (let i = 0; i < 6; i++) {
-        random += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-
-    return timestamp + random;
 }
 
 /**

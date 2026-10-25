@@ -8,7 +8,11 @@ import { staticPlugin } from '@elysiajs/static';
 import { healthRoutes, healthCheckAlias } from './routes/health';
 import { authRoutes } from './routes/auth';
 import { projectRoutes, symfonyCompatProjectRoutes } from './routes/project';
-import { assetsRoutes } from './routes/assets';
+import { assetsRoutes, startChunkUploadSweeper, stopChunkUploadSweeper } from './routes/assets';
+import {
+    startCleanupScheduler as startUploadSessionCleanup,
+    stopCleanupScheduler as stopUploadSessionCleanup,
+} from './services/upload-session-manager';
 import { fileManagerRoutes } from './routes/filemanager';
 import { exportRoutes } from './routes/export';
 import { convertRoutes } from './routes/convert';
@@ -26,24 +30,27 @@ import { yjsRoutes } from './routes/yjs';
 import { platformIntegrationRoutes } from './routes/platform-integration';
 import { apiV1Routes } from './routes/api/v1';
 import { uploadSessionRoutes } from './routes/upload-session';
-import {
-    createWebSocketRoutes,
-    initialize as initWebSocket,
-    getServerInfo,
-    getActiveRooms,
-    stop as stopWebSocket,
-} from './websocket/yjs-websocket';
+import { createWebSocketRoutes, initialize as initWebSocket, stop as stopWebSocket } from './websocket/yjs-websocket';
+import { webSocketInfoRoutes } from './routes/websocket-info';
+import { yjsDebugRoutes } from './routes/yjs-debug';
+import { getAppVersion } from './utils/version';
+import { secretsBootError } from './utils/env';
 import { getFilesDir } from './services/file-helper';
+import { serveFilesDirFile } from './services/files-dir-response';
 import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
+import { migrateAssetStorage } from './services/asset-storage-migration';
 import { findUserByEmail, createUser, updateUser } from './db/queries/users';
 import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
 import { getSettingNumber } from './services/app-settings';
 import { isMaintenanceMode, shouldBypassMaintenance, isAdminRequest } from './services/maintenance';
 import { getBasePath } from './utils/basepath.util';
+import { serveSiteThemeFile } from './utils/site-theme-file';
+import { rewriteCodemagicAssetPaths } from './utils/editor-html.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
 import { MIME_TYPES } from './utils/mime-types';
+import { warnIfProviderUrlsMissing } from './utils/platform-jwt';
 import { isRedisEnabled, connectRedis, disconnectRedis } from './redis/client';
 import { initializeCrossInstanceHandler } from './websocket/room-manager';
 import {
@@ -134,14 +141,10 @@ const codemagicEditorHandler = ({
         const ext = path.extname(filePath).toLowerCase();
         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-        // For HTML files, rewrite relative paths to absolute paths
+        // For HTML files, rewrite document-relative asset paths to BASE_PATH-aware
+        // absolute paths so they resolve behind a subdirectory reverse proxy (#1806).
         if (ext === '.html' || ext === '.htm') {
-            let html = content.toString('utf-8');
-            // Fix includes/ paths -> /api/codemagic-editor/includes/
-            html = html.replace(/src="includes\//g, 'src="/api/codemagic-editor/includes/');
-            html = html.replace(/href="includes\//g, 'href="/api/codemagic-editor/includes/');
-            // Fix images/icons/ paths -> /api/codemagic-editor/images/
-            html = html.replace(/src="images\//g, 'src="/api/codemagic-editor/images/');
+            const html = rewriteCodemagicAssetPaths(content.toString('utf-8'));
             content = Buffer.from(html, 'utf-8');
         }
 
@@ -329,45 +332,8 @@ const app = new Elysia()
         }
 
         // Handle /files/tmp/* and /files/dist/* - serve from FILES_DIR
-        const filesMatch = pathname.match(/^\/files\/(tmp|dist)\/(.+)$/);
-        if (filesMatch) {
-            const filesDir = getFilesDir();
-            const subPath = filesMatch[1]; // 'tmp' or 'dist'
-            const relativePath = filesMatch[2]; // rest of the path
-
-            // Prevent path traversal
-            const cleanPath = relativePath.replace(/\.\./g, '');
-            const filePath = path.join(filesDir, subPath, cleanPath);
-
-            // Security: ensure path is within FILES_DIR
-            const resolvedPath = path.resolve(filePath);
-            const resolvedBase = path.resolve(filesDir);
-            if (!resolvedPath.startsWith(resolvedBase)) {
-                return new Response('Forbidden', { status: 403 });
-            }
-
-            if (fs.existsSync(filePath)) {
-                try {
-                    const stats = fs.statSync(filePath);
-                    if (stats.isFile()) {
-                        const content = fs.readFileSync(filePath);
-                        const ext = path.extname(filePath).toLowerCase();
-                        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-                        return new Response(content, {
-                            headers: {
-                                'Content-Type': contentType,
-                                'Content-Length': stats.size.toString(),
-                                'Cache-Control': 'public, max-age=3600', // 1 hour cache
-                            },
-                        });
-                    }
-                } catch (err) {
-                    console.error('[StaticFiles] Error serving file:', filePath, err);
-                }
-            }
-            // File not found - let it fall through to 404
-        }
+        const filesResponse = serveFilesDirFile(pathname, getFilesDir());
+        if (filesResponse) return filesResponse;
 
         // Match /v{version}/libs/* and rewrite to /libs/*
         const versionedLibsMatch = pathname.match(/^\/v[\d.]+[^/]*\/libs\/(.+)$/);
@@ -388,28 +354,14 @@ const app = new Elysia()
             }
         }
 
-        // Match /v{version}/site-files/themes/* and serve from FILES_DIR
-        const versionedSiteFilesMatch = pathname.match(/^\/v[\d.]+[^/]*\/site-files\/themes\/(.+)$/);
-        if (versionedSiteFilesMatch) {
-            const relativePath = versionedSiteFilesMatch[1];
-            const filesDir = getFilesDir();
-            const filePath = path.join(filesDir, 'themes', 'site', relativePath);
-
-            // Security check
-            const resolvedPath = path.resolve(filePath);
-            const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'site'));
-            if (resolvedPath.startsWith(resolvedBase) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-                const content = fs.readFileSync(filePath);
-                const ext = path.extname(filePath).toLowerCase();
-                const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-                return new Response(content, {
-                    headers: {
-                        'Content-Type': contentType,
-                        'Cache-Control': 'public, max-age=31536000',
-                    },
-                });
-            }
+        // Serve site theme files from FILES_DIR/themes/site for both URL shapes:
+        //   - versioned, cache-busted:  /v{version}-{ts}/site-files/themes/*
+        //   - plain (admin screenshots): /site-files/themes/*
+        // BASE_PATH has already been stripped above, so this also covers requests
+        // behind a subdirectory proxy (issue: admin screenshots 404 with BASE_PATH set).
+        const siteThemeResponse = serveSiteThemeFile(pathname, getFilesDir());
+        if (siteThemeResponse) {
+            return siteThemeResponse;
         }
 
         // Match /v{version}/* and rewrite to /* (except /libs, /admin-files which are handled above)
@@ -468,27 +420,13 @@ const app = new Elysia()
     // Serve site theme files from FILES_DIR/themes/site/
     // URL pattern: /site-files/themes/{dirName}/* or /{version}/site-files/themes/{dirName}/*
     .get('/site-files/themes/*', ({ params, set }) => {
+        // Most requests are already handled by the onRequest hook above (which also
+        // covers BASE_PATH-prefixed and versioned URLs). This route is the fallback
+        // for the plain root-mounted path; reuse the same shared server helper.
         const relativePath = params['*'] || '';
-        const filesDir = getFilesDir();
-        const filePath = path.join(filesDir, 'themes', 'site', relativePath);
-
-        // Security: ensure path is within the themes/site directory
-        const resolvedPath = path.resolve(filePath);
-        const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'site'));
-        if (!resolvedPath.startsWith(resolvedBase)) {
-            set.status = 403;
-            return 'Forbidden';
-        }
-
-        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-            const content = fs.readFileSync(filePath);
-            const ext = path.extname(filePath).toLowerCase();
-            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-            set.headers['Content-Type'] = contentType;
-            set.headers['Content-Length'] = content.length.toString();
-            set.headers['Cache-Control'] = 'public, max-age=31536000'; // 1 year cache
-            return content;
+        const response = serveSiteThemeFile(`/site-files/themes/${relativePath}`, getFilesDir());
+        if (response) {
+            return response;
         }
 
         set.status = 404;
@@ -571,44 +509,54 @@ const app = new Elysia()
         }),
     );
 
-// Get BASE_PATH for route registration and add routes
-// Routes are always added at root, PLUS at BASE_PATH if configured
-// This allows frontend code that doesn't use BASE_PATH to still work
+// Get BASE_PATH for route registration and add routes.
+//
+// Default behaviour: routes are added at root AND at BASE_PATH (if configured).
+// This dual-mount lets frontend code that emits unprefixed URLs still work in a
+// flat `bun run dev`, but it ALSO masks BASE_PATH client bugs (issue #1802):
+// every URL emitted without BASE_PATH would 404 behind a real reverse proxy
+// that only mounts the BASE_PATH namespace.
+//
+// Set STRICT_BASE_PATH_ROUTES=true to disable the root mount when BASE_PATH
+// is configured, so dev/CI behaves like a production proxy and surfaces those
+// bugs immediately. Default is false (compat preserved).
 const routePrefix = getBasePath();
+const strictBasePathRoutes = process.env.STRICT_BASE_PATH_ROUTES === 'true';
+const registerRootRoutes = !routePrefix || !strictBasePathRoutes;
 
-// Always register routes at root
-app.use(healthRoutes)
-    .use(healthCheckAlias)
-    .use(authRoutes)
-    .use(platformIntegrationRoutes)
-    .use(pagesRoutes)
-    .use(projectRoutes)
-    .use(symfonyCompatProjectRoutes)
-    .use(assetsRoutes)
-    .use(fileManagerRoutes)
-    .use(exportRoutes)
-    .use(convertRoutes)
-    .use(configRoutes)
-    .use(idevicesRoutes)
-    .use(gamesRoutes)
-    .use(themesRoutes)
-    .use(resourcesRoutes)
-    .use(userRoutes)
-    .use(adminRoutes)
-    .use(adminThemesRoutes)
-    .use(adminTemplatesRoutes)
-    .use(yjsRoutes)
-    .use(apiV1Routes)
-    .use(uploadSessionRoutes)
-    .use(createWebSocketRoutes())
-    .get('/api', () => ({
-        name: 'eXeLearning API',
-        version: '4.0.0-elysia',
-        framework: 'Elysia',
-        runtime: 'Bun',
-    }))
-    .get('/api/websocket/info', () => getServerInfo())
-    .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() }));
+// Register routes at root (skipped when STRICT_BASE_PATH_ROUTES=true AND BASE_PATH is set)
+if (registerRootRoutes) {
+    app.use(healthRoutes)
+        .use(healthCheckAlias)
+        .use(authRoutes)
+        .use(platformIntegrationRoutes)
+        .use(pagesRoutes)
+        .use(projectRoutes)
+        .use(symfonyCompatProjectRoutes)
+        .use(assetsRoutes)
+        .use(fileManagerRoutes)
+        .use(exportRoutes)
+        .use(convertRoutes)
+        .use(configRoutes)
+        .use(idevicesRoutes)
+        .use(gamesRoutes)
+        .use(themesRoutes)
+        .use(resourcesRoutes)
+        .use(userRoutes)
+        .use(adminRoutes)
+        .use(adminThemesRoutes)
+        .use(adminTemplatesRoutes)
+        .use(yjsRoutes)
+        .use(apiV1Routes)
+        .use(uploadSessionRoutes)
+        .use(createWebSocketRoutes())
+        .use(webSocketInfoRoutes)
+        .use(yjsDebugRoutes)
+        .get('/api', () => ({
+            name: 'eXeLearning API',
+            version: getAppVersion(),
+        }));
+}
 
 // Also register routes at BASE_PATH if configured
 if (routePrefix) {
@@ -638,14 +586,12 @@ if (routePrefix) {
             .use(apiV1Routes)
             .use(uploadSessionRoutes)
             .use(createWebSocketRoutes())
+            .use(webSocketInfoRoutes)
+            .use(yjsDebugRoutes)
             .get('/api', () => ({
                 name: 'eXeLearning API',
-                version: '4.0.0-elysia',
-                framework: 'Elysia',
-                runtime: 'Bun',
+                version: getAppVersion(),
             }))
-            .get('/api/websocket/info', () => getServerInfo())
-            .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() }))
             // Editor handlers must be registered at BASE_PATH too
             .get('/api/exemindmap-editor', exemindmapEditorBaseHandler)
             .get('/api/exemindmap-editor/*', exemindmapEditorHandler)
@@ -720,14 +666,45 @@ async function syncBuiltinThemes() {
     console.log(`[Themes] Base themes synced`);
 }
 
+/**
+ * Refuse to boot in production if a security-critical secret is still the
+ * insecure default: the JWT signing secret (`API_JWT_SECRET`/`JWT_SECRET`) OR
+ * `APP_SECRET` (which verifies platform-integration JWTs). Without this check
+ * either would be forgeable by anyone who reads the open-source codebase.
+ */
+function assertProductionSecrets(): void {
+    // Keyed on BOTH APP_ENV=prod and NODE_ENV=production (see src/utils/env.ts)
+    // so the default-secret refusal also fires on non-Docker prod deploys that
+    // only set APP_ENV=prod, not just the Docker image that sets NODE_ENV.
+    const error = secretsBootError();
+    if (error) {
+        console.error(error);
+        process.exit(1);
+    }
+}
+
 // Bootstrap: run migrations, seed, and start server
 async function bootstrap() {
+    // 0. Production safety: do not start with a default JWT secret or APP_SECRET.
+    assertProductionSecrets();
+
     // 1. Run migrations
     console.log('[DB] Running migrations...');
     const migrationResult = await migrateToLatest(db);
     if (!migrationResult.success) {
         console.error('[DB] Migration failed:', migrationResult.error);
         process.exit(1);
+    }
+
+    // 1b. Converge the asset storage layout (sharded directories + relative
+    // storage_path, issue #2250 / ADR-2250-01). Idempotent and resumable; a
+    // fast no-op once converged. Failures are logged and retried on the next
+    // startup — unmigrated rows keep working through the transitional
+    // legacy-path read fallback in the storage resolver.
+    try {
+        await migrateAssetStorage();
+    } catch (err) {
+        console.error('[AssetStorage] Migration failed (will retry on next startup):', err);
     }
 
     // 2. Initialize Redis for high availability (if configured)
@@ -815,6 +792,16 @@ async function bootstrap() {
     // 7. Start cleanup scheduler (for unsaved and guest projects)
     startCleanupScheduler(getCleanupConfigFromEnv());
 
+    // 7b. Start resource-bound sweepers: reap abandoned chunked uploads and
+    // expired upload sessions so neither disk nor memory grows unbounded.
+    startChunkUploadSweeper();
+    startUploadSessionCleanup();
+
+    // 7c. Surface a common platform-integration misconfiguration: tokens/ids set
+    // but PROVIDER_URLS empty (isAllowedProviderUrl fails closed, so callbacks
+    // would be silently rejected). Logged once at startup.
+    warnIfProviderUrlsMissing();
+
     console.log(`Elysia server running at http://localhost:${PORT}`);
     console.log(`Pages: /login, /workarea`);
     console.log(`Auth endpoints: /api/auth/login, /api/auth/logout, /api/session/check`);
@@ -834,6 +821,8 @@ async function gracefulShutdown(signal: string) {
     console.log(`${signal} received, shutting down...`);
     stopWebSocket();
     stopCleanupScheduler();
+    stopChunkUploadSweeper();
+    stopUploadSessionCleanup();
     await disconnectRedis();
     await closeDb();
     process.exit(0);

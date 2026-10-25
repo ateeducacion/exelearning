@@ -2,12 +2,13 @@
  * FileSystemAssetHandler Unit Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 
 import { FileSystemAssetHandler } from './FileSystemAssetHandler';
+import { FileSystemAssetProvider } from '../export/providers/FileSystemAssetProvider';
 
 describe('FileSystemAssetHandler', () => {
     let testDir: string;
@@ -68,6 +69,35 @@ describe('FileSystemAssetHandler', () => {
             expect(existsSync(resourcesDir)).toBe(true);
         });
 
+        it('should reject folderPath that escapes the extract directory', async () => {
+            const handler = new FileSystemAssetHandler(testDir);
+
+            await expect(
+                handler.storeAsset('id', new Uint8Array([1]), {
+                    filename: 'evil.txt',
+                    mimeType: 'text/plain',
+                    folderPath: '../escape',
+                }),
+            ).rejects.toThrow();
+
+            const escapedPath = path.join(path.dirname(testDir), 'escape', 'evil.txt');
+            expect(existsSync(escapedPath)).toBe(false);
+        });
+
+        it('should reject filenames that escape the asset directory', async () => {
+            const handler = new FileSystemAssetHandler(testDir);
+
+            await expect(
+                handler.storeAsset('id', new Uint8Array([1]), {
+                    filename: '../escape.txt',
+                    mimeType: 'text/plain',
+                }),
+            ).rejects.toThrow();
+
+            const escapedPath = path.join(testDir, 'escape.txt');
+            expect(existsSync(escapedPath)).toBe(false);
+        });
+
         it('should handle duplicate filenames', async () => {
             const handler = new FileSystemAssetHandler(testDir);
 
@@ -117,6 +147,39 @@ describe('FileSystemAssetHandler', () => {
             expect(assetMap.size).toBeGreaterThan(0);
             expect(assetMap.has('resources/image.png')).toBe(true);
             expect(assetMap.has('resources/doc.pdf')).toBe(true);
+        });
+
+        it('should give content/resources assets the IDs FileSystemAssetProvider lists', async () => {
+            const handler = new FileSystemAssetHandler(testDir);
+
+            const assetMap = await handler.extractAssetsFromZip({
+                'content/resources/20260121165359522NHK/card.png': new Uint8Array([137, 80]),
+                'content/resources/flat.png': new Uint8Array([137, 80]),
+            });
+
+            expect(assetMap.get('content/resources/20260121165359522NHK/card.png')).toBe(
+                '20260121165359522NHK/card.png',
+            );
+            expect(assetMap.get('content/resources/flat.png')).toBe('flat.png');
+
+            const listed = await new FileSystemAssetProvider(testDir).listAssetMetadata();
+            expect(listed.map(asset => asset.id).sort()).toEqual(['20260121165359522NHK/card.png', 'flat.png']);
+        });
+
+        it('should keep POSIX asset IDs when the platform path.join uses backslashes (Windows)', async () => {
+            const joinSpy = spyOn(path, 'join').mockImplementation(path.win32.join);
+            try {
+                const handler = new FileSystemAssetHandler(testDir);
+                const assetMap = await handler.extractAssetsFromZip({
+                    'content/resources/20260121165359522NHK/card.png': new Uint8Array([137, 80]),
+                });
+
+                expect(assetMap.get('content/resources/20260121165359522NHK/card.png')).toBe(
+                    '20260121165359522NHK/card.png',
+                );
+            } finally {
+                joinSpy.mockRestore();
+            }
         });
 
         it('should skip root-level files', async () => {
@@ -325,6 +388,21 @@ describe('FileSystemAssetHandler', () => {
 
             // Don't create any assets
             await expect(handler.clear()).resolves.toBeUndefined();
+        });
+    });
+
+    describe('extractThemeFromZip', () => {
+        it('should reject theme entries that escape the theme directory', async () => {
+            const handler = new FileSystemAssetHandler(testDir);
+
+            const malicious: Record<string, Uint8Array> = {
+                'theme/../escape.txt': new Uint8Array([1, 2, 3]),
+            };
+
+            await expect(handler.extractThemeFromZip(malicious)).rejects.toThrow();
+
+            const escapedPath = path.join(testDir, 'escape.txt');
+            expect(existsSync(escapedPath)).toBe(false);
         });
     });
 });

@@ -8,6 +8,8 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
+import { safeFetch, SsrfBlockedError, type LookupFn } from '../utils/ssrf-guard';
+import { isWithinBase } from '../utils/safe-path';
 
 // =====================================================
 // Interfaces
@@ -39,7 +41,11 @@ export interface IdeviceContent {
 export interface ValidationResult {
     id: string;
     url: string;
-    status: 'valid' | 'broken';
+    /**
+     * 'unavailable': the server did not give a usable answer (timeout, rate
+     * limiting, 5xx). That says nothing about whether the link exists.
+     */
+    status: 'valid' | 'broken' | 'unavailable';
     error: string | null;
 }
 
@@ -167,9 +173,38 @@ export function extractLinksFromIdevices(idevices: IdeviceContent[]): ExtractedL
 // Link Validation
 // =====================================================
 
+/**
+ * Classify an HTTP status from a completed request as valid (null) or broken (message).
+ * Any 2xx/3xx response means the resource exists for link-check purposes.
+ */
+export function classifyHttpStatus(status: number): string | null {
+    if (status >= 200 && status < 400) return null;
+    // 416 = our `Range: bytes=0-0` was not satisfiable (zero-length
+    // resource): the resource exists, there is just no byte 0 to serve.
+    if (status === 416) return null;
+    return String(status);
+}
+
+/**
+ * True for failures caused by the remote server being slow, overloaded or
+ * rate limiting us (timeout, 429, 5xx) rather than by the link being wrong:
+ * the resource may well exist, so it must not be reported as broken (#2502).
+ */
+export function isTransientLinkError(error: string | null): boolean {
+    if (!error) return false;
+    if (error === 'Timeout' || error === '429') return true;
+    return /^5\d\d$/.test(error);
+}
+
 export interface ValidateLinkOptions {
     filesDir: string;
     timeout?: number;
+    /** Maximum redirect hops to follow when validating external links (each re-validated). */
+    maxRedirects?: number;
+    /** Injectable DNS resolver, forwarded to the SSRF guard (for hermetic tests). */
+    lookupFn?: LookupFn;
+    /** Injectable fetch implementation, forwarded to the SSRF guard (for hermetic tests). */
+    fetchImpl?: typeof fetch;
 }
 
 /**
@@ -177,7 +212,7 @@ export interface ValidateLinkOptions {
  * Returns null if valid, or an error message if broken
  */
 export async function validateLink(url: string, options: ValidateLinkOptions): Promise<string | null> {
-    const { filesDir, timeout = 10000 } = options;
+    const { filesDir, timeout = 10000, maxRedirects, lookupFn, fetchImpl } = options;
 
     // Internal page links (exe-node:) - consider valid
     if (url.startsWith('exe-node:')) {
@@ -188,6 +223,14 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
     if (url.startsWith('files/') || url.startsWith('files\\')) {
         try {
             const relativePath = url.substring(6);
+            // Reject traversal that escapes FILES_DIR. Without this, a crafted
+            // link such as 'files/../../../etc/passwd' turns this existence check
+            // into a host file-existence oracle (valid vs '404' reveals whether an
+            // arbitrary absolute path exists). isWithinBase still allows legitimate
+            // nested links like 'files/docs/file.pdf'.
+            if (!isWithinBase(filesDir, relativePath)) {
+                return '404';
+            }
             const fullPath = path.join(filesDir, relativePath);
             if (await fs.pathExists(fullPath)) {
                 return null;
@@ -213,46 +256,67 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+        // Browser-like headers: some hosts drop or 403 bare bot-like requests.
+        const browserHeaders: Record<string, string> = {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+        };
+
         try {
-            let response = await fetch(normalizedUrl, {
-                method: 'HEAD',
+            // A single ranged GET — no HEAD. Too many hosts reject HEAD
+            // (405/403), lie about it (educa.madrid answers HEAD with 404
+            // while GET returns the real status) or simply hang on it. A GET
+            // is what a browser sends, so hosts answer it truthfully; Range
+            // keeps the transfer to one byte on servers that honor it, and
+            // the body is cancelled unread either way.
+            //
+            // safeFetch enforces SSRF egress filtering (allow only http(s),
+            // reject private/loopback/link-local/CGNAT addresses) and follows
+            // redirects manually, re-validating every hop. It forces
+            // redirect: 'manual' internally, so we must NOT pass
+            // redirect: 'follow'.
+            const response = await safeFetch(normalizedUrl, {
+                method: 'GET',
                 signal: controller.signal,
-                redirect: 'follow',
+                maxRedirects,
+                lookupFn,
+                fetchImpl,
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    ...browserHeaders,
+                    Range: 'bytes=0-0',
+                    // identity: a compressed body sliced by Range is a
+                    // truncated gzip stream that some fetch implementations
+                    // refuse to accept.
+                    'Accept-Encoding': 'identity',
                 },
+                // The body is discarded, so never decode it: a host is free to
+                // ignore Accept-Encoding and answer with any Content-Encoding,
+                // and the decoder would run on its bytes before cancel().
+                decompress: false,
             });
-
-            clearTimeout(timeoutId);
-
-            // If HEAD returns 405, try GET with Range header
-            if (response.status === 405) {
-                const controller2 = new AbortController();
-                const timeoutId2 = setTimeout(() => controller2.abort(), timeout);
-                response = await fetch(normalizedUrl, {
-                    method: 'GET',
-                    signal: controller2.signal,
-                    redirect: 'follow',
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                        Range: 'bytes=0-0',
-                    },
-                });
-                clearTimeout(timeoutId2);
+            try {
+                await response.body?.cancel();
+            } catch {
+                // Stream already closed or locked — the status is all we need.
             }
-
-            // 301 redirects are not broken
-            if (response.status === 301) return null;
-            if (response.ok) return null;
-            return String(response.status);
+            return classifyHttpStatus(response.status);
         } catch (fetchError: unknown) {
-            clearTimeout(timeoutId);
+            // The SSRF guard blocked the URL or one of its redirect hops (private/
+            // loopback/link-local/CGNAT, disallowed scheme, etc.). Treat as broken
+            // without reflecting the resolved address (no internal-host oracle).
+            if (fetchError instanceof SsrfBlockedError) {
+                return 'Blocked address';
+            }
             const err = fetchError as { name?: string; message?: string; cause?: { code?: string } };
             if (err.name === 'AbortError') return 'Timeout';
             const cause = err.cause;
             if (cause?.code === 'ENOTFOUND') return 'Could not resolve host';
             if (cause?.code === 'ECONNREFUSED') return 'Connection refused';
             return err.message || 'Network error';
+        } finally {
+            clearTimeout(timeoutId);
         }
     } catch {
         return 'URL using bad/illegal format';
@@ -266,33 +330,125 @@ export async function validateLinkWithResult(
     link: ExtractedLink,
     options: ValidateLinkOptions,
 ): Promise<ValidationResult> {
-    const error = await validateLink(link.url, options);
-    return {
-        id: link.id,
-        url: link.url,
-        status: error ? 'broken' : 'valid',
-        error,
-    };
+    return toResult(link, await validateLink(link.url, options));
+}
+
+function hostKey(url: string): string {
+    try {
+        return new URL(url.startsWith('//') ? `https:${url}` : url).host;
+    } catch {
+        return url;
+    }
+}
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export interface ValidateLinksStreamOptions extends ValidateLinkOptions {
+    /** Maximum number of hosts checked at the same time. */
+    batchSize?: number;
+    /** Pause between two requests to the same host. */
+    hostDelayMs?: number;
+    /** Pause before the single retry of a timeout/429/5xx answer. */
+    retryDelayMs?: number;
 }
 
 /**
- * Validate multiple links in batches
- * Yields results as they complete
+ * Validate multiple links, yielding results as they complete.
+ *
+ * Polite to remote hosts (#2502): an OER often links dozens of pages of the
+ * same site (image banks, video platforms), and firing them all at once makes
+ * the site time out or rate limit us. So each URL is checked once, each host
+ * gets one request at a time with a pause in between, up to `batchSize` hosts
+ * run in parallel, and a transient failure is retried once after a pause.
+ * A host that times out even after the retry is not requested again.
  */
 export async function* validateLinksStream(
     links: ExtractedLink[],
-    options: ValidateLinkOptions & { batchSize?: number },
+    options: ValidateLinksStreamOptions,
 ): AsyncGenerator<ValidationResult> {
-    const { batchSize = 5, ...validateOptions } = options;
+    const { batchSize = 5, hostDelayMs = 500, retryDelayMs = 2000, ...validateOptions } = options;
 
-    for (let i = 0; i < links.length; i += batchSize) {
-        const batch = links.slice(i, i + batchSize);
-        const results = await Promise.all(batch.map(link => validateLinkWithResult(link, validateOptions)));
-
-        for (const result of results) {
-            yield result;
-        }
+    // host -> url -> links sharing that url
+    const hosts = new Map<string, Map<string, ExtractedLink[]>>();
+    for (const link of links) {
+        const byUrl = hosts.get(hostKey(link.url)) ?? new Map<string, ExtractedLink[]>();
+        hosts.set(hostKey(link.url), byUrl);
+        byUrl.set(link.url, [...(byUrl.get(link.url) ?? []), link]);
     }
+
+    const ready: ValidationResult[] = [];
+    let wake: (() => void) | null = null;
+    const emit = (results: ValidationResult[]) => {
+        ready.push(...results);
+        wake?.();
+    };
+
+    // Set when the consumer goes away (client cancelled): hosts already running
+    // stop before their next request.
+    let cancelled = false;
+
+    const checkUrl = async (url: string): Promise<string | null> => {
+        const error = await validateLink(url, validateOptions);
+        if (!isTransientLinkError(error)) return error;
+        await sleep(retryDelayMs);
+        return cancelled ? error : validateLink(url, validateOptions);
+    };
+
+    const checkHost = async (byUrl: Map<string, ExtractedLink[]>) => {
+        let first = true;
+        // A host that still times out after the retry is down or overloaded,
+        // and each further URL would cost two more timeouts: report the rest
+        // of its URLs as timed out without requesting them.
+        let hostDown = false;
+        for (const [url, sameUrl] of byUrl) {
+            if (!first && !hostDown && hostDelayMs > 0) await sleep(hostDelayMs);
+            first = false;
+            if (cancelled) return;
+            const error = hostDown ? 'Timeout' : await checkUrl(url);
+            hostDown = error === 'Timeout';
+            emit(sameUrl.map(link => toResult(link, error)));
+        }
+    };
+
+    const queue = [...hosts.values()];
+    let running = 0;
+    const startNext = () => {
+        while (running < batchSize && queue.length > 0) {
+            running++;
+            void checkHost(queue.shift() as Map<string, ExtractedLink[]>).finally(() => {
+                running--;
+                startNext();
+                wake?.();
+            });
+        }
+    };
+    startNext();
+
+    try {
+        while (running > 0 || ready.length > 0) {
+            if (ready.length === 0) {
+                await new Promise<void>(resolve => {
+                    wake = resolve;
+                });
+                wake = null;
+            }
+            while (ready.length > 0) yield ready.shift() as ValidationResult;
+        }
+    } finally {
+        // Consumer gone (client cancelled): do not start any more hosts, and
+        // stop the running ones before their next request.
+        queue.length = 0;
+        cancelled = true;
+    }
+}
+
+function toResult(link: ExtractedLink, error: string | null): ValidationResult {
+    return {
+        id: link.id,
+        url: link.url,
+        status: !error ? 'valid' : isTransientLinkError(error) ? 'unavailable' : 'broken',
+        error,
+    };
 }
 
 /**

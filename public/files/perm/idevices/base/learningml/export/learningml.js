@@ -438,33 +438,72 @@ var $learningml = {
                 const oh = kind === 2 ? h : Math.ceil(h / stride);
                 const out = new Float32Array(oh * oh * cout);
                 if (kind === 2) {
-                    for (let p = 0; p < h * h; p++)
-                        for (let o = 0; o < cout; o++) {
+                    // Pointwise layers are ~95% of the work. Four output channels per pass over the
+                    // pixel reuse each input load and give the JIT independent accumulators; every
+                    // sum still adds its terms in the same order, so the result is unchanged.
+                    for (let p = 0; p < h * h; p++) {
+                        const xi = p * cin;
+                        let o = 0;
+                        for (; o + 4 <= cout; o += 4) {
+                            const w0 = o * cin;
+                            const w1 = w0 + cin;
+                            const w2 = w1 + cin;
+                            const w3 = w2 + cin;
+                            let s0 = bias[o];
+                            let s1 = bias[o + 1];
+                            let s2 = bias[o + 2];
+                            let s3 = bias[o + 3];
+                            for (let i = 0; i < cin; i++) {
+                                const v = x[xi + i];
+                                s0 += v * w[w0 + i];
+                                s1 += v * w[w1 + i];
+                                s2 += v * w[w2 + i];
+                                s3 += v * w[w3 + i];
+                            }
+                            const oi = p * cout + o;
+                            out[oi] = s0 < 0 ? 0 : s0 > 6 ? 6 : s0;
+                            out[oi + 1] = s1 < 0 ? 0 : s1 > 6 ? 6 : s1;
+                            out[oi + 2] = s2 < 0 ? 0 : s2 > 6 ? 6 : s2;
+                            out[oi + 3] = s3 < 0 ? 0 : s3 > 6 ? 6 : s3;
+                        }
+                        for (; o < cout; o++) {
                             let s = bias[o];
-                            for (let i = 0, xi = p * cin, wi = o * cin; i < cin; i++) s += x[xi + i] * w[wi + i];
+                            for (let i = 0, wi = o * cin; i < cin; i++) s += x[xi + i] * w[wi + i];
                             out[p * cout + o] = s < 0 ? 0 : s > 6 ? 6 : s;
                         }
+                    }
                 } else {
                     const pad = Math.floor(Math.max((oh - 1) * stride + 3 - h, 0) / 2);
+                    // Taps outside the channel loop: the bounds checks and the kind test run once
+                    // per tap instead of once per channel. `acc` keeps double precision, so each
+                    // output sums the same terms in the same order as a per-channel loop.
+                    const acc = new Float64Array(cout);
                     for (let oy = 0; oy < oh; oy++)
-                        for (let ox = 0; ox < oh; ox++)
-                            for (let o = 0; o < cout; o++) {
-                                let s = bias[o];
-                                for (let ky = 0; ky < 3; ky++) {
-                                    const iy = oy * stride + ky - pad;
-                                    if (iy < 0 || iy >= h) continue;
-                                    for (let kx = 0; kx < 3; kx++) {
-                                        const ix = ox * stride + kx - pad;
-                                        if (ix < 0 || ix >= h) continue;
-                                        const xi = (iy * h + ix) * cin;
-                                        if (kind === 1) s += x[xi + o] * w[o * 9 + ky * 3 + kx];
-                                        else
-                                            for (let i = 0, wi = o * 9 * cin + (ky * 3 + kx) * cin; i < cin; i++)
-                                                s += x[xi + i] * w[wi + i];
-                                    }
+                        for (let ox = 0; ox < oh; ox++) {
+                            acc.set(bias);
+                            for (let ky = 0; ky < 3; ky++) {
+                                const iy = oy * stride + ky - pad;
+                                if (iy < 0 || iy >= h) continue;
+                                for (let kx = 0; kx < 3; kx++) {
+                                    const ix = ox * stride + kx - pad;
+                                    if (ix < 0 || ix >= h) continue;
+                                    const xi = (iy * h + ix) * cin;
+                                    const t = ky * 3 + kx;
+                                    if (kind === 1) for (let o = 0; o < cout; o++) acc[o] += x[xi + o] * w[o * 9 + t];
+                                    else
+                                        for (let o = 0; o < cout; o++) {
+                                            let s = acc[o];
+                                            for (let i = 0, wi = (o * 9 + t) * cin; i < cin; i++) s += x[xi + i] * w[wi + i];
+                                            acc[o] = s;
+                                        }
                                 }
-                                out[(oy * oh + ox) * cout + o] = s < 0 ? 0 : s > 6 ? 6 : s;
                             }
+                            const oi = (oy * oh + ox) * cout;
+                            for (let o = 0; o < cout; o++) {
+                                const s = acc[o];
+                                out[oi + o] = s < 0 ? 0 : s > 6 ? 6 : s;
+                            }
+                        }
                 }
                 x = out;
                 h = oh;

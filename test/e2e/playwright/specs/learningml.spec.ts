@@ -171,18 +171,19 @@ test('authors, previews and grades a LearningML text classifier in an offline SC
     await offline.close();
 });
 
-test('loads the insects example and classifies photos offline with the MobileNet extractor', async ({
-    authenticatedPage: page,
-    createProject,
-}, testInfo) => {
-    const shot = async (locator: ReturnType<Page['locator']>, name: string) => {
-        const path = testInfo.outputPath(`${name}.png`);
-        await locator.screenshot({ path });
-        await testInfo.attach(name, { path, contentType: 'image/png' });
-    };
-    const errors: string[] = [];
-    page.on('pageerror', error => errors.push(error.message));
-    const uuid = await createProject(page, 'LearningML images');
+const insectPhoto: string = JSON.parse(
+    readFileSync('public/files/perm/idevices/base/learningml/edition/examples/insectos.json', 'utf8'),
+).classes[0].examples[0];
+const probe = { name: 'probe.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(insectPhoto.split(',')[1], 'base64') };
+
+/** Authors a k-NN iDevice from the insects example and returns its id. */
+async function authorInsects(
+    page: Page,
+    createProject: (page: Page, title: string) => Promise<string>,
+    title: string,
+    onClasses?: (author: ReturnType<Page['locator']>) => Promise<void>,
+): Promise<string> {
+    const uuid = await createProject(page, title);
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);
     await selectFirstPage(page);
@@ -194,23 +195,33 @@ test('loads the insects example and classifies photos offline with the MobileNet
     await author.locator('.exe-form-tabs a', { hasText: 'Classes' }).click();
     await expect(author.locator('.lml-author-class')).toHaveCount(4);
     await expect(author.locator('.lml-author-class').first().locator('.lml-images img')).toHaveCount(11);
-    await expect(author.locator('.lml-size')).toContainText('/ 280 kB');
-    await shot(author, 'learningml-editor-classes');
-    const id = await page.locator('.idevice_node.learningml').getAttribute('id');
-    await saveIdevice(page, id!);
+    await onClasses?.(author);
+    const id = (await page.locator('.idevice_node.learningml').getAttribute('id'))!;
+    await saveIdevice(page, id);
+    await expect(page.locator(`.idevice_node[id="${id}"] .lml-activity .lml-class`)).toHaveCount(4);
+    return id;
+}
+
+test('loads the insects example and classifies photos with the MobileNet extractor in the editor and preview', async ({
+    authenticatedPage: page,
+    createProject,
+}, testInfo) => {
+    const shot = async (locator: ReturnType<Page['locator']>, name: string) => {
+        const path = testInfo.outputPath(`${name}.png`);
+        await locator.screenshot({ path });
+        await testInfo.attach(name, { path, contentType: 'image/png' });
+    };
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const id = await authorInsects(page, createProject, 'LearningML images', async author => {
+        await expect(author.locator('.lml-size')).toContainText('/ 280 kB');
+        await shot(author, 'learningml-editor-classes');
+    });
 
     const view = page.locator(`.idevice_node[id="${id}"] .lml-activity`);
-    await expect(view.locator('.lml-class')).toHaveCount(4);
-    const photo: string = JSON.parse(
-        readFileSync('public/files/perm/idevices/base/learningml/edition/examples/insectos.json', 'utf8'),
-    ).classes[0].examples[0];
     await view.getByRole('button', { name: 'Train the model', exact: true }).click();
     await expect(view.locator('.lml-status')).toHaveText('Model trained with 32 examples.', { timeout: 30000 });
-    await view.getByLabel('Image to classify').setInputFiles({
-        name: 'probe.jpg',
-        mimeType: 'image/jpeg',
-        buffer: Buffer.from(photo.split(',')[1], 'base64'),
-    });
+    await view.getByLabel('Image to classify').setInputFiles(probe);
     await expect(view.locator('.lml-prediction')).toHaveText('The model says: hormiga');
     await expect(view.locator('.lml-bar')).toHaveCount(4);
     await view.getByRole('button', { name: 'Check my model', exact: true }).click();
@@ -241,8 +252,18 @@ test('loads the insects example and classifies photos offline with the MobileNet
     await previewFrame.getByRole('button', { name: 'Train the model', exact: true }).click();
     await expect(previewFrame.locator('.lml-status')).toHaveText('Model trained with 32 examples.', { timeout: 30000 });
     await page.locator('#previewsidenavclose').click();
+    expect(errors).toEqual([]);
+});
 
-    // An exported package loads them from content/resources/ and trains offline.
+test('exports the insects example as an HTML5 package that trains and classifies photos offline', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await authorInsects(page, createProject, 'LearningML images export');
+
+    // An exported package loads the photos from content/resources/ and trains offline.
     const files = await exported(page, 'html5');
     expect(
         Object.keys(files).filter(name => name.startsWith('content/resources/') && name.endsWith('.jpg')),
@@ -278,11 +299,7 @@ test('loads the insects example and classifies photos offline with the MobileNet
     );
     await packaged.getByRole('button', { name: 'Train the model', exact: true }).click();
     await expect(packaged.locator('.lml-status')).toHaveText('Model trained with 32 examples.', { timeout: 30000 });
-    await packaged.getByLabel('Image to classify').setInputFiles({
-        name: 'probe.jpg',
-        mimeType: 'image/jpeg',
-        buffer: Buffer.from(photo.split(',')[1], 'base64'),
-    });
+    await packaged.getByLabel('Image to classify').setInputFiles(probe);
     await expect(packaged.locator('.lml-prediction')).toHaveText('The model says: hormiga');
     await offline.close();
     expect(missing).toEqual([]);

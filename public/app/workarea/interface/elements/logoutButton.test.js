@@ -218,8 +218,24 @@ describe('LogoutButton', () => {
       });
 
       describe('saveAndCloseOffline', () => {
+        it.each([undefined, false, { saved: false }, { saved: false, downloaded: true }])(
+          'LEAVE-15: keeps the window open after an unconfirmed save %j',
+          async (receipt) => {
+            const guard = window.onbeforeunload;
+            window.eXeLearning.app.project = { _yjsEnabled: true, exportToElpxViaYjs: vi.fn().mockResolvedValue(receipt) };
+            await logoutButton.saveAndCloseOffline();
+            expect(mockWindowClose).not.toHaveBeenCalled();
+            expect(window.onbeforeunload).toBe(guard);
+          },
+        );
+
+        it('LEAVE-16: keeps the window open when export is unavailable', async () => {
+          await logoutButton.saveAndCloseOffline();
+          expect(mockWindowClose).not.toHaveBeenCalled();
+        });
+
         it('should call exportToElpxViaYjs and close', async () => {
-          const mockExport = vi.fn().mockResolvedValue();
+          const mockExport = vi.fn().mockResolvedValue({ saved: true });
           window.eXeLearning.app.project = {
             _yjsEnabled: true,
             exportToElpxViaYjs: mockExport,

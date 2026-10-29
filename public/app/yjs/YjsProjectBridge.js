@@ -3255,12 +3255,13 @@ class YjsProjectBridge {
   async generateScreenshotFromFirstPage() {
     if (this._screenshotGenerating) return;
     this._screenshotGenerating = true;
+    const documentManager = this.documentManager;
     try {
-      if (!this.documentManager) {
+      if (!documentManager) {
         console.warn('[YjsProjectBridge] Screenshot: no documentManager');
         return;
       }
-      const metadata = this.documentManager.getMetadata();
+      const metadata = documentManager.getMetadata();
       // Skip if user has set a custom screenshot
       if (metadata.get('screenshot')) {
         Logger.log('[YjsProjectBridge] Screenshot: custom screenshot already set, skipping');
@@ -3275,7 +3276,7 @@ class YjsProjectBridge {
       Logger.log('[YjsProjectBridge] Screenshot: generating preview files...');
       // Generate all preview files (HTML + CSS + theme + libs)
       const result = await window.SharedExporters.generatePreviewForSW(
-        this.documentManager,
+        documentManager,
         this.assetCache || null,
         this.resourceFetcher || null,
         this.assetManager || null,
@@ -3369,12 +3370,16 @@ class YjsProjectBridge {
 
       // Capture screenshot using html2canvas in a hidden iframe
       const dataUrl = await this._captureHtmlAsScreenshot(htmlString);
-      if (dataUrl) {
-        metadata.set('screenshot', dataUrl);
-        // Re-mark as clean: screenshot is auto-generated metadata, not a user edit,
-        // so it should not trigger "unsaved changes" guards on navigation
-        if (this.documentManager?.markClean) {
-          this.documentManager.markClean();
+      if (dataUrl && this.documentManager === documentManager && !metadata.get('screenshot')) {
+        // Suppress only this synchronous derived-metadata mutation. Rendering is
+        // asynchronous; edits made while it runs must remain pending. Never use
+        // markClean(), which would acknowledge unrelated document changes.
+        const wasSuppressed = documentManager._suppressDirtyTracking;
+        documentManager._suppressDirtyTracking = true;
+        try {
+          metadata.set('screenshot', dataUrl);
+        } finally {
+          documentManager._suppressDirtyTracking = wasSuppressed;
         }
         Logger.log('[YjsProjectBridge] Auto-generated screenshot from first page');
       }
@@ -3609,10 +3614,13 @@ class YjsProjectBridge {
             this.logElpxExportPhase('bridge:browser-download:end', {
               filename: exportFilename,
             }, trace);
-            this.finalizeElpxExportTrace('success', {
+            this.finalizeElpxExportTrace('download-started', {
               filename: exportFilename,
             }, trace);
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
+            // A browser download has no completion receipt. Keep pending changes
+            // and assets recoverable rather than authorizing a destructive leave.
+            return { saved: false, downloaded: true };
           }
           this.assetManager?.markAssetsSavedLocally?.();
           return { saved: true };

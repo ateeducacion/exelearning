@@ -1282,6 +1282,7 @@ ${userFooterHtml}</div></footer>`;
                 next?: string;
                 page?: string;
                 license?: string;
+                licenseLabel?: string;
                 madeWith?: string;
                 newWindow?: string;
             };

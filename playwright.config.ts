@@ -30,6 +30,7 @@ if (isRunningOnlyStatic) {
 
 // Shared environment for dynamic server (chromium/firefox)
 const dynamicServerEnv = {
+    NODE_ENV: 'test',
     DB_PATH: ':memory:',
     // FIX: '/tmp/' usually does not exist on Windows.
     // We use the OS temporary folder dynamically.

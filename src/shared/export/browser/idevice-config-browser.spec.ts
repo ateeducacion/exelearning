@@ -175,7 +175,7 @@ describe('idevice-config-browser', () => {
         // 'json'. Anything keying off componentType in the browser — renderView(), and the
         // printing path's notion of what counts as an interactive activity — read the wrong
         // answer for them.
-        it.each(['digcompedu', 'lomloe'])('marks %s as a json component (matches config.xml)', type => {
+        it.each(['digcompedu', 'lomloe', 'learningml'])('marks %s as a json component (matches config.xml)', type => {
             const config = getIdeviceConfig(type);
             expect(config.cssClass).toBe(type);
             expect(config.componentType).toBe('json');
@@ -335,6 +335,10 @@ describe('idevice-config-browser', () => {
             const threeIdx = files.indexOf('three.min.js');
             const orbitIdx = files.indexOf('OrbitControls.js');
             expect(threeIdx).toBeLessThan(orbitIdx);
+        });
+
+        it('includes the MobileNet image extractor for learningml', () => {
+            expect(getIdeviceExportFiles('learningml', '.js')).toEqual(['learningml-mobilenet.js', 'learningml.js']);
         });
 
         it('includes model-viewer and Three.js dependencies for three-d-viewer', () => {

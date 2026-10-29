@@ -40,6 +40,42 @@ describe('scrubSvg', () => {
         const out = scrubSvg('<svg><foreignObject><div onclick="x"/></foreignObject></svg>');
         expect(out).not.toContain('foreignObject');
     });
+
+    it('defeats nested/spliced <script> payloads (loops to a fixed point)', () => {
+        // Removing the inner <script>…</script> would splice the outer halves
+        // into a fresh <script> a single pass would leave behind.
+        const out = scrubSvg('<svg><scr<script>alert(1)</script>ipt>x</scr<script>y</script>ipt></svg>');
+        expect(out.toLowerCase()).not.toContain('<script');
+        expect(out).not.toContain('alert(1)');
+    });
+
+    it('removes <script> end tags with whitespace before the angle bracket', () => {
+        const out = scrubSvg('<svg><script>alert(1)</script >\n<rect/></svg>');
+        expect(out.toLowerCase()).not.toContain('<script');
+        expect(out).not.toContain('alert(1)');
+        expect(out).toContain('<rect');
+    });
+
+    it('strips vbscript: URLs', () => {
+        expect(scrubSvg('<svg><a href="vbscript:msgbox(1)"></a></svg>')).not.toContain('vbscript:');
+        expect(scrubSvg('<svg><a href="VBScript:msgbox(1)"></a></svg>').toLowerCase()).not.toContain('vbscript:');
+    });
+
+    it('defeats spliced javascript: schemes (loops to a fixed point)', () => {
+        // `javasjavascript:cript:` collapses to `javascript:` after one removal.
+        const out = scrubSvg('<svg><a href="javasjavascript:cript:alert(1)"></a></svg>');
+        expect(out.toLowerCase()).not.toContain('javascript:');
+    });
+
+    it('strips script-executing data:text/html URLs', () => {
+        const out = scrubSvg('<svg><a href="data:text/html,<script>alert(1)</script>"></a></svg>');
+        expect(out.toLowerCase()).not.toContain('data:text/html');
+    });
+
+    it('keeps legitimate embedded data:image URLs intact', () => {
+        const svg = '<svg><image href="data:image/png;base64,AAAA"/></svg>';
+        expect(scrubSvg(svg)).toContain('data:image/png;base64,AAAA');
+    });
 });
 
 describe('sanitizeSvg', () => {

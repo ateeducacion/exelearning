@@ -132,53 +132,27 @@ describe('udl-content iDevice edition lifecycle', () => {
     });
 });
 
-describe('udl-content iDevice (edition)', () => {
+describe('udl-content iDevice — button text split on the first "|"', () => {
     let $exeDevice;
-    let appended;
-    let saved;
 
     beforeEach(() => {
-        saved = { $: global.$, _: global._, c_: global.c_ };
-
-        // i18n helpers are invoked eagerly while building the object literal.
-        global._ = (s) => s;
-        global.c_ = (s) => s;
-
-        // createBlockForm() touches the DOM through a tiny set of jQuery
-        // calls. Provide a chainable no-op stub; only .append() captures the
-        // generated HTML so the split logic can be asserted.
-        appended = '';
-        const makeJq = () => {
-            const node = {
-                append: (html) => {
-                    appended += html;
-                    return node;
-                },
-            };
-            const passthrough = ['hide', 'show', 'html', 'addClass', 'removeClass'];
-            for (const m of passthrough) node[m] = () => node;
-            return node;
-        };
-        global.$ = () => makeJq();
-
         global.$exeDevice = undefined;
-
         $exeDevice = global.loadIdevice(join(__dirname, 'udl-content.js'));
-        $exeDevice.idevicePath = '/idevice/';
+        $exeDevice.idevicePath = '/udl-content/';
+        document.body.innerHTML = '<div id="udlContentFormBlocks"></div>';
     });
 
     afterEach(() => {
         if ($exeDevice && $exeDevice.$lifecycle) $exeDevice.$lifecycle.destroy();
-        // Restore the real jQuery and i18n helpers the stubs above replaced,
-        // so the lifecycle suite below runs against the real ones.
-        global.$ = saved.$;
-        global._ = saved._;
-        global.c_ = saved.c_;
     });
 
-    /** Build the block HTML and return what createBlockForm appended. */
-    function renderBlock(btnTxt) {
-        appended = '';
+    /**
+     * Build one block form and read back the explanation paragraph: its two
+     * spans carry the accessible-hidden and the visible halves of the button
+     * text, filled through the DOM (#2646), and the paragraph itself stays
+     * hidden when the text has no "|".
+     */
+    const renderBlock = btnTxt => {
         $exeDevice.createBlockForm({
             btnTxt,
             btnType: 0,
@@ -187,42 +161,45 @@ describe('udl-content iDevice (edition)', () => {
             contAlt2: '',
             contAlt3: '',
         });
-        return appended;
-    }
+        const form = $('#udlContentFormBlocks .udlContentFormBlock').last();
+        const explanation = $('.udlContentFormBlockButtonTxtExplanation', form);
+        const spans = $('span', explanation);
+        return {
+            hidden: spans.eq(0).text(),
+            visible: spans.eq(1).text(),
+            hiddenIsScreenReaderOnly: spans.eq(0).hasClass('sr-only-explanation'),
+            paragraphHidden: (explanation.attr('style') || '').includes('display:none'),
+        };
+    };
 
-    describe('createBlockForm — split on first "|"', () => {
-        it('splits "hidden | visible" into the two accessibility spans', () => {
-            const html = renderBlock('hidden | visible');
-            // Accessible-hidden part (before the first "|").
-            expect(html).toContain('class="sr-only-explanation"');
-            expect(html).toContain('>hidden </span>');
-            // Visible part (after the first "|").
-            expect(html).toContain('> visible</span>');
-        });
+    it('splits "hidden | visible" into the two accessibility spans', () => {
+        const block = renderBlock('hidden | visible');
+        expect(block.hiddenIsScreenReaderOnly).toBe(true);
+        expect(block.hidden).toBe('hidden ');
+        expect(block.visible).toBe(' visible');
+        expect(block.paragraphHidden).toBe(false);
+    });
 
-        it('keeps every "|" after the first one in the visible label (no global replace)', () => {
-            // Legitimate input: the visible label itself contains pipe characters.
-            const html = renderBlock('hidden|a|b|c');
-            // Everything after the FIRST pipe stays intact, including later pipes.
-            expect(html).toContain('>hidden</span>');
-            expect(html).toContain('>a|b|c</span>');
-        });
+    it('keeps every "|" after the first one in the visible label (no global replace)', () => {
+        // Legitimate input: the visible label itself contains pipe characters.
+        const block = renderBlock('hidden|a|b|c');
+        expect(block.hidden).toBe('hidden');
+        expect(block.visible).toBe('a|b|c');
+    });
 
-        it('parses purely on the first "|" without a tilde sentinel collision', () => {
-            // Older code used "~~" as an intermediate sentinel; the new split is
-            // sentinel-free, so input is parsed purely on the first "|".
-            const html = renderBlock('left | right side');
-            expect(html).toContain('>left </span>');
-            expect(html).toContain('> right side</span>');
-        });
+    it('parses purely on the first "|" without a tilde sentinel collision', () => {
+        // Older code used "~~" as an intermediate sentinel; the split is now
+        // sentinel-free, so input is parsed purely on the first "|".
+        const block = renderBlock('left | right side');
+        expect(block.hidden).toBe('left ');
+        expect(block.visible).toBe(' right side');
+    });
 
-        it('leaves the explanation block hidden when there is no "|"', () => {
-            const html = renderBlock('plain label');
-            // btnTextPartsStyle stays display:none (no accessible-hidden parts).
-            expect(html).toContain(
-                'udlContentFormBlockButtonTxtExplanation" style="display:none"',
-            );
-        });
+    it('leaves the explanation block hidden when there is no "|"', () => {
+        const block = renderBlock('plain label');
+        expect(block.paragraphHidden).toBe(true);
+        expect(block.hidden).toBe('');
+        expect(block.visible).toBe('');
     });
 });
 

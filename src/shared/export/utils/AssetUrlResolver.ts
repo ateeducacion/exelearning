@@ -8,6 +8,7 @@
  * same way — previously this logic lived inside PrintPreviewExporter and had no second home.
  */
 
+import { blobFromBytes } from '../../utils/blob';
 import type { AssetProvider, ExportAsset } from '../interfaces';
 
 /** Matches both reference styles, stopping before quotes, whitespace and JSON escapes. */
@@ -149,11 +150,7 @@ export class AssetUrlResolver {
         }
 
         try {
-            const blob =
-                asset.data instanceof Blob
-                    ? asset.data
-                    : // biome-ignore lint/suspicious/noExplicitAny: legacy asset data types
-                      new Blob([asset.data as any], { type: asset.mime });
+            const blob = blobFromBytes(asset.data, asset.mime);
             const url = URL.createObjectURL(blob);
             this.ownedUrls.add(url);
             return url;

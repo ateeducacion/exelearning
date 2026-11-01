@@ -9,6 +9,9 @@ export default class NavbarFile {
         this.tutorialButton = this.menu.navbar.querySelector(
             '#navbar-button-exe-tutorial'
         );
+        // REST API moved to Developer menu. Older deployments may still
+        // have the legacy hidden Help > API docs entry — keep the reference
+        // so the existing optional behavior continues to work when present.
         this.apiDocsButton = this.menu.navbar.querySelector(
             '#navbar-button-api-docs'
         );
@@ -72,9 +75,11 @@ export default class NavbarFile {
 
     /**
      * API Docs
-     * Help -> API Docs (Swagger)
+     * Help -> API Docs (Swagger). The button is only present on older deployments;
+     * the canonical entry now lives under Developer > REST API.
      */
     setApiDocsEvent() {
+        if (!this.apiDocsButton) return;
         this.apiDocsButton.addEventListener('click', () => {
             this.apiDocsEvent();
         });

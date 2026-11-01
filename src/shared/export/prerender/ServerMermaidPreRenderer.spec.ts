@@ -28,6 +28,12 @@ describe('ServerMermaidPreRenderer', () => {
         }
     });
 
+    it('loads jsdom and its on-disk user-agent stylesheet from the application directory', () => {
+        // The shared renderer's window (see mermaidDom): a renderer of its own would close it on destroy.
+        const window = (globalThis as unknown as { window: Window }).window;
+        expect(window.getComputedStyle(window.document.body).display).toBe('block');
+    });
+
     describe('hasMermaid', () => {
         it('should detect <pre class="mermaid">', () => {
             expect(renderer.hasMermaid('<pre class="mermaid">graph TD; A-->B</pre>')).toBe(true);

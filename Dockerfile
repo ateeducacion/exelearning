@@ -20,6 +20,7 @@ RUN bun install
 ################################################################################
 FROM deps AS builder
 COPY tsconfig.json ./
+COPY LICENSE ./
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY views/ ./views/

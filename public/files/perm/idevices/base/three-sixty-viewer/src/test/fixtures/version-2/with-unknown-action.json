@@ -1,0 +1,29 @@
+{
+    "version": 2,
+    "ideviceId": "idev-v2-future-action",
+    "startSceneId": "s1",
+    "scenes": [
+        {
+            "id": "s1",
+            "title": "Scene with a future hotspot",
+            "src": "asset://panoramas/one.jpg",
+            "alt": "One",
+            "description": "",
+            "projection": "equirectangular",
+            "initialView": { "yaw": 0, "pitch": 0, "fov": 75 },
+            "hotspots": [
+                {
+                    "id": "hs-future",
+                    "label": "Future thing",
+                    "icon": "circle",
+                    "yaw": 12,
+                    "pitch": -4,
+                    "x": 50,
+                    "y": 50,
+                    "action": { "type": "quiz3d", "payload": { "question": "Why?", "options": ["a", "b"], "nested": { "deep": true } } }
+                }
+            ]
+        }
+    ],
+    "behaviour": {}
+}

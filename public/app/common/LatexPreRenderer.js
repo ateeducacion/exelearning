@@ -123,18 +123,26 @@
         let clean = latexWithHtml.replace(/<br\s*\/?>/gi, '\n');
 
         // Remove any other HTML tags FIRST (before decoding entities)
-        // This prevents decoded < and > from being mistaken for tags
-        clean = clean.replace(/<[^>]+>/g, '');
+        // This prevents decoded < and > from being mistaken for tags.
+        // Apply repeatedly until the string stops changing so that removing one
+        // tag cannot splice two halves into a new tag (e.g. "<<a>b>" -> "b>").
+        let prevClean;
+        do {
+            prevClean = clean;
+            clean = clean.replace(/<[^>]+>/g, '');
+        } while (clean !== prevClean);
 
-        // Decode common HTML entities AFTER removing tags
+        // Decode common HTML entities AFTER removing tags.
+        // Decode &amp; LAST so that an already-escaped sequence like "&amp;lt;"
+        // (the literal text "&lt;") does not get double-decoded into "<".
         clean = clean
             .replace(/&nbsp;/gi, ' ')
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
-            .replace(/&amp;/g, '&')
             .replace(/&quot;/g, '"')
             .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
-            .replace(/&#x([a-fA-F0-9]+);/g, (_, code) => String.fromCharCode(parseInt(code, 16)));
+            .replace(/&#x([a-fA-F0-9]+);/g, (_, code) => String.fromCharCode(parseInt(code, 16)))
+            .replace(/&amp;/g, '&');
 
         return clean;
     }
@@ -711,7 +719,7 @@
     function isNumberedEquation(latex) {
         const envMatch = latex.match(/\\begin\{([^}*]+)\*?\}/);
         if (!envMatch) return false;
-        const envName = envMatch[1].replace('*', ''); // Remove * for unnumbered variants
+        const envName = envMatch[1].replace(/\*/g, ''); // Remove * for unnumbered variants
         return NUMBERED_EQUATION_ENVS.has(envName) && !envMatch[1].endsWith('*');
     }
 
@@ -784,6 +792,14 @@
      * @returns {Promise<{html: string, hasLatex: boolean, latexRendered: boolean, count: number}>}
      */
     async function preRenderPerIdevice(html, preserved) {
+        // Security note (stored-xss): DOMParser.parseFromString builds an INERT
+        // document - scripts are NOT executed here, the document is only used to
+        // locate and re-serialize content. The ONLY new HTML this routine injects
+        // back via innerHTML is the MathJax library-rendered <svg>/<math> wrapper
+        // produced by createRenderedWrapperHtml(), whose data-latex attribute is
+        // escaped through escapeHtmlAttribute(). Every other byte is a faithful
+        // round-trip of the author's own already-HTML content (the trusted source
+        // of their own page), so this transformation introduces no new XSS sink.
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
@@ -925,7 +941,13 @@
             return await preRenderPerIdevice(safeHtml, preserved);
         }
 
-        // Parse HTML into DOM (simple mode without iDevice scoping)
+        // Parse HTML into DOM (simple mode without iDevice scoping).
+        // Security note (stored-xss): identical reasoning to preRenderPerIdevice -
+        // the parsed document is INERT (no script execution), only used to find
+        // and re-serialize content. The single new HTML payload injected via
+        // innerHTML is the MathJax library-rendered <svg>/<math> wrapper with an
+        // escaped data-latex attribute; the remaining output is a faithful
+        // round-trip of the author's own already-HTML content.
         const parser = new DOMParser();
         const doc = parser.parseFromString(safeHtml, 'text/html');
 

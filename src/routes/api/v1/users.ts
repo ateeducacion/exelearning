@@ -26,6 +26,7 @@ import {
     type UpdateUserInput,
     UserIdParam,
 } from './types';
+import { getDefaultQuotaMb } from '../../../services/app-settings';
 
 // ============================================================================
 // HELPERS
@@ -113,24 +114,22 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
             // Create user
             // user_id: not set for API-created users (null) - they're not SSO
             const roles = createInput.roles || ['ROLE_USER'];
-            const result = await createUser(db, {
+            const newUser = await createUser(db, {
                 email: createInput.email,
                 password: hashedPassword,
                 roles: JSON.stringify(roles),
                 is_lopd_accepted: 1,
-                quota_mb: 4096, // Default quota
+                quota_mb: await getDefaultQuotaMb(db),
                 is_active: 1,
             });
 
-            const newUser = result;
-
             set.status = 201;
             return successResponse({
-                id: newUser!.id,
-                email: newUser!.email,
-                roles: parseRoles(newUser!.roles),
-                created_at: newUser!.created_at,
-                updated_at: newUser!.updated_at,
+                id: newUser.id,
+                email: newUser.email,
+                roles: parseRoles(newUser.roles),
+                created_at: newUser.created_at,
+                updated_at: newUser.updated_at,
             });
         },
         {

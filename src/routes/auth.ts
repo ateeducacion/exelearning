@@ -641,11 +641,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Synology user creation is disabled.' };
                     }
-                    const defaultQuota = await getSettingNumber(
-                        db,
-                        'DEFAULT_QUOTA',
-                        parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-                    );
+                    const defaultQuota = await getDefaultQuotaMb(db);
                     user = await createUser(db, {
                         email: synologyPlaceholderEmail(assertion.username),
                         user_id: externalIdentifier,

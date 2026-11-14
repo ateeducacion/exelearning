@@ -843,6 +843,72 @@ describe('Project Routes', () => {
         });
     });
 
+    describe('body schemas', () => {
+        const O = { a: 1 };
+        async function send(method: string, url: string, body: unknown) {
+            const token = await createAuthToken(1);
+            return app.handle(
+                new Request(`http://localhost${url}`, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                    body: JSON.stringify(body),
+                }),
+            );
+        }
+
+        // Measured before the schemas: each of these answered 500, crashed the SSE stream, stored a
+        // non-string title, or answered 200 with an internal error. The schema rejects them first;
+        // the app's global onError answers 400.
+        it.each([
+            ['POST', '/api/project/upload-chunk', { odeFilePart: 'x', odeFileName: O, odeSessionId: 's' }],
+            ['POST', '/api/project/upload-chunk', { odeFilePart: O, odeFileName: 'a.elp', odeSessionId: 's' }],
+            ['POST', '/api/project/create-quick', { title: O }],
+            ['PATCH', '/api/projects/uuid/probe-uuid/metadata', { title: O }],
+            ['POST', '/api/odes/current-users', { odeSessionId: O }],
+            ['POST', '/api/odes/check-before-leave', { odeSessionId: O }],
+            ['POST', '/api/odes/session/close', { odeSessionId: O }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks', { idevices: O }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks/extract', { idevices: [{ html: O }] }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks/validate-stream', { links: O }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks/validate-stream', { links: [{ url: O }] }],
+            ['POST', '/api/ode-management/odes/session/usedfiles', { idevices: [{ html: O }] }],
+            ['POST', '/api/nav-structure-management/nav-structures/duplicate', { navStructureId: O }],
+            ['PUT', '/api/nav-structure-management/nav-structures/reorder/save', { odeSessionId: O }],
+            ['PUT', '/api/pag-structure-management/pag-structures/reorder/save', { pageId: O }],
+            ['PUT', '/api/idevice-management/idevices/reorder/save', { blockId: O }],
+        ])('rejects a wrong-typed body on %s %s', async (method, url, body) => {
+            expect((await send(method, url, body)).status).toBe(422);
+        });
+
+        it('still accepts the link-check payloads the workarea sends', async () => {
+            const idevices = [
+                {
+                    html: '<a href="https://example.com">x</a>',
+                    pageName: 'P',
+                    blockName: 'B',
+                    ideviceType: 'text',
+                    order: 0,
+                },
+            ];
+            const assetMetadata = { 'abc-123': { filename: null, size: 0, mime: 'image/png' } };
+            const common = { csv: false, odeSessionId: 's1' };
+            const extract = await send('POST', '/api/ode-management/odes/session/brokenlinks/extract', {
+                ...common,
+                idevices,
+            });
+            expect(extract.status).toBe(200);
+            const { links } = await extract.json();
+            expect(links).toHaveLength(1);
+            const used = await send('POST', '/api/ode-management/odes/session/usedfiles', {
+                ...common,
+                resourceReport: true,
+                idevices,
+                assetMetadata,
+            });
+            expect(used.status).toBe(200);
+        });
+    });
+
     describe('POST /api/project/create-quick', () => {
         it('should require authentication', async () => {
             const res = await app.handle(

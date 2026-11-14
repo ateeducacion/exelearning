@@ -147,16 +147,6 @@ export interface ExportOptionsRequest {
     rootPageId?: string;
 }
 
-/**
- * Convert request (ELP to export format)
- */
-export interface ConvertRequest {
-    file: Blob | Buffer | File;
-    format?: string;
-    baseUrl?: string;
-    theme?: string;
-}
-
 // ============================================================================
 // Project Types
 // ============================================================================

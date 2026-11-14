@@ -12,7 +12,6 @@ import {
     type FileGatorDirRequest,
     type FileGatorCreateRequest,
     type ExportOptionsRequest,
-    type ConvertRequest,
 } from './request-payloads';
 
 describe('Request Payload Types', () => {
@@ -81,16 +80,6 @@ describe('Request Payload Types', () => {
                 singlePage: false,
             };
             expect(request.format).toBe('scorm12');
-        });
-    });
-
-    describe('ConvertRequest', () => {
-        it('should accept convert params', () => {
-            const request: ConvertRequest = {
-                file: Buffer.from('test'),
-                format: 'html5',
-            };
-            expect(request.format).toBe('html5');
         });
     });
 });

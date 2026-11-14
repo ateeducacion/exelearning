@@ -1180,7 +1180,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // PATCH /api/projects/:projectId/public-view - Enable/disable the public read-only link
             .patch('/api/projects/:projectId/public-view', async ({ params, body, set, currentUser }) => {
                 const projectId = parseInt(params.projectId, 10);
-                const { enabled } = body as { enabled?: boolean };
+                // No body schema: the typeof check below is the whole validation and keeps its
+                // INVALID_PAYLOAD answer; `?? {}` sends a missing body there instead of throwing.
+                const { enabled } = castRequestBody<{ enabled?: unknown } | undefined>(body) ?? {};
 
                 if (isNaN(projectId)) {
                     set.status = 400;
@@ -1577,7 +1579,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // PATCH /api/projects/uuid/:uuid/public-view - Enable/disable the public read-only link by UUID
             .patch('/api/projects/uuid/:uuid/public-view', async ({ params, body, set, currentUser }) => {
                 const uuid = params.uuid;
-                const { enabled } = body as { enabled?: boolean };
+                // No body schema: the typeof check below is the whole validation and keeps its
+                // INVALID_PAYLOAD answer; `?? {}` sends a missing body there instead of throwing.
+                const { enabled } = castRequestBody<{ enabled?: unknown } | undefined>(body) ?? {};
 
                 if (typeof enabled !== 'boolean') {
                     set.status = 400;

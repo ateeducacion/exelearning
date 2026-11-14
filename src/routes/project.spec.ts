@@ -2030,6 +2030,22 @@ describe('Project Routes', () => {
                 expect(body.publicViewEnabled).toBe(false);
             });
 
+            it('should answer 400, not 500, when the body is missing', async () => {
+                createTestProject(903, 'uuid-903', 1);
+                const token = await createAuthToken(1);
+
+                for (const url of ['/api/projects/903/public-view', '/api/projects/uuid/uuid-903/public-view']) {
+                    const res = await app.handle(
+                        new Request(`http://localhost${url}`, {
+                            method: 'PATCH',
+                            headers: { Cookie: `auth=${token}` },
+                        }),
+                    );
+                    expect(res.status).toBe(400);
+                    expect((await res.json()).responseMessage).toBe('INVALID_PAYLOAD');
+                }
+            });
+
             it('should reject a non-boolean enabled value', async () => {
                 createTestProject(902, 'uuid-902', 1);
                 const token = await createAuthToken(1);

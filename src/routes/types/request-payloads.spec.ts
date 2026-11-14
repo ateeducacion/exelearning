@@ -8,7 +8,6 @@
 import { describe, it, expect } from 'bun:test';
 import {
     type AssetUploadRequest,
-    type LoginRequest,
     type FileGatorDirRequest,
     type FileGatorCreateRequest,
     type ExportOptionsRequest,
@@ -23,24 +22,6 @@ describe('Request Payload Types', () => {
                 clientId: 'client-1',
             };
             expect(request.componentId).toBe('comp-1');
-        });
-    });
-
-    describe('LoginRequest', () => {
-        it('should accept Symfony style login', () => {
-            const request: LoginRequest = {
-                _username: 'user@test.com',
-                _password: 'secret',
-            };
-            expect(request._username).toBe('user@test.com');
-        });
-
-        it('should accept REST style login', () => {
-            const request: LoginRequest = {
-                email: 'user@test.com',
-                password: 'secret',
-            };
-            expect(request.email).toBe('user@test.com');
         });
     });
 

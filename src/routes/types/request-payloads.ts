@@ -50,32 +50,6 @@ export interface AssetUploadRequest {
 }
 
 // ============================================================================
-// Authentication Types
-// ============================================================================
-
-/**
- * Login request - supports both Symfony and REST style
- */
-export interface LoginRequest {
-    _username?: string; // Symfony style
-    email?: string; // REST style
-    _password?: string; // Symfony style
-    password?: string; // REST style
-    returnUrl?: string;
-}
-
-/**
- * Guest login request
- */
-export interface GuestLoginRequest {
-    returnUrl?: string;
-}
-
-/**
- * JWT payload shape: canonical definition lives in `src/auth/types.ts`.
- */
-
-// ============================================================================
 // Export Types
 // ============================================================================
 

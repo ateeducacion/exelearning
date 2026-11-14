@@ -1114,7 +1114,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
 
             it('should return 404 for non-existent project', async () => {
@@ -1379,7 +1380,8 @@ describe('Project Routes', () => {
                             'Content-Type': 'application/json',
                             'Cookie': `auth=${token}`,
                         },
-                        body: JSON.stringify({ email: 'collaborator@test.com' }),
+                        // The share modal sends `role` too; the schema must not reject it.
+                        body: JSON.stringify({ email: 'collaborator@test.com', role: 'editor' }),
                     }),
                 );
 
@@ -1441,7 +1443,22 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
+            });
+
+            it('should reject a non-string email before it reaches the user lookup', async () => {
+                createTestProject(207, 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/207/collaborators', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                        body: JSON.stringify({ email: { $ne: '' } }),
+                    }),
+                );
+                expect(res.status).toBe(422);
             });
 
             it('should not add owner as collaborator', async () => {
@@ -1651,7 +1668,25 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
+            });
+
+            it('should reject a newOwnerId that is not a positive integer', async () => {
+                createTestProject(406, 1);
+                const token = await createAuthToken(1);
+
+                // Numeric strings such as '2' are coerced by Elysia and reach the handler as numbers.
+                for (const newOwnerId of ['abc', 0, -1, 1.5]) {
+                    const res = await app.handle(
+                        new Request('http://localhost/api/projects/406/owner', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                            body: JSON.stringify({ newOwnerId }),
+                        }),
+                    );
+                    expect(res.status).toBe(422);
+                }
             });
         });
     });
@@ -1721,7 +1756,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
 
             it('should only update the specified project (regression test for stale UUID bug)', async () => {
@@ -1793,7 +1829,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
         });
 
@@ -1885,7 +1922,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
         });
 
@@ -4194,7 +4232,7 @@ describe('Project Routes', () => {
             expect(res.status).toBe(400);
         });
 
-        it('should return 400 for invalid visibility value', async () => {
+        it('should reject an invalid visibility value', async () => {
             const token = await createAuthToken(1);
             const project = {
                 id: 1900,
@@ -4218,7 +4256,8 @@ describe('Project Routes', () => {
                 }),
             );
 
-            expect(res.status).toBe(400);
+            // The body schema rejects it before the handler; the app's global onError answers 400.
+            expect(res.status).toBe(422);
         });
     });
 

@@ -79,6 +79,8 @@ const SyncMetadataEntry = t.Object({
     contentHash: t.Optional(t.String()),
     folderPath: t.Optional(t.String()),
 });
+/** DELETE /bulk: the asset client IDs to delete (an empty or missing body deletes nothing). */
+const BulkDeleteBody = t.Optional(t.Object({ clientIds: t.Optional(t.Array(t.String())) }));
 /** `metadata` is a JSON string from multipart clients, or an array from JSON ones. */
 const SyncUploadBody = t.Object({
     files: t.Optional(t.Files()),
@@ -988,33 +990,37 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
             // DELETE /bulk - Delete multiple assets by client IDs
             // Used for efficient folder deletion (single HTTP request instead of N)
-            .delete('/bulk', async ({ params, body, set }) => {
-                const { projectId } = params;
-                const { clientIds } = (body || {}) as { clientIds?: string[] };
+            .delete(
+                '/bulk',
+                async ({ params, body, set }) => {
+                    const { projectId } = params;
+                    const { clientIds } = castRequestBody<Static<typeof BulkDeleteBody>>(body) ?? {};
 
-                if (!clientIds || clientIds.length === 0) {
-                    return { success: true, deleted: 0 };
-                }
-
-                const project = await resolveProject(projectId);
-                if (!project) {
-                    set.status = 404;
-                    return { success: false, error: 'Project not found' };
-                }
-
-                const assets = await queries.findAssetsByClientIds(database, clientIds, project.id);
-
-                // Delete files and database records
-                for (const asset of assets) {
-                    const absPath = resolveAssetFile(asset);
-                    if (absPath) {
-                        await remove(absPath).catch(() => {});
+                    if (!clientIds || clientIds.length === 0) {
+                        return { success: true, deleted: 0 };
                     }
-                    await queries.deleteAsset(database, asset.id);
-                }
 
-                return { success: true, deleted: assets.length };
-            })
+                    const project = await resolveProject(projectId);
+                    if (!project) {
+                        set.status = 404;
+                        return { success: false, error: 'Project not found' };
+                    }
+
+                    const assets = await queries.findAssetsByClientIds(database, clientIds, project.id);
+
+                    // Delete files and database records
+                    for (const asset of assets) {
+                        const absPath = resolveAssetFile(asset);
+                        if (absPath) {
+                            await remove(absPath).catch(() => {});
+                        }
+                        await queries.deleteAsset(database, asset.id);
+                    }
+
+                    return { success: true, deleted: assets.length };
+                },
+                { body: BulkDeleteBody },
+            )
 
             // DELETE /:assetId - Delete asset by numeric ID (legacy)
             .delete('/:assetId', async ({ params, set }) => {

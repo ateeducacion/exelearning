@@ -1093,6 +1093,20 @@ describe('Assets Routes', () => {
     });
 
     describe('DELETE /api/projects/:projectId/assets/bulk', () => {
+        it('rejects clientIds that are not an array of strings', async () => {
+            for (const clientIds of ['abc', [{ a: 1 }], 5]) {
+                const res = await handle(
+                    new Request(`http://localhost/api/projects/1/assets/bulk`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ clientIds }),
+                    }),
+                );
+                // The body schema rejects it; the app's global onError answers 400.
+                expect(res.status).toBe(422);
+            }
+        });
+
         it('should delete multiple assets by client IDs', async () => {
             const filePath1 = path.join(legacyProjectDir, 'bulk-delete-1.txt');
             const filePath2 = path.join(legacyProjectDir, 'bulk-delete-2.txt');

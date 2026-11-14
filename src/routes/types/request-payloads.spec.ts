@@ -6,25 +6,9 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import {
-    type AssetUploadRequest,
-    type FileGatorDirRequest,
-    type FileGatorCreateRequest,
-    type ExportOptionsRequest,
-} from './request-payloads';
+import { type FileGatorDirRequest, type FileGatorCreateRequest, type ExportOptionsRequest } from './request-payloads';
 
 describe('Request Payload Types', () => {
-    describe('AssetUploadRequest', () => {
-        it('should accept asset with metadata', () => {
-            const request: AssetUploadRequest = {
-                file: Buffer.from('test'),
-                componentId: 'comp-1',
-                clientId: 'client-1',
-            };
-            expect(request.componentId).toBe('comp-1');
-        });
-    });
-
     describe('FileGatorDirRequest', () => {
         it('should accept directory path', () => {
             const request: FileGatorDirRequest = {

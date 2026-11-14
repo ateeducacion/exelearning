@@ -17,39 +17,6 @@ export function castRequestBody<T>(body: unknown): T {
 }
 
 // ============================================================================
-// File Upload Types
-// ============================================================================
-
-/**
- * Asset upload request with metadata
- */
-export interface AssetUploadRequest {
-    file: Blob | Buffer;
-    componentId?: string;
-    clientId?: string;
-    filename?: string;
-    mimetype?: string;
-    folderPath?: string;
-    // Resumable.js fields for chunked uploads
-    resumableIdentifier?: string;
-    resumableChunkNumber?: string;
-    resumableTotalChunks?: string;
-    resumableFilename?: string;
-    identifier?: string; // Alias for resumableIdentifier
-    // Batch sync fields
-    metadata?:
-        | string
-        | Array<{
-              clientId: string;
-              filename: string;
-              mimeType: string;
-              contentHash?: string;
-              folderPath?: string;
-          }>;
-    files?: (Blob | Buffer)[];
-}
-
-// ============================================================================
 // Export Types
 // ============================================================================
 

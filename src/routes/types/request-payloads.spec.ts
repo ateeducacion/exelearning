@@ -7,8 +7,6 @@
 
 import { describe, it, expect } from 'bun:test';
 import {
-    type UploadChunkRequest,
-    type FileUploadRequest,
     type AssetUploadRequest,
     type LoginRequest,
     type FileGatorDirRequest,
@@ -16,38 +14,9 @@ import {
     type ExportOptionsRequest,
     type ConvertRequest,
     type IdeviceFileUploadRequest,
-    type ProjectOpenRequest,
-    type ProjectSaveRequest,
-    type UserPreferencesRequest,
-    type AddCollaboratorRequest,
-    type TransferOwnershipRequest,
-    type UpdateVisibilityRequest,
 } from './request-payloads';
 
 describe('Request Payload Types', () => {
-    describe('UploadChunkRequest', () => {
-        it('should accept valid upload chunk data', () => {
-            const request: UploadChunkRequest = {
-                resumableIdentifier: 'abc123',
-                resumableChunkNumber: '1',
-                resumableTotalChunks: '5',
-                resumableFilename: 'test.elp',
-                file: Buffer.from('test'),
-            };
-            expect(request.resumableIdentifier).toBe('abc123');
-        });
-    });
-
-    describe('FileUploadRequest', () => {
-        it('should accept file with optional filename', () => {
-            const request: FileUploadRequest = {
-                file: Buffer.from('test'),
-                filename: 'test.png',
-            };
-            expect(request.filename).toBe('test.png');
-        });
-    });
-
     describe('AssetUploadRequest', () => {
         it('should accept asset with metadata', () => {
             const request: AssetUploadRequest = {
@@ -143,73 +112,6 @@ describe('Request Payload Types', () => {
                 base64String: 'data:image/png;base64,abc123',
             };
             expect(request.base64String).toBeDefined();
-        });
-    });
-
-    describe('ProjectOpenRequest', () => {
-        it('should accept project open params', () => {
-            const request: ProjectOpenRequest = {
-                odeFilePath: '/tmp/test.elp',
-                odeFileName: 'test.elp',
-            };
-            expect(request.odeFileName).toBe('test.elp');
-        });
-    });
-
-    describe('ProjectSaveRequest', () => {
-        it('should accept project save params', () => {
-            const request: ProjectSaveRequest = {
-                sessionId: 'session-123',
-                title: 'My Project',
-            };
-            expect(request.sessionId).toBe('session-123');
-        });
-    });
-
-    describe('UserPreferencesRequest', () => {
-        it('should accept various preference types', () => {
-            const request: UserPreferencesRequest = {
-                theme: 'dark',
-                fontSize: 14,
-                showTips: true,
-            };
-            expect(request.theme).toBe('dark');
-            expect(request.fontSize).toBe(14);
-            expect(request.showTips).toBe(true);
-        });
-    });
-
-    describe('AddCollaboratorRequest', () => {
-        it('should accept email', () => {
-            const request: AddCollaboratorRequest = {
-                email: 'collaborator@test.com',
-            };
-            expect(request.email).toBe('collaborator@test.com');
-        });
-    });
-
-    describe('TransferOwnershipRequest', () => {
-        it('should accept new owner id', () => {
-            const request: TransferOwnershipRequest = {
-                newOwnerId: 42,
-            };
-            expect(request.newOwnerId).toBe(42);
-        });
-    });
-
-    describe('UpdateVisibilityRequest', () => {
-        it('should accept public visibility', () => {
-            const request: UpdateVisibilityRequest = {
-                visibility: 'public',
-            };
-            expect(request.visibility).toBe('public');
-        });
-
-        it('should accept private visibility', () => {
-            const request: UpdateVisibilityRequest = {
-                visibility: 'private',
-            };
-            expect(request.visibility).toBe('private');
         });
     });
 });

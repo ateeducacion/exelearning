@@ -21,26 +21,6 @@ export function castRequestBody<T>(body: unknown): T {
 // ============================================================================
 
 /**
- * Chunked/resumable file upload request (assets, filemanager)
- */
-export interface UploadChunkRequest {
-    resumableIdentifier: string;
-    resumableChunkNumber: string;
-    resumableTotalChunks: string;
-    resumableFilename: string;
-    resumableRelativePath?: string;
-    file: Blob | Buffer;
-}
-
-/**
- * Single file upload request
- */
-export interface FileUploadRequest {
-    file: Blob | Buffer | File;
-    filename?: string;
-}
-
-/**
  * Asset upload request with metadata
  */
 export interface AssetUploadRequest {
@@ -67,18 +47,6 @@ export interface AssetUploadRequest {
               folderPath?: string;
           }>;
     files?: (Blob | Buffer)[];
-}
-
-/**
- * Batch asset sync request
- */
-export interface AssetBatchSyncRequest {
-    assets: Array<{
-        clientId: string;
-        filename: string;
-        data: string; // Base64 encoded
-        mimeType?: string;
-    }>;
 }
 
 // ============================================================================
@@ -211,35 +179,9 @@ export interface IdeviceFileUploadRequest {
     odeSessionId?: string;
 }
 
-/**
- * iDevice image upload request (base64)
- */
-export interface IdeviceImageUploadRequest {
-    odeIdeviceId: string;
-    base64String: string;
-    filename: string;
-    createThumbnail?: boolean;
-}
-
 // ============================================================================
 // Project Types
 // ============================================================================
-
-/**
- * Project open request
- */
-export interface ProjectOpenRequest {
-    odeFilePath?: string | string[];
-    odeFileName?: string | string[];
-}
-
-/**
- * Project save request
- */
-export interface ProjectSaveRequest {
-    sessionId: string;
-    title?: string;
-}
 
 /**
  * Upload chunk for project files
@@ -285,59 +227,8 @@ export interface UsedFilesRequest {
 }
 
 // ============================================================================
-// User Preferences Types
-// ============================================================================
-
-/**
- * User preferences update request
- */
-export interface UserPreferencesRequest {
-    [key: string]: string | number | boolean;
-}
-
-// ============================================================================
-// Sharing/Collaboration Types
-// ============================================================================
-
-/**
- * Add collaborator request
- */
-export interface AddCollaboratorRequest {
-    email: string;
-}
-
-/**
- * Transfer ownership request
- */
-export interface TransferOwnershipRequest {
-    newOwnerId: number;
-}
-
-/**
- * Update visibility request
- */
-export interface UpdateVisibilityRequest {
-    visibility: 'public' | 'private';
-}
-
-// ============================================================================
 // Session/Structure Management Types
 // ============================================================================
-
-/**
- * Session-based request with optional session ID
- */
-export interface SessionRequest {
-    sessionId?: string;
-    odeSessionId?: string;
-}
-
-/**
- * Export request with format and options
- */
-export interface ProjectExportRequest extends SessionRequest {
-    format?: 'html5' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elp' | 'elpx';
-}
 
 /**
  * Current user registration for ODE
@@ -362,30 +253,12 @@ export interface CloseSessionRequest {
 }
 
 /**
- * iDevice duplicate request
- */
-export interface IdeviceDuplicateRequest {
-    odeSessionId: string;
-    ideviceId: string;
-    targetBlockId?: string;
-}
-
-/**
  * Navigation structure duplicate request
  */
 export interface NavStructureDuplicateRequest {
     odeSessionId: string;
     navStructureId: string;
     parentId?: string;
-}
-
-/**
- * Page structure duplicate request
- */
-export interface PagStructureDuplicateRequest {
-    odeSessionId: string;
-    pagStructureId: string;
-    targetPageId?: string;
 }
 
 /**

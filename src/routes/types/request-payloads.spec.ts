@@ -13,7 +13,6 @@ import {
     type FileGatorCreateRequest,
     type ExportOptionsRequest,
     type ConvertRequest,
-    type IdeviceFileUploadRequest,
 } from './request-payloads';
 
 describe('Request Payload Types', () => {
@@ -92,26 +91,6 @@ describe('Request Payload Types', () => {
                 format: 'html5',
             };
             expect(request.format).toBe('html5');
-        });
-    });
-
-    describe('IdeviceFileUploadRequest', () => {
-        it('should accept idevice file upload', () => {
-            const request: IdeviceFileUploadRequest = {
-                odeIdeviceId: 'idevice-1',
-                filename: 'image.png',
-                file: Buffer.from('test'),
-            };
-            expect(request.odeIdeviceId).toBe('idevice-1');
-        });
-
-        it('should accept base64 upload', () => {
-            const request: IdeviceFileUploadRequest = {
-                odeIdeviceId: 'idevice-1',
-                filename: 'image.png',
-                base64String: 'data:image/png;base64,abc123',
-            };
-            expect(request.base64String).toBeDefined();
         });
     });
 });

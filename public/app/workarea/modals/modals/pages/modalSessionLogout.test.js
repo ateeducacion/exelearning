@@ -30,7 +30,7 @@ describe('ModalSessionLogout', () => {
           odeId: 'project-id',
           transitionToProject: vi.fn().mockResolvedValue(),
           _yjsBridge: {
-            saveManager: { save: vi.fn().mockResolvedValue(true) },
+            saveManager: { save: vi.fn().mockResolvedValue({ success: true }) },
           },
         },
         modals: {
@@ -273,7 +273,7 @@ describe('ModalSessionLogout', () => {
       vi.useRealTimers();
     });
 
-    it('should still redirect to /logout when save throws on Yes click', async () => {
+    it('LEAVE-06: keeps the page and unload guard when save throws on Yes click', async () => {
       vi.useFakeTimers();
       window.eXeLearning.app.project._yjsBridge.saveManager.save = vi.fn().mockRejectedValue(new Error('save error'));
 
@@ -284,10 +284,30 @@ describe('ModalSessionLogout', () => {
       yesButton.click();
       await vi.advanceTimersByTimeAsync(0);
 
-      expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).toHaveBeenCalled();
-      expect(window.location.href).toBe('/base/logout');
+      expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).not.toHaveBeenCalled();
+      expect(window.location.href).toBe('');
+      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
       vi.useRealTimers();
     });
+
+    it.each([undefined, false, { success: false }, { saved: true }])(
+      'LEAVE-07: keeps the page after unconfirmed server save %j',
+      async (result) => {
+        vi.useFakeTimers();
+        try {
+          window.eXeLearning.app.project._yjsBridge.saveManager.save.mockResolvedValue(result);
+          modal.show({});
+          await vi.advanceTimersByTimeAsync(500);
+          mockElement.querySelector('.modal-footer .session-logout-save').click();
+          await vi.advanceTimersByTimeAsync(0);
+          expect(window.location.href).toBe('');
+          expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).not.toHaveBeenCalled();
+          expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+        } finally {
+          vi.useRealTimers();
+        }
+      },
+    );
 
     it('should redirect to /logout without saving on No click', async () => {
       vi.useFakeTimers();
@@ -324,8 +344,22 @@ describe('ModalSessionLogout', () => {
     });
 
     describe('saveAndCloseOffline', () => {
+      it.each([undefined, false, { saved: false }, { success: true }, { saved: false, downloaded: true }])(
+        'LEAVE-05: keeps the Electron window and unload warning after unconfirmed save %j',
+        async (result) => {
+          const guard = window.onbeforeunload;
+          window.eXeLearning.app.project = {
+            _yjsEnabled: true,
+            exportToElpxViaYjs: vi.fn().mockResolvedValue(result),
+          };
+          await modal.saveAndCloseOffline();
+          expect(mockWindowClose).not.toHaveBeenCalled();
+          expect(window.onbeforeunload).toBe(guard);
+          expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).not.toHaveBeenCalled();
+        },
+      );
       it('should call exportToElpxViaYjs and close', async () => {
-        const mockExport = vi.fn().mockResolvedValue();
+        const mockExport = vi.fn().mockResolvedValue({ saved: true });
         window.eXeLearning.app.project = {
           _yjsEnabled: true,
           exportToElpxViaYjs: mockExport,
@@ -354,14 +388,15 @@ describe('ModalSessionLogout', () => {
         expect(mockWindowClose).not.toHaveBeenCalled();
       });
 
-      it('should close directly if Yjs not enabled', async () => {
+      it('LEAVE-08: keeps the window open if no exporter is available', async () => {
         window.eXeLearning.app.project = {
           _yjsEnabled: false,
         };
 
         await modal.saveAndCloseOffline();
 
-        expect(mockWindowClose).toHaveBeenCalled();
+        expect(mockWindowClose).not.toHaveBeenCalled();
+        expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
       });
     });
 

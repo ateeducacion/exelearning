@@ -96,11 +96,12 @@ const UnsavedChangesHelper = {
           return false;
         }
         if (result === 'save') {
-          // User chose to save
-          await this.saveProject();
+          const project = app.project;
+          const bridge = project?._yjsBridge;
+          const saved = await this.saveProject();
+          return saved?.success === true && app.project === project && project?._yjsBridge === bridge;
         }
-        // 'discard' or successful save means proceed
-        return true;
+        return result === 'discard';
       } catch (error) {
         // Modal was cancelled
         return false;

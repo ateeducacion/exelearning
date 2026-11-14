@@ -96,7 +96,10 @@ test.describe('Save Detection', () => {
         expect(isDirty).toBe(true);
     });
 
-    test('saving should return to saved status (green dot)', async ({ authenticatedPage, createProject }) => {
+    test('saving should return to saved status (green dot)', async ({ authenticatedPage, createProject }, testInfo) => {
+        // Static browser saves are downloads with no write receipt, so they intentionally keep
+        // the document pending (DOWNLOAD-01/02, doc/architecture/changes/48-static-direct-file-save).
+        const confirmsSave = testInfo.project.name !== 'static';
         const page = authenticatedPage;
 
         // Create a new project
@@ -132,6 +135,19 @@ test.describe('Save Detection', () => {
         await page.waitForTimeout(500);
         const saveButton = page.locator('#head-top-save-button');
         await expect(saveButton).toHaveClass(/unsaved/);
+
+        if (!confirmsSave) {
+            // Static: the save button starts a download; the red dot must stay.
+            const download = page.waitForEvent('download');
+            await saveButton.click();
+            await download;
+            await expect(saveButton).toHaveClass(/unsaved/);
+            const stillDirty = await page.evaluate(
+                () => (window as any).eXeLearning.app.project._yjsBridge.documentManager.isDirty,
+            );
+            expect(stillDirty).toBe(true);
+            return;
+        }
 
         // Save the project via the save button
         await saveButton.click();
@@ -232,12 +248,14 @@ test.describe('Save Detection', () => {
             };
         });
 
+        // Static downloads have no write receipt, so the warning is intentionally kept (DOWNLOAD-02).
+        const confirmsSave = testInfo.project.name !== 'static';
         expect(afterSave).toEqual({
-            isDirty: false,
-            hasUnsavedAssets: false,
-            hasUnsavedChanges: false,
-            defaultPrevented: false,
-            returnValue: true,
+            isDirty: !confirmsSave,
+            hasUnsavedAssets: !confirmsSave,
+            hasUnsavedChanges: !confirmsSave,
+            defaultPrevented: !confirmsSave,
+            returnValue: confirmsSave,
         });
     });
 

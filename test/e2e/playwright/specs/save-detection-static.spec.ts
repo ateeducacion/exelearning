@@ -173,7 +173,9 @@ test.describe('Save Detection - Static', () => {
         });
     });
 
-    test('static save with an asset clears every beforeunload state', async ({ staticPage }) => {
+    test('DOWNLOAD-02: a download with an asset preserves the beforeunload warning until explicitly discarded', async ({
+        staticPage,
+    }) => {
         test.skip(test.info().project.name !== 'static', 'Static-only tests');
         const page = staticPage;
 
@@ -232,11 +234,11 @@ test.describe('Save Detection - Static', () => {
             };
         });
         expect(afterSave).toEqual({
-            isDirty: false,
-            hasUnsavedAssets: false,
-            hasUnsavedChanges: false,
-            defaultPrevented: false,
-            returnValue: true,
+            isDirty: true,
+            hasUnsavedAssets: true,
+            hasUnsavedChanges: true,
+            defaultPrevented: true,
+            returnValue: false,
         });
     });
 

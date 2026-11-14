@@ -759,21 +759,33 @@ export default class projectManager {
             const hasUnsaved = this._yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
 
             if (hasUnsaved) {
+                const bridge = this._yjsBridge;
+                const documentManager = bridge.documentManager;
+                let saved = false;
                 if (isStaticMode && this.exportToElpxViaYjs) {
                     // Static/Electron: prompt "Save As" dialog
-                    await this.exportToElpxViaYjs();
+                    const result = await this.exportToElpxViaYjs();
+                    saved = result?.saved === true;
                 } else {
                     const saveManager = this._yjsBridge?.saveManager;
                     if (saveManager) {
-                        await saveManager.save();
+                        const result = await saveManager.save();
+                        saved = result?.success === true;
                     }
+                }
+                // Cancellation and fulfilled promises without an explicit receipt must
+                // leave both the current project and its unload warning intact.
+                if (!saved || this._yjsBridge !== bridge || bridge.documentManager !== documentManager) {
+                    throw new Error(_('The project was not saved. The current project will remain open.'));
                 }
             }
         }
 
-        // 2. Clear beforeunload to prevent browser "Leave site?" dialog
-        window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
-        window.onbeforeunload = null;
+        // Keep the warning installed until every fallible preparation succeeded.
+        const prepareNavigation = () => {
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
+            window.onbeforeunload = null;
+        };
 
         // 3. Redirect based on action (always full page reload)
 
@@ -791,6 +803,7 @@ export default class projectManager {
                 }
                 if (isStaticMode) {
                     // Static/Electron: reload generates a fresh UUID automatically
+                    prepareNavigation();
                     window.location.reload();
                 } else {
                     const resp = await fetch(`${basePath}/api/project/create-quick`, {
@@ -803,6 +816,7 @@ export default class projectManager {
                         throw new Error(`Failed to create project: ${resp.status}`);
                     }
                     const data = await resp.json();
+                    prepareNavigation();
                     window.location.href = `${basePath}/workarea?project=${data.uuid}&new=1`;
                 }
                 break;
@@ -811,8 +825,10 @@ export default class projectManager {
                 if (isStaticMode) {
                     // Static/Electron: set projectId and reload (no server routes)
                     window.eXeLearning.projectId = projectUuid;
+                    prepareNavigation();
                     window.location.reload();
                 } else {
+                    prepareNavigation();
                     window.location.href = `${basePath}/workarea?project=${projectUuid}`;
                 }
                 break;
@@ -833,6 +849,7 @@ export default class projectManager {
                 if (isStaticMode) {
                     // Signal for _processPendingImport after reload
                     sessionStorage.setItem('exe-pending-import', '1');
+                    prepareNavigation();
                     window.location.reload();
                 } else {
                     // Create project on server
@@ -847,6 +864,7 @@ export default class projectManager {
                         throw new Error(`Failed to create project: ${resp.status}`);
                     }
                     const data = await resp.json();
+                    prepareNavigation();
                     window.location.href = `${basePath}/workarea?project=${data.uuid}&new=1&pendingImport=1`;
                 }
                 break;

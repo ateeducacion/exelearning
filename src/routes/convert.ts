@@ -18,14 +18,13 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { buildContentDisposition } from '../shared/http/headers';
-import { getBinarySize } from '../shared/export/interfaces';
 import { safeJoin, sanitizeFileExtension } from '../utils/safe-path';
 import type { Kysely } from 'kysely';
 
 import { db as defaultDb } from '../db/client';
 import type { Database } from '../db/types';
 import { findUserById as findUserByIdDefault } from '../db/queries';
-import { assertRequestBody, type ConvertRequest } from './types/request-payloads';
+import { castRequestBody, type ConvertRequest } from './types/request-payloads';
 
 // Centralized export system
 import {
@@ -340,7 +339,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         return { code: 'UNAUTHORIZED', detail: 'Authentication required' };
                     }
 
-                    const data = assertRequestBody<ConvertRequest>(body);
+                    const data = castRequestBody<ConvertRequest>(body);
                     const download = query.download === '1';
 
                     // Validate file
@@ -372,14 +371,14 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                             const exportFilename = result.filename || 'converted.elpx';
                             set.headers['content-type'] = 'application/x-exelearning';
                             set.headers['content-disposition'] = buildContentDisposition(exportFilename);
-                            set.headers['content-length'] = String(getBinarySize(result.data));
+                            set.headers['content-length'] = String(result.data.byteLength);
                             return result.data;
                         }
 
                         return {
                             status: 'success',
                             fileName: result.filename || 'converted.elpx',
-                            size: result.data ? getBinarySize(result.data) : 0,
+                            size: result.data?.byteLength ?? 0,
                             message: 'Conversion completed. Use ?download=1 to download the file directly.',
                         };
                     } catch (error: unknown) {
@@ -429,7 +428,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         };
                     }
 
-                    const data = assertRequestBody<ConvertRequest>(body);
+                    const data = castRequestBody<ConvertRequest>(body);
                     const download = query.download === '1';
                     const baseUrl = data.baseUrl || undefined;
                     const theme = data.theme || undefined;
@@ -463,7 +462,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                             const exportFilename = result.filename || `export_${format}.${formatInfo.extension}`;
                             set.headers['content-type'] = formatInfo.mimeType;
                             set.headers['content-disposition'] = buildContentDisposition(exportFilename);
-                            set.headers['content-length'] = String(getBinarySize(result.data));
+                            set.headers['content-length'] = String(result.data.byteLength);
                             return result.data;
                         }
 
@@ -471,7 +470,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                             status: 'success',
                             format: format,
                             fileName: result.filename || `export_${format}.${formatInfo.extension}`,
-                            size: result.data ? getBinarySize(result.data) : 0,
+                            size: result.data?.byteLength ?? 0,
                             message: 'Export completed. Use ?download=1 to download the file directly.',
                         };
                     } catch (error: unknown) {

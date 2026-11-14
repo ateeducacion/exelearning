@@ -15,7 +15,6 @@ import type {
     Epub3ExportOptions,
     ExportResult,
 } from './interfaces';
-import { getBinarySize } from './interfaces';
 
 import {
     ExportFormat,
@@ -350,16 +349,6 @@ describe('Export Constants', () => {
 
         it('should return .bin for unknown mime', () => {
             expect(getExtensionFromMime('application/unknown')).toBe('.bin');
-        });
-    });
-
-    describe('getBinarySize', () => {
-        it('returns byteLength for Uint8Array data', () => {
-            expect(getBinarySize(new Uint8Array([1, 2, 3, 4]))).toBe(4);
-        });
-
-        it('returns byteLength for empty data', () => {
-            expect(getBinarySize(new Uint8Array([]))).toBe(0);
         });
     });
 

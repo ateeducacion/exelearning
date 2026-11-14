@@ -14,7 +14,6 @@ import * as path from 'path';
 import { db } from '../../../db/client';
 import { buildContentDisposition } from '../../../shared/http/headers';
 import {
-    findProjectByUuid,
     createAsset,
     findAssetById,
     findAllAssetsForProject,
@@ -34,39 +33,12 @@ import {
 import { buildAssetStoragePath } from '../../../utils/asset-paths';
 import { isSafePathSegment, sanitizeFileExtension } from '../../../utils/safe-path';
 import { withDocument, setAssetMetadata, deleteAssetMetadata, type AssetMetadata } from '../../../yjs';
-import { assertRequestBody } from '../../types/request-payloads';
-import {
-    authenticateRequest,
-    errorResponse,
-    successResponse,
-    isAdmin,
-    type AuthenticatedUser,
-    type ApiErrorResponse,
-} from './types';
+import { castRequestBody } from '../../types/request-payloads';
+import { authenticateRequest, errorResponse, successResponse, checkProjectAccess } from './types';
 
 // ============================================================================
 // HELPERS
 // ============================================================================
-
-/**
- * Verify user has access to the project (owner or admin)
- */
-async function checkProjectAccess(
-    uuid: string,
-    auth: AuthenticatedUser,
-): Promise<{ project?: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
-    const project = await findProjectByUuid(db, uuid);
-
-    if (!project) {
-        return { project: undefined, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
-    }
-
-    if (project.owner_id !== auth.userId && !isAdmin(auth)) {
-        return { project: undefined, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
-    }
-
-    return { project };
-}
 
 /**
  * File with optional name property (for Blob/File uploads)
@@ -182,7 +154,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
             }
 
             // Extract file from multipart body
-            const data = assertRequestBody<{ file?: Blob | Buffer; clientId?: string; folderPath?: string }>(body);
+            const data = castRequestBody<{ file?: Blob | Buffer; clientId?: string; folderPath?: string }>(body);
 
             if (!data.file) {
                 set.status = 400;
@@ -468,7 +440,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const { clientIds } = assertRequestBody<{ clientIds: string[] }>(body);
+            const { clientIds } = castRequestBody<{ clientIds: string[] }>(body);
             if (!clientIds || clientIds.length === 0) {
                 return successResponse({ deleted: 0 });
             }

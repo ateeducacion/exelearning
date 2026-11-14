@@ -194,12 +194,12 @@
             <div id="main-content-wrapper" class="main-content-wrapper">
                 <section id="node-content-container" class="exe-content js flex-grow-1 d-flex flex-column">
                     <div id="load-screen-node-content" class="load-screen hide" data-testid="loading-content" data-visible="false"></div>
-                    <section id="node-content" class="content" aria-label="Content" drop='["idevice","box"]' data-testid="node-content" data-ready="false">
+                    <div id="node-content" class="content" drop='["idevice","box"]' data-testid="node-content" data-ready="false">
                         <div>
                             <div id="header-node-content" class="header"></div>
-                            <h1 id="page-title-node-content" class="page-title" data-testid="page-title" aria-label="Page title"></h1>
+                            <h1 id="page-title-node-content" class="page-title" data-testid="page-title"></h1>
                         </div>
-                    </section>
+                    </div>
                     <div id="idevices-bottom" class="idevices-bottom-menu" data-testid="idevices-quickbar"></div>
                 </section>
                 <aside id="preview-pinned-container" class="preview-pinned" aria-label="Preview" data-i18n-aria-label="Preview">
@@ -234,7 +234,7 @@
     <!-- Preview Sidebar -->
     <div id="previewsidenav-content" class="preview-panel-container">
         <div id="preview-sidenav-overlay" class="sidenav-overlay"></div>
-        <aside id="previewsidenav" class="preview-sidenav" >
+        <aside id="previewsidenav" class="preview-sidenav" role="complementary">
             <div class="preview-panel-header">
                 <h1 class="preview-title" data-i18n="Preview">Preview</h1>
                 <div class="preview-header-actions">
@@ -250,11 +250,11 @@
                     <button type="button" id="preview-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
                         <span class="small-icon refresh-icon"></span>
                     </button>
-                    <button type="button" id="previewsidenavclose" class="navbar-close" aria-label="Close" data-i18n-aria-label="Close">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <div id="previewsidenavclose" class="navbar-close" role="button" tabindex="0" aria-label="Close" data-i18n-aria-label="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                    </button>
+                    </div>
                 </div>
             </div>
             <div class="preview-panel-body">
@@ -269,17 +269,17 @@
     <!-- Styles Sidebar -->
     <div id="stylessidenav-content" class="relative z-50 navbar-menu">
         <div id="sidenav-overlay" class="sidenav-overlay"></div>
-        <aside id="stylessidenav" class="sidenav" >
+        <aside id="stylessidenav" class="sidenav" role="complementary">
             <div class="content-styles-header">
                 <h1 class="styles-title" data-i18n="Styles">Styles</h1>
-                <button type="button" id="stylessidenavclose" class="navbar-close" aria-label="Close" data-i18n-aria-label="Close">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <div id="stylessidenavclose" class="navbar-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
                         <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                </button>
+                </div>
             </div>
             <div class="content-tabs">
-                <ul class="nav nav-tabs" id="styleslist" >
+                <ul class="nav nav-tabs" id="styleslist" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="exestylescontent-tab" data-bs-toggle="tab"
                                 data-bs-target="#exestylescontent" type="button" role="tab"

@@ -823,7 +823,8 @@ export function createComponent(ydoc: Y.Doc, input: CreateComponentInput): Opera
         ? findBlockMapInPage(ydoc, input.pageId, input.blockId)
         : findBlockMap(ydoc, input.blockId);
     if (!blockMap) {
-        return { success: false, error: `Block ${input.blockId} not found in page ${input.pageId}` };
+        const where = input.pageId ? ` in page ${input.pageId}` : '';
+        return { success: false, error: `Block ${input.blockId} not found${where}` };
     }
 
     let components = blockMap.get('components') as Y.Array<Y.Map<unknown>> | undefined;

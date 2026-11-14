@@ -24,7 +24,7 @@ export interface ZipDeps {
 }
 
 /** Compression level accepted by fflate (0 = store, 9 = max). */
-export type ZipCompressionLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type ZipCompressionLevel = NonNullable<fflateModule.DeflateOptions['level']>;
 
 /**
  * ZIP service interface

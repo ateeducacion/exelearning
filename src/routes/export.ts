@@ -15,7 +15,7 @@ import { buildContentDisposition } from '../shared/http/headers';
 import { deriveBlockIcon } from '../shared/block-icon';
 import { isSafePathSegment } from '../utils/safe-path';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
-import { assertRequestBody, type ExportOptionsRequest, type YjsExportStructure } from './types/request-payloads';
+import { castRequestBody, type ExportOptionsRequest, type YjsExportStructure } from './types/request-payloads';
 import { withJwtAuth } from '../utils/route-auth';
 import type { AuthenticatedIdentity } from '../auth/types';
 import { hasRole, ROLES, requireAuth } from '../utils/guards';
@@ -736,7 +736,7 @@ export function createExportRoutes(deps: ExportDependencies = {}) {
             // POST /api/export/:odeSessionId/:exportType/download - Download export with options
             .post('/:odeSessionId/:exportType/download', async ({ params, body, set, identity }) => {
                 const { odeSessionId, exportType } = params;
-                const options = assertRequestBody<ExportOptionsRequest>(body);
+                const options = castRequestBody<ExportOptionsRequest>(body);
 
                 // Reject path-traversal session ids before any filesystem path is built.
                 // Real ids are UUIDs or YYYYMMDDHHmmss + alphanumerics, all of which pass.

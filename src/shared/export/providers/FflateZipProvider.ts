@@ -9,10 +9,10 @@
  */
 
 import * as fflate from 'fflate';
+import type { ZipProvider, ZipArchive } from '../interfaces';
 
 /** Compression level accepted by fflate (0 = store, 9 = max). */
-type ZipCompressionLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-import type { ZipProvider, ZipArchive } from '../interfaces';
+type ZipCompressionLevel = NonNullable<fflate.DeflateOptions['level']>;
 
 type ZipGenerateStats = {
     deflatedFiles: number;
@@ -62,7 +62,11 @@ function toUint8Array(content: string | Uint8Array | Buffer): Uint8Array {
         // Already a Uint8Array (includes Buffer in Node.js)
         return content;
     }
-    return new TextEncoder().encode(content);
+    if (typeof content === 'string') {
+        return new TextEncoder().encode(content);
+    }
+    // Untyped callers can still pass a Blob; storing it as the text "[object Blob]" would corrupt the archive.
+    throw new Error('ZIP content must be a string or Uint8Array; convert Blobs before adding them');
 }
 
 /**

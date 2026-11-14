@@ -46,7 +46,7 @@ import {
 } from '../services/admin-upload-validator';
 import { requireAdmin } from '../utils/guards';
 import { getFilesDir as getFilesDirDefault, getJwtSecret, deleteFileIfExists } from '../utils/admin-route-helpers';
-import { assertRequestBody } from './types/request-payloads';
+import { castRequestBody } from './types/request-payloads';
 
 // ============================================================================
 // TYPES
@@ -315,7 +315,7 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                 '/api/admin/themes/upload',
                 async ({ body, set, jwt, cookie }) => {
                     try {
-                        const { file, displayName, isEnabled } = assertRequestBody<ThemeUploadInput>(body);
+                        const { file, displayName, isEnabled } = castRequestBody<ThemeUploadInput>(body);
 
                         if (!file) {
                             set.status = 400;
@@ -475,7 +475,7 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
 
                     const updates: Parameters<typeof queries.updateTheme>[2] = {};
 
-                    const input = assertRequestBody<ThemeUpdateInput>(body);
+                    const input = castRequestBody<ThemeUpdateInput>(body);
                     if (input.displayName !== undefined) {
                         updates.display_name = input.displayName;
                     }
@@ -525,7 +525,7 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                     const updatedTheme = await queries.toggleThemeEnabled(
                         database,
                         id,
-                        assertRequestBody<ThemeToggleInput>(body).isEnabled,
+                        castRequestBody<ThemeToggleInput>(body).isEnabled,
                     );
                     if (!updatedTheme) {
                         set.status = 500;
@@ -645,7 +645,7 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                     }
 
                     // Cannot disable the default theme
-                    const input = assertRequestBody<ThemeToggleInput>(body);
+                    const input = castRequestBody<ThemeToggleInput>(body);
                     if (!input.isEnabled) {
                         try {
                             const defaultTheme = await queries.getDefaultTheme(database);

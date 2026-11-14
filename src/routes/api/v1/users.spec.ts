@@ -51,9 +51,14 @@ describe('Users API v1', () => {
         originalEnv = {
             APP_AUTH_METHODS: process.env.APP_AUTH_METHODS,
             JWT_SECRET: process.env.JWT_SECRET,
+            DB_DRIVER: process.env.DB_DRIVER,
+            DB_PATH: process.env.DB_PATH,
         };
         process.env.APP_AUTH_METHODS = 'password';
         process.env.JWT_SECRET = 'test-secret-for-users-tests';
+        // The users table is wiped below: never let that reach a .env-configured database.
+        process.env.DB_DRIVER = 'pdo_sqlite';
+        process.env.DB_PATH = ':memory:';
 
         await resetClientCacheForTesting();
         await migrateToLatest(db);

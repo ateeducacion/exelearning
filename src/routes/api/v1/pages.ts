@@ -5,15 +5,12 @@
  * Changes are automatically broadcast to WebSocket clients.
  */
 import { Elysia } from 'elysia';
-import { db } from '../../../db/client';
-import { findProjectByUuid } from '../../../db/queries';
 import { withDocument, readDocument, getPages, getPage, addPage, updatePage, deletePage, movePage } from '../../../yjs';
-import { assertRequestBody } from '../../types/request-payloads';
+import { castRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
     successResponse,
-    isAdmin,
     CreatePageBody,
     UpdatePageBody,
     MovePageBody,
@@ -22,30 +19,8 @@ import {
     type MovePageInput,
     ProjectUuidParam,
     PageIdParam,
-    type AuthenticatedUser,
-    type ApiErrorResponse,
+    checkProjectAccess,
 } from './types';
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-async function checkProjectAccess(
-    uuid: string,
-    auth: AuthenticatedUser,
-): Promise<{ project?: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
-    const project = await findProjectByUuid(db, uuid);
-
-    if (!project) {
-        return { project: undefined, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
-    }
-
-    if (project.owner_id !== auth.userId && !isAdmin(auth)) {
-        return { project: undefined, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
-    }
-
-    return { project };
-}
 
 // ============================================================================
 // ROUTES
@@ -100,7 +75,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = assertRequestBody<CreatePageInput>(body);
+            const input = castRequestBody<CreatePageInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 addPage(ydoc, {
                     name: input.name,
@@ -181,7 +156,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = assertRequestBody<UpdatePageInput>(body);
+            const input = castRequestBody<UpdatePageInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 updatePage(ydoc, params.pageId, {
                     name: input.name,
@@ -262,7 +237,7 @@ export const pagesRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = assertRequestBody<MovePageInput>(body);
+            const input = castRequestBody<MovePageInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 movePage(ydoc, params.pageId, input.newParentId, input.position),
             );

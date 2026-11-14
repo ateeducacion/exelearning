@@ -20,7 +20,7 @@ import * as bcrypt from 'bcryptjs';
 import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validator.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { getPublicCallbackUrl, type ServerContext } from '../utils/proxy-url.util';
-import { assertRequestBody, type LoginRequest, type GuestLoginRequest } from './types/request-payloads';
+import { castRequestBody, type LoginRequest, type GuestLoginRequest } from './types/request-payloads';
 import { getAuthMethods, getSettingString, getDefaultQuotaMb } from '../services/app-settings';
 import { getPostLoginTarget } from '../services/maintenance';
 import { logActivity } from '../services/activity-logger';
@@ -221,7 +221,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             .post(
                 '/api/auth/login',
                 async ({ jwt, cookie, body, set }) => {
-                    const { email, password } = assertRequestBody<LoginBody>(body);
+                    const { email, password } = castRequestBody<LoginBody>(body);
 
                     const user = await findUserByEmail(db, email);
                     // Always run one verifyPassword (see verifyUserPassword) so an
@@ -381,7 +381,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
             // POST /login_check - Symfony-compatible form login
             .post('/login_check', async ({ jwt, cookie, body, request }) => {
-                const typedBody = assertRequestBody<LoginRequest>(body);
+                const typedBody = castRequestBody<LoginRequest>(body);
                 const email = typedBody?._username || typedBody?.email;
                 const password = typedBody?._password || typedBody?.password;
 
@@ -1177,7 +1177,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 });
 
                 // Redirect to returnUrl if valid, otherwise to workarea
-                const guestBody = assertRequestBody<GuestLoginRequest>(body);
+                const guestBody = castRequestBody<GuestLoginRequest>(body);
                 const returnUrl = guestBody?.returnUrl;
                 const targetUrl = getSafeRedirectUrl(returnUrl, '/workarea');
                 return Response.redirect(targetUrl, 302);

@@ -581,11 +581,6 @@ export interface ExportResult {
     error?: string;
 }
 
-/** Return the byte size of binary export data. */
-export function getBinarySize(data: Uint8Array): number {
-    return data.byteLength;
-}
-
 // =============================================================================
 // Asset Resolution Interfaces
 // =============================================================================

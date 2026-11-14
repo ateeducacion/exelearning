@@ -5,8 +5,6 @@
  * Changes are automatically broadcast to WebSocket clients.
  */
 import { Elysia } from 'elysia';
-import { db } from '../../../db/client';
-import { findProjectByUuid } from '../../../db/queries';
 import {
     withDocument,
     readDocument,
@@ -17,12 +15,11 @@ import {
     setComponentHtml,
     deleteComponent,
 } from '../../../yjs';
-import { assertRequestBody } from '../../types/request-payloads';
+import { castRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
     successResponse,
-    isAdmin,
     CreateComponentBody,
     UpdateComponentBody,
     SetHtmlBody,
@@ -31,30 +28,8 @@ import {
     type SetHtmlInput,
     BlockIdParam,
     ComponentIdParam,
-    type AuthenticatedUser,
-    type ApiErrorResponse,
+    checkProjectAccess,
 } from './types';
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-async function checkProjectAccess(
-    uuid: string,
-    auth: AuthenticatedUser,
-): Promise<{ project?: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
-    const project = await findProjectByUuid(db, uuid);
-
-    if (!project) {
-        return { project: undefined, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
-    }
-
-    if (project.owner_id !== auth.userId && !isAdmin(auth)) {
-        return { project: undefined, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
-    }
-
-    return { project };
-}
 
 // ============================================================================
 // ROUTES
@@ -109,7 +84,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = assertRequestBody<CreateComponentInput>(body);
+            const input = castRequestBody<CreateComponentInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 createComponent(ydoc, {
                     blockId: params.blockId,
@@ -191,7 +166,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = assertRequestBody<UpdateComponentInput>(body);
+            const input = castRequestBody<UpdateComponentInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 updateComponent(ydoc, params.componentId, {
                     htmlContent: input.htmlContent,
@@ -240,7 +215,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const input = assertRequestBody<SetHtmlInput>(body);
+            const input = castRequestBody<SetHtmlInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 setComponentHtml(ydoc, params.componentId, input.html),
             );

@@ -5,42 +5,17 @@
  * Changes are automatically broadcast to WebSocket clients.
  */
 import { Elysia } from 'elysia';
-import { db } from '../../../db/client';
-import { findProjectByUuid } from '../../../db/queries';
 import { withDocument, readDocument, getMetadataData, updateMetadataData } from '../../../yjs';
-import { assertRequestBody } from '../../types/request-payloads';
+import { castRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
     successResponse,
-    isAdmin,
     UpdateMetadataBody,
     type UpdateMetadataInput,
     ProjectUuidParam,
-    type AuthenticatedUser,
-    type ApiErrorResponse,
+    checkProjectAccess,
 } from './types';
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-async function checkProjectAccess(
-    uuid: string,
-    auth: AuthenticatedUser,
-): Promise<{ project?: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
-    const project = await findProjectByUuid(db, uuid);
-
-    if (!project) {
-        return { project: undefined, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
-    }
-
-    if (project.owner_id !== auth.userId && !isAdmin(auth)) {
-        return { project: undefined, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
-    }
-
-    return { project };
-}
 
 // ============================================================================
 // ROUTES
@@ -96,7 +71,7 @@ export const metadataRoutes = new Elysia({ prefix: '/projects' })
             }
 
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
-                updateMetadataData(ydoc, assertRequestBody<UpdateMetadataInput>(body)),
+                updateMetadataData(ydoc, castRequestBody<UpdateMetadataInput>(body)),
             );
 
             if (result.success === false) {

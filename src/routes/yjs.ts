@@ -165,7 +165,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 // Fast path: a snapshot with no newer updates is returned as-is
                 // (avoids decoding the Y.Doc on the common browser-save case).
                 if (snapshot && updates.length === 0) {
-                    return new Response(new Uint8Array(fromBinaryData(snapshot.snapshot_data)), {
+                    return new Response(fromBinaryData(snapshot.snapshot_data) as Uint8Array<ArrayBuffer>, {
                         status: 200,
                         headers: {
                             'Content-Type': 'application/octet-stream',
@@ -186,7 +186,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 const mergedState = Y.encodeStateAsUpdate(ydoc);
                 ydoc.destroy();
 
-                return new Response(new Uint8Array(mergedState), {
+                return new Response(mergedState as Uint8Array<ArrayBuffer>, {
                     status: 200,
                     headers: {
                         'Content-Type': 'application/octet-stream',

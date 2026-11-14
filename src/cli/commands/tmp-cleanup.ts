@@ -16,13 +16,12 @@ import * as path from 'path';
 const DEFAULT_MAX_AGE_SECONDS = 86400; // 24 hours
 
 export interface TmpCleanupDependencies {
-    fileHelper: {
-        getFilesDir: () => string;
-    };
+    /** The tmp directory to sweep; NOT FileHelper.getFilesDir, which is the FILES_DIR root. */
+    getTempDir: () => string;
 }
 
 const defaultDependencies: TmpCleanupDependencies = {
-    fileHelper: { getFilesDir: getTempPath },
+    getTempDir: getTempPath,
 };
 
 export interface TmpCleanupResult {
@@ -131,7 +130,7 @@ export async function execute(
     }
 
     // Get temp directory
-    const tmpDir = deps.fileHelper.getFilesDir();
+    const tmpDir = deps.getTempDir();
 
     if (!fs.existsSync(tmpDir)) {
         return {

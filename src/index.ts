@@ -78,8 +78,8 @@ function binaryFileResponse(content: Buffer, contentType: string, cacheControl?:
     if (cacheControl) {
         headers['Cache-Control'] = cacheControl;
     }
-    // BodyInit accepts ArrayBufferView but not Node's Buffer type directly
-    return new Response(new Uint8Array(content), { headers });
+    // BodyInit wants a view over a concrete ArrayBuffer; cast instead of copying the file
+    return new Response(content as Uint8Array<ArrayBuffer>, { headers });
 }
 
 // Reusable handler for exemindmap editor (to register at both root and BASE_PATH)

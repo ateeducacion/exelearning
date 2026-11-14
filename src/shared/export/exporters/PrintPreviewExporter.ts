@@ -284,7 +284,6 @@ export class PrintPreviewExporter {
                 passScore: meta.passScore,
                 passScoreEveryActivity: meta.passScoreEveryActivity,
                 version, // From browser context
-                assetExportPathMap: assetResolver.getExportPathMap(),
                 materialIconDataUris,
                 printContext: { kind: 'document', activities: options.activities?.mode ?? null },
                 themeFiles: themeRootFiles,

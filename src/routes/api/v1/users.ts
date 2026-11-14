@@ -14,7 +14,7 @@ import {
     updateUser,
     deleteUser,
 } from '../../../db/queries/users';
-import { assertRequestBody } from '../../types/request-payloads';
+import { castRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -101,7 +101,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
             }
 
             // Check if email already exists
-            const createInput = assertRequestBody<CreateUserInput>(body);
+            const createInput = castRequestBody<CreateUserInput>(body);
             const existing = await findUserByEmail(db, createInput.email);
             if (existing) {
                 set.status = 409;
@@ -208,7 +208,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
 
             // Build updates
             const updates: Record<string, unknown> = {};
-            const updateInput = assertRequestBody<UpdateUserInput>(body);
+            const updateInput = castRequestBody<UpdateUserInput>(body);
 
             if (updateInput.email !== undefined) {
                 // Check for email conflict

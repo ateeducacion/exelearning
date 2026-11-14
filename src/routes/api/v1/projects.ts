@@ -13,7 +13,7 @@ import {
     hardDeleteProject,
 } from '../../../db/queries';
 import { ensureDocument } from '../../../yjs';
-import { assertRequestBody } from '../../types/request-payloads';
+import { castRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -76,7 +76,7 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
             }
             const auth = authResult.user;
 
-            const input = assertRequestBody<CreateProjectInput>(body);
+            const input = castRequestBody<CreateProjectInput>(body);
             // Create project in database (createProject generates its own UUID internally)
             const project = await createProject(db, {
                 title: input.title,
@@ -178,7 +178,7 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
                 return errorResponse('FORBIDDEN', 'You do not have access to this project');
             }
 
-            const input = assertRequestBody<UpdateProjectInput>(body);
+            const input = castRequestBody<UpdateProjectInput>(body);
             const updates: Record<string, unknown> = {};
             if (input.title !== undefined) updates.title = input.title;
 
@@ -274,7 +274,7 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
             }
 
             const newTitle =
-                assertRequestBody<UpdateProjectInput | undefined>(body)?.title || `${sourceProject.title} (copy)`;
+                castRequestBody<UpdateProjectInput | undefined>(body)?.title || `${sourceProject.title} (copy)`;
 
             // Create new project (createProject generates its own UUID internally)
             const newProject = await createProject(db, {

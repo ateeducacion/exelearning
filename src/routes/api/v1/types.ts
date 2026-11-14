@@ -6,6 +6,8 @@
 import { t, type Static } from 'elysia';
 import { verifyToken } from '../../auth';
 import type { AuthenticatedIdentity } from '../../../auth/types';
+import { db } from '../../../db/client';
+import { findProjectByUuid } from '../../../db/queries';
 
 // ============================================================================
 // AUTH TYPES AND HELPERS
@@ -114,6 +116,26 @@ export async function authenticateRequest(headers: Record<string, string | undef
  */
 export function isAdmin(user: AuthenticatedUser): boolean {
     return user.roles.includes('ROLE_ADMIN');
+}
+
+/**
+ * Verify user has access to the project (owner or admin)
+ */
+export async function checkProjectAccess(
+    uuid: string,
+    auth: AuthenticatedUser,
+): Promise<{ project?: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
+    const project = await findProjectByUuid(db, uuid);
+
+    if (!project) {
+        return { project: undefined, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
+    }
+
+    if (project.owner_id !== auth.userId && !isAdmin(auth)) {
+        return { project: undefined, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
+    }
+
+    return { project };
 }
 
 // ============================================================================

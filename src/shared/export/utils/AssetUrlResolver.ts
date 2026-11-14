@@ -90,15 +90,6 @@ export class AssetUrlResolver {
         }
     }
 
-    /**
-     * The id-to-blob-URL map, for renderers that resolve paths themselves.
-     *
-     * @returns The map, or undefined when there are no assets
-     */
-    getExportPathMap(): Map<string, string> | undefined {
-        return this.byId ?? undefined;
-    }
-
     /** Idempotent cleanup; only URLs created by this resolver belong to it. */
     dispose(): void {
         for (const url of this.ownedUrls) URL.revokeObjectURL(url);

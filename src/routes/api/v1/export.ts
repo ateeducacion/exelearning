@@ -9,7 +9,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { db } from '../../../db/client';
-import { findProjectByUuid } from '../../../db/queries';
 import { getProjectAssetsDirCandidates } from '../../../services/file-helper';
 import { buildContentDisposition } from '../../../shared/http/headers';
 import {
@@ -31,15 +30,7 @@ import {
 } from '../../../shared/export';
 import { reconstructDocument } from '../../../websocket/yjs-persistence';
 import { getAppVersion } from '../../../utils/version';
-import {
-    authenticateRequest,
-    errorResponse,
-    successResponse,
-    isAdmin,
-    ExportFormatParam,
-    type AuthenticatedUser,
-    type ApiErrorResponse,
-} from './types';
+import { authenticateRequest, errorResponse, successResponse, ExportFormatParam, checkProjectAccess } from './types';
 
 // ============================================================================
 // CONSTANTS
@@ -103,27 +94,6 @@ const EXPORT_FORMATS: Record<
         mimeType: 'application/x-elpx',
     },
 };
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-async function checkProjectAccess(
-    uuid: string,
-    auth: AuthenticatedUser,
-): Promise<{ project?: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
-    const project = await findProjectByUuid(db, uuid);
-
-    if (!project) {
-        return { project: undefined, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
-    }
-
-    if (project.owner_id !== auth.userId && !isAdmin(auth)) {
-        return { project: undefined, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
-    }
-
-    return { project };
-}
 
 // ============================================================================
 // ROUTES
@@ -273,7 +243,7 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                     const contentDisposition = buildContentDisposition(filename);
                     set.headers['Content-Type'] = formatInfo.mimeType;
                     set.headers['Content-Disposition'] = contentDisposition;
-                    const exportLength = result.data instanceof Blob ? result.data.size : result.data.byteLength;
+                    const exportLength = result.data.byteLength;
                     set.headers['Content-Length'] = exportLength.toString();
 
                     // Clean up temp directory

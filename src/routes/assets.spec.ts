@@ -97,8 +97,10 @@ function createMockPriorityQueue(): AssetsPriorityQueueDeps {
         shouldPreempt: (_projectId: string, _clientId: string) => ({ shouldPreempt: false }),
         getStats: (_projectId: string) => ({
             queueLength: 0,
-            processingCount: 0,
-            completedCount: 0,
+            activeSlots: 0,
+            maxSlots: 3,
+            highestPriority: 0,
+            lowestActivePriority: 0,
         }),
     };
 }
@@ -1336,12 +1338,18 @@ describe('Assets Routes', () => {
             expect(res.status).toBe(200);
             const body = (await res.json()) as {
                 success: boolean;
-                data: { queueLength: number; processingCount: number; completedCount: number };
+                data: Record<string, number>;
             };
             expect(body.success).toBe(true);
+            expect(Object.keys(body.data).sort()).toEqual([
+                'activeSlots',
+                'highestPriority',
+                'lowestActivePriority',
+                'maxSlots',
+                'queueLength',
+            ]);
             expect(body.data.queueLength).toBe(0);
-            expect(body.data.processingCount).toBe(0);
-            expect(body.data.completedCount).toBe(0);
+            expect(body.data.activeSlots).toBe(0);
         });
     });
 
@@ -1542,7 +1550,13 @@ describe('Assets Routes', () => {
             const mockDeps = createMockDependencies();
             mockDeps.priorityQueue = {
                 shouldPreempt: () => ({ shouldPreempt: true, reason: 'Higher priority upload in progress' }),
-                getStats: () => ({ queueLength: 5, processingCount: 2, completedCount: 10 }),
+                getStats: () => ({
+                    queueLength: 5,
+                    activeSlots: 2,
+                    maxSlots: 3,
+                    highestPriority: 5,
+                    lowestActivePriority: 1,
+                }),
             };
 
             const routes = createAssetsRoutes(mockDeps);

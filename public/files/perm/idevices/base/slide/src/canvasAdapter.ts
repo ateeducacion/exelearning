@@ -1326,7 +1326,8 @@ export class SlideCanvasAdapter {
     // ── Serialization ──────────────────────────────────────────────────────
 
     serialize(): AnyObj {
-        const json = (this.canvas as unknown as { toJSON: (properties?: string[]) => AnyObj }).toJSON([
+        // toObject, not toJSON: Fabric 7's toJSON() takes no arguments and drops the list.
+        const json = this.canvas.toObject([
             META_KEY,
             'slideAssetUrl',
             'slideAssetName',
@@ -1335,7 +1336,7 @@ export class SlideCanvasAdapter {
             'x2',
             'y2',
             'headSize',
-        ]) as unknown as AnyObj;
+        ]) as AnyObj;
         // Substitute each image's `src` with its canonical asset:// URL so
         // the saved snapshot is lightweight and round-trips through the
         // AssetManager pipeline (the in-memory Fabric image keeps the

@@ -6,14 +6,13 @@
  */
 
 /**
- * Type assertion helper for route handler request bodies where Elysia plugin chaining
+ * Compile-time cast for route handler request bodies where Elysia plugin chaining
  * collapses handler `body` to `unknown`.
  *
- * IMPORTANT: This is a compile-time type assertion helper and does not perform runtime
- * schema validation on unvalidated routes. For strict runtime validation, ensure a TypeBox
- * schema is registered in the route's `{ body: t.Object(...) }` definition.
+ * It does NOT validate anything at runtime. Routes without a TypeBox schema in
+ * `{ body: t.Object(...) }` still receive whatever the client sent.
  */
-export function assertRequestBody<T>(body: unknown): T {
+export function castRequestBody<T>(body: unknown): T {
     return body as T;
 }
 
@@ -278,7 +277,9 @@ export interface AssetMetadata {
 export interface UsedFilesRequest {
     idevices: Array<{
         id: string;
-        htmlView: string;
+        /** The iDevice markup; read before `html` when both are sent. */
+        htmlView?: string;
+        html?: string;
     }>;
     assetMetadata?: Record<string, AssetMetadata>;
 }

@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+
+# Data directory is preserved on uninstallation to avoid accidental data loss.
+exit 0

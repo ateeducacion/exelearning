@@ -1,0 +1,12 @@
+{
+  ".url": {
+    "SYNO.SDS.eXeLearning": {
+      "title": "eXeLearning",
+      "desc": "eXeLearning authoring tool",
+      "icon": "images/icon_64.png",
+      "type": "url",
+      "url": "/exelearning/login/synology",
+      "allUsers": true
+    }
+  }
+}

@@ -1,12 +1,18 @@
 /**
- * Edition lifecycle tests for the udl-content iDevice.
+ * Unit tests for the udl-content iDevice (edition code).
  *
- * `loadPreviousValues()` listens on the node chrome around the form
- * (`#activeIdevice`) and on the icon image the style panel swaps in
- * (`#iconiDevice`). Neither lives inside the edition form, so emptying the form
- * never removed them: every re-open stacked another pair, and the icon `load`
- * event — which fires asynchronously — drove whichever iDevice happened to be
- * in the `$exeDevice` global at that moment.
+ * Covers:
+ * - The "accessible hidden text | visible label" parsing that splits the
+ *   button text on the FIRST "|" only. These tests pin the security-relevant
+ *   behavior of the split (CodeQL incomplete-sanitization fixes) and guard
+ *   against regressions for legitimate inputs whose visible label contains
+ *   additional "|" characters.
+ * - The edition lifecycle. `loadPreviousValues()` listens on the node chrome
+ *   around the form (`#activeIdevice`) and on the icon image the style panel
+ *   swaps in (`#iconiDevice`). Neither lives inside the edition form, so
+ *   emptying the form never removed them: every re-open stacked another pair,
+ *   and the icon `load` event — which fires asynchronously — drove whichever
+ *   iDevice happened to be in the `$exeDevice` global at that moment.
  */
 
 /* eslint-disable no-undef */
@@ -123,6 +129,77 @@ describe('udl-content iDevice edition lifecycle', () => {
 
         expect(onButton).toHaveBeenCalledTimes(1);
         expect(onIcon).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('udl-content iDevice — button text split on the first "|"', () => {
+    let $exeDevice;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        $exeDevice = global.loadIdevice(join(__dirname, 'udl-content.js'));
+        $exeDevice.idevicePath = '/udl-content/';
+        document.body.innerHTML = '<div id="udlContentFormBlocks"></div>';
+    });
+
+    afterEach(() => {
+        if ($exeDevice && $exeDevice.$lifecycle) $exeDevice.$lifecycle.destroy();
+    });
+
+    /**
+     * Build one block form and read back the explanation paragraph: its two
+     * spans carry the accessible-hidden and the visible halves of the button
+     * text, filled through the DOM (#2646), and the paragraph itself stays
+     * hidden when the text has no "|".
+     */
+    const renderBlock = btnTxt => {
+        $exeDevice.createBlockForm({
+            btnTxt,
+            btnType: 0,
+            contMain: '',
+            contAlt1: '',
+            contAlt2: '',
+            contAlt3: '',
+        });
+        const form = $('#udlContentFormBlocks .udlContentFormBlock').last();
+        const explanation = $('.udlContentFormBlockButtonTxtExplanation', form);
+        const spans = $('span', explanation);
+        return {
+            hidden: spans.eq(0).text(),
+            visible: spans.eq(1).text(),
+            hiddenIsScreenReaderOnly: spans.eq(0).hasClass('sr-only-explanation'),
+            paragraphHidden: (explanation.attr('style') || '').includes('display:none'),
+        };
+    };
+
+    it('splits "hidden | visible" into the two accessibility spans', () => {
+        const block = renderBlock('hidden | visible');
+        expect(block.hiddenIsScreenReaderOnly).toBe(true);
+        expect(block.hidden).toBe('hidden ');
+        expect(block.visible).toBe(' visible');
+        expect(block.paragraphHidden).toBe(false);
+    });
+
+    it('keeps every "|" after the first one in the visible label (no global replace)', () => {
+        // Legitimate input: the visible label itself contains pipe characters.
+        const block = renderBlock('hidden|a|b|c');
+        expect(block.hidden).toBe('hidden');
+        expect(block.visible).toBe('a|b|c');
+    });
+
+    it('parses purely on the first "|" without a tilde sentinel collision', () => {
+        // Older code used "~~" as an intermediate sentinel; the split is now
+        // sentinel-free, so input is parsed purely on the first "|".
+        const block = renderBlock('left | right side');
+        expect(block.hidden).toBe('left ');
+        expect(block.visible).toBe(' right side');
+    });
+
+    it('leaves the explanation block hidden when there is no "|"', () => {
+        const block = renderBlock('plain label');
+        expect(block.paragraphHidden).toBe(true);
+        expect(block.hidden).toBe('');
+        expect(block.visible).toBe('');
     });
 });
 

@@ -154,6 +154,24 @@ describe('Update Licenses Command', () => {
             expect(extractCopyrightFromLicense(content)).toBeNull();
         });
 
+        it('should strip a <script> payload to a fixed point leaving no tag behind', () => {
+            // Security property for incomplete-multi-character-sanitization:
+            // the angle-bracket strip is applied repeatedly to a fixed point, so
+            // no complete "<...>" tag (e.g. "<script") survives in the result.
+            const content = 'Copyright (c) 2023 Acme <script>x</script> Inc';
+            const result = extractCopyrightFromLicense(content);
+            expect(result).not.toContain('<');
+            expect(result?.toLowerCase()).not.toContain('<script');
+            expect(result).toBe('Acme x Inc');
+        });
+
+        it('should strip multiple bracketed and parenthetical segments to a fixed point', () => {
+            const content = 'Copyright (c) 2023 Acme <a><b> Inc';
+            expect(extractCopyrightFromLicense(content)).toBe('Acme Inc');
+            const parens = 'Copyright (c) 2023 Acme (legacy) (note) Inc';
+            expect(extractCopyrightFromLicense(parens)).toBe('Acme Inc');
+        });
+
         it('should ignore the Apache-2.0 grant of copyright license', () => {
             // Section 2 of the verbatim text. It is what pdfjs-dist, @material-symbols/svg-400
             // and @mathjax/src would otherwise be attributed to, and generation and --check

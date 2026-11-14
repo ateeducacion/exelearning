@@ -554,7 +554,7 @@ describe('LaTeX Pre-rendering Export Integration', () => {
             // If pre-rendered, all data-latex should contain valid LaTeX, not HTML
             const dataLatexMatches = html.match(/data-latex="([^"]*)"/g) || [];
             for (const match of dataLatexMatches) {
-                const value = match.replace('data-latex="', '').replace('"', '');
+                const value = match.replace('data-latex="', '').replace(/"/g, '');
                 // data-latex should contain LaTeX delimiters or LaTeX commands, not HTML
                 expect(value).not.toContain('<span');
                 expect(value).not.toContain('&lt;span');

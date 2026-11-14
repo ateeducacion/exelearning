@@ -4,7 +4,7 @@
  *
  * Uses Dependency Injection pattern for testability
  */
-import { Elysia } from 'elysia';
+import { Elysia, t, type Static } from 'elysia';
 import { getJwtSecret } from './auth';
 import * as fsDefault from 'fs-extra';
 import * as pathDefault from 'path';
@@ -283,12 +283,19 @@ export interface UsedFileInfo {
     orderComponentSyncUsedFiles: string;
 }
 
-// Default dependencies
+// Sharing request bodies. Elysia rejects anything else before the handler runs
+// (the global onError answers a VALIDATION failure with 400).
+const VisibilityBody = t.Object({ visibility: t.Union([t.Literal('public'), t.Literal('private')]) });
+// The share modal also sends `role`; it is accepted and ignored.
+const AddCollaboratorBody = t.Object({ email: t.String({ minLength: 1 }), role: t.Optional(t.String()) });
+const TransferOwnerBody = t.Object({ newOwnerId: t.Integer({ minimum: 1 }) });
+
 /** Normalise a used-files request's iDevices so each carries its markup as `html`. */
 function idevicesWithHtml(data: UsedFilesRequest) {
     return (data.idevices || []).map(idevice => ({ ...idevice, html: idevice.htmlView ?? idevice.html ?? '' }));
 }
 
+// Default dependencies
 const defaultSessionManager: SessionManagerDeps = {
     createSession: createSessionDefault,
     getSession: getSessionDefault,
@@ -1067,49 +1074,48 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // PATCH /api/projects/:projectId/visibility - Update project visibility
-            .patch('/api/projects/:projectId/visibility', async ({ params, body, set, currentUser }) => {
-                const projectId = parseInt(params.projectId, 10);
-                const { visibility } = castRequestBody<{ visibility: 'public' | 'private' }>(body);
+            .patch(
+                '/api/projects/:projectId/visibility',
+                async ({ params, body, set, currentUser }) => {
+                    const projectId = parseInt(params.projectId, 10);
+                    const { visibility } = castRequestBody<Static<typeof VisibilityBody>>(body);
 
-                if (isNaN(projectId)) {
-                    set.status = 400;
-                    return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
-                }
+                    if (isNaN(projectId)) {
+                        set.status = 400;
+                        return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
+                    }
 
-                if (!visibility || !['public', 'private'].includes(visibility)) {
-                    set.status = 400;
-                    return { responseMessage: 'INVALID_VISIBILITY', detail: 'Visibility must be public or private' };
-                }
+                    const project = await findProjectById(db, projectId);
+                    if (!project) {
+                        set.status = 404;
+                        return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                    }
 
-                const project = await findProjectById(db, projectId);
-                if (!project) {
-                    set.status = 404;
-                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
-                }
+                    // Verify requester is authenticated
+                    if (!currentUser) {
+                        set.status = 401;
+                        return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                    }
 
-                // Verify requester is authenticated
-                if (!currentUser) {
-                    set.status = 401;
-                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
-                }
+                    // Verify requester is the project owner
+                    if (project.owner_id !== currentUser.id) {
+                        set.status = 403;
+                        return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change visibility' };
+                    }
 
-                // Verify requester is the project owner
-                if (project.owner_id !== currentUser.id) {
-                    set.status = 403;
-                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change visibility' };
-                }
+                    await updateProjectVisibility(db, projectId, visibility);
 
-                await updateProjectVisibility(db, projectId, visibility);
+                    // If made private, kick non-authorized users via WebSocket
+                    if (visibility === 'private') {
+                        const collabs = await getProjectCollaborators(db, projectId);
+                        const collaboratorIds = collabs.map(c => c.id);
+                        notifyVisibilityChanged(project.uuid, project.owner_id, collaboratorIds);
+                    }
 
-                // If made private, kick non-authorized users via WebSocket
-                if (visibility === 'private') {
-                    const collabs = await getProjectCollaborators(db, projectId);
-                    const collaboratorIds = collabs.map(c => c.id);
-                    notifyVisibilityChanged(project.uuid, project.owner_id, collaboratorIds);
-                }
-
-                return { responseMessage: 'OK', visibility };
-            })
+                    return { responseMessage: 'OK', visibility };
+                },
+                { body: VisibilityBody },
+            )
 
             // PATCH /api/projects/:projectId/public-view - Enable/disable the public read-only link
             .patch('/api/projects/:projectId/public-view', async ({ params, body, set, currentUser }) => {
@@ -1196,58 +1202,57 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/projects/:projectId/collaborators - Add collaborator
-            .post('/api/projects/:projectId/collaborators', async ({ params, body, set, currentUser }) => {
-                const projectId = parseInt(params.projectId, 10);
-                const { email } = castRequestBody<{ email: string }>(body);
+            .post(
+                '/api/projects/:projectId/collaborators',
+                async ({ params, body, set, currentUser }) => {
+                    const projectId = parseInt(params.projectId, 10);
+                    const { email } = castRequestBody<Static<typeof AddCollaboratorBody>>(body);
 
-                if (isNaN(projectId)) {
-                    set.status = 400;
-                    return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
-                }
+                    if (isNaN(projectId)) {
+                        set.status = 400;
+                        return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
+                    }
 
-                if (!email) {
-                    set.status = 400;
-                    return { responseMessage: 'EMAIL_REQUIRED', detail: 'Email is required' };
-                }
+                    const project = await findProjectById(db, projectId);
+                    if (!project) {
+                        set.status = 404;
+                        return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                    }
 
-                const project = await findProjectById(db, projectId);
-                if (!project) {
-                    set.status = 404;
-                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
-                }
+                    // Verify requester is authenticated
+                    if (!currentUser) {
+                        set.status = 401;
+                        return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                    }
 
-                // Verify requester is authenticated
-                if (!currentUser) {
-                    set.status = 401;
-                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
-                }
+                    // Verify requester is the project owner
+                    if (project.owner_id !== currentUser.id) {
+                        set.status = 403;
+                        return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can add collaborators' };
+                    }
 
-                // Verify requester is the project owner
-                if (project.owner_id !== currentUser.id) {
-                    set.status = 403;
-                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can add collaborators' };
-                }
+                    const user = await findUserByEmail(db, email);
+                    if (!user) {
+                        return { responseMessage: 'USER_NOT_FOUND', detail: 'User not found with this email' };
+                    }
 
-                const user = await findUserByEmail(db, email);
-                if (!user) {
-                    return { responseMessage: 'USER_NOT_FOUND', detail: 'User not found with this email' };
-                }
+                    // Check not already collaborator
+                    const existing = await isCollaborator(db, projectId, user.id);
+                    if (existing) {
+                        return { responseMessage: 'ALREADY_COLLABORATOR', detail: 'User is already a collaborator' };
+                    }
 
-                // Check not already collaborator
-                const existing = await isCollaborator(db, projectId, user.id);
-                if (existing) {
-                    return { responseMessage: 'ALREADY_COLLABORATOR', detail: 'User is already a collaborator' };
-                }
+                    // Check not owner (trying to add themselves)
+                    if (project.owner_id === user.id) {
+                        return { responseMessage: 'IS_OWNER', detail: 'Cannot add owner as collaborator' };
+                    }
 
-                // Check not owner (trying to add themselves)
-                if (project.owner_id === user.id) {
-                    return { responseMessage: 'IS_OWNER', detail: 'Cannot add owner as collaborator' };
-                }
+                    await addCollaborator(db, projectId, user.id);
 
-                await addCollaborator(db, projectId, user.id);
-
-                return { responseMessage: 'OK', collaborator: { userId: user.id, email: user.email } };
-            })
+                    return { responseMessage: 'OK', collaborator: { userId: user.id, email: user.email } };
+                },
+                { body: AddCollaboratorBody },
+            )
 
             // DELETE /api/projects/:projectId/collaborators/:userId - Remove collaborator
             .delete('/api/projects/:projectId/collaborators/:userId', async ({ params, set, currentUser }) => {
@@ -1286,58 +1291,60 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // PATCH /api/projects/:projectId/owner - Transfer ownership
-            .patch('/api/projects/:projectId/owner', async ({ params, body, set, currentUser }) => {
-                const projectId = parseInt(params.projectId, 10);
-                const { newOwnerId } = castRequestBody<{ newOwnerId: number }>(body);
+            .patch(
+                '/api/projects/:projectId/owner',
+                async ({ params, body, set, currentUser }) => {
+                    const projectId = parseInt(params.projectId, 10);
+                    const { newOwnerId } = castRequestBody<Static<typeof TransferOwnerBody>>(body);
 
-                if (isNaN(projectId)) {
-                    set.status = 400;
-                    return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
-                }
+                    if (isNaN(projectId)) {
+                        set.status = 400;
+                        return { responseMessage: 'INVALID_ID', detail: 'Invalid project ID' };
+                    }
 
-                if (!newOwnerId || isNaN(newOwnerId)) {
-                    set.status = 400;
-                    return { responseMessage: 'INVALID_OWNER', detail: 'New owner ID is required' };
-                }
+                    const project = await findProjectById(db, projectId);
+                    if (!project) {
+                        set.status = 404;
+                        return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                    }
 
-                const project = await findProjectById(db, projectId);
-                if (!project) {
-                    set.status = 404;
-                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
-                }
+                    // Verify requester is authenticated
+                    if (!currentUser) {
+                        set.status = 401;
+                        return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                    }
 
-                // Verify requester is authenticated
-                if (!currentUser) {
-                    set.status = 401;
-                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
-                }
+                    // Verify requester is the project owner
+                    if (project.owner_id !== currentUser.id) {
+                        set.status = 403;
+                        return {
+                            responseMessage: 'FORBIDDEN',
+                            detail: 'Only the project owner can transfer ownership',
+                        };
+                    }
 
-                // Verify requester is the project owner
-                if (project.owner_id !== currentUser.id) {
-                    set.status = 403;
-                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can transfer ownership' };
-                }
+                    const newOwner = await findUserById(db, newOwnerId);
+                    if (!newOwner) {
+                        set.status = 404;
+                        return { responseMessage: 'USER_NOT_FOUND', detail: 'New owner not found' };
+                    }
 
-                const newOwner = await findUserById(db, newOwnerId);
-                if (!newOwner) {
-                    set.status = 404;
-                    return { responseMessage: 'USER_NOT_FOUND', detail: 'New owner not found' };
-                }
+                    // Verify new owner is a collaborator (required for ownership transfer)
+                    const isNewOwnerCollaborator = await isCollaborator(db, projectId, newOwnerId);
+                    if (!isNewOwnerCollaborator) {
+                        set.status = 403;
+                        return {
+                            responseMessage: 'NOT_COLLABORATOR',
+                            detail: 'New owner must be a current collaborator',
+                        };
+                    }
 
-                // Verify new owner is a collaborator (required for ownership transfer)
-                const isNewOwnerCollaborator = await isCollaborator(db, projectId, newOwnerId);
-                if (!isNewOwnerCollaborator) {
-                    set.status = 403;
-                    return {
-                        responseMessage: 'NOT_COLLABORATOR',
-                        detail: 'New owner must be a current collaborator',
-                    };
-                }
+                    await transferOwnership(db, projectId, newOwnerId);
 
-                await transferOwnership(db, projectId, newOwnerId);
-
-                return { responseMessage: 'OK' };
-            })
+                    return { responseMessage: 'OK' };
+                },
+                { body: TransferOwnerBody },
+            )
 
             // GET /api/odes/:sessionId/properties - Get ODE properties
             .get('/api/odes/:sessionId/properties', async ({ params, set, currentUser }) => {
@@ -1465,44 +1472,43 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // PATCH /api/projects/uuid/:uuid/visibility - Update project visibility by UUID
-            .patch('/api/projects/uuid/:uuid/visibility', async ({ params, body, set, currentUser }) => {
-                const uuid = params.uuid;
-                const { visibility } = castRequestBody<{ visibility: 'public' | 'private' }>(body);
+            .patch(
+                '/api/projects/uuid/:uuid/visibility',
+                async ({ params, body, set, currentUser }) => {
+                    const uuid = params.uuid;
+                    const { visibility } = castRequestBody<Static<typeof VisibilityBody>>(body);
 
-                if (!visibility || !['public', 'private'].includes(visibility)) {
-                    set.status = 400;
-                    return { responseMessage: 'INVALID_VISIBILITY', detail: 'Visibility must be public or private' };
-                }
+                    const project = await findProjectByUuid(db, uuid);
+                    if (!project) {
+                        set.status = 404;
+                        return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                    }
 
-                const project = await findProjectByUuid(db, uuid);
-                if (!project) {
-                    set.status = 404;
-                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
-                }
+                    // Verify requester is authenticated
+                    if (!currentUser) {
+                        set.status = 401;
+                        return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                    }
 
-                // Verify requester is authenticated
-                if (!currentUser) {
-                    set.status = 401;
-                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
-                }
+                    // Verify requester is the project owner
+                    if (project.owner_id !== currentUser.id) {
+                        set.status = 403;
+                        return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change visibility' };
+                    }
 
-                // Verify requester is the project owner
-                if (project.owner_id !== currentUser.id) {
-                    set.status = 403;
-                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change visibility' };
-                }
+                    await updateProjectVisibilityByUuid(db, uuid, visibility);
 
-                await updateProjectVisibilityByUuid(db, uuid, visibility);
+                    // If made private, kick non-authorized users via WebSocket
+                    if (visibility === 'private') {
+                        const collabs = await getProjectCollaborators(db, project.id);
+                        const collaboratorIds = collabs.map(c => c.id);
+                        notifyVisibilityChanged(uuid, project.owner_id, collaboratorIds);
+                    }
 
-                // If made private, kick non-authorized users via WebSocket
-                if (visibility === 'private') {
-                    const collabs = await getProjectCollaborators(db, project.id);
-                    const collaboratorIds = collabs.map(c => c.id);
-                    notifyVisibilityChanged(uuid, project.owner_id, collaboratorIds);
-                }
-
-                return { responseMessage: 'OK', visibility };
-            })
+                    return { responseMessage: 'OK', visibility };
+                },
+                { body: VisibilityBody },
+            )
 
             // PATCH /api/projects/uuid/:uuid/public-view - Enable/disable the public read-only link by UUID
             .patch('/api/projects/uuid/:uuid/public-view', async ({ params, body, set, currentUser }) => {
@@ -1579,52 +1585,51 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/projects/uuid/:uuid/collaborators - Add collaborator by UUID
-            .post('/api/projects/uuid/:uuid/collaborators', async ({ params, body, set, currentUser }) => {
-                const uuid = params.uuid;
-                const { email } = castRequestBody<{ email: string }>(body);
+            .post(
+                '/api/projects/uuid/:uuid/collaborators',
+                async ({ params, body, set, currentUser }) => {
+                    const uuid = params.uuid;
+                    const { email } = castRequestBody<Static<typeof AddCollaboratorBody>>(body);
 
-                if (!email) {
-                    set.status = 400;
-                    return { responseMessage: 'EMAIL_REQUIRED', detail: 'Email is required' };
-                }
+                    const project = await findProjectByUuid(db, uuid);
+                    if (!project) {
+                        set.status = 404;
+                        return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                    }
 
-                const project = await findProjectByUuid(db, uuid);
-                if (!project) {
-                    set.status = 404;
-                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
-                }
+                    // Verify requester is authenticated
+                    if (!currentUser) {
+                        set.status = 401;
+                        return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                    }
 
-                // Verify requester is authenticated
-                if (!currentUser) {
-                    set.status = 401;
-                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
-                }
+                    // Verify requester is the project owner
+                    if (project.owner_id !== currentUser.id) {
+                        set.status = 403;
+                        return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can add collaborators' };
+                    }
 
-                // Verify requester is the project owner
-                if (project.owner_id !== currentUser.id) {
-                    set.status = 403;
-                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can add collaborators' };
-                }
+                    const user = await findUserByEmail(db, email);
+                    if (!user) {
+                        return { responseMessage: 'USER_NOT_FOUND', detail: 'User not found with this email' };
+                    }
 
-                const user = await findUserByEmail(db, email);
-                if (!user) {
-                    return { responseMessage: 'USER_NOT_FOUND', detail: 'User not found with this email' };
-                }
+                    const existing = await isCollaborator(db, project.id, user.id);
+                    if (existing) {
+                        return { responseMessage: 'ALREADY_COLLABORATOR', detail: 'User is already a collaborator' };
+                    }
 
-                const existing = await isCollaborator(db, project.id, user.id);
-                if (existing) {
-                    return { responseMessage: 'ALREADY_COLLABORATOR', detail: 'User is already a collaborator' };
-                }
+                    // Check not owner (trying to add themselves)
+                    if (project.owner_id === user.id) {
+                        return { responseMessage: 'IS_OWNER', detail: 'Cannot add owner as collaborator' };
+                    }
 
-                // Check not owner (trying to add themselves)
-                if (project.owner_id === user.id) {
-                    return { responseMessage: 'IS_OWNER', detail: 'Cannot add owner as collaborator' };
-                }
+                    await addCollaborator(db, project.id, user.id);
 
-                await addCollaborator(db, project.id, user.id);
-
-                return { responseMessage: 'OK', collaborator: { userId: user.id, email: user.email } };
-            })
+                    return { responseMessage: 'OK', collaborator: { userId: user.id, email: user.email } };
+                },
+                { body: AddCollaboratorBody },
+            )
 
             // DELETE /api/projects/uuid/:uuid/collaborators/:userId - Remove collaborator by UUID
             .delete('/api/projects/uuid/:uuid/collaborators/:userId', async ({ params, set, currentUser }) => {
@@ -1663,53 +1668,55 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // PATCH /api/projects/uuid/:uuid/owner - Transfer ownership by UUID
-            .patch('/api/projects/uuid/:uuid/owner', async ({ params, body, set, currentUser }) => {
-                const uuid = params.uuid;
-                const { newOwnerId } = castRequestBody<{ newOwnerId: number }>(body);
+            .patch(
+                '/api/projects/uuid/:uuid/owner',
+                async ({ params, body, set, currentUser }) => {
+                    const uuid = params.uuid;
+                    const { newOwnerId } = castRequestBody<Static<typeof TransferOwnerBody>>(body);
 
-                if (!newOwnerId || isNaN(newOwnerId)) {
-                    set.status = 400;
-                    return { responseMessage: 'INVALID_OWNER', detail: 'New owner ID is required' };
-                }
+                    const project = await findProjectByUuid(db, uuid);
+                    if (!project) {
+                        set.status = 404;
+                        return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                    }
 
-                const project = await findProjectByUuid(db, uuid);
-                if (!project) {
-                    set.status = 404;
-                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
-                }
+                    // Verify requester is authenticated
+                    if (!currentUser) {
+                        set.status = 401;
+                        return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                    }
 
-                // Verify requester is authenticated
-                if (!currentUser) {
-                    set.status = 401;
-                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
-                }
+                    // Verify requester is the project owner
+                    if (project.owner_id !== currentUser.id) {
+                        set.status = 403;
+                        return {
+                            responseMessage: 'FORBIDDEN',
+                            detail: 'Only the project owner can transfer ownership',
+                        };
+                    }
 
-                // Verify requester is the project owner
-                if (project.owner_id !== currentUser.id) {
-                    set.status = 403;
-                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can transfer ownership' };
-                }
+                    const newOwner = await findUserById(db, newOwnerId);
+                    if (!newOwner) {
+                        set.status = 404;
+                        return { responseMessage: 'USER_NOT_FOUND', detail: 'New owner not found' };
+                    }
 
-                const newOwner = await findUserById(db, newOwnerId);
-                if (!newOwner) {
-                    set.status = 404;
-                    return { responseMessage: 'USER_NOT_FOUND', detail: 'New owner not found' };
-                }
+                    // Verify new owner is a collaborator (required for ownership transfer)
+                    const isNewOwnerCollaborator = await isCollaborator(db, project.id, newOwnerId);
+                    if (!isNewOwnerCollaborator) {
+                        set.status = 403;
+                        return {
+                            responseMessage: 'NOT_COLLABORATOR',
+                            detail: 'New owner must be a current collaborator',
+                        };
+                    }
 
-                // Verify new owner is a collaborator (required for ownership transfer)
-                const isNewOwnerCollaborator = await isCollaborator(db, project.id, newOwnerId);
-                if (!isNewOwnerCollaborator) {
-                    set.status = 403;
-                    return {
-                        responseMessage: 'NOT_COLLABORATOR',
-                        detail: 'New owner must be a current collaborator',
-                    };
-                }
+                    await transferOwnershipByUuid(db, uuid, newOwnerId);
 
-                await transferOwnershipByUuid(db, uuid, newOwnerId);
-
-                return { responseMessage: 'OK' };
-            })
+                    return { responseMessage: 'OK' };
+                },
+                { body: TransferOwnerBody },
+            )
 
             // POST /api/projects/uuid/:uuid/duplicate - Duplicate project by UUID
             .post('/api/projects/uuid/:uuid/duplicate', async ({ params, set, currentUser }) => {

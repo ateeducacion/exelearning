@@ -178,6 +178,8 @@ public/libs/dompurify/purify.min.js
 /public/files/perm/idevices/base/three-d-viewer/edition/three-d-viewer.js.map
 /public/files/perm/idevices/base/three-d-viewer/export/three-d-viewer.js
 /public/files/perm/idevices/base/three-d-viewer/export/three-d-viewer.js.map
+# Mind map editor of the exemindmap TinyMCE plugin (scripts/build-mindmap-editor.ts, build:all)
+/public/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/mindmap-editor.bundle.*
 .omc/
 
 # Live-LMS harness working directories (see test/e2e/moodle/README.md)

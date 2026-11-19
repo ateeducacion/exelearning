@@ -148,6 +148,19 @@ describe('Folder Manager Service', () => {
             expect(service.sanitizeFolderName('folder*name')).toBe('folder_name');
         });
 
+        it('should replace ALL invalid characters, not just the first', () => {
+            // Incomplete-sanitization regression guard: without the global flag
+            // only the first invalid character would be replaced, leaving the
+            // rest (e.g. directory separators) intact.
+            expect(service.sanitizeFolderName('a<b>c')).toBe('a_b_c');
+            expect(service.sanitizeFolderName('a/b/c')).toBe('a_b_c');
+            expect(service.sanitizeFolderName('a\\b\\c')).toBe('a_b_c');
+            expect(service.sanitizeFolderName('<>:"|?*')).toBe('_______');
+            // No invalid character should survive sanitization.
+            expect(service.sanitizeFolderName('x:y/z')).not.toContain('/');
+            expect(service.sanitizeFolderName('x:y/z')).not.toContain(':');
+        });
+
         it('should remove leading dots and spaces', () => {
             expect(service.sanitizeFolderName('.hidden')).toBe('hidden');
             expect(service.sanitizeFolderName('  folder')).toBe('folder');

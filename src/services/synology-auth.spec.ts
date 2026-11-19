@@ -127,7 +127,7 @@ describe('Synology authentication assertions', () => {
             { exitCode: 0, stdout: Buffer.from('') },
             { exitCode: 0, stdout: Buffer.from('alice\nbob') },
         ]) {
-            configure({ spawnSync: (() => result) as typeof Bun.spawnSync });
+            configure({ spawnSync: (() => result) as unknown as typeof Bun.spawnSync });
             expect(authenticateSynologySession(request)).toBeNull();
         }
         configure({

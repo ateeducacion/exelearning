@@ -28,6 +28,9 @@ import {
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
 import { resetOidcDiscoveryCache } from '../services/oidc-discovery';
 import { resetSynologyAssertionReplayCache, signSynologyAssertion } from '../services/synology-auth';
+import { fetchHost } from '../../test/helpers/fetch-host';
+
+// Bun's `typeof fetch` also requires `preconnect`; the fakes below only replace the call itself.
 
 let testDb: Kysely<Database>;
 let originalEnv: Record<string, string | undefined>;
@@ -1114,7 +1117,7 @@ describe('Auth Routes', () => {
         const originalFetch = globalThis.fetch;
 
         function mockWellKnown() {
-            globalThis.fetch = (async (url: string | URL | Request) => {
+            fetchHost.fetch = async (url: string | URL | Request) => {
                 const href = url.toString();
                 if (href.endsWith('/.well-known/openid-configuration')) {
                     return {
@@ -1130,7 +1133,7 @@ describe('Auth Routes', () => {
                     } as unknown as Response;
                 }
                 throw new Error(`Unexpected fetch in discovery test: ${href}`);
-            }) as unknown as typeof fetch;
+            };
         }
 
         beforeEach(() => {
@@ -1531,7 +1534,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response('<cas:serviceResponse><cas:authenticationFailure /></cas:serviceResponse>');
 
             const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-invalid'));
@@ -1549,7 +1552,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1586,7 +1589,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1617,7 +1620,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1648,7 +1651,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1684,7 +1687,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 throw new Error('Network error');
             };
 
@@ -1719,7 +1722,7 @@ describe('Auth Routes', () => {
                 })
                 .execute();
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1764,7 +1767,7 @@ describe('Auth Routes', () => {
                 })
                 .execute();
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1915,7 +1918,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-123',
@@ -1963,7 +1966,7 @@ describe('Auth Routes', () => {
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
             let requestCount = 0;
-            globalThis.fetch = async (url: string | URL | Request) => {
+            fetchHost.fetch = async (url: string | URL | Request) => {
                 requestCount++;
                 const urlStr = typeof url === 'string' ? url : url.toString();
                 if (urlStr.includes('userinfo')) {
@@ -2016,7 +2019,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-789',
@@ -2066,7 +2069,7 @@ describe('Auth Routes', () => {
                     iat: Math.floor(Date.now() / 1000),
                 }),
             ).toString('base64url');
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify({ access_token: 'a', id_token: `header.${idTokenPayload}.signature` }));
 
             const response = await app.handle(oidcCallbackRequest('code=disabled'));
@@ -2092,7 +2095,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-noemail',
@@ -2123,7 +2126,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,openid';
             process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
 
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 throw new Error('Network error');
             };
 
@@ -2147,7 +2150,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-return',
@@ -2179,7 +2182,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-idtoken',
@@ -2234,10 +2237,10 @@ describe('Auth Routes', () => {
             });
 
             const respondWith = (body: Record<string, unknown>, status = 200) => {
-                globalThis.fetch = (async () => {
+                fetchHost.fetch = async () => {
                     tokenRequests++;
                     return new Response(JSON.stringify(body), { status });
-                }) as unknown as typeof fetch;
+                };
             };
 
             it('returns 401 and creates no account when the token endpoint rejects the code', async () => {
@@ -2262,10 +2265,10 @@ describe('Auth Routes', () => {
             });
 
             it('returns 401 when the token endpoint answers with a non-JSON error page', async () => {
-                globalThis.fetch = (async () => {
+                fetchHost.fetch = async () => {
                     tokenRequests++;
                     return new Response('<html>Bad Gateway</html>', { status: 502 });
-                }) as unknown as typeof fetch;
+                };
 
                 const response = await app.handle(oidcCallbackRequest('code=html-error-code'));
 
@@ -2372,7 +2375,7 @@ describe('Auth Routes', () => {
             const mockIdToken = `${idTokenHeader}.${idTokenPayload}.unverifiable-signature`;
 
             let jwksFetched = false;
-            globalThis.fetch = (async (url: string | URL | Request) => {
+            fetchHost.fetch = async (url: string | URL | Request) => {
                 const href = url.toString();
                 if (href.endsWith('/.well-known/openid-configuration')) {
                     return {
@@ -2398,7 +2401,7 @@ describe('Auth Routes', () => {
                     return new Response(JSON.stringify({ access_token: 'access-token-jwks', id_token: mockIdToken }));
                 }
                 throw new Error(`Unexpected fetch in jwks discovery test: ${href}`);
-            }) as unknown as typeof fetch;
+            };
 
             const response = await app.handle(oidcCallbackRequest('code=jwks-code'));
 
@@ -2478,7 +2481,7 @@ describe('Auth Routes', () => {
             const { SignJWT } = await import('jose');
             const secret = new TextEncoder().encode(getJwtSecret());
             const token = await new SignJWT({
-                sub: 1,
+                sub: '1',
                 email: 'oidclogout@example.com',
                 roles: ['ROLE_USER'],
                 authMethod: 'openid',
@@ -2517,7 +2520,7 @@ describe('Auth Routes', () => {
             process.env.OIDC_ISSUER = issuer;
             delete process.env.OIDC_END_SESSION_ENDPOINT;
             process.env.OIDC_CLIENT_ID = 'test-client';
-            globalThis.fetch = (async (url: string | URL | Request) => {
+            fetchHost.fetch = async (url: string | URL | Request) => {
                 if (url.toString().endsWith('/.well-known/openid-configuration')) {
                     return {
                         ok: true,
@@ -2532,7 +2535,7 @@ describe('Auth Routes', () => {
                     } as unknown as Response;
                 }
                 throw new Error(`Unexpected fetch: ${url}`);
-            }) as unknown as typeof fetch;
+            };
 
             const response = await app.handle(
                 new Request('http://localhost/logout', { headers: { cookie: await openidAuthCookie() } }),
@@ -2832,7 +2835,7 @@ describe('Auth Routes', () => {
             process.env.CAS_URL = 'https://cas.example.com';
             process.env.DEFAULT_QUOTA = '2048';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -2876,7 +2879,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-quota',
@@ -2944,7 +2947,7 @@ describe('Auth Routes', () => {
             process.env.CAS_URL = 'https://cas.example.com';
             delete process.env.DEFAULT_QUOTA;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -2987,7 +2990,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -3030,7 +3033,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-tempdomain',
@@ -3090,7 +3093,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-nosub',
@@ -3195,7 +3198,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -3314,7 +3317,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,openid';
             process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-gating',
@@ -3482,7 +3485,7 @@ describe('Auth Routes', () => {
                 user_id: 'synology:alice',
                 external_identifier: 'synology:alice',
                 password: 'unused',
-                roles: ['ROLE_USER'],
+                roles: '["ROLE_USER"]',
                 is_active: 0,
             });
             const request = () =>

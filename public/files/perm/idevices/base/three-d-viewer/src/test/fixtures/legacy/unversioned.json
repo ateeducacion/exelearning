@@ -1,0 +1,11 @@
+{
+    "src": "asset://8f3c2a10-0b41-4f0f-9a1c-2b7d5e6f7a90.glb",
+    "alt": "A cube",
+    "modelColor": "#AABBCC",
+    "backgroundColor": "#ffffff",
+    "cameraControls": true,
+    "autoRotate": true,
+    "autoRotateSpeed": 45,
+    "showNavControls": false,
+    "animation": { "enabled": true, "name": "Spin", "speed": 1.5 }
+}

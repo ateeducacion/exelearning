@@ -1,0 +1,10 @@
+{
+    "ideviceId": "idev-v1-full",
+    "src": "asset://panoramas/plaza.jpg",
+    "alt": "Main square panorama",
+    "initialView": { "yaw": 30, "pitch": 10, "fov": 80 },
+    "autorotate": { "enabled": true, "speed": 2 },
+    "zoomEnabled": false,
+    "fullscreenEnabled": true,
+    "showNavControls": false
+}

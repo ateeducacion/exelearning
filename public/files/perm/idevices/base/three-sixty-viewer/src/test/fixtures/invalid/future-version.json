@@ -1,0 +1,7 @@
+{
+    "version": 3,
+    "ideviceId": "idev-v3",
+    "startSceneId": "s1",
+    "scenes": [{ "id": "s1", "src": "asset://future.jpg", "volumetricLayers": [{ "depth": 4 }] }],
+    "newTopLevelField": { "anything": true }
+}

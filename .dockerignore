@@ -43,7 +43,6 @@ tests/
 # Documentation
 README.md
 CHANGELOG.md
-LICENSE
 *.md
 doc/
 docs/

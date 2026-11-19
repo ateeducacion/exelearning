@@ -1,0 +1,3 @@
+#!/bin/sh
+# Keep the package variable directory; DSM retains it after uninstall.
+exit 0

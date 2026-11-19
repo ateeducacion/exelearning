@@ -44,7 +44,7 @@ export interface PasswordAccountUser {
  * password. `user` is the persisted account behind the session, when available.
  */
 export interface PasswordSessionContext {
-    authMethod?: 'local' | 'cas' | 'openid' | 'saml' | 'guest' | null;
+    authMethod?: 'local' | 'cas' | 'openid' | 'saml' | 'synology' | 'guest' | null;
     isGuest?: boolean | null;
     isImpersonated?: boolean | null;
     /** True when the installation runs offline / with authentication disabled. */

@@ -1,0 +1,99 @@
+name: Build native Synology SPK
+
+on:
+  release:
+    types: [prereleased, released]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Existing release tag to build (for example v4.1.0-beta.1)'
+        required: true
+        type: string
+      package_revision:
+        description: 'Synology package revision'
+        required: true
+        default: '1'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-spk:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - name: Resolve immutable source ref
+        id: release
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          MANUAL_REF: ${{ inputs.ref }}
+          PACKAGE_REVISION: ${{ inputs.package_revision }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          revision=1
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            tag="$MANUAL_REF"
+            revision="$PACKAGE_REVISION"
+          fi
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || { echo "A version tag beginning with v is required" >&2; exit 1; }
+          [[ "$revision" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid package revision" >&2; exit 1; }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ steps.release.outputs.tag }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Test Synology package and authentication
+        run: bun test ./packaging/synology src/services/synology-auth.spec.ts src/routes/auth.spec.ts
+
+      - name: Build and validate native SPK
+        run: make package-synology VERSION=${{ steps.release.outputs.version }} PACKAGE_REVISION=${{ steps.release.outputs.revision }}
+
+      - name: Smoke-test SPK
+        shell: bash
+        run: |
+          set -euo pipefail
+          spk="release/exelearning-${{ steps.release.outputs.version }}-${{ steps.release.outputs.revision }}-x86_64.spk"
+          bash packaging/synology/smoke-test.sh "$spk"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: synology-spk
+          path: |
+            release/*.spk
+            release/*.spk.sha256
+
+  upload-release:
+    if: github.event_name == 'release'
+    needs: build-spk
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: synology-spk
+          path: release
+      - name: Upload assets to the existing GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.build-spk.outputs.tag }}
+        run: gh release upload "$RELEASE_TAG" release/*.spk release/*.spk.sha256 --clobber

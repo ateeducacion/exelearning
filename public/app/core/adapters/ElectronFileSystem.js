@@ -31,13 +31,12 @@ export class ElectronFileSystem extends FileSystemAdapter {
     async saveAs(data, suggestedName, options = {}) {
         try {
             const buffer = await this._toBuffer(data);
-            const result = await this.api.saveBufferAs(buffer, suggestedName);
+            const result = await this.api.saveBufferAs(buffer, options.projectKey, suggestedName);
             const normalized = typeof result === 'object' && result !== null
                 ? result
                 : { saved: result === true, canceled: result !== true, filePath: undefined };
             const saved =
-                normalized.saved === true ||
-                (!normalized.canceled && typeof normalized.filePath === 'string' && normalized.filePath.length > 0);
+                normalized.saved === true && !normalized.canceled && !normalized.error;
 
             if (normalized.canceled) {
                 return { success: false, error: 'Canceled by user' };
@@ -46,6 +45,7 @@ export class ElectronFileSystem extends FileSystemAdapter {
             return {
                 success: saved,
                 path: normalized.filePath,
+                error: normalized.error || undefined,
             };
         } catch (error) {
             console.error('[ElectronFileSystem] saveAs error:', error);
@@ -69,8 +69,7 @@ export class ElectronFileSystem extends FileSystemAdapter {
                 ? result
                 : { saved: result === true, canceled: result !== true, filePath: undefined };
             const saved =
-                normalized.saved === true ||
-                (!normalized.canceled && typeof normalized.filePath === 'string' && normalized.filePath.length > 0);
+                normalized.saved === true && !normalized.canceled && !normalized.error;
 
             if (normalized.canceled) {
                 return { success: false, error: 'Canceled by user' };
@@ -79,6 +78,7 @@ export class ElectronFileSystem extends FileSystemAdapter {
             return {
                 success: saved,
                 path: normalized.filePath,
+                error: normalized.error || undefined,
             };
         } catch (error) {
             console.error('[ElectronFileSystem] save error:', error);

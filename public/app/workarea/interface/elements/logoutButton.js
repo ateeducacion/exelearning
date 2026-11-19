@@ -108,14 +108,21 @@ export default class LogoutButton {
      */
     async saveAndCloseOffline() {
         try {
+            const project = eXeLearning.app.project;
+            const bridge = project?._yjsBridge;
             // Use Yjs export for saving
             if (
                 eXeLearning.app.project?._yjsEnabled &&
                 eXeLearning.app.project?.exportToElpxViaYjs
             ) {
-                await eXeLearning.app.project.exportToElpxViaYjs({
+                const result = await project.exportToElpxViaYjs({
                     saveAs: false,
                 });
+                if (result?.saved !== true || eXeLearning.app.project !== project || project._yjsBridge !== bridge) {
+                    return false;
+                }
+            } else {
+                return false;
             }
             this.closeOfflineApp();
         } catch (error) {

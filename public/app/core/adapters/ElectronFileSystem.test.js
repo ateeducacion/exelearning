@@ -2,6 +2,8 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { ElectronFileSystem } from './ElectronFileSystem.js';
 
 describe('ElectronFileSystem', () => {
@@ -32,8 +34,37 @@ describe('ElectronFileSystem', () => {
     });
 
     describe('saveAs', () => {
+        it('DESKTOP-03: preserves bytes and filename through the actual preload implementation', async () => {
+            const invoke = vi.fn(async () => ({ saved: true, filePath: '/temporary/Á course.elpx' }));
+            runInNewContext(readFileSync('app/preload.js', 'utf8'), {
+                require: () => ({
+                    contextBridge: { exposeInMainWorld: (_name, api) => { window.electronAPI = api; } },
+                    ipcRenderer: { invoke },
+                }),
+            });
+            const realBridgeAdapter = new ElectronFileSystem();
+            const bytes = new Uint8Array([0, 255, 42]);
+            const result = await realBridgeAdapter.saveAs(bytes, 'Á course.elpx', { projectKey: 'session-key' });
+            expect(invoke).toHaveBeenCalledWith('app:saveBufferAs', {
+                bufferData: bytes,
+                projectKey: 'session-key',
+                suggestedName: 'Á course.elpx',
+            });
+            expect(result).toMatchObject({ success: true, path: '/temporary/Á course.elpx' });
+        });
+        it('DESKTOP-01: forwards filename in the third argument required by the real preload bridge', async () => {
+            mockElectronAPI.saveBufferAs.mockImplementation(async (_bytes, _key, suggestedName) => ({
+                saved: true,
+                filePath: `/temporary/${suggestedName}`,
+            }));
+            const bytes = new Uint8Array([42]);
+            const result = await adapter.saveAs(bytes, 'Course with spaces.elpx');
+            expect(mockElectronAPI.saveBufferAs).toHaveBeenCalledWith(bytes, undefined, 'Course with spaces.elpx');
+            expect(result.path).toBe('/temporary/Course with spaces.elpx');
+        });
         it('should call saveBufferAs with data', async () => {
             mockElectronAPI.saveBufferAs.mockResolvedValue({
+                saved: true,
                 filePath: '/path/to/file.elpx',
             });
 
@@ -42,6 +73,7 @@ describe('ElectronFileSystem', () => {
 
             expect(mockElectronAPI.saveBufferAs).toHaveBeenCalledWith(
                 expect.any(Uint8Array),
+                undefined,
                 'file.elpx'
             );
             expect(result.success).toBe(true);
@@ -72,8 +104,22 @@ describe('ElectronFileSystem', () => {
     });
 
     describe('save', () => {
+        it.each(['save', 'saveAs'])(
+            'DESKTOP-02: %s does not mistake a failed native write with a selected path for success',
+            async (operation) => {
+                const response = { saved: false, canceled: false, filePath: '/temporary/course.elpx', error: 'Disk full' };
+                mockElectronAPI.saveBuffer.mockResolvedValue(response);
+                mockElectronAPI.saveBufferAs.mockResolvedValue(response);
+                const result = operation === 'save'
+                    ? await adapter.save(new Uint8Array([1]), 'project', 'course.elpx')
+                    : await adapter.saveAs(new Uint8Array([1]), 'course.elpx');
+                expect(result.success).toBe(false);
+                expect(result.error).toBe('Disk full');
+            },
+        );
         it('should call saveBuffer with project key', async () => {
             mockElectronAPI.saveBuffer.mockResolvedValue({
+                saved: true,
                 filePath: '/path/to/file.elpx',
             });
 

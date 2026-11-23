@@ -1,10 +1,11 @@
 /**
- * Unit tests for the Video test (quick-questions-video) iDevice export runtime.
+ * Unit tests for quick-questions-video iDevice (export/runtime)
  *
- * startGame() cleared the counters without telling the LMS, and left gameOver
- * standing from the previous attempt, so pressing start showed neither a zero
- * nor a status change and the first answer reported the fresh attempt as
- * already finished.
+ * Covers:
+ * - getIDMediaTeca host/path checks so look-alike Mediateca URLs cannot be
+ *   smuggled through (incomplete-url-substring-sanitization).
+ * - SCORM reporting on start: startGame() used to clear counters without
+ *   telling the LMS and left gameOver standing from the previous attempt.
  */
 
 /* eslint-disable no-undef */
@@ -49,6 +50,86 @@ describe('quick-questions-video iDevice export', () => {
         vi.useRealTimers();
         document.body.innerHTML = '';
         vi.restoreAllMocks();
+        delete global.$quickquestionsvideo;
+    });
+
+    describe('getIDMediaTeca', () => {
+        it('resolves a legitimate Mediateca video sharing URL', () => {
+            const result = $quickquestionsvideo.getIDMediaTeca(
+                'https://mediateca.educa.madrid.org/video/ABC123',
+            );
+            expect(result).toBe(
+                'http://mediateca.educa.madrid.org/streaming.php?id=ABC123',
+            );
+        });
+
+        it('strips the query string when extracting the id', () => {
+            const result = $quickquestionsvideo.getIDMediaTeca(
+                'https://mediateca.educa.madrid.org/video/ABC123?autoplay=1',
+            );
+            expect(result).toBe(
+                'http://mediateca.educa.madrid.org/streaming.php?id=ABC123',
+            );
+        });
+
+        it('preserves nested path segments after /video/', () => {
+            const result = $quickquestionsvideo.getIDMediaTeca(
+                'https://mediateca.educa.madrid.org/video/ABC/DEF',
+            );
+            expect(result).toBe(
+                'http://mediateca.educa.madrid.org/streaming.php?id=ABC/DEF',
+            );
+        });
+
+        it('rejects a look-alike host (subdomain attack)', () => {
+            expect(
+                $quickquestionsvideo.getIDMediaTeca(
+                    'https://mediateca.educa.madrid.org.evil.com/video/ABC123',
+                ),
+            ).toBe('');
+        });
+
+        it('rejects a URL that only embeds the target as a query parameter', () => {
+            expect(
+                $quickquestionsvideo.getIDMediaTeca(
+                    'https://evil.com/?x=https://mediateca.educa.madrid.org/video/ABC123',
+                ),
+            ).toBe('');
+        });
+
+        it('rejects the correct host on a non-/video/ path', () => {
+            expect(
+                $quickquestionsvideo.getIDMediaTeca(
+                    'https://mediateca.educa.madrid.org/audio/ABC123',
+                ),
+            ).toBe('');
+        });
+
+        it('rejects the correct host and path over plain http', () => {
+            expect(
+                $quickquestionsvideo.getIDMediaTeca(
+                    'http://mediateca.educa.madrid.org/video/ABC123',
+                ),
+            ).toBe('');
+        });
+
+        it('rejects an empty /video/ path with no id', () => {
+            expect(
+                $quickquestionsvideo.getIDMediaTeca(
+                    'https://mediateca.educa.madrid.org/video/',
+                ),
+            ).toBe('');
+        });
+
+        it('returns empty string for an invalid URL', () => {
+            expect($quickquestionsvideo.getIDMediaTeca('not a url')).toBe('');
+        });
+
+        it('returns empty string for a falsy input', () => {
+            expect($quickquestionsvideo.getIDMediaTeca('')).toBe('');
+            expect($quickquestionsvideo.getIDMediaTeca(undefined)).toBe('');
+            expect($quickquestionsvideo.getIDMediaTeca(null)).toBe('');
+        });
     });
 
     describe('SCORM reporting on start', () => {

@@ -129,6 +129,34 @@ describe('UnsavedChangesHelper', () => {
   });
 
   describe('promptIfUnsavedChanges', () => {
+    it.each([undefined, null, 'unexpected'])(
+      'LEAVE-14: an unknown modal response does not authorize leaving (%j)',
+      async (response) => {
+        mockDocumentManager.isDirty = true;
+        mockApp.modals.saveChangesModal.confirmDiscardOrSave.mockResolvedValue(response);
+        expect(await UnsavedChangesHelper.promptIfUnsavedChanges()).toBe(false);
+      },
+    );
+    it.each([undefined, false, { success: false }, { saved: true }])(
+      'LEAVE-09: denies leaving after an unconfirmed save %j',
+      async (receipt) => {
+        mockDocumentManager.isDirty = true;
+        mockApp.modals.saveChangesModal.confirmDiscardOrSave.mockResolvedValue('save');
+        mockYjsBridge.save.mockResolvedValue(receipt);
+        expect(await UnsavedChangesHelper.promptIfUnsavedChanges()).toBe(false);
+        expect(mockDocumentManager.isDirty).toBe(true);
+      },
+    );
+
+    it('LEAVE-10: does not adopt the result of a save from a replaced session', async () => {
+      mockDocumentManager.isDirty = true;
+      mockApp.modals.saveChangesModal.confirmDiscardOrSave.mockResolvedValue('save');
+      mockYjsBridge.save.mockImplementation(async () => {
+        mockApp.project._yjsBridge = { documentManager: { isDirty: true } };
+        return { success: true };
+      });
+      expect(await UnsavedChangesHelper.promptIfUnsavedChanges()).toBe(false);
+    });
     it('should return true immediately when no unsaved changes', async () => {
       mockDocumentManager.isDirty = false;
       const result = await UnsavedChangesHelper.promptIfUnsavedChanges();

@@ -12,6 +12,7 @@ import { parseRoles } from '../db/types';
 import {
     findUserByEmail as findUserByEmailDefault,
     findUserById as findUserByIdDefault,
+    findUserByExternalId as findUserByExternalIdDefault,
     createUser as createUserDefault,
 } from '../db/queries';
 import { endImpersonationAuditSession } from '../db/queries/impersonation';
@@ -27,6 +28,12 @@ import { logActivity } from '../services/activity-logger';
 import { resolveOidcEndpoints, type ResolvedOidcEndpoints } from '../services/oidc-discovery';
 import { toAuthenticatedIdentity, type AuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import { verifyPassword } from '../services/password';
+import {
+    createSynologyState,
+    synologyPlaceholderEmail,
+    verifySynologyAssertion,
+    verifySynologyState,
+} from '../services/synology-auth';
 import { getJwtSecret } from '../utils/jwt-secret';
 
 // Domain for temporary emails (CAS, OIDC, Guest users without real email)
@@ -87,6 +94,7 @@ export interface AuthDependencies {
     queries: {
         findUserByEmail: typeof findUserByEmailDefault;
         findUserById: typeof findUserByIdDefault;
+        findUserByExternalId?: typeof findUserByExternalIdDefault;
         createUser: typeof createUserDefault;
     };
 }
@@ -96,6 +104,7 @@ const defaultDeps: AuthDependencies = {
     queries: {
         findUserByEmail: findUserByEmailDefault,
         findUserById: findUserByIdDefault,
+        findUserByExternalId: findUserByExternalIdDefault,
         createUser: createUserDefault,
     },
 };
@@ -180,7 +189,7 @@ const GuestLoginBody = t.Optional(t.Object({ returnUrl: t.Optional(t.String()) }
  */
 export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
     const { db, queries } = deps;
-    const { findUserByEmail, findUserById, createUser } = queries;
+    const { findUserByEmail, findUserById, findUserByExternalId = findUserByExternalIdDefault, createUser } = queries;
 
     return (
         new Elysia({ name: 'auth-routes' })
@@ -595,6 +604,115 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
                 // Default: redirect to login page (local auth, guest, or no auth method)
                 return Response.redirect(prefixPath('/login'), 302);
+            })
+
+            // DSM's package CGI validates the session and returns a signed identity.
+            .get('/login/synology', async ({ set, query }) => {
+                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
+                if (!authMethods.includes('synology')) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: 'Synology authentication is not enabled.' };
+                }
+                const state = createSynologyState();
+                const returnUrl = query.returnUrl as string | undefined;
+                const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+                const cookiePath = getBasePath() || '/';
+                const location = `/webman/3rdparty/exelearning/auth.cgi?state=${encodeURIComponent(state)}`;
+                const headers: [string, string][] = [
+                    ['Location', location],
+                    [
+                        'Set-Cookie',
+                        `synology_state=${state}; Path=${cookiePath}; HttpOnly; SameSite=Lax; Max-Age=120${secure}`,
+                    ],
+                    ['Cache-Control', 'no-store'],
+                ];
+                if (returnUrl && isValidReturnUrl(returnUrl)) {
+                    headers.push([
+                        'Set-Cookie',
+                        `sso_return_url=${encodeURIComponent(returnUrl)}; Path=${cookiePath}; HttpOnly; SameSite=Lax; Max-Age=120${secure}`,
+                    ]);
+                }
+                return new Response(null, { status: 302, headers });
+            })
+            .get('/login/synology/callback', async ({ jwt, cookie, request, query, set }) => {
+                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
+                if (!authMethods.includes('synology')) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: 'Synology authentication is not enabled.' };
+                }
+                const cookies = new Map(
+                    (request.headers.get('cookie') || '').split(';').map(value => {
+                        const [name, ...parts] = value.trim().split('=');
+                        return [name, parts.join('=')];
+                    }),
+                );
+                if (!verifySynologyState(cookies.get('synology_state'), query.state as string | undefined)) {
+                    set.status = 400;
+                    return { error: 'Bad Request', message: 'Invalid Synology authentication state.' };
+                }
+                const assertion = verifySynologyAssertion(
+                    cookies.get('synology_assertion') || '',
+                    cookies.get('synology_state') || '',
+                );
+                if (!assertion) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Invalid or expired Synology assertion.' };
+                }
+                const externalIdentifier = `synology:${assertion.username}`;
+                let user = await findUserByExternalId(db, externalIdentifier);
+                if (!user) {
+                    if (!shouldAutoCreateUsers()) {
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'Synology user creation is disabled.' };
+                    }
+                    const defaultQuota = await getDefaultQuotaMb(db);
+                    user = await createUser(db, {
+                        email: synologyPlaceholderEmail(assertion.username),
+                        user_id: externalIdentifier,
+                        external_identifier: externalIdentifier,
+                        password: await bcrypt.hash(randomBytes(16).toString('hex'), 10),
+                        roles: JSON.stringify(['ROLE_USER']),
+                        is_lopd_accepted: 1,
+                        quota_mb: defaultQuota,
+                        is_active: 1,
+                    });
+                }
+                if (!user.is_active) {
+                    set.status = 403;
+                    return { error: 'Forbidden', message: 'This account is disabled.' };
+                }
+                const roles = parseRoles(user.roles);
+                cookie.auth.set({
+                    value: await jwt.sign({
+                        sub: String(user.id),
+                        email: user.email,
+                        roles,
+                        isGuest: false,
+                        authMethod: 'synology',
+                        pwh: passwordFingerprint(user.password),
+                    } satisfies Omit<JwtPayload, 'iat' | 'exp'>),
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'lax',
+                    maxAge: 7 * 24 * 60 * 60,
+                    path: '/',
+                });
+                logActivity(db, { eventType: 'auth.login', userId: user.id });
+                const returnUrl = cookies.get('sso_return_url');
+                const cookiePath = getBasePath() || '/';
+                const target = getSafeRedirectUrl(
+                    returnUrl ? decodeURIComponent(returnUrl) : undefined,
+                    await getPostLoginTarget(db, roles),
+                );
+                return new Response(null, {
+                    status: 302,
+                    headers: [
+                        ['Location', target],
+                        ['Set-Cookie', `synology_state=; Path=${cookiePath}; HttpOnly; Max-Age=0`],
+                        ['Set-Cookie', `synology_assertion=; Path=${cookiePath}; HttpOnly; Max-Age=0`],
+                        ['Set-Cookie', `sso_return_url=; Path=${cookiePath}; HttpOnly; Max-Age=0`],
+                    ],
+                });
             })
 
             // GET /login/cas - CAS (Central Authentication Service) SSO login

@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+# Installation is idempotent and preserves existing configuration and secrets.
+exec "$(dirname "$0")/postinst"

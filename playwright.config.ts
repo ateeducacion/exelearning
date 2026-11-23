@@ -43,12 +43,10 @@ const dynamicServerEnv = {
     OIDC_CLIENT_ID: 'e2e-client',
     ADMIN_EMAIL: 'admin@exelearning.test',
     ADMIN_PASSWORD: 'AdminPass123!',
-    // Exercise the app in production mode (the default .env now ships APP_ENV=dev
-    // for local onboarding). The production boot guard refuses to start with a
-    // missing/default API_JWT_SECRET or APP_SECRET (security audit), so provide
-    // real, non-default test values — irrelevant to the tests, which authenticate
-    // through the real API.
-    APP_ENV: 'prod',
+    // Dev mode exposes the Developer menu and dev-only routes this branch's specs cover.
+    // The non-default API_JWT_SECRET/APP_SECRET below still satisfy the production boot
+    // guard if APP_ENV is switched back to 'prod'.
+    APP_ENV: 'dev',
     API_JWT_SECRET: 'e2e-test-jwt-secret-not-for-production-use',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
     PUBLIC_VIEW_ENABLED: 'true', // Enable public read-only links for E2E tests

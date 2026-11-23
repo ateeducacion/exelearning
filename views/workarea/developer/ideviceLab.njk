@@ -1,0 +1,169 @@
+{% extends "base.njk" %}
+
+{% block title %}eXeLearning · iDevice Lab{% endblock %}
+
+{% block stylesheets %}
+    <link class="exe" rel="stylesheet" href="{{ '/libs/bootstrap/bootstrap.min.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/main.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/app/workarea/developer/developer.css' | asset }}">
+{% endblock %}
+
+{% block javascripts %}
+    <script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
+    <script>
+        window.__APP_ENV__ = "dev";
+        window.__DEV_TOOLS__ = { basePath: "{{ basePath or '' }}", version: "{{ version }}" };
+    </script>
+    <script type="module" src="{{ '/app/workarea/developer/idevice-lab/IdeviceLab.js' | asset }}" defer></script>
+{% endblock %}
+
+{% block id %}developer-idevice-lab-root{% endblock %}
+
+{% block body %}
+    <div id="developer-idevice-lab-root"
+         class="developer-lab"
+         data-testid="developer-idevice-lab-root"
+         data-base-path="{{ basePath or '' }}">
+
+        <header class="developer-lab__header">
+            <h1>iDevice Lab</h1>
+            <p class="developer-lab__subtitle">
+                Developer-only sandbox for exercising iDevices through the edit → save → export
+                lifecycle. <strong>Not for production use.</strong>
+            </p>
+            <nav class="developer-lab__nav" aria-label="Developer tools">
+                <a class="developer-lab__nav-link" href="{{ basePath or '' }}/developer/style-lab" data-testid="developer-menu-style-lab">Style Lab</a>
+                <a class="developer-lab__nav-link is-active" href="{{ basePath or '' }}/developer/idevice-lab">iDevice Lab</a>
+                <a class="developer-lab__nav-link" href="{{ basePath or '' }}/api/v1/docs" data-testid="developer-menu-rest-api">REST API</a>
+            </nav>
+        </header>
+
+        <section class="developer-lab__controls" aria-label="iDevice Lab controls">
+            <div class="developer-lab__control">
+                <label for="developer-idevice-lab-idevice-select">iDevice</label>
+                <select id="developer-idevice-lab-idevice-select"
+                        data-testid="developer-idevice-lab-idevice-select"></select>
+            </div>
+
+            <div class="developer-lab__control">
+                <label for="developer-idevice-lab-sample-select">Sample</label>
+                <select id="developer-idevice-lab-sample-select"
+                        data-testid="developer-idevice-lab-sample-select"></select>
+            </div>
+
+            <div class="developer-lab__control">
+                <label for="developer-idevice-lab-theme-source-select">Theme source</label>
+                <select id="developer-idevice-lab-theme-source-select"
+                        data-testid="developer-idevice-lab-theme-source-select">
+                    <option value="base">Base</option>
+                    <option value="site">Site</option>
+                    <option value="user">User</option>
+                </select>
+            </div>
+
+            <div class="developer-lab__control">
+                <label for="developer-idevice-lab-theme-select">Theme</label>
+                <select id="developer-idevice-lab-theme-select"
+                        data-testid="developer-idevice-lab-theme-select"></select>
+            </div>
+
+            <div class="developer-lab__control">
+                <label for="developer-idevice-lab-export-target-select">Export target</label>
+                <select id="developer-idevice-lab-export-target-select"
+                        data-testid="developer-idevice-lab-export-target-select">
+                    <option value="website">Website</option>
+                    <option value="single-page">Single Page</option>
+                    <option value="scorm12">SCORM 1.2</option>
+                </select>
+            </div>
+
+            <div class="developer-lab__control">
+                <label for="developer-idevice-lab-viewport-select">Viewport</label>
+                <select id="developer-idevice-lab-viewport-select"
+                        data-testid="developer-idevice-lab-viewport-select">
+                    <option value="desktop">Desktop</option>
+                    <option value="tablet">Tablet</option>
+                    <option value="mobile">Mobile</option>
+                </select>
+            </div>
+
+            <div class="developer-lab__control developer-lab__control--actions">
+                <button type="button" id="developer-idevice-lab-run-roundtrip"
+                        data-testid="developer-idevice-lab-run-roundtrip">
+                    Validate save/load roundtrip
+                </button>
+            </div>
+        </section>
+
+        <section class="developer-lab__tabs" role="tablist" aria-label="iDevice views">
+            <button type="button" role="tab" data-tab="edition"
+                    data-testid="developer-idevice-lab-tab-edition" aria-selected="true">Edition</button>
+            <button type="button" role="tab" data-tab="saved"
+                    data-testid="developer-idevice-lab-tab-saved" aria-selected="false">Saved state</button>
+            <button type="button" role="tab" data-tab="export"
+                    data-testid="developer-idevice-lab-tab-export" aria-selected="false">Export</button>
+            <button type="button" role="tab" data-tab="roundtrip"
+                    data-testid="developer-idevice-lab-tab-roundtrip" aria-selected="false">Roundtrip</button>
+            <button type="button" role="tab" data-tab="scorm"
+                    data-testid="developer-idevice-lab-tab-scorm" aria-selected="false">SCORM debug</button>
+        </section>
+
+        <section class="developer-lab__panels">
+            <div role="tabpanel" data-panel="edition"
+                 data-testid="developer-idevice-lab-edition-view"
+                 class="developer-lab__panel is-active">
+                <p class="developer-lab__panel-hint">Live iDevice edition view. Use the iDevice selector above.</p>
+                <div id="developer-idevice-lab-edition-mount" class="developer-lab__edition-mount"></div>
+            </div>
+
+            <div role="tabpanel" data-panel="saved"
+                 data-testid="developer-idevice-lab-saved-state"
+                 class="developer-lab__panel" hidden>
+                <button type="button" data-testid="developer-idevice-lab-copy-state">Copy</button>
+                <pre id="developer-idevice-lab-saved-state-content"></pre>
+            </div>
+
+            <div role="tabpanel" data-panel="export"
+                 data-testid="developer-idevice-lab-export-view"
+                 class="developer-lab__panel" hidden>
+                <iframe id="developer-idevice-lab-export-frame"
+                        title="iDevice export preview"
+                        sandbox="allow-scripts allow-same-origin"></iframe>
+            </div>
+
+            <div role="tabpanel" data-panel="roundtrip"
+                 data-testid="developer-idevice-lab-roundtrip-result"
+                 class="developer-lab__panel" hidden>
+                <div id="developer-idevice-lab-roundtrip-status"
+                     data-testid="developer-idevice-lab-roundtrip-status"
+                     data-status="idle">No roundtrip run yet.</div>
+                <pre id="developer-idevice-lab-roundtrip-output"></pre>
+            </div>
+
+            <div role="tabpanel" data-panel="scorm"
+                 data-testid="developer-idevice-lab-scorm-panel"
+                 class="developer-lab__panel" hidden>
+                <p class="developer-lab__warning">
+                    <strong>Simulator only.</strong> The SCORM panel is a developer simulator, not
+                    a full LMS runtime. Always verify SCORM behavior in a real LMS before release.
+                </p>
+                <dl>
+                    <dt>Score</dt><dd id="developer-idevice-lab-scorm-score">—</dd>
+                    <dt>Completion</dt><dd id="developer-idevice-lab-scorm-completion">—</dd>
+                    <dt>Success</dt><dd id="developer-idevice-lab-scorm-success">—</dd>
+                </dl>
+            </div>
+        </section>
+
+        <footer class="developer-lab__status-bar">
+            <div id="developer-idevice-lab-status"
+                 data-testid="developer-idevice-lab-status"
+                 data-status="initializing">Initializing…</div>
+        </footer>
+
+        <script type="application/json" id="developer-idevice-lab-state"
+                data-testid="developer-idevice-lab-state">
+{"idevice":null,"sample":null,"themeSource":"base","theme":null,"export":"website","viewport":"desktop","status":"initializing","roundtrip":{"status":"idle"}}
+        </script>
+    </div>
+{% endblock %}

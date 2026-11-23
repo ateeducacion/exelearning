@@ -1,13 +1,29 @@
-/* 360° panorama viewer iDevice (edition CSS) */
+/**
+ * 360° panorama viewer iDevice — edition styles.
+ *
+ * Inline, responsive, accessible. Mirrors the Interactive Video authoring
+ * surface: section heads with counts, an edit-stage preview, an add bar and a
+ * single-editor accordion list (selected row expands). Colour is never the
+ * sole cue — badges always carry a text label.
+ */
 
 .three-sixty-viewer-form {
-    padding: 10px;
-    border: 1px dashed var(--info-bordercolor, #b0b0b0);
-    border-radius: var(--radius, 4px);
+    /* Action-kind colours (badge + selected-row accent). */
+    --three-sixty-go-to-scene: #0065ab;
+    --three-sixty-text: var(--brand-primary, #078e8e);
+    --three-sixty-image: #d76b4a;
+    --three-sixty-video: #a25ac4;
+    --three-sixty-link: #0b6e4f;
+    --three-sixty-unsupported: #777;
+
+    padding: 0.75rem;
+    border: 1px solid var(--gray-200, #e5e7eb);
+    border-radius: var(--radius, 8px);
     margin-top: 0.4em;
     display: flex;
     flex-direction: column;
-    gap: 0.75em;
+    gap: 0.9rem;
+    background: var(--bg-light-gray, #fafafa);
 }
 
 .three-sixty-viewer-form .property-row {
@@ -15,6 +31,7 @@
     align-items: center;
     gap: 0.5em;
     flex-wrap: wrap;
+    margin-bottom: 0.5rem;
 }
 
 .three-sixty-viewer-form .property-row label.form-label {
@@ -22,14 +39,29 @@
 }
 
 .three-sixty-viewer-form .exe-fieldset {
-    padding: 0.5em 0.75em;
+    padding: 0.75em 1em;
     border: 1px solid var(--elements-hover, #d0d0d0);
-    border-radius: var(--radius, 4px);
+    border-radius: var(--radius, 8px);
+    background: #fff;
+    margin: 0;
 }
 
 .three-sixty-viewer-form .exe-fieldset legend {
-    padding: 0 0.25em;
+    padding: 0 0.35em;
     font-weight: 600;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.three-sixty-section-title {
+    font-size: 1rem;
+}
+
+.three-sixty-fieldset-count {
+    font-size: 0.85em;
+    font-weight: 400;
+    color: var(--icon-gray, #777);
 }
 
 .three-sixty-viewer-form .toggle-label {
@@ -50,6 +82,80 @@
     flex: 1 1 auto;
 }
 
+.three-sixty-viewer-form .exe-form-group {
+    margin-bottom: 0.65rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.6rem;
+    align-items: center;
+}
+
+.three-sixty-viewer-form .exe-form-group > label {
+    min-width: 6rem;
+}
+
+.three-sixty-viewer-form .exe-form-group .form-control,
+.three-sixty-viewer-form .exe-form-group select,
+.three-sixty-viewer-form .exe-form-group textarea {
+    flex: 1 1 12rem;
+    max-width: 100%;
+}
+
+.three-sixty-hint {
+    margin: 0 0 0.5rem;
+    color: var(--icon-gray, #555);
+}
+
+.three-sixty-empty {
+    padding: 0.75rem 1rem;
+    border: 1px dashed #ccc;
+    border-radius: 0.5rem;
+    color: #555;
+    margin: 0;
+}
+
+/* Add bar (Interactive Video pattern) */
+
+.three-sixty-add-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0.35rem 0 0.75rem;
+}
+
+.three-sixty-add-bar .btn {
+    min-height: 2.5rem;
+}
+
+.three-sixty-placement-hint {
+    margin: 0 0 0.5rem;
+    font-weight: 500;
+    color: var(--brand-primary, #078e8e);
+}
+
+#threeSixtyPlaceHotspot[aria-pressed='true'],
+#threeSixtyPlaceHotspot.active {
+    background-color: var(--brand-primary, #078e8e);
+    border-color: var(--brand-primary, #078e8e);
+    color: #fff;
+    box-shadow: 0 0 0 2px rgba(7, 142, 142, 0.25);
+}
+
+/* Edit stage — preview */
+
+.three-sixty-edit-stage {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.three-sixty-edit-stage-main {
+    flex: 1 1 100%;
+    min-width: 0;
+}
+
 .three-sixty-viewer-preview {
     width: 100%;
     display: flex;
@@ -59,11 +165,12 @@
 
 .three-sixty-preview-stage {
     width: 100%;
-    min-height: 260px;
+    min-height: 280px;
     background-color: #111;
-    border-radius: var(--radius, 4px);
+    border-radius: var(--radius, 8px);
     overflow: hidden;
     position: relative;
+    border: 1px solid var(--gray-border, #dbdbdb);
 }
 
 .three-sixty-preview-stage canvas {
@@ -86,7 +193,6 @@
     cursor: crosshair !important;
 }
 
-/* Flat (non-360) scene preview image. */
 .three-sixty-preview-stage .three-sixty-preview-flat {
     position: absolute;
     inset: 0;
@@ -151,19 +257,10 @@
 }
 
 .three-sixty-preview-stage .three-sixty-viewer-hotspot--editor:hover .three-sixty-viewer-hotspot-icon,
-.three-sixty-preview-stage .three-sixty-viewer-hotspot--editor:focus .three-sixty-viewer-hotspot-icon {
+.three-sixty-preview-stage .three-sixty-viewer-hotspot--editor:focus .three-sixty-viewer-hotspot-icon,
+.three-sixty-preview-stage .three-sixty-viewer-hotspot--editor.is-selected .three-sixty-viewer-hotspot-icon {
     transform: scale(1.1);
     background: rgba(64, 160, 220, 0.9);
-}
-
-#threeSixtyPlaceHotspot.active {
-    background-color: var(--info-bordercolor, #4ea0d4);
-    color: #fff;
-}
-
-.three-sixty-hotspot-item.is-highlighted {
-    box-shadow: 0 0 0 2px var(--info-bordercolor, #4ea0d4);
-    transition: box-shadow 0.2s ease;
 }
 
 .three-sixty-preview-stage .three-sixty-viewer-nav {
@@ -207,49 +304,301 @@
 .three-sixty-scene-list {
     display: flex;
     flex-direction: column;
-    gap: 0.25em;
-    margin-bottom: 0.5em;
+    gap: 0.35em;
+    margin-bottom: 0.35em;
 }
 
 .three-sixty-scene-item {
     display: flex;
-    align-items: center;
-    gap: 0.5em;
-    padding: 0.25em 0.5em;
+    align-items: stretch;
+    gap: 0.25em;
     border: 1px solid var(--elements-hover, #d0d0d0);
-    border-radius: var(--radius, 4px);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: #fff;
 }
 
 .three-sixty-scene-item.is-active {
-    background-color: var(--info-background, #e9f4fb);
-    border-color: var(--info-bordercolor, #4ea0d4);
+    border-color: var(--brand-primary-300, #5fe9d9);
+    border-left: 3px solid var(--brand-primary, #078e8e);
+    background: var(--info-background, #e9f4fb);
 }
 
-.three-sixty-scene-item .three-sixty-scene-select {
+.three-sixty-scene-select {
     flex: 1 1 auto;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
     text-align: left;
-    padding: 0.25em 0.5em;
+    min-height: 2.5rem;
+    padding: 0.4rem 0.6rem;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.three-sixty-scene-item.is-active .three-sixty-scene-select {
+    font-weight: 600;
+}
+
+.three-sixty-scene-label {
+    flex: 1 1 auto;
+    min-width: 4rem;
+}
+
+.three-sixty-scene-badge {
+    color: #fff;
+    font-weight: 500;
+    font-size: 0.75rem;
+}
+
+.three-sixty-scene-badge--pano {
+    background-color: var(--three-sixty-go-to-scene, #0065ab);
+}
+
+.three-sixty-scene-badge--flat {
+    background-color: var(--three-sixty-image, #d76b4a);
+}
+
+.three-sixty-scene-badge--start {
+    background-color: var(--brand-primary, #078e8e);
 }
 
 .three-sixty-scene-actions {
     display: inline-flex;
-    gap: 0.25em;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.25rem;
 }
 
-/* Hotspot list */
+/* Hotspot accordion list (Interactive Video pattern) */
 
 .three-sixty-hotspot-list {
     display: flex;
     flex-direction: column;
-    gap: 0.5em;
+    gap: 0.35rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.three-sixty-kind--go-to-scene {
+    --three-sixty-kind-color: var(--three-sixty-go-to-scene);
+}
+
+.three-sixty-kind--text {
+    --three-sixty-kind-color: var(--three-sixty-text);
+}
+
+.three-sixty-kind--image {
+    --three-sixty-kind-color: var(--three-sixty-image);
+}
+
+.three-sixty-kind--video {
+    --three-sixty-kind-color: var(--three-sixty-video);
+}
+
+.three-sixty-kind--link {
+    --three-sixty-kind-color: var(--three-sixty-link);
+}
+
+.three-sixty-kind--unsupported {
+    --three-sixty-kind-color: var(--three-sixty-unsupported);
 }
 
 .three-sixty-hotspot-item {
-    border: 1px solid var(--elements-hover, #d0d0d0);
-    border-radius: var(--radius, 4px);
-    padding: 0.5em;
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: #fff;
 }
 
-.three-sixty-hotspot-item .form-control {
+.three-sixty-hotspot-item.is-selected {
+    border-color: var(--brand-primary-300, #5fe9d9);
+    border-left: 3px solid var(--three-sixty-kind-color, var(--brand-primary, #078e8e));
+}
+
+.three-sixty-hotspot-row {
+    display: flex;
+    gap: 0.25rem;
+    align-items: stretch;
+}
+
+.three-sixty-hotspot-select {
+    flex: 1;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    text-align: left;
+    min-height: 2.5rem;
+    padding: 0.4rem 0.6rem;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.three-sixty-hotspot-item.is-selected .three-sixty-hotspot-select {
+    font-weight: 600;
+}
+
+.three-sixty-hotspot-badge {
+    color: #fff;
+    background-color: var(--three-sixty-kind-color, var(--three-sixty-text));
+    font-weight: 500;
+}
+
+.three-sixty-hotspot-summary {
+    flex: 1;
+    min-width: 6rem;
+}
+
+.three-sixty-hotspot-validity {
+    color: #b3261e;
+}
+
+.three-sixty-hotspot-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.25rem;
+}
+
+.three-sixty-hotspot-actions .btn {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+}
+
+.three-sixty-hotspot-done .exe-icon {
+    font-family: var(--icons-ff, 'Material Icons Round');
+    font-size: 16px;
+    line-height: 1;
+    color: var(--success-color, #2e7d32);
+}
+
+/* Expanded editor hosted inside the selected row */
+
+.three-sixty-hotspot-detail {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #eee;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.three-sixty-hotspot-detail-heading {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+    color: var(--three-sixty-kind-color, inherit);
+}
+
+.three-sixty-hotspot-coords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.three-sixty-hotspot-detail .form-control {
     max-width: 16em;
+}
+
+.three-sixty-hotspot-detail textarea.form-control {
+    max-width: 100%;
+    width: 100%;
+}
+
+.hotspot-field-error {
+    color: #b3261e;
+    display: block;
+    width: 100%;
+}
+
+.hotspot-field-error:empty {
+    display: none;
+}
+
+/* Inline delete confirmation (no modal) */
+
+.three-sixty-hotspot-item.is-confirming {
+    padding: 0.75rem 1rem;
+    background: var(--red-50, #fef2f2);
+    border: 1px solid var(--red-200, #fecaca);
+    border-radius: var(--radius, 8px);
+}
+
+.three-sixty-delete-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.three-sixty-delete-confirm-text {
+    font-weight: 500;
+    color: var(--red-700, #b91c1c);
+    font-size: 14px;
+}
+
+.three-sixty-delete-confirm-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.three-sixty-delete-confirm-actions .btn-danger,
+.three-sixty-delete-confirm-actions .btn-danger:hover {
+    color: #fff;
+    background: var(--red-600, #dc2626);
+    border-color: var(--red-600, #dc2626);
+}
+
+/* Transient per-row "Saved" confirmation (icon + text, never colour alone) */
+
+.three-sixty-hotspot-saved {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    color: var(--success-color, #2e7d32);
+    opacity: 0;
+    align-self: center;
+    margin-inline-end: 0.35rem;
+    transition: opacity 0.4s ease-out;
+}
+
+.three-sixty-hotspot-saved.is-saved {
+    opacity: 1;
+    transition: opacity 0.2s ease-in;
+}
+
+.three-sixty-hotspot-saved .exe-icon {
+    font-family: var(--icons-ff, 'Material Icons Round');
+    font-size: 15px;
+    line-height: 1;
+}
+
+.three-sixty-viewer-form :focus-visible {
+    outline: 2px solid var(--brand-primary-300, #1a73e8);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .three-sixty-hotspot-saved.is-saved {
+        transition: none;
+    }
+}
+
+/* Visually-hidden utility if the workarea doesn't supply one */
+
+.three-sixty-viewer-form .visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
 }

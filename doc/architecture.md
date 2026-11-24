@@ -598,6 +598,64 @@ to the reverse proxy / a dedicated middleware.
 > Note: the workarea preview (§8.1–8.5) keeps the same-origin Service Worker, since
 > the author is previewing their own content. Only the **public** view is isolated.
 
+#### Optional content domain (`EXE_CONTENT_DOMAIN`)
+
+The opaque origin is the default and needs no infrastructure. An operator may
+instead set `EXE_CONTENT_DOMAIN=host[:port]` to serve author content from a
+**different site**, with one host label per content item
+(ADR-53-01; deployment in [Content Domain](content-domain.md)). Content then has
+a real origin: nested embeds, storage and Service Workers work, and it still
+cannot reach the application. With the setting unset, nothing below applies.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  https://app.example/view/:publicViewId   (loader, app host)  │
+│      └── <iframe sandbox="… allow-same-origin"                │
+│              src="https://<label>.<content domain>/…">        │
+└──────────────────────────────────────────────────────────────┘
+                               │  (content origin, another site)
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│  https://<label>.<content domain><BASE_PATH>                  │
+│      /content/<base64url(app origin)>/view/:publicViewId/*    │
+│  src/routes/content-host.ts → contentHostGuard()              │
+│      ├── first hook of the app: nothing else runs for this    │
+│      │   host (no session, cookies, API, pages or WebSocket)  │
+│      ├── label == HMAC(secret, kind, id, app origin) or 404   │
+│      └── headers from contentDomainHeaders()                  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Invariants, each enforced by tests (see the change design):
+
+- On a content host only content routes answer; every application page, API
+  route, WebSocket upgrade and login route is a 404.
+- Content is served only when the host label is the one derived for it. Labels
+  are a keyed hash computed by the server (`src/utils/content-label.ts`); a
+  client can neither choose nor predict one.
+- Content-host responses never set cookies and never read the session.
+- The application host keeps `/view/:publicViewId/_/*` in the opaque origin in
+  both modes.
+- No silent downgrade: if the content host does not serve the document, the
+  loader shows an error. Content is never served from the application origin
+  as a fallback.
+
+| | Opaque origin (default) | Content domain |
+|---|---|---|
+| Content URL | `/view/:id/_/*` on the app host | `/content/<app origin>/view/:id/*` on `<label>.<content domain>` |
+| iframe `sandbox` | `PUBLIC_VIEW_SANDBOX` (no `allow-same-origin`) | `CONTENT_DOMAIN_SANDBOX` (adds `allow-same-origin`; still no top navigation or modals) |
+| `frame-ancestors` | `'self'` | `'self' <app origin>` |
+| Referrer | `no-referrer` | `strict-origin-when-cross-origin`, so embedded players can identify the embedder |
+
+Both columns come from `src/shared/security/publicViewSandbox.ts`. Never use the
+content-domain tokens for content served from the application host.
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Setting** | `src/utils/content-domain.ts` | Parse and validate `EXE_CONTENT_DOMAIN`, build content origins |
+| **Label** | `src/utils/content-label.ts` | Keyed, DNS-safe label per content item |
+| **Host routing** | `src/routes/content-host.ts` | Answers every request for a content host |
+
 ### 8.7 Registration Lifecycle and Self-Healing
 
 Browser profiles keep Service Worker registrations indefinitely, so the app never trusts a

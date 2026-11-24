@@ -175,7 +175,28 @@ APP_AUTH_METHODS=password,guest
 
 # Base path (for subdirectory installs)
 BASE_PATH=
+
+# Optional content domain for untrusted author content (unset by default)
+# EXE_CONTENT_DOMAIN=exe-content.localhost:8080
 ```
+
+#### `EXE_CONTENT_DOMAIN`
+
+Optional. `host[:port]`, without a scheme, path or wildcard. When it is set,
+author content is served from `<scheme>://<label>.<host>[:port]/…`, a different
+site from the application, with one label per content item; when it is unset the
+application behaves as it does without the feature.
+
+- The value is validated at boot. An invalid one stops the server with
+  `[SECURITY] Invalid EXE_CONTENT_DOMAIN: …`, as a missing production secret does.
+- A warning is logged when the content domain is a subdomain of the application
+  host (same site, weaker isolation), and when a request shows that it is the
+  application host or a parent of it (the application then answers 404).
+- For local work use `*.localhost` names, which browsers resolve to loopback and
+  treat as separate sites: open the app at `http://exe-app.localhost:8080` with
+  `EXE_CONTENT_DOMAIN=exe-content.localhost:8080`.
+
+See [Content Domain](../content-domain.md) for DNS, TLS and reverse-proxy setup.
 
 ### Database Configuration
 

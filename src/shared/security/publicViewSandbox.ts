@@ -103,11 +103,13 @@ export const CONTENT_DOMAIN_REFERRER_POLICY = 'strict-origin-when-cross-origin';
  *
  * Without `appOrigin` this is the opaque-origin policy of the application host.
  * With `appOrigin` it is the content-domain policy: the content keeps its own
- * origin and may only be framed by that application origin.
+ * origin and may only be framed by that application origin or by itself.
  */
 export function publicViewCspHeader(profile: PublicViewCspProfile = 'compatible', appOrigin?: string): string {
     const sandbox = `sandbox ${appOrigin ? CONTENT_DOMAIN_SANDBOX : PUBLIC_VIEW_SANDBOX}`;
-    const shared = ["object-src 'none'", "base-uri 'none'", `frame-ancestors ${appOrigin ?? "'self'"}`];
+    // On a content domain 'self' is the content origin (a document may frame its own pages).
+    const frameAncestors = appOrigin ? `frame-ancestors 'self' ${appOrigin}` : "frame-ancestors 'self'";
+    const shared = ["object-src 'none'", "base-uri 'none'", frameAncestors];
 
     if (profile === 'strict') {
         return [

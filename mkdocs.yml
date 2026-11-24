@@ -54,6 +54,7 @@ nav:
   - Profile Avatars: profile-avatars.md
   - Deployment: deployment.md
   - High Availability: high-availability.md
+  - Content Domain: content-domain.md
   - "Deploy: Sample Configs": deploy/README.md
   - Architecture:
       - Overview: architecture.md

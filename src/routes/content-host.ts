@@ -89,7 +89,12 @@ export function createContentHostHandler(deps: ContentHostDeps = defaultDeps) {
         const contentDomain = getContentDomain();
         if (!contentDomain) return undefined;
 
-        const { hostname, pathname } = getPublicUrl(request, server ?? undefined);
+        // The host the client connected to wins when it is on the content domain, so a
+        // forwarded-host header can never turn a content host into the application host.
+        const { hostname: forwardedHost, pathname } = getPublicUrl(request, server ?? undefined);
+        const requestHost = new URL(request.url).hostname;
+        const hostname =
+            relateHostToContentDomain(requestHost, contentDomain) === 'unrelated' ? forwardedHost : requestHost;
         const relation = relateHostToContentDomain(hostname, contentDomain);
         if (relation === 'unrelated') return undefined;
         if (relation === 'content-under-app') {

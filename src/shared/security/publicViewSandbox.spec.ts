@@ -86,8 +86,7 @@ describe('content domain mode', () => {
     it('limits frame-ancestors to the application origin and keeps the resource directives', () => {
         const csp = publicViewCspHeader('compatible', APP);
         expect(csp).toContain(`sandbox ${CONTENT_DOMAIN_SANDBOX};`);
-        expect(csp).toContain(`frame-ancestors ${APP}`);
-        expect(csp).not.toContain("frame-ancestors 'self'");
+        expect(csp.split('; ').at(-1)).toBe(`frame-ancestors 'self' ${APP}`);
         expect(csp).toContain("object-src 'none'");
         expect(csp).toContain("base-uri 'none'");
         // Everything but the sandbox and frame-ancestors is the opaque-origin policy.

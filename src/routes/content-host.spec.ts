@@ -106,8 +106,7 @@ describe('content host handler', () => {
 
             const csp = res?.headers.get('Content-Security-Policy') ?? '';
             expect(csp).toContain(`sandbox ${CONTENT_DOMAIN_SANDBOX};`);
-            expect(csp).toContain(`frame-ancestors ${APP}`);
-            expect(csp).not.toContain("frame-ancestors 'self'");
+            expect(csp).toContain(`frame-ancestors 'self' ${APP}`);
             expect(csp).toContain("object-src 'none'");
             expect(res?.headers.get('X-Content-Type-Options')).toBe('nosniff');
             expect(res?.headers.get('Permissions-Policy')).toContain('camera=()');
@@ -287,14 +286,19 @@ describe('content host handler', () => {
                     server,
                 ),
             ).toBeUndefined();
-            // And a content-host request cannot pose as the application host.
-            const res = await handle(
+        });
+
+        it('never lets a forwarded host turn a content host into the application host', async () => {
+            const handle = createContentHostHandler(createDeps());
+            const request = () =>
                 new Request(`${new URL(contentUrl('pub-1')).origin}/login`, {
                     headers: { 'X-Forwarded-Host': 'app.test' },
-                }),
-                server,
-            );
-            expect(res?.status).toBe(404);
+                });
+
+            expect((await handle(request(), server))?.status).toBe(404);
+            // Not even when the sender is a trusted proxy.
+            process.env.TRUSTED_PROXIES = 'private_ranges';
+            expect((await handle(request(), server))?.status).toBe(404);
         });
     });
 

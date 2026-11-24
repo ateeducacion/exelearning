@@ -21,7 +21,9 @@ import {
 import { zipSync, strToU8 } from 'fflate';
 import { SignJWT } from 'jose';
 import { configurePublicViewContent, resetPublicViewContent, type ExportResult } from '../services/public-view-content';
-import { PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
+import { CONTENT_DOMAIN_SANDBOX, PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
+import { encodeAppOrigin } from '../utils/content-domain';
+import { contentLabel } from '../utils/content-label';
 import { passwordFingerprint, verifyToken } from './auth';
 
 // Mock data stores
@@ -3119,6 +3121,66 @@ describe('Pages Routes', () => {
             expect(html).not.toContain('secret-internal-uuid');
             expect(templateData.uuid).toBeUndefined();
             expect(templateData.publicViewId).toBe('public-view-id-55');
+        });
+
+        describe('iframe target', () => {
+            let templateData: any = null;
+            const capture: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+            const savedContentDomain = process.env.EXE_CONTENT_DOMAIN;
+            const savedBasePath = process.env.BASE_PATH;
+
+            beforeEach(() => {
+                templateData = null;
+                mockProjects.set('iframe-target-project', {
+                    id: 57,
+                    uuid: 'iframe-target-uuid',
+                    public_view_id: 'public-view-id-57',
+                    public_view_enabled: 1,
+                    owner_id: 999,
+                    title: 'Iframe target',
+                });
+            });
+
+            afterEach(() => {
+                if (savedContentDomain === undefined) delete process.env.EXE_CONTENT_DOMAIN;
+                else process.env.EXE_CONTENT_DOMAIN = savedContentDomain;
+                if (savedBasePath === undefined) delete process.env.BASE_PATH;
+                else process.env.BASE_PATH = savedBasePath;
+            });
+
+            it('keeps the opaque-origin iframe on the application host when no content domain is set', async () => {
+                delete process.env.EXE_CONTENT_DOMAIN;
+                const customApp = new Elysia().use(createPagesRoutes({ ...mockDeps, template: capture }));
+
+                await customApp.handle(new Request('http://app.test/view/public-view-id-57'));
+
+                expect(templateData.contentSrc).toBeNull();
+                expect(templateData.sandboxTokens).toBe(PUBLIC_VIEW_SANDBOX);
+                expect(templateData.sandboxTokens).not.toContain('allow-same-origin');
+                expect(templateData.referrerPolicy).toBe('no-referrer');
+            });
+
+            it('points the iframe at the content host derived for the view when a content domain is set', async () => {
+                process.env.EXE_CONTENT_DOMAIN = 'content.test:8443';
+                process.env.BASE_PATH = '/exe';
+                const customApp = new Elysia().use(createPagesRoutes({ ...mockDeps, template: capture }));
+
+                await customApp.handle(new Request('https://app.test/view/public-view-id-57'));
+
+                const label = contentLabel('view', 'public-view-id-57', 'https://app.test');
+                expect(templateData.contentSrc).toBe(
+                    `https://${label}.content.test:8443/exe/content/${encodeAppOrigin('https://app.test')}` +
+                        '/view/public-view-id-57/index.html',
+                );
+                expect(templateData.sandboxTokens).toBe(CONTENT_DOMAIN_SANDBOX);
+                expect(templateData.referrerPolicy).toBe('strict-origin-when-cross-origin');
+            });
         });
 
         it('should return 404 for an enabled link when the site disables public links', async () => {

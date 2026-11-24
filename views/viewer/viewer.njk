@@ -63,9 +63,9 @@
         with that header (see src/shared/security/publicViewSandbox.ts).
     -->
     <iframe id="viewer-iframe"
-            src="{{ basePath }}/view/{{ publicViewId }}/_/index.html"
+            src="{{ contentSrc or (basePath + '/view/' + publicViewId + '/_/index.html') }}"
             sandbox="{{ sandboxTokens }}"
-            referrerpolicy="no-referrer"
+            referrerpolicy="{{ referrerPolicy }}"
             allowfullscreen></iframe>
 
     <script>
@@ -78,5 +78,30 @@
             });
         })();
     </script>
+{%- if contentSrc %}
+    <!--
+        Content domain mode (EXE_CONTENT_DOMAIN): the iframe above points at the
+        content host, where the content has its own origin. If that host does not
+        serve the document, say so. The content is never loaded from this origin
+        instead.
+    -->
+    <script>
+        (function () {
+            var iframe = document.getElementById('viewer-iframe');
+            fetch(iframe.src, { credentials: 'omit', cache: 'no-store' })
+                .then(function (response) {
+                    if (!response.ok) throw new Error(String(response.status));
+                })
+                .catch(function () {
+                    iframe.remove();
+                    document.querySelector('#loader .spinner-border').remove();
+                    var text = document.getElementById('loader-text');
+                    text.setAttribute('role', 'alert');
+                    text.textContent = JSON.parse('{{ 'The content could not be loaded from the content domain.' | trans | jsonScript | safe }}');
+                    document.getElementById('loader').style.display = 'flex';
+                });
+        })();
+    </script>
+{%- endif %}
 </body>
 </html>

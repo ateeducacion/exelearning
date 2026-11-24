@@ -168,3 +168,29 @@ export function contentDomainHeaders(
         'Cache-Control': 'no-store',
     };
 }
+
+/**
+ * Response headers for the preview host page served on a content domain: the
+ * small trusted page that receives the generated preview from the workarea and
+ * hands it to that origin's Service Worker. It runs only its own script, may be
+ * framed only by the application origin, and loads nothing from elsewhere.
+ */
+export function previewHostPageHeaders(appOrigin: string): Record<string, string> {
+    return {
+        'Content-Security-Policy': [
+            "default-src 'none'",
+            "script-src 'self'",
+            "worker-src 'self'",
+            "frame-src 'self'",
+            "connect-src 'self'",
+            "style-src 'unsafe-inline'",
+            "base-uri 'none'",
+            "form-action 'none'",
+            `frame-ancestors ${appOrigin}`,
+        ].join('; '),
+        'Permissions-Policy': publicViewPermissionsPolicy(),
+        'Referrer-Policy': CONTENT_DOMAIN_REFERRER_POLICY,
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store',
+    };
+}

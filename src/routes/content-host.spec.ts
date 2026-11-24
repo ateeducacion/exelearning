@@ -5,7 +5,13 @@ import type { Project } from '../db/types';
 import { CONTENT_DOMAIN_SANDBOX, PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
 import { encodeAppOrigin } from '../utils/content-domain';
 import { contentLabel } from '../utils/content-label';
-import { type ContentHostDeps, contentHostGuard, createContentHostHandler, publicViewContentUrl } from './content-host';
+import {
+    type ContentHostDeps,
+    contentHostGuard,
+    createContentHostHandler,
+    previewContentHostUrl,
+    publicViewContentUrl,
+} from './content-host';
 
 const APP = 'http://app.test';
 const CONTENT_DOMAIN = { host: 'content.test', port: null };
@@ -237,6 +243,85 @@ describe('content host handler', () => {
             expect([...(withSession?.headers.keys() ?? [])]).toEqual([...(anonymous?.headers.keys() ?? [])]);
             expect(withSession?.headers.get('Set-Cookie')).toBeNull();
             expect(withSession?.headers.getSetCookie()).toEqual([]);
+        });
+    });
+
+    describe('workarea preview host', () => {
+        const hostUrl = (projectUuid = 'project-uuid-1', appOrigin = APP) =>
+            previewContentHostUrl(CONTENT_DOMAIN, appOrigin, projectUuid);
+        const fileUrl = (file: string, projectUuid?: string) => hostUrl(projectUuid).replace(/host\.html$/, file);
+
+        it('serves the host page on the origin derived for the project, framed only by the application', async () => {
+            const handle = createContentHostHandler(createDeps());
+            expect(new URL(hostUrl()).hostname).toBe(`${contentLabel('preview', 'project-uuid-1', APP)}.content.test`);
+
+            const res = await handle(new Request(hostUrl()));
+
+            expect(res?.status).toBe(200);
+            expect(res?.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+            expect(res?.headers.get('Content-Security-Policy')).toContain(`frame-ancestors ${APP}`);
+            expect(res?.headers.get('Content-Security-Policy')).toContain("script-src 'self'");
+            expect(res?.headers.get('Set-Cookie')).toBeNull();
+            const html = (await res?.text()) ?? '';
+            expect(html).toContain(`data-app-origin="${APP}"`);
+            expect(html).toContain('<script type="module" src="preview-host.js?v=');
+            expect(html).toContain('<iframe id="preview-content"');
+        });
+
+        it('serves the host script and the preview Service Worker next to it', async () => {
+            const handle = createContentHostHandler(createDeps());
+
+            const script = await handle(new Request(fileUrl('preview-host.js?v=1')));
+            expect(script?.status).toBe(200);
+            expect(script?.headers.get('Content-Type')).toBe('application/javascript; charset=utf-8');
+            expect(await script?.text()).toContain('startPreviewHost');
+
+            const worker = await handle(new Request(fileUrl('preview-sw.js?v=1')));
+            expect(worker?.status).toBe(200);
+            expect(worker?.headers.get('Content-Type')).toBe('application/javascript; charset=utf-8');
+            expect(worker?.headers.get('Cache-Control')).toContain('no-store');
+            expect(await worker?.text()).toContain('SET_CONTENT');
+        });
+
+        it('serves nothing else there: the previewed files only exist in the Service Worker', async () => {
+            const handle = createContentHostHandler(createDeps());
+            for (const file of ['', 'viewer/index.html', 'app.bundle.js', '../host.html', 'preview-sw.js/x']) {
+                expect((await handle(new Request(fileUrl(file))))?.status, file).toBe(404);
+            }
+        });
+
+        it('returns 404 when the label belongs to another project, another origin or a public view', async () => {
+            const handle = createContentHostHandler(createDeps());
+            const own = contentLabel('preview', 'project-uuid-1', APP);
+            const swap = (label: string) => hostUrl().replace(own, label);
+
+            expect((await handle(new Request(swap(contentLabel('preview', 'project-uuid-2', APP)))))?.status).toBe(404);
+            expect(
+                (await handle(new Request(swap(contentLabel('preview', 'project-uuid-1', 'https://evil.example')))))
+                    ?.status,
+            ).toBe(404);
+            expect((await handle(new Request(swap(contentLabel('view', 'project-uuid-1', APP)))))?.status).toBe(404);
+            expect(
+                (await handle(new Request(hostUrl().replace(encodeAppOrigin(APP), encodeAppOrigin('not-an-origin')))))
+                    ?.status,
+            ).toBe(404);
+        });
+
+        it('escapes the application origin it writes into the page', async () => {
+            // A canonical origin cannot contain these characters; this guards the template itself.
+            const handle = createContentHostHandler(createDeps());
+            const html = (await (await handle(new Request(hostUrl())))?.text()) ?? '';
+            expect(html).not.toContain('data-app-origin=""');
+            expect(html.match(/data-app-origin="([^"]*)"/)?.[1]).toBe(APP);
+        });
+
+        it('keeps the base path in the host page URL', async () => {
+            process.env.BASE_PATH = '/exe';
+            const handle = createContentHostHandler(createDeps());
+            expect(new URL(hostUrl()).pathname).toBe(
+                `/exe/content/${encodeAppOrigin(APP)}/preview/project-uuid-1/host.html`,
+            );
+            expect((await handle(new Request(hostUrl())))?.status).toBe(200);
         });
     });
 

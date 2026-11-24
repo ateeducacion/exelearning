@@ -1911,6 +1911,70 @@ describe('Pages Routes', () => {
             expect(config.token).toBeDefined();
         });
 
+        describe('preview content host (EXE_CONTENT_DOMAIN)', () => {
+            const savedContentDomain = process.env.EXE_CONTENT_DOMAIN;
+            const savedOnlineMode = process.env.APP_ONLINE_MODE;
+
+            afterEach(() => {
+                if (savedContentDomain === undefined) delete process.env.EXE_CONTENT_DOMAIN;
+                else process.env.EXE_CONTENT_DOMAIN = savedContentDomain;
+                if (savedOnlineMode === undefined) delete process.env.APP_ONLINE_MODE;
+                else process.env.APP_ONLINE_MODE = savedOnlineMode;
+            });
+
+            async function renderWorkareaConfig(): Promise<Record<string, unknown>> {
+                let templateData: any = null;
+                const customTemplate: PagesTemplateDeps = {
+                    renderTemplate: (_template: string, data: any) => {
+                        templateData = data;
+                        return '<html></html>';
+                    },
+                    setRenderLocale: () => {},
+                };
+                const customApp = new Elysia().use(createPagesRoutes({ ...mockDeps, template: customTemplate }));
+                const jwt = await import('@elysiajs/jwt');
+                const tempApp = new Elysia().use(jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
+                const token = await tempApp.decorator.jwt.sign({
+                    sub: '1',
+                    email: 'test@test.com',
+                    roles: ['ROLE_USER'],
+                    isGuest: false,
+                });
+                mockSessions.set('content-host-project', { sessionId: 'content-host-project', fileName: 'Test.elp' });
+
+                await customApp.handle(
+                    new Request('https://app.test/workarea?project=content-host-project', {
+                        headers: { Cookie: `auth=${token}` },
+                    }),
+                );
+                return templateData.config;
+            }
+
+            it('is absent from the workarea config when no content domain is set', async () => {
+                delete process.env.EXE_CONTENT_DOMAIN;
+                const config = await renderWorkareaConfig();
+                expect('previewContentHostUrl' in config).toBe(false);
+            });
+
+            it('gives the workarea the host page on the content origin derived for the open project', async () => {
+                process.env.EXE_CONTENT_DOMAIN = 'content.test';
+                const config = await renderWorkareaConfig();
+
+                const label = contentLabel('preview', 'content-host-project', 'https://app.test');
+                expect(config.previewContentHostUrl).toBe(
+                    `https://${label}.content.test/content/${encodeAppOrigin('https://app.test')}` +
+                        '/preview/content-host-project/host.html',
+                );
+            });
+
+            it('is absent in offline mode, which has no content domain', async () => {
+                process.env.EXE_CONTENT_DOMAIN = 'content.test';
+                process.env.APP_ONLINE_MODE = '0';
+                const config = await renderWorkareaConfig();
+                expect('previewContentHostUrl' in config).toBe(false);
+            });
+        });
+
         it('should handle template render error with fallback HTML', async () => {
             const customTemplate: PagesTemplateDeps = {
                 renderTemplate: (_template: string, _data: any) => {

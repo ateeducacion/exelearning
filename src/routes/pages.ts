@@ -42,7 +42,7 @@ import {
 } from '../shared/security/publicViewSandbox';
 import { getContentDomain } from '../utils/content-domain';
 import { getPublicUrl } from '../utils/proxy-url.util';
-import { publicViewContentUrl } from './content-host';
+import { previewContentHostUrl, publicViewContentUrl } from './content-host';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { isOfflineMode } from '../utils/offline.util';
 import { getPlatformBinding, getPlatformIntegrationParams, type PlatformBinding } from '../utils/platform-jwt';
@@ -793,7 +793,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // Workarea Page
             // =====================================================
             .get('/workarea', async ctx => {
-                const { currentUser, isGuest, query, set, jwt, request, impersonation } = ctx;
+                const { currentUser, isGuest, query, set, jwt, request, impersonation, server } = ctx;
                 const { authMethod, isImpersonated } = ctx;
                 // Check if user is authenticated
                 if (!currentUser) {
@@ -1198,6 +1198,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     }
                 }
 
+                const previewContentDomain = isOfflineMode() ? null : getContentDomain();
+
                 // Unified config object (replaces legacy 'symfony' object)
                 const config = {
                     // Version for cache busting in preview and asset URLs
@@ -1234,6 +1236,18 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     ideviceTypeUser: 'user',
                     ideviceVisibilityPreferencePre: 'exe_',
                     token: authToken,
+                    // Content domain mode: where the preview of the open project runs. The
+                    // label in it is derived here; the client never computes one.
+                    ...(previewContentDomain && projectUuid
+                        ? {
+                              previewContentHostUrl: previewContentHostUrl(
+                                  previewContentDomain,
+                                  getPublicUrl(request, { requestIP: (req: Request) => server?.requestIP(req) ?? null })
+                                      .origin,
+                                  projectUuid,
+                              ),
+                          }
+                        : {}),
                 };
 
                 // Server-side translations using XLF files

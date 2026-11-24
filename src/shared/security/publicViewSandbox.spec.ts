@@ -5,6 +5,7 @@ import {
     contentDomainHeaders,
     PUBLIC_VIEW_REFERRER_POLICY,
     PUBLIC_VIEW_SANDBOX,
+    previewHostPageHeaders,
     publicViewCspHeader,
     publicViewPermissionsPolicy,
     resolvePublicViewCspProfile,
@@ -117,5 +118,32 @@ describe('content domain mode', () => {
 
     it('sends embedded players the origin of the embedder, never the path', () => {
         expect(CONTENT_DOMAIN_REFERRER_POLICY).toBe('strict-origin-when-cross-origin');
+    });
+});
+
+describe('previewHostPageHeaders', () => {
+    const headers = previewHostPageHeaders('https://app.test');
+    const csp = headers['Content-Security-Policy'];
+
+    it('lets only the application origin frame the host page', () => {
+        expect(csp).toContain('frame-ancestors https://app.test');
+        expect(csp).not.toContain("frame-ancestors 'self'");
+    });
+
+    it('runs only its own script and loads nothing from elsewhere', () => {
+        expect(csp).toContain("default-src 'none'");
+        expect(csp).toContain("script-src 'self'");
+        expect(csp).toContain("worker-src 'self'");
+        expect(csp).toContain("frame-src 'self'");
+        expect(csp).toContain("base-uri 'none'");
+        expect(csp).not.toContain('unsafe-eval');
+        expect(csp.replace('frame-ancestors https://app.test', '')).not.toContain('https:');
+    });
+
+    it('is never cached and never sniffed', () => {
+        expect(headers['Cache-Control']).toBe('no-store');
+        expect(headers['X-Content-Type-Options']).toBe('nosniff');
+        expect(headers['Permissions-Policy']).toBe(publicViewPermissionsPolicy());
+        expect(headers['Referrer-Policy']).toBe(CONTENT_DOMAIN_REFERRER_POLICY);
     });
 });

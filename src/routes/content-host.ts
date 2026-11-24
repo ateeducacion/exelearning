@@ -15,6 +15,8 @@
  * Requests for any other host return `undefined` and continue as usual. With
  * the mode off that is every request.
  */
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
 import { db as dbDefault } from '../db/client';
@@ -22,7 +24,11 @@ import { findProjectByPublicViewId as findProjectByPublicViewIdDefault } from '.
 import type { Database } from '../db/types';
 import { isPublicViewFeatureEnabled as isPublicViewFeatureEnabledDefault } from '../services/app-settings';
 import { getPublicViewFile as getPublicViewFileDefault } from '../services/public-view-content';
-import { contentDomainHeaders, resolvePublicViewCspProfile } from '../shared/security/publicViewSandbox';
+import {
+    contentDomainHeaders,
+    previewHostPageHeaders,
+    resolvePublicViewCspProfile,
+} from '../shared/security/publicViewSandbox';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import {
     type ContentDomain,
@@ -34,6 +40,7 @@ import {
 } from '../utils/content-domain';
 import { CONTENT_LABEL_PATTERN, contentLabel, isContentLabel } from '../utils/content-label';
 import { getPublicUrl, type ServerContext } from '../utils/proxy-url.util';
+import { getAppVersion } from '../utils/version';
 
 export interface ContentHostDeps {
     db: Kysely<Database>;
@@ -54,6 +61,60 @@ const defaultDeps: ContentHostDeps = {
 /** `/content/<app origin>/view/<public view id>/<file path>` below the base path. */
 const PUBLIC_VIEW_CONTENT_PATH = /^\/content\/([^/]+)\/view\/([\w-]+)\/(.*)$/;
 
+/**
+ * `/content/<app origin>/preview/<project uuid>/<file>` below the base path: the
+ * directory of one project's workarea preview. The server only serves the three
+ * files in PREVIEW_HOST_FILES there; `viewer/*` is answered by that origin's
+ * Service Worker from what the workarea posted to the host page.
+ */
+const PREVIEW_CONTENT_PATH = /^\/content\/([^/]+)\/preview\/([\w-]+)\/(.*)$/;
+
+const PREVIEW_HOST_SCRIPT = 'public/app/workarea/interface/elements/previewHostPage.js';
+const PREVIEW_HOST_FILES: Record<string, string> = {
+    'preview-host.js': PREVIEW_HOST_SCRIPT,
+    'preview-sw.js': 'public/preview-sw.js',
+};
+
+function escapeAttribute(value: string): string {
+    return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+/** The host page: no content of its own, only the script and the frame it drives. */
+function previewHostPage(appOrigin: string): string {
+    const version = encodeURIComponent(getAppVersion());
+    return `<!DOCTYPE html>
+<html lang="en" data-app-origin="${escapeAttribute(appOrigin)}" data-version="${version}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preview</title>
+<style>html,body{height:100%;margin:0}iframe{border:0;width:100%;height:100%;display:block}</style>
+</head>
+<body>
+<iframe id="preview-content" title="Preview" allowfullscreen></iframe>
+<script type="module" src="preview-host.js?v=${version}"></script>
+</body>
+</html>
+`;
+}
+
+function servePreviewHostFile(appOrigin: string, file: string): Response {
+    if (file === 'host.html') {
+        return new Response(previewHostPage(appOrigin), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8', ...previewHostPageHeaders(appOrigin) },
+        });
+    }
+    const source = PREVIEW_HOST_FILES[file];
+    if (!source) return notFound();
+    return new Response(fs.readFileSync(path.join(process.cwd(), source)), {
+        headers: {
+            'Content-Type': 'application/javascript; charset=utf-8',
+            'X-Content-Type-Options': 'nosniff',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+    });
+}
+
 function notFound(): Response {
     return new Response('Not found', {
         status: 404,
@@ -72,6 +133,16 @@ function notFound(): Response {
 export function publicViewContentUrl(contentDomain: ContentDomain, appOrigin: string, publicViewId: string): string {
     const origin = contentOrigin(contentDomain, contentLabel('view', publicViewId, appOrigin), appOrigin);
     return `${origin}${prefixPath(`/content/${encodeAppOrigin(appOrigin)}/view/${publicViewId}/index.html`)}`;
+}
+
+/**
+ * URL of the preview host page of a project on the content domain, for the
+ * application origin whose workarea embeds it. Only hand this to a user who may
+ * open the project: the label in it is what authorizes using that origin.
+ */
+export function previewContentHostUrl(contentDomain: ContentDomain, appOrigin: string, projectUuid: string): string {
+    const origin = contentOrigin(contentDomain, contentLabel('preview', projectUuid, appOrigin), appOrigin);
+    return `${origin}${prefixPath(`/content/${encodeAppOrigin(appOrigin)}/preview/${projectUuid}/host.html`)}`;
 }
 
 export function createContentHostHandler(deps: ContentHostDeps = defaultDeps) {
@@ -121,8 +192,18 @@ export function createContentHostHandler(deps: ContentHostDeps = defaultDeps) {
         if (request.method !== 'GET') return notFound();
 
         const basePath = getBasePath();
-        const path = basePath && pathname.startsWith(`${basePath}/`) ? pathname.slice(basePath.length) : pathname;
-        const match = PUBLIC_VIEW_CONTENT_PATH.exec(path);
+        const routePath = basePath && pathname.startsWith(`${basePath}/`) ? pathname.slice(basePath.length) : pathname;
+
+        // Workarea preview: static transport files only. No project data is read here; the
+        // label proves the server issued this origin to someone allowed to open the project.
+        const preview = PREVIEW_CONTENT_PATH.exec(routePath);
+        if (preview) {
+            const previewAppOrigin = decodeAppOrigin(preview[1]);
+            if (!previewAppOrigin || !isContentLabel(label, 'preview', preview[2], previewAppOrigin)) return notFound();
+            return servePreviewHostFile(previewAppOrigin, preview[3]);
+        }
+
+        const match = PUBLIC_VIEW_CONTENT_PATH.exec(routePath);
         const appOrigin = match && decodeAppOrigin(match[1]);
         if (!match || !appOrigin) return notFound();
         const [, , publicViewId, relPath] = match;

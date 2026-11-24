@@ -11,7 +11,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getJwtSecret } from './jwt-secret';
 
 /** Kinds of content served from the content domain; the key is the label's first character. */
-const KIND_PREFIX = { view: 'v' } as const;
+const KIND_PREFIX = { view: 'v', preview: 'p' } as const;
 
 export type ContentKind = keyof typeof KIND_PREFIX;
 

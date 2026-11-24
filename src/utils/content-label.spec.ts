@@ -23,6 +23,14 @@ describe('contentLabel', () => {
         expect(contentLabel('view', 'id-1', APP, 'another-secret')).not.toBe(label);
     });
 
+    it('gives the workarea preview of a project its own label, apart from a public view with the same id', () => {
+        const preview = contentLabel('preview', 'id-1', APP, SECRET);
+        expect(preview).toMatch(CONTENT_LABEL_PATTERN);
+        expect(preview.startsWith('p')).toBe(true);
+        expect(preview.slice(1)).not.toBe(contentLabel('view', 'id-1', APP, SECRET).slice(1));
+        expect(isContentLabel(preview, 'view', 'id-1', APP, SECRET)).toBe(false);
+    });
+
     it('keeps the inputs apart, so one field cannot be shifted into the next', () => {
         expect(contentLabel('view', 'a","b', 'c', SECRET)).not.toBe(contentLabel('view', 'a', 'b","c', SECRET));
     });

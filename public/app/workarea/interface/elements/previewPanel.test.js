@@ -2410,4 +2410,160 @@ describe('PreviewPanelManager', () => {
     });
   });
 
+  describe('content domain mode', () => {
+    const HOST_URL = 'https://pabc.content.test/content/token/preview/uuid-1/host.html';
+    let files;
+
+    beforeEach(() => {
+      files = { 'index.html': new ArrayBuffer(4) };
+      window.eXeLearning.config = { previewContentHostUrl: HOST_URL };
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: true, files });
+      manager = new PreviewPanelManager();
+    });
+
+    afterEach(() => {
+      manager.destroy();
+    });
+
+    it('is off unless the server provides a host page URL', () => {
+      delete window.eXeLearning.config;
+      expect(manager._contentHostUrl()).toBeNull();
+      window.eXeLearning.config = { previewContentHostUrl: HOST_URL };
+      expect(manager._contentHostUrl()).toBe(HOST_URL);
+    });
+
+    it('creates one message client per preview iframe, for the origin the server gave', () => {
+      const host = manager._getContentHost(manager.iframe);
+
+      expect(host.origin).toBe('https://pabc.content.test');
+      expect(host.iframe).toBe(manager.iframe);
+      expect(manager._getContentHost(manager.iframe)).toBe(host);
+      expect(manager._getContentHost(manager.pinnedIframe)).not.toBe(host);
+    });
+
+    it('sends the generated preview to the content host and never uses the Service Worker or blob paths', async () => {
+      const host = manager._getContentHost(manager.iframe);
+      const sendContent = vi.spyOn(host, 'sendContent').mockResolvedValue({ fileCount: 1 });
+      const swRefresh = vi.spyOn(manager, 'refreshWithServiceWorker');
+      const blobRefresh = vi.spyOn(manager, 'refreshWithBlobUrl');
+
+      await manager.refresh();
+
+      expect(sendContent).toHaveBeenCalledWith(files, { openExternalLinksInNewWindow: true });
+      expect(swRefresh).not.toHaveBeenCalled();
+      expect(blobRefresh).not.toHaveBeenCalled();
+      expect(manager.isLoading).toBe(false);
+    });
+
+    it('targets the pinned iframe when the preview is pinned', async () => {
+      manager.isPinned = true;
+      const pinnedHost = manager._getContentHost(manager.pinnedIframe);
+      const sendContent = vi.spyOn(pinnedHost, 'sendContent').mockResolvedValue({ fileCount: 1 });
+
+      await manager.refresh();
+
+      expect(sendContent).toHaveBeenCalled();
+    });
+
+    it('shows an error and does not fall back when the content host fails', async () => {
+      const host = manager._getContentHost(manager.iframe);
+      vi.spyOn(host, 'sendContent').mockRejectedValue(new Error('content domain unreachable'));
+      const reset = vi.spyOn(host, 'reset');
+      const showError = vi.spyOn(manager, 'showError').mockImplementation(() => {});
+      const blobRefresh = vi.spyOn(manager, 'refreshWithBlobUrl');
+      const swRefresh = vi.spyOn(manager, 'refreshWithServiceWorker');
+
+      await manager.refresh();
+
+      expect(showError).toHaveBeenCalledWith('content domain unreachable');
+      expect(reset).toHaveBeenCalled();
+      expect(blobRefresh).not.toHaveBeenCalled();
+      expect(swRefresh).not.toHaveBeenCalled();
+    });
+
+    it('shows an error when the preview cannot be generated', async () => {
+      window.SharedExporters.generatePreviewForSW.mockResolvedValue({ success: false, error: 'export failed' });
+      const showError = vi.spyOn(manager, 'showError').mockImplementation(() => {});
+
+      await manager.refresh();
+
+      expect(showError).toHaveBeenCalledWith('export failed');
+    });
+
+    it('fails when there is no iframe to show the preview in', async () => {
+      manager.iframe = null;
+      await expect(manager.refreshWithContentHost()).rejects.toThrow('No iframe available');
+    });
+
+    it('asks the content host whether the preview is still there', async () => {
+      expect(await manager._checkServiceWorkerContent()).toBe(false);
+
+      const host = manager._getContentHost(manager.iframe);
+      vi.spyOn(host, 'hasContent').mockResolvedValue(true);
+      expect(await manager._checkServiceWorkerContent()).toBe(true);
+
+      manager.isPinned = true;
+      expect(await manager._checkServiceWorkerContent()).toBe(false);
+    });
+
+    it('refreshes when the content host lost the preview, only while it is visible', () => {
+      const refresh = vi.spyOn(manager, 'refresh').mockResolvedValue();
+
+      manager._onContentHostMessage({ type: 'CONTENT_NEEDED' });
+      expect(refresh).not.toHaveBeenCalled();
+
+      manager.isOpen = true;
+      manager._onContentHostMessage({ type: 'CONTENT_NEEDED' });
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+
+    it('exports the ELPX when the content asks for it, and ignores other messages', () => {
+      const download = vi.spyOn(manager, '_downloadElpx').mockResolvedValue();
+
+      manager._onContentHostMessage({ type: 'something-else' });
+      expect(download).not.toHaveBeenCalled();
+
+      manager._onContentHostMessage({ type: 'exe-download-elpx' });
+      expect(download).toHaveBeenCalledTimes(1);
+    });
+
+    it('routes messages from the host page client to the panel', () => {
+      const onMessage = vi.spyOn(manager, '_onContentHostMessage').mockImplementation(() => {});
+      manager._getContentHost(manager.iframe).onMessage({ type: 'CONTENT_NEEDED' });
+      expect(onMessage).toHaveBeenCalledWith({ type: 'CONTENT_NEEDED' });
+    });
+
+    it('does not offer opening the preview in a new tab', async () => {
+      manager.init();
+      const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+      expect(manager.extractButton.hidden).toBe(true);
+      expect(manager.pinnedExtractButton.hidden).toBe(true);
+      await manager.extractToNewTab();
+      expect(open).not.toHaveBeenCalled();
+    });
+
+    it('tolerates missing new-tab buttons', () => {
+      manager.extractButton = null;
+      manager.pinnedExtractButton = null;
+      expect(() => manager.init()).not.toThrow();
+    });
+
+    it('keeps the new-tab buttons when the mode is off', () => {
+      delete window.eXeLearning.config;
+      manager.init();
+      expect(manager.extractButton.hidden).toBe(false);
+    });
+
+    it('disconnects from the content host on destroy', () => {
+      const host = manager._getContentHost(manager.iframe);
+      const destroy = vi.spyOn(host, 'destroy');
+
+      manager.destroy();
+
+      expect(destroy).toHaveBeenCalled();
+      expect(manager._contentHosts.size).toBe(0);
+    });
+  });
+
 });

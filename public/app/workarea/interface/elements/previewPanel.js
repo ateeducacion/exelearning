@@ -4,6 +4,8 @@
  * with auto-refresh capability when content changes.
  */
 
+import PreviewContentHost from './previewContentHost.js';
+
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
@@ -59,6 +61,9 @@ export default class PreviewPanelManager {
         this._popupWindow = null;
         this._popupMonitorTimer = null;
         this._recoveryChannel = null;
+
+        // Content domain mode: one message client per preview iframe
+        this._contentHosts = new Map();
     }
 
     /**
@@ -72,7 +77,96 @@ export default class PreviewPanelManager {
         this._setupVisibilityHandler();
         this._setupBroadcastChannelListener();
         this._setupServiceWorkerListener();
+        if (this._contentHostUrl()) {
+            // A new tab cannot be handed the preview without giving author content a
+            // reference to this window, so the action is not offered in this mode.
+            for (const button of [this.extractButton, this.pinnedExtractButton]) {
+                if (button) button.hidden = true;
+            }
+        }
         Logger.log('[PreviewPanel] Initialized');
+    }
+
+    /**
+     * Content domain mode (EXE_CONTENT_DOMAIN): URL of the preview host page on the
+     * content origin of the open project, as provided by the server. Null when the mode
+     * is off, which is the default.
+     * @returns {string|null}
+     */
+    _contentHostUrl() {
+        return window.eXeLearning?.config?.previewContentHostUrl || null;
+    }
+
+    /**
+     * Message client for the host page shown in a preview iframe (content domain mode).
+     * @param {HTMLIFrameElement} iframe
+     * @returns {PreviewContentHost}
+     */
+    _getContentHost(iframe) {
+        let host = this._contentHosts.get(iframe);
+        if (!host) {
+            host = new PreviewContentHost({
+                hostUrl: this._contentHostUrl(),
+                iframe,
+                onMessage: (message) => this._onContentHostMessage(message),
+            });
+            this._contentHosts.set(iframe, host);
+        }
+        return host;
+    }
+
+    /**
+     * Requests relayed by the host page from the content origin. The sender is untrusted:
+     * only these two message types are acted on, and neither carries data.
+     * @param {{type: string}} message
+     */
+    _onContentHostMessage(message) {
+        if (message.type === 'exe-download-elpx') {
+            this._downloadElpx();
+        } else if (message.type === 'CONTENT_NEEDED' && this._isPreviewVisible()) {
+            // refresh() ignores calls made while one is running, so repeats are harmless.
+            this.refresh();
+        }
+    }
+
+    /**
+     * Refresh the preview on the content origin of the open project. There is no fallback
+     * to this origin: a failure is shown as an error.
+     */
+    async refreshWithContentHost() {
+        const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
+        if (!targetIframe) {
+            throw new Error('No iframe available');
+        }
+        const host = this._getContentHost(targetIframe);
+        try {
+            const files = await this._generatePreviewFilesOrThrow();
+            await host.sendContent(files, { openExternalLinksInNewWindow: true });
+        } catch (error) {
+            // The error page replaces the host page, so the next refresh must load it again.
+            host.reset();
+            throw error;
+        }
+        Logger.log('[PreviewPanel] Preview loaded on the content domain');
+    }
+
+    /**
+     * Export the open project as ELPX, on request from the download-source-file iDevice.
+     */
+    async _downloadElpx() {
+        Logger.log('[PreviewPanel] Received exe-download-elpx request');
+        try {
+            const project = eXeLearning?.app?.project;
+            if (project?.exportToElpxViaYjs) {
+                await project.exportToElpxViaYjs({ saveAs: true });
+            } else {
+                Logger.error('[PreviewPanel] exportToElpxViaYjs not available');
+                alert(_('ELPX export not available. Please save your project first.'));
+            }
+        } catch (err) {
+            Logger.error('[PreviewPanel] ELPX export failed:', err);
+            alert(_('Error generating ELPX file:') + ' ' + err.message);
+        }
     }
 
     /**
@@ -282,6 +376,10 @@ export default class PreviewPanelManager {
      * @returns {Promise<boolean>} True if SW has content
      */
     async _checkServiceWorkerContent() {
+        if (this._contentHostUrl()) {
+            const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
+            return (await this._contentHosts.get(targetIframe)?.hasContent()) ?? false;
+        }
         try {
             const sw = eXeLearning?.app?.getPreviewServiceWorker?.();
             if (!sw) {
@@ -366,19 +464,7 @@ export default class PreviewPanelManager {
 
             // Handle ELPX download requests from preview iframe (download-source-file iDevice)
             if (event.data?.type === 'exe-download-elpx' && fromPreviewIframe) {
-                Logger.log('[PreviewPanel] Received exe-download-elpx request');
-                try {
-                    const project = eXeLearning?.app?.project;
-                    if (project?.exportToElpxViaYjs) {
-                        await project.exportToElpxViaYjs({ saveAs: true });
-                    } else {
-                        Logger.error('[PreviewPanel] exportToElpxViaYjs not available');
-                        alert(_('ELPX export not available. Please save your project first.'));
-                    }
-                } catch (err) {
-                    Logger.error('[PreviewPanel] ELPX export failed:', err);
-                    alert(_('Error generating ELPX file:') + ' ' + err.message);
-                }
+                await this._downloadElpx();
                 return;
             }
 
@@ -740,6 +826,11 @@ export default class PreviewPanelManager {
         this.showLoadingState();
 
         try {
+            if (this._contentHostUrl()) {
+                await this.refreshWithContentHost();
+                return;
+            }
+
             // Wait for SW to be ready if not immediately available
             const app = eXeLearning?.app;
             if (!navigator.serviceWorker?.controller && typeof app?.waitForPreviewServiceWorker === 'function') {
@@ -1401,6 +1492,7 @@ export default class PreviewPanelManager {
      * Opens the SW-served preview in a new tab
      */
     async extractToNewTab() {
+        if (this._contentHostUrl()) return;
         try {
             Logger.log('[PreviewPanel] Extracting preview to new tab...');
 
@@ -1617,6 +1709,11 @@ export default class PreviewPanelManager {
             clearTimeout(this._swContentNeededTimer);
             this._swContentNeededTimer = null;
         }
+
+        for (const host of this._contentHosts.values()) {
+            host.destroy();
+        }
+        this._contentHosts.clear();
 
         // Revoke blob URLs
         [this.iframe, this.pinnedIframe].forEach((iframe) => {

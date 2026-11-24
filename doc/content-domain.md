@@ -10,6 +10,10 @@ origin that is not the application's. Embedded players, browser storage and
 Service Workers then work inside the content, and each content item is isolated
 from the others.
 
+It applies to two things: the **public viewer** (`/view/…` links) and the
+**preview inside the editor**, which otherwise runs author content in the
+editor's own origin.
+
 If you do not set `EXE_CONTENT_DOMAIN`, nothing on this page applies and the
 application behaves as it always has.
 
@@ -199,6 +203,16 @@ EXE_CONTENT_DOMAIN=exe-content.localhost:8080 PUBLIC_VIEW_ENABLED=true make up-l
 
 Open `http://exe-app.localhost:8080`, publish a project and open its public
 link. The content loads from `http://<label>.exe-content.localhost:8080`.
+
+## What changes in the editor
+
+- The preview panel loads from `https://<label>.<content domain>`, one origin per
+  project. Scripts in the content cannot read the editor page, its cookies or
+  its storage.
+- "Open in new tab" is not available in the preview panel.
+- The print preview is not moved to the content domain.
+- If the content domain cannot be reached, the preview shows an error. It does
+  not fall back to the editor's origin.
 
 ## Limits
 

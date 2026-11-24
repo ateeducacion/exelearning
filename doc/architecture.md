@@ -655,6 +655,18 @@ content-domain tokens for content served from the application host.
 | **Setting** | `src/utils/content-domain.ts` | Parse and validate `EXE_CONTENT_DOMAIN`, build content origins |
 | **Label** | `src/utils/content-label.ts` | Keyed, DNS-safe label per content item |
 | **Host routing** | `src/routes/content-host.ts` | Answers every request for a content host |
+| **Preview host page** | `public/app/workarea/interface/elements/previewHostPage.js` | Served on the project's content origin; relays the generated preview to that origin's Service Worker |
+| **Preview client** | `public/app/workarea/interface/elements/previewContentHost.js` | Workarea side of the message transport |
+
+With a content domain the **workarea preview** (§8.1–8.5) also leaves the editor
+origin. The server gives the workarea a host page URL on a per-project content
+origin (`previewContentHostUrl` in the client config); the preview iframe loads
+it, the workarea posts the generated export over a `MessageChannel`, and that
+origin's own `preview-sw.js` serves it to a frame nested in the host page. The
+host page accepts messages only from the application origin; the workarea
+accepts them only from the preview iframe on that content origin. There is no
+blob URL fallback in this mode. Without a content domain the preview is exactly
+as described in §8.1–8.5.
 
 ### 8.7 Registration Lifecycle and Self-Healing
 

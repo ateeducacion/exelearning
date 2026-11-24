@@ -73,7 +73,8 @@ label = <kind letter> + hex(HMAC-SHA-256(signing secret,
 - The input is a JSON array, so no field can be shifted into the next.
 - `isContentLabel()` compares in constant time.
 
-Kinds: `view` (`v`), a public view, with the public view id as `id`.
+Kinds: `view` (`v`), a public view, with the public view id as `id`; and
+`preview` (`p`), the workarea preview of a project, with the project UUID.
 
 ### Why the application origin is in the URL
 
@@ -171,6 +172,96 @@ The application host keeps serving `/view/:id/_/*` in the opaque origin in both
 modes. Removing it would change behaviour for existing embeds, and leaving it
 does not weaken anything: it is the same opaque document as before.
 
+### Workarea preview (phase 2)
+
+With the mode off the preview is unchanged: `public/preview-sw.js`, registered
+by the workarea under `<basePath>viewer/`, serves the generated export to an
+iframe in the editor origin, with a blob URL fallback.
+
+With the mode on, the preview runs on a per-project content origin. The spike in
+[`research.md`](research.md) showed that a Service Worker registers and controls
+a page inside a cross-site iframe in Chromium, Firefox and WebKit, so the
+transport is a host page plus the same `preview-sw.js`, served on the content
+host.
+
+```text
+workarea (app origin)                      content origin  p<hash>.<content domain>
+┌──────────────────────────┐   iframe     ┌────────────────────────────────────────┐
+│ previewPanel.js          │ ───────────▶ │ host.html + preview-host.js            │
+│ previewContentHost.js    │              │   registers preview-sw.js (scope ./)   │
+│                          │ ◀── ready ── │                                        │
+│                          │ ─ MessagePort ▶                                       │
+│   generated export       │ ─ SET_CONTENT ─▶ relays to its Service Worker         │
+│                          │ ─ NAVIGATE ───▶ <iframe src="viewer/index.html">      │
+│                          │ ◀ CONTENT_NEEDED, exe-download-elpx                   │
+└──────────────────────────┘              │        └─ author content (same origin) │
+                                          └────────────────────────────────────────┘
+```
+
+**Server.** `contentLabel('preview', <project uuid>, <app origin>)` gives each
+project its own origin, different from the origin of its public view. The
+content host serves three static files below
+`/content/<app origin>/preview/<project uuid>/`: `host.html`,
+`preview-host.js` (`public/app/workarea/interface/elements/previewHostPage.js`)
+and `preview-sw.js`. It reads no project data and no session; the previewed
+files only ever exist in the worker, put there by the workarea. Everything else
+under that directory is a 404 from the server.
+
+The workarea route adds `previewContentHostUrl` to the client config for the
+project it has just authorized the user to open. The client never derives a
+label: it uses that URL or has no content-domain preview.
+
+**Host page.** It accepts a `MessagePort` only from the window that embeds it
+and only when `event.origin` is the application origin written into the page by
+the server (taken from the label-checked URL). Through the port the application
+may send `SET_CONTENT`, `VERIFY_READY` and `GET_STATUS`, which are relayed to
+the worker, and `NAVIGATE`, which is confined to the `viewer/` directory. The
+page asks the worker to claim it when it starts uncontrolled (Firefox). Its
+CSP is `default-src 'none'` with only its own script, worker and frame, and
+`frame-ancestors <app origin>`.
+
+**Workarea.** `PreviewContentHost` handles a window message only when
+`event.source` is the preview iframe's window and `event.origin` is the content
+origin of `previewContentHostUrl`. Everything on the content origin, the host
+page included, is treated as untrusted: author scripts share that origin and
+could drive the host page. The workarea acts on two message types from it,
+neither carrying data: `CONTENT_NEEDED` (send the preview again) and
+`exe-download-elpx` (start the same ELPX export the same-origin preview offers).
+
+**No fallback.** In this mode `refresh()` never takes the Service Worker path of
+the editor origin nor the blob URL path. A failure shows the preview error page.
+The blob URL fallback remains for the mode-off path only.
+
+#### Audit: code that reaches into the preview iframe or relies on its origin
+
+| Place | What it did | Content-domain mode |
+|---|---|---|
+| `previewPanel.js` `loadPreviewFromServiceWorker()` | sets the iframe to `<basePath>/viewer/…` on the editor origin | not used; `refreshWithContentHost()` loads the host page and navigates through a message |
+| `previewPanel.js` `refreshWithBlobUrl()`, `_loadBlobPage()` and the `exe-blob-*` handlers | render the export from blob URLs in the editor origin | not used; no fallback |
+| `previewPanel.js` window `message` handler, `exe-download-elpx` | trusted `event.source` being a preview iframe | the request arrives over the port, relayed by the host page as a bare type |
+| `previewPanel.js` `_checkServiceWorkerContent()` / visibility recovery | asked the editor origin's worker with `GET_STATUS` | asks through the port |
+| `previewPanel.js` `CONTENT_NEEDED` (worker restarted) | worker message or `BroadcastChannel` on the editor origin | relayed over the port |
+| `previewPanel.js` viewport toggle (`applyViewport()`) | toggles classes on the iframe's container | unchanged; it never touched the iframe document |
+| `previewPanel.js` `showError()` / `injectHtmlToIframe()` | static error page from a blob URL | unchanged; the page contains only the escaped message, no author content |
+| Page updates (`subscribeToChanges()`, `scheduleRefresh()`) | regenerate and resend the export | unchanged; they call `refresh()` |
+| Search navigation in the preview | runs inside the exported pages | unchanged; it is content code and now runs on the content origin |
+| `app.js` `registerPreviewServiceWorker()` | registers the worker under `<basePath>viewer/` on the editor origin | still registered and never given content. **Known gap:** it could be skipped in this mode |
+| `previewPanel.js` `extractToNewTab()` | opens `<basePath>/viewer/` of the editor origin in a new tab | **Known gap:** not offered; the buttons are hidden. A top-level page on the content origin would need a reference to the workarea window to receive the export, and a cross-origin opener can navigate the window that opened it. With storage partitioning it would also get a different, empty worker |
+| `modalPrintPreview.js` | renders the print preview from a blob URL in its own iframe and reads its document | **Known gap:** a separate surface that still runs in the editor origin; not changed here |
+| `exe_export.js` `isPreview` (`pathname.startsWith('/viewer/')`) | relative-link adjustment for the preview | false on the content host, as it already is under a non-empty `BASE_PATH`; links resolve relative to the page |
+| `ideviceNode.js`, `YjsProjectBridge.js`, `asset_url_resolver.js` (`contentWindow` / `contentDocument`) | editor-side iframes inside the workarea DOM | not the preview iframe; out of scope |
+
+Other known gaps of phase 2:
+
+- The host page does not re-register a worker that reports itself active and
+  never answers (the self-healing the editor origin has, ADR-2429-01). A request
+  that gets no answer fails after 15 seconds with a preview error; "Refresh"
+  reloads the host page.
+- Pinned and slide-out previews each load their own host page. Both use the same
+  origin and worker.
+- WebKit is not part of the project's E2E suite; it was exercised by the spike
+  only.
+
 ## Migration and compatibility
 
 - Mode off: no route, header or template output changes. `viewer.njk` renders
@@ -192,7 +283,12 @@ Invariants and the tests that hold them:
 | The application host keeps its opaque-origin route, never weaker | `content-host.spec.ts` ("keeps the opaque-origin route"); `publicViewSandbox.spec.ts` ("does not change the opaque-origin policy"); `pages.spec.ts` (existing block, unchanged); E2E "the application host keeps its opaque-origin content route"; `public-view-sandbox.spec.ts` unchanged |
 | The effective host follows `TRUSTED_PROXIES` | `content-host.spec.ts` ("effective host behind a reverse proxy") |
 | An invalid setting refuses to boot | `content-domain.spec.ts` (`contentDomainBootError`) |
-| No fallback to the application origin | E2E "shows an error instead of falling back" |
+| No fallback to the application origin | E2E "shows an error instead of falling back"; `previewPanel.test.js` ("shows an error and does not fall back") |
+| The workarea gets the preview origin from the server and never computes a label | `pages.spec.ts` ("preview content host"); `previewPanel.test.js` ("creates one message client per preview iframe, for the origin the server gave") |
+| The host page accepts messages only from the embedding window on the application origin | `previewHostPage.test.js` ("accepts a port only from the embedding window on the application origin") |
+| The workarea accepts messages only from the preview iframe on the expected content origin | `previewContentHost.test.js` ("ignores messages from another window or another origin"); E2E "the workarea ignores preview messages that do not come from the content origin" |
+| Author scripts in the preview run on the content origin and cannot read the editor's DOM, cookies or IndexedDB | E2E `content-domain-preview.spec.ts` ("an author script runs on the content origin and cannot read the editor") |
+| The preview label of a project is not valid for another project, origin or kind | `content-host.spec.ts` ("workarea preview host"); `content-label.spec.ts` |
 
 Content on a content origin can make requests to the application like any other
 website. It carries no application cookie when the two are different sites
@@ -220,8 +316,10 @@ export is already built and cached by then.
 ## Testing strategy
 
 - Unit (Bun): the specs named above.
+- Frontend (Vitest): `previewContentHost.test.js`, `previewHostPage.test.js` and
+  the "content domain mode" block of `previewPanel.test.js`.
 - E2E (Playwright): `test/e2e/playwright/specs/content-domain-public-view.spec.ts`
-  against a second server that `playwright.config.ts` starts on port 3003 with
+  and `content-domain-preview.spec.ts` against a second server that `playwright.config.ts` starts on port 3003 with
   `EXE_CONTENT_DOMAIN=exe-content.localhost:3003` and `BASE_PATH=/exe`. The app
   is opened at `exe-app.localhost` so that the two are different sites.
 - `*.localhost` resolution per engine is recorded in
@@ -230,8 +328,8 @@ export is already built and cached by then.
 ## Rollout plan
 
 1. Phase 1 (this design): setting, label, host routing, public viewer.
-2. Phase 2: the workarea preview on a per-project content origin, gated on the
-   Service Worker spike described in `research.md`.
+2. Phase 2: the workarea preview on a per-project content origin. The Service
+   Worker spike in `research.md` passed in Chromium, Firefox and WebKit.
 
 ## Risks and mitigations
 

@@ -1,4 +1,12 @@
 import { test, expect, type Frame, type Page } from '@playwright/test';
+import {
+    APP,
+    APP_ORIGIN,
+    BASE_PATH,
+    CONTENT_DOMAIN,
+    contentHostPattern,
+    createGuestProject,
+} from '../helpers/content-domain';
 
 /**
  * Public view on a content domain (EXE_CONTENT_DOMAIN).
@@ -9,33 +17,18 @@ import { test, expect, type Frame, type Page } from '@playwright/test';
  * project. These tests run against the second dynamic server declared in
  * playwright.config.ts, which also sets BASE_PATH=/exe. The default server keeps
  * the mode off; public-view-sandbox.spec.ts covers it unchanged.
- *
- * Every request is made by the browser, never by Playwright's Node client:
- * browsers resolve `*.localhost` to loopback themselves, Node depends on the OS.
  */
-const APP_ORIGIN = 'http://exe-app.localhost:3003';
-const BASE_PATH = '/exe';
-const APP = APP_ORIGIN + BASE_PATH;
-const CONTENT_DOMAIN = 'exe-content.localhost:3003';
-
 /** Log in as a guest, create a project and publish it. Returns its public view id. */
 async function publishProject(page: Page, title: string): Promise<string> {
-    await page.goto(`${APP}/login`);
-    return page.evaluate(async projectTitle => {
-        await fetch('login/guest', { method: 'POST', body: new URLSearchParams({ guest_login_nonce: '' }) });
-        const created = await fetch('api/project/create-quick', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: projectTitle }),
-        });
-        const { uuid } = await created.json();
-        const published = await fetch(`api/projects/uuid/${uuid}/public-view`, {
+    const uuid = await createGuestProject(page, title);
+    return page.evaluate(async projectUuid => {
+        const published = await fetch(`api/projects/uuid/${projectUuid}/public-view`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ enabled: true }),
         });
         return (await published.json()).publicViewId as string;
-    }, title);
+    }, uuid);
 }
 
 /** Open the public viewer and return the content frame and its URL. */
@@ -66,7 +59,7 @@ test.describe('Public view on a content domain', () => {
         const { frame, src } = await openPublicView(page, publicViewId);
 
         // The iframe points at a label under the content domain, below BASE_PATH.
-        expect(src.host).toMatch(new RegExp(`^v[0-9a-f]{40}\\.${CONTENT_DOMAIN.replace(/\./g, '\\.')}$`));
+        expect(src.host).toMatch(contentHostPattern('v'));
         expect(src.pathname.startsWith(`${BASE_PATH}/content/`)).toBe(true);
 
         const iframe = page.locator('#viewer-iframe');

@@ -130,11 +130,16 @@ application behaves as before.
 - Isolation policy for both modes: `src/shared/security/publicViewSandbox.ts`
   (`CONTENT_DOMAIN_SANDBOX`, `publicViewCspHeader(profile, appOrigin)`,
   `contentDomainHeaders()`).
+- Workarea preview transport: `public/app/workarea/interface/elements/previewHostPage.js`
+  (host page on the content origin) and `previewContentHost.js` (workarea side),
+  used by `previewPanel.js` when the server puts `previewContentHostUrl` in the
+  client config.
 - Tests: `src/routes/content-host.spec.ts`, `src/utils/content-domain.spec.ts`,
   `src/utils/content-label.spec.ts`,
   `src/shared/security/publicViewSandbox.spec.ts`, `src/routes/pages.spec.ts`
-  ("iframe target") and
-  `test/e2e/playwright/specs/content-domain-public-view.spec.ts`.
+  ("iframe target", "preview content host"), the Vitest files next to the two
+  preview modules, and `test/e2e/playwright/specs/content-domain-public-view.spec.ts`
+  and `content-domain-preview.spec.ts`.
 - Browser behaviour measured for this change (Chromium, Firefox and WebKit):
   [`research.md`](../changes/53-content-domain-isolation/research.md).
 - Sites, not origins, bound cookies and `SameSite`:
@@ -220,7 +225,9 @@ that ADR-348-01 listed as possible future hardening.
 
 ## Follow-up work
 
-- Move the workarea preview to the content domain (phase 2 of the change).
+- The workarea preview uses the content domain too (phase 2 of the change).
+  Remaining editor-origin surfaces are listed as known gaps in the design: the
+  print preview and opening the preview in a new tab.
 - Consider registering a hosted content domain in the Public Suffix List.
 - LMS and CMS plugins, the Electron app and static mode are not covered.
 

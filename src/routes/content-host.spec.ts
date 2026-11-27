@@ -5,12 +5,18 @@ import type { Project } from '../db/types';
 import { CONTENT_DOMAIN_SANDBOX, PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
 import { encodeAppOrigin } from '../utils/content-domain';
 import { contentLabel } from '../utils/content-label';
+import { handleContentProxyRequest } from '../content-proxy/worker';
 import {
     type ContentHostDeps,
     contentHostGuard,
+    contentProxySourceHeaders,
     createContentHostHandler,
     previewContentHostUrl,
+    previewHostSourceResponse,
+    proxiedPreviewHostUrl,
+    proxiedPublicViewUrl,
     publicViewContentUrl,
+    publicViewSourceHeaders,
 } from './content-host';
 
 const APP = 'http://app.test';
@@ -469,5 +475,99 @@ describe('content host handler', () => {
             expect(await open(new URL(contentUrl('pub-1')).host)).toBe('refused');
             expect(reachedApp).toEqual(['/yjs/project-1']);
         });
+    });
+});
+
+describe('content proxy sources (EXE_CONTENT_PROXY)', () => {
+    const PROXY = { host: 'proxy.test', port: null };
+    const savedBasePath = process.env.BASE_PATH;
+
+    afterEach(() => {
+        if (savedBasePath === undefined) delete process.env.BASE_PATH;
+        else process.env.BASE_PATH = savedBasePath;
+    });
+
+    /** What the proxy fetches for a URL built by this application, or null if it refuses it. */
+    async function sourceRequestedFor(url: string): Promise<string | null> {
+        let requested: string | null = null;
+        await handleContentProxyRequest(new Request(url), { domain: PROXY.host }, async source => {
+            requested = source;
+            return new Response('', { headers: contentProxySourceHeaders() });
+        });
+        return requested;
+    }
+
+    it('builds public-view URLs that the proxy resolves to the opaque content route', async () => {
+        process.env.BASE_PATH = '/exe';
+        const url = proxiedPublicViewUrl(PROXY, 'https://app.test', 'pub-1');
+
+        expect(new URL(url).host).toMatch(/^x[0-9a-f]{40}\.proxy\.test$/);
+        expect(await sourceRequestedFor(url)).toBe('https://app.test/exe/view/pub-1/_/index.html');
+        // One origin per published project and per application origin.
+        expect(new URL(proxiedPublicViewUrl(PROXY, 'https://app.test', 'pub-2')).host).not.toBe(new URL(url).host);
+        expect(new URL(proxiedPublicViewUrl(PROXY, 'https://other.test', 'pub-1')).host).not.toBe(new URL(url).host);
+    });
+
+    it('builds preview host URLs that the proxy resolves to the preview source of the project', async () => {
+        delete process.env.BASE_PATH;
+        const url = proxiedPreviewHostUrl(PROXY, 'https://app.test', 'project-1');
+
+        expect(await sourceRequestedFor(url)).toBe('https://app.test/preview-host/project-1/host.html');
+        expect(new URL(url).host).not.toBe(new URL(proxiedPreviewHostUrl(PROXY, 'https://app.test', 'project-2')).host);
+        expect(new URL(url).host).not.toBe(new URL(proxiedPublicViewUrl(PROXY, 'https://app.test', 'project-1')).host);
+    });
+
+    it('uses the scheme of the application and the port of the proxy', () => {
+        const url = new URL(
+            proxiedPublicViewUrl({ host: 'proxy.test', port: '3005' }, 'http://app.test:3004', 'pub-1'),
+        );
+        expect(url.protocol).toBe('http:');
+        expect(url.port).toBe('3005');
+    });
+
+    it('marks a response as a source, with the policy for the content origin when there is one', () => {
+        expect(contentProxySourceHeaders()).toEqual({ 'X-Exe-Content-Proxy': '1' });
+        expect(contentProxySourceHeaders("default-src 'self'")).toEqual({
+            'X-Exe-Content-Proxy': '1',
+            'X-Exe-Content-Proxy-CSP': "default-src 'self'",
+        });
+    });
+
+    it('asks for the content-domain policy on the content origin of a public view', () => {
+        const headers = publicViewSourceHeaders('https://app.test');
+
+        expect(headers['X-Exe-Content-Proxy']).toBe('1');
+        expect(headers['X-Exe-Content-Proxy-CSP']).toContain(`sandbox ${CONTENT_DOMAIN_SANDBOX}`);
+        expect(headers['X-Exe-Content-Proxy-CSP']).toContain("frame-ancestors 'self' https://app.test");
+        expect(headers['Access-Control-Allow-Origin']).toBe('https://app.test');
+        expect(headers['Referrer-Policy']).toBe('strict-origin-when-cross-origin');
+        // It never carries a policy for the application host: that one stays opaque.
+        expect('Content-Security-Policy' in headers).toBe(false);
+    });
+
+    it('serves the preview host page inert on the application host, with its real policy for the proxy', async () => {
+        const page = previewHostSourceResponse('https://app.test', 'host.html');
+
+        expect(page.status).toBe(200);
+        expect(page.headers.get('Content-Security-Policy')).toBe('sandbox');
+        expect(page.headers.get('X-Exe-Content-Proxy')).toBe('1');
+        expect(page.headers.get('X-Exe-Content-Proxy-CSP')).toContain("script-src 'self'");
+        expect(page.headers.get('X-Exe-Content-Proxy-CSP')).toContain('frame-ancestors https://app.test');
+        expect(await page.text()).toContain('data-app-origin="https://app.test"');
+    });
+
+    it('serves the host script and the Service Worker as sources, and nothing else', () => {
+        for (const file of ['preview-host.js', 'preview-sw.js']) {
+            const script = previewHostSourceResponse('https://app.test', file);
+            expect(script.status).toBe(200);
+            expect(script.headers.get('Content-Type')).toBe('application/javascript; charset=utf-8');
+            expect(script.headers.get('X-Exe-Content-Proxy')).toBe('1');
+            expect(script.headers.has('X-Exe-Content-Proxy-CSP')).toBe(false);
+        }
+        for (const file of ['', 'viewer/index.html', '../login', 'preview-sw.js.map']) {
+            const missing = previewHostSourceResponse('https://app.test', file);
+            expect(missing.status).toBe(404);
+            expect(missing.headers.has('X-Exe-Content-Proxy')).toBe(false);
+        }
     });
 });

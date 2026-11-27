@@ -22,6 +22,7 @@ import { zipSync, strToU8 } from 'fflate';
 import { SignJWT } from 'jose';
 import { configurePublicViewContent, resetPublicViewContent, type ExportResult } from '../services/public-view-content';
 import { CONTENT_DOMAIN_SANDBOX, PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
+import { contentProxyLabel, encodeSourcePrefix } from '../content-proxy/protocol';
 import { encodeAppOrigin } from '../utils/content-domain';
 import { contentLabel } from '../utils/content-label';
 import { passwordFingerprint, verifyToken } from './auth';
@@ -1973,6 +1974,24 @@ describe('Pages Routes', () => {
                 const config = await renderWorkareaConfig();
                 expect('previewContentHostUrl' in config).toBe(false);
             });
+
+            it('gives the workarea the host page on a content proxy when one is set', async () => {
+                delete process.env.EXE_CONTENT_DOMAIN;
+                process.env.EXE_CONTENT_PROXY = 'proxy.test';
+                try {
+                    const config = await renderWorkareaConfig();
+
+                    const prefix = 'https://app.test/preview-host/content-host-project/';
+                    expect(config.previewContentHostUrl).toBe(
+                        `https://${contentProxyLabel(prefix)}.proxy.test/${encodeSourcePrefix(prefix)}/host.html`,
+                    );
+
+                    process.env.APP_ONLINE_MODE = '0';
+                    expect('previewContentHostUrl' in (await renderWorkareaConfig())).toBe(false);
+                } finally {
+                    delete process.env.EXE_CONTENT_PROXY;
+                }
+            });
         });
 
         it('should handle template render error with fallback HTML', async () => {
@@ -3245,6 +3264,26 @@ describe('Pages Routes', () => {
                 expect(templateData.sandboxTokens).toBe(CONTENT_DOMAIN_SANDBOX);
                 expect(templateData.referrerPolicy).toBe('strict-origin-when-cross-origin');
             });
+
+            it('points the iframe at the content proxy, with the opaque content route as its source', async () => {
+                delete process.env.EXE_CONTENT_DOMAIN;
+                process.env.EXE_CONTENT_PROXY = 'proxy.test';
+                process.env.BASE_PATH = '/exe';
+                try {
+                    const customApp = new Elysia().use(createPagesRoutes({ ...mockDeps, template: capture }));
+
+                    await customApp.handle(new Request('https://app.test/view/public-view-id-57'));
+
+                    const prefix = 'https://app.test/exe/view/public-view-id-57/_/';
+                    expect(templateData.contentSrc).toBe(
+                        `https://${contentProxyLabel(prefix)}.proxy.test/${encodeSourcePrefix(prefix)}/index.html`,
+                    );
+                    expect(templateData.sandboxTokens).toBe(CONTENT_DOMAIN_SANDBOX);
+                    expect(templateData.referrerPolicy).toBe('strict-origin-when-cross-origin');
+                } finally {
+                    delete process.env.EXE_CONTENT_PROXY;
+                }
+            });
         });
 
         it('should return 404 for an enabled link when the site disables public links', async () => {
@@ -3980,6 +4019,83 @@ describe('Pages Routes', () => {
             });
             const res = await app.handle(new Request('http://localhost/view/pub-1/_/index.html'));
             expect(res.status).toBe(500);
+        });
+
+        it('is not a content source unless a content proxy is set', async () => {
+            const res = await app.handle(new Request('https://app.test/view/pub-1/_/index.html'));
+
+            expect(res.headers.has('X-Exe-Content-Proxy')).toBe(false);
+            expect(res.headers.has('X-Exe-Content-Proxy-CSP')).toBe(false);
+            expect(res.headers.has('Access-Control-Allow-Origin')).toBe(false);
+        });
+
+        it('becomes a content source with a content proxy, and stays opaque on this host', async () => {
+            process.env.EXE_CONTENT_PROXY = 'proxy.test';
+            try {
+                const res = await app.handle(new Request('https://app.test/view/pub-1/_/index.html'));
+
+                expect(res.status).toBe(200);
+                // Opened here it is still an opaque origin.
+                const csp = res.headers.get('Content-Security-Policy') ?? '';
+                expect(csp).toContain(`sandbox ${PUBLIC_VIEW_SANDBOX}`);
+                expect(csp).not.toContain('allow-same-origin');
+                // The proxy may serve it, with its own origin and this application as embedder.
+                expect(res.headers.get('X-Exe-Content-Proxy')).toBe('1');
+                const proxied = res.headers.get('X-Exe-Content-Proxy-CSP') ?? '';
+                expect(proxied).toContain(`sandbox ${CONTENT_DOMAIN_SANDBOX}`);
+                expect(proxied).toContain("frame-ancestors 'self' https://app.test");
+                expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://app.test');
+
+                // An error is never a source.
+                const missing = await app.handle(new Request('https://app.test/view/pub-1/_/missing.html'));
+                expect(missing.status).toBe(404);
+                expect(missing.headers.has('X-Exe-Content-Proxy')).toBe(false);
+            } finally {
+                delete process.env.EXE_CONTENT_PROXY;
+            }
+        });
+    });
+
+    describe('GET /preview-host/:projectUuid/* (preview host as a content source)', () => {
+        const savedOnlineMode = process.env.APP_ONLINE_MODE;
+
+        afterEach(() => {
+            delete process.env.EXE_CONTENT_PROXY;
+            if (savedOnlineMode === undefined) delete process.env.APP_ONLINE_MODE;
+            else process.env.APP_ONLINE_MODE = savedOnlineMode;
+        });
+
+        it('does not exist without a content proxy, nor in offline mode', async () => {
+            const off = await app.handle(new Request('https://app.test/preview-host/project-1/host.html'));
+            expect(off.status).toBe(404);
+
+            process.env.EXE_CONTENT_PROXY = 'proxy.test';
+            process.env.APP_ONLINE_MODE = '0';
+            const offline = await app.handle(new Request('https://app.test/preview-host/project-1/host.html'));
+            expect(offline.status).toBe(404);
+        });
+
+        it('serves the host page bound to the origin of the request, inert on this host', async () => {
+            process.env.EXE_CONTENT_PROXY = 'proxy.test';
+
+            const res = await app.handle(new Request('https://app.test/preview-host/project-1/host.html'));
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('Content-Security-Policy')).toBe('sandbox');
+            expect(res.headers.get('X-Exe-Content-Proxy')).toBe('1');
+            expect(res.headers.get('X-Exe-Content-Proxy-CSP')).toContain('frame-ancestors https://app.test');
+            expect(await res.text()).toContain('data-app-origin="https://app.test"');
+        });
+
+        it('serves the transport scripts and nothing else', async () => {
+            process.env.EXE_CONTENT_PROXY = 'proxy.test';
+
+            const script = await app.handle(new Request('https://app.test/preview-host/project-1/preview-sw.js'));
+            expect(script.status).toBe(200);
+            expect(script.headers.get('Content-Type')).toBe('application/javascript; charset=utf-8');
+
+            const other = await app.handle(new Request('https://app.test/preview-host/project-1/viewer/index.html'));
+            expect(other.status).toBe(404);
         });
     });
 });

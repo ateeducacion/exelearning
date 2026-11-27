@@ -20,9 +20,22 @@ export function contentHostPattern(kind: 'v' | 'p'): RegExp {
     return new RegExp(`^${kind}[0-9a-f]{40}\\.${CONTENT_DOMAIN.replace(/\./g, '\\.')}$`);
 }
 
+/**
+ * Third dynamic server: the same application with a content proxy instead
+ * (EXE_CONTENT_PROXY), and the proxy itself (src/content-proxy/index.ts) next to it.
+ * The content is then served from `x<hash>.exe-proxy.localhost:3005`, which fetches it
+ * from the application.
+ */
+export const PROXY_APP_ORIGIN = 'http://exe-app.localhost:3004';
+export const PROXY_APP = PROXY_APP_ORIGIN + BASE_PATH;
+export const CONTENT_PROXY = 'exe-proxy.localhost:3005';
+
+/** Matches the host of an origin served by the content proxy. */
+export const PROXY_HOST_PATTERN = new RegExp(`^x[0-9a-f]{40}\\.${CONTENT_PROXY.replace(/\./g, '\\.')}$`);
+
 /** Log in as a guest and create a project. Leaves the page on the login URL. */
-export async function createGuestProject(page: Page, title: string): Promise<string> {
-    await page.goto(`${APP}/login`);
+export async function createGuestProject(page: Page, title: string, app: string = APP): Promise<string> {
+    await page.goto(`${app}/login`);
     return page.evaluate(async projectTitle => {
         await fetch('login/guest', { method: 'POST', body: new URLSearchParams({ guest_login_nonce: '' }) });
         const created = await fetch('api/project/create-quick', {

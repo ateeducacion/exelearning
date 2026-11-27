@@ -57,16 +57,34 @@ export function getContentDomain(env: NodeJS.ProcessEnv = process.env): ContentD
 }
 
 /**
+ * The configured content proxy (`EXE_CONTENT_PROXY=host[:port]`), or null when it
+ * is not used. A content proxy is a separate service (see `src/content-proxy/`):
+ * it fetches author content from this application and serves each item on its own
+ * origin under that domain, so the deployment needs no DNS record, certificate or
+ * reverse-proxy rule of its own. Throws on an invalid value.
+ */
+export function getContentProxy(env: NodeJS.ProcessEnv = process.env): ContentDomain | null {
+    const raw = env.EXE_CONTENT_PROXY;
+    return raw?.trim() ? parseContentDomain(raw) : null;
+}
+
+/**
  * Returns an error message when the deployment must refuse to boot because
- * `EXE_CONTENT_DOMAIN` is set to an invalid value; otherwise `null`.
+ * `EXE_CONTENT_DOMAIN` or `EXE_CONTENT_PROXY` is set to an invalid value, or
+ * because both are set; otherwise `null`.
  */
 export function contentDomainBootError(env: NodeJS.ProcessEnv = process.env): string | null {
-    try {
-        getContentDomain(env);
-        return null;
-    } catch (error) {
-        return `[SECURITY] Invalid EXE_CONTENT_DOMAIN: ${(error as Error).message}. Refusing to start.`;
+    for (const name of ['EXE_CONTENT_DOMAIN', 'EXE_CONTENT_PROXY']) {
+        try {
+            if (env[name]?.trim()) parseContentDomain(env[name] as string);
+        } catch (error) {
+            return `[SECURITY] Invalid ${name}: ${(error as Error).message}. Refusing to start.`;
+        }
     }
+    if (env.EXE_CONTENT_DOMAIN?.trim() && env.EXE_CONTENT_PROXY?.trim()) {
+        return '[SECURITY] EXE_CONTENT_DOMAIN and EXE_CONTENT_PROXY are both set: use one of them. Refusing to start.';
+    }
+    return null;
 }
 
 export type HostRelation = 'same' | 'app-under-content' | 'content-under-app' | 'unrelated';

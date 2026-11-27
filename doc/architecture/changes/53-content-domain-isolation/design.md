@@ -189,8 +189,7 @@ workarea (app origin)                      content origin  p<hash>.<content doma
 ┌──────────────────────────┐   iframe     ┌────────────────────────────────────────┐
 │ previewPanel.js          │ ───────────▶ │ host.html + preview-host.js            │
 │ previewContentHost.js    │              │   registers preview-sw.js (scope ./)   │
-│                          │ ◀── ready ── │                                        │
-│                          │ ─ MessagePort ▶                                       │
+│                          │ ◀ ready + MessagePort                                 │
 │   generated export       │ ─ SET_CONTENT ─▶ relays to its Service Worker         │
 │                          │ ─ NAVIGATE ───▶ <iframe src="viewer/index.html">      │
 │                          │ ◀ CONTENT_NEEDED, exe-download-elpx                   │
@@ -211,11 +210,14 @@ The workarea route adds `previewContentHostUrl` to the client config for the
 project it has just authorized the user to open. The client never derives a
 label: it uses that URL or has no content-domain preview.
 
-**Host page.** It accepts a `MessagePort` only from the window that embeds it
-and only when `event.origin` is the application origin written into the page by
-the server (taken from the label-checked URL). Through the port the application
-may send `SET_CONTENT`, `VERIFY_READY` and `GET_STATUS`, which are relayed to
-the worker, and `NAVIGATE`, which is confined to the `viewer/` directory. The
+**Host page.** It creates the `MessageChannel` and posts one end to the window
+that embeds it, with the application origin written into the page by the server
+(taken from the label-checked URL) as the target origin, so the browser delivers
+the port only to the application. It takes no window message from the
+application. Through the port the application may send `SET_CONTENT`,
+`VERIFY_READY` and `GET_STATUS`, which are relayed to the worker, and
+`NAVIGATE`, which is confined to the `viewer/` directory (with `keepPage` it
+reloads the page on screen instead). The
 page asks the worker to claim it when it starts uncontrolled (Firefox). Its
 CSP is `default-src 'none'` with only its own script, worker and frame, and
 `frame-ancestors <app origin>`.
@@ -246,10 +248,43 @@ The blob URL fallback remains for the mode-off path only.
 | Page updates (`subscribeToChanges()`, `scheduleRefresh()`) | regenerate and resend the export | unchanged; they call `refresh()` |
 | Search navigation in the preview | runs inside the exported pages | unchanged; it is content code and now runs on the content origin |
 | `app.js` `registerPreviewServiceWorker()` | registers the worker under `<basePath>viewer/` on the editor origin | still registered and never given content. **Known gap:** it could be skipped in this mode |
-| `previewPanel.js` `extractToNewTab()` | opens `<basePath>/viewer/` of the editor origin in a new tab | **Known gap:** not offered; the buttons are hidden. A top-level page on the content origin would need a reference to the workarea window to receive the export, and a cross-origin opener can navigate the window that opened it. With storage partitioning it would also get a different, empty worker |
+| `previewPanel.js` `extractToNewTab()` | opens `<basePath>/viewer/` of the editor origin in a new tab | opens an empty tab of the editor origin and puts the host page in a sandboxed frame inside it; see "Preview in a new tab" below |
 | `modalPrintPreview.js` | renders the print preview from a blob URL in its own iframe and reads its document | **Known gap:** a separate surface that still runs in the editor origin; not changed here |
 | `exe_export.js` `isPreview` (`pathname.startsWith('/viewer/')`) | relative-link adjustment for the preview | false on the content host, as it already is under a non-empty `BASE_PATH`; links resolve relative to the page |
 | `ideviceNode.js`, `YjsProjectBridge.js`, `asset_url_resolver.js` (`contentWindow` / `contentDocument`) | editor-side iframes inside the workarea DOM | not the preview iframe; out of scope |
+
+#### Preview in a new tab
+
+The tab cannot be a top-level page of the content origin. Such a page would have
+to receive the export from the workarea, so it would hold a reference to the
+workarea window (`window.opener`, or `event.source` of a message), and any page
+that holds a reference to a top-level window can navigate it: author content
+could send the editor tab to a look-alike page. With storage partitioning it
+would also get a different, empty worker.
+
+So `extractToNewTab()` opens `window.open('', '_blank')`: an empty document that
+inherits the editor origin. `_contentHostTab()` puts one element in it, an
+iframe with the `sandbox` list of the panel's iframe, and connects a second
+`PreviewContentHost` to the host page loaded there. The result has the shape of
+the panel, with the same guarantees:
+
+- Author content is two frames down, on the content origin, in a frame that
+  cannot navigate its top window (no `allow-top-navigation`) nor any other
+  window (no `allow-popups-to-escape-sandbox`).
+- The tab's opener is set to null before the frame exists: a cross-origin frame
+  can read `top.opener`.
+- The host page hands its port to its embedder, which is the tab. The workarea
+  listens on the tab's window, which it can do because both are the editor
+  origin. No window message goes from the workarea to the content origin.
+
+The frame in the tab has the same top-level site as the panel's, so both use one
+worker: a refresh sends the files once and asks the other frame to show them.
+The tab reloads the page it is on instead of going back to the first one. The
+popup monitor notices a reloaded tab (a new, empty document) and fills it again;
+a tab that the user takes to another site is left alone.
+
+Known gaps: the address bar shows `about:blank`, and the tab has no error page
+of its own (a failed refresh shows the error in the panel).
 
 Other known gaps of phase 2:
 

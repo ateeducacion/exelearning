@@ -370,7 +370,10 @@ link. The content loads from `http://<label>.exe-content.localhost:8080`.
 - The preview panel loads from `https://<label>.<content domain>`, one origin per
   project. Scripts in the content cannot read the editor page, its cookies or
   its storage.
-- "Open in new tab" is not available in the preview panel.
+- "Open in new tab" opens an empty tab of the editor (the address bar shows
+  `about:blank`) with the preview inside it, on the same content origin as in the
+  panel. The tab is updated whenever the preview is refreshed, and it can be
+  reloaded while the editor stays open.
 - The print preview is not moved to the content domain.
 - If the content domain cannot be reached, the preview shows an error. It does
   not fall back to the editor's origin.

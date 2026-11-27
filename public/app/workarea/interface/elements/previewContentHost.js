@@ -6,13 +6,16 @@
  * per-project content origin (previewHostPage.js); the workarea cannot reach
  * into that document, so everything goes through messages:
  *
- *   workarea  --exe-preview-connect + MessagePort-->  host page
+ *   workarea  <--exe-preview-host-ready + MessagePort--  host page
  *   workarea  --SET_CONTENT / VERIFY_READY / GET_STATUS / NAVIGATE-->  host page  -->  its Service Worker
  *   workarea  <--replies, CONTENT_NEEDED, exe-download-elpx--  host page
  *
  * A window message is accepted only when `event.source` is the preview iframe's
  * window and `event.origin` is the content origin the server gave for the open
  * project. The client never computes that origin.
+ *
+ * The iframe is one of the panel's, or the one in the tab the preview was opened
+ * in (`win` is then that tab, an empty page of this origin).
  */
 export default class PreviewContentHost {
     /** How long to wait for the host page to become ready, or to answer a request (ms). */
@@ -23,7 +26,7 @@ export default class PreviewContentHost {
      * @param {string} options.hostUrl - Host page URL provided by the server
      * @param {HTMLIFrameElement} options.iframe - Preview iframe that shows the host page
      * @param {(message: Object) => void} [options.onMessage] - Unsolicited messages from the host page
-     * @param {Window} [options.win]
+     * @param {Window} [options.win] - Window that embeds the iframe
      */
     constructor({ hostUrl, iframe, onMessage = () => {}, win = window }) {
         this.hostUrl = hostUrl;
@@ -82,25 +85,38 @@ export default class PreviewContentHost {
     }
 
     /**
-     * Send the generated preview and show its first page.
+     * Send the generated preview and show it.
      * @param {Object} files - Map of file paths to content (ArrayBuffers are transferred)
      * @param {Object} [options] - Serving options for the Service Worker
+     * @param {Object} [show] - Options for showContent()
      * @returns {Promise<{fileCount: number}>}
      */
-    async sendContent(files, options = {}) {
+    async sendContent(files, options = {}, show = {}) {
         await this.connect();
         const buffers = Object.values(files).filter((value) => value instanceof ArrayBuffer);
         const stored = await this._request('SET_CONTENT', { files, options }, buffers);
         if (stored?.type !== 'CONTENT_READY') {
             throw new Error(stored?.message || 'The preview content was not accepted');
         }
+        return this.showContent(show);
+    }
+
+    /**
+     * Show the preview that the content origin's Service Worker holds. Every frame of one
+     * content origin shares that worker, so one sendContent() serves all of them.
+     * @param {Object} [options]
+     * @param {boolean} [options.keepPage] - Reload the page on screen instead of going to the first one
+     * @returns {Promise<{fileCount: number}>}
+     */
+    async showContent({ keepPage = false } = {}) {
+        await this.connect();
         const verified = await this._request('VERIFY_READY');
         if (!verified?.ready) {
             throw new Error(verified?.message || 'The preview content is not ready');
         }
         // The author is the teacher: make the Teacher Mode toggle available, as the
         // same-origin preview does.
-        await this._request('NAVIGATE', { path: 'index.html?exe-teacher=1' });
+        await this._request('NAVIGATE', { path: 'index.html?exe-teacher=1', keepPage });
         return { fileCount: verified.fileCount };
     }
 
@@ -120,9 +136,13 @@ export default class PreviewContentHost {
 
     /** Stop listening and drop the connection. */
     destroy() {
-        this.win.removeEventListener('message', this._onWindowMessage);
         this._settleConnecting?.(new Error('The preview was closed'));
         this.reset();
+        try {
+            this.win.removeEventListener('message', this._onWindowMessage);
+        } catch {
+            // A tab that showed the preview and was taken to another site.
+        }
     }
 
     /**
@@ -153,13 +173,11 @@ export default class PreviewContentHost {
         if (event.source !== this.iframe.contentWindow || event.origin !== this.origin) return;
 
         const type = event.data?.type;
-        if (type === 'exe-preview-host-ready') {
+        if (type === 'exe-preview-host-ready' && event.ports?.[0]) {
             // Also fires when the host page reloads: replace the channel.
             this.reset();
-            const channel = new MessageChannel();
-            channel.port1.onmessage = (message) => this._handlePortMessage(message.data);
-            this._port = channel.port1;
-            event.source.postMessage({ type: 'exe-preview-connect' }, this.origin, [channel.port2]);
+            this._port = event.ports[0];
+            this._port.onmessage = (message) => this._handlePortMessage(message.data);
             this._settleConnecting?.();
         } else if (type === 'exe-preview-host-error') {
             this._settleConnecting?.(new Error(String(event.data.message || 'The preview host failed to start')));

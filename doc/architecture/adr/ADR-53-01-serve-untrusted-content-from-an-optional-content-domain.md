@@ -226,8 +226,8 @@ that ADR-348-01 listed as possible future hardening.
 ## Follow-up work
 
 - The workarea preview uses the content domain too (phase 2 of the change).
-  Remaining editor-origin surfaces are listed as known gaps in the design: the
-  print preview and opening the preview in a new tab.
+  The remaining editor-origin surface is listed as a known gap in the design:
+  the print preview.
 - Consider registering a hosted content domain in the Public Suffix List.
 - LMS and CMS plugins, the Electron app and static mode are not covered.
 

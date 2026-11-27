@@ -99,6 +99,41 @@ const contentDomainWebServer = process.env.E2E_BASE_URL
           },
       };
 
+// Third dynamic server (port 3004) that publishes its content through a content proxy
+// (EXE_CONTENT_PROXY), and the proxy itself on port 3005. Only specs/content-proxy.spec.ts
+// uses them. The proxy fetches the content from the application over loopback.
+const contentProxyWebServers = process.env.E2E_BASE_URL
+    ? []
+    : [
+          {
+              command: 'bun src/index.ts',
+              url: 'http://127.0.0.1:3004/exe/login',
+              reuseExistingServer: !process.env.CI,
+              timeout: 120 * 1000,
+              stdout: 'pipe' as const,
+              stderr: 'pipe' as const,
+              env: {
+                  ...process.env,
+                  ...dynamicServerEnv,
+                  FILES_DIR: path.join(os.tmpdir(), 'exelearning-e2e-content-proxy'),
+                  PORT: '3004',
+                  APP_PORT: '3004',
+                  BASE_PATH: '/exe',
+                  EXE_CONTENT_PROXY: 'exe-proxy.localhost:3005',
+              },
+          },
+          {
+              command: 'bun src/content-proxy/index.ts',
+              // It has no page to probe (everything but a content origin is a 404): wait for the port.
+              port: 3005,
+              reuseExistingServer: !process.env.CI,
+              timeout: 30 * 1000,
+              stdout: 'pipe' as const,
+              stderr: 'pipe' as const,
+              env: { ...process.env, PORT: '3005', CONTENT_PROXY_DOMAIN: 'exe-proxy.localhost', ALLOW_HTTP: 'true' },
+          },
+      ];
+
 // Static server config (port 3002)
 const staticWebServer = {
     command: 'bun x serve dist/static -p 3002 --no-request-logging',
@@ -123,12 +158,12 @@ function getWebServerConfig() {
         return staticWebServer;
     }
     if (isRunningOnlyDynamic) {
-        return [dynamicWebServer, contentDomainWebServer].filter((server): server is NonNullable<typeof server> =>
-            Boolean(server),
+        return [dynamicWebServer, contentDomainWebServer, ...contentProxyWebServers].filter(
+            (server): server is NonNullable<typeof server> => Boolean(server),
         );
     }
     // Mixed or all projects - start every server
-    return [dynamicWebServer, contentDomainWebServer, staticWebServer].filter(
+    return [dynamicWebServer, contentDomainWebServer, ...contentProxyWebServers, staticWebServer].filter(
         (server): server is NonNullable<typeof server> => Boolean(server),
     );
 }

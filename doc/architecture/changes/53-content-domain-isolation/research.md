@@ -197,3 +197,37 @@ now in [`doc/content-domain.md`](../../../content-domain.md):
 3. Cloudflare Email Address Obfuscation, on by default, rewrote the e-mail
    addresses in the author's HTML on the content hosts and added a script from
    `/cdn-cgi/`. It was turned off for the content zone.
+
+### Real deployment through a content proxy
+
+Date: 2026-11-27. The same application, now with `EXE_CONTENT_PROXY` instead of
+`EXE_CONTENT_DOMAIN`. The content domain has one DNS record, a proxied
+`AAAA * 100::` that reaches no server, and a Cloudflare Worker
+(`src/content-proxy/worker.ts`) on `*.<content domain>/*`. Nothing on the
+application's server names the content domain: no certificate, no virtual host
+and no proxy rule. The Worker fetches the content from the application's public
+address.
+
+| Check | Chrome 158 | Chromium 159 (Playwright) | Firefox 159 (Playwright) | WebKit 27.2 (Playwright) | Safari 26.4 |
+|---|---|---|---|---|---|
+| Public viewer: content on `https://x<hash>.<content domain>`; `window.top` and `window.parent` throw; no cookies; its own `localStorage`; not authenticated against the application | pass | pass | pass | pass | pass |
+| The embedding page cannot read the content document | pass | pass | pass | pass | pass |
+| Workarea preview: content on the project's `https://x<hash>.<content domain>`, served by that origin's worker; the editor's page and cookies are out of reach | not run | pass | pass | pass | pass |
+| Preview in a new tab: an empty page of the editor with the host page in a sandboxed frame; content on the same origin, served by its worker; `window.top.opener` is `null`; the editor's page is out of reach | not run | pass | pass | pass | pass |
+| The new tab is reloaded: the editor fills it again, with what was edited meanwhile | not run | pass | pass | pass | pass |
+| Framed registration visible to a top-level page of the content origin | not run | yes | yes | no | no |
+
+From a terminal, against the Worker: another label for the same path, 404;
+`POST` and `HEAD`, 405; an application page (`/login`, `/api/session/check`)
+requested as if it were a source, 502, because those responses do not opt in;
+the same for a site that does not take part; the preview's `viewer/index.html`
+without its Service Worker, 404; no `Set-Cookie`; `http://` redirected to
+`https://`.
+
+One finding. The application's CORS middleware adds `Vary: *` to every response
+of the application host. Passed on by the proxy, it made Firefox reject the
+registration of the preview Service Worker ("An attempt was made to use an
+object that is not, or is no longer, usable"); Chromium and WebKit accepted it.
+The content host of the self-hosted mode never sent that header, because it
+drops the application's default headers. The proxy now passes on only the
+`Vary` entries that name a header it forwards.

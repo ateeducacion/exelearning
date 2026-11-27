@@ -19,14 +19,17 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
+import { contentProxyLabel, encodeSourcePrefix, SOURCE_CSP_HEADER, SOURCE_HEADER } from '../content-proxy/protocol';
 import { db as dbDefault } from '../db/client';
 import { findProjectByPublicViewId as findProjectByPublicViewIdDefault } from '../db/queries';
 import type { Database } from '../db/types';
 import { isPublicViewFeatureEnabled as isPublicViewFeatureEnabledDefault } from '../services/app-settings';
 import { getPublicViewFile as getPublicViewFileDefault } from '../services/public-view-content';
 import {
+    CONTENT_DOMAIN_REFERRER_POLICY,
     contentDomainHeaders,
     previewHostPageHeaders,
+    publicViewCspHeader,
     resolvePublicViewCspProfile,
 } from '../shared/security/publicViewSandbox';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
@@ -143,6 +146,63 @@ export function publicViewContentUrl(contentDomain: ContentDomain, appOrigin: st
 export function previewContentHostUrl(contentDomain: ContentDomain, appOrigin: string, projectUuid: string): string {
     const origin = contentOrigin(contentDomain, contentLabel('preview', projectUuid, appOrigin), appOrigin);
     return `${origin}${prefixPath(`/content/${encodeAppOrigin(appOrigin)}/preview/${projectUuid}/host.html`)}`;
+}
+
+/**
+ * URL, on a content proxy (`EXE_CONTENT_PROXY`), of `file` in the content source
+ * that this application serves at `sourcePath`. The proxy derives the same label
+ * from the same prefix, so nothing is shared with it.
+ */
+function contentProxyUrl(proxy: ContentDomain, appOrigin: string, sourcePath: string, file: string): string {
+    const prefix = `${appOrigin}${prefixPath(sourcePath)}`;
+    return `${contentOrigin(proxy, contentProxyLabel(prefix), appOrigin)}/${encodeSourcePrefix(prefix)}/${file}`;
+}
+
+/** URL of a public view's entry document on a content proxy. Its source is the opaque content route. */
+export function proxiedPublicViewUrl(proxy: ContentDomain, appOrigin: string, publicViewId: string): string {
+    return contentProxyUrl(proxy, appOrigin, `/view/${publicViewId}/_/`, 'index.html');
+}
+
+/** URL of the preview host page of a project on a content proxy. */
+export function proxiedPreviewHostUrl(proxy: ContentDomain, appOrigin: string, projectUuid: string): string {
+    return contentProxyUrl(proxy, appOrigin, `/preview-host/${projectUuid}/`, 'host.html');
+}
+
+/**
+ * Headers that make a response of the application host a content source: they
+ * allow a content proxy to serve it, with `contentOriginCsp` as its policy there.
+ * The response keeps its own `Content-Security-Policy`, which must leave it
+ * harmless when the URL is opened on the application host.
+ */
+export function contentProxySourceHeaders(contentOriginCsp?: string | null): Record<string, string> {
+    return { [SOURCE_HEADER]: '1', ...(contentOriginCsp ? { [SOURCE_CSP_HEADER]: contentOriginCsp } : {}) };
+}
+
+/**
+ * Extra headers that make the opaque public-view response a content source: on
+ * the content origin it gets the content-domain policy, with this application as
+ * the only other embedder.
+ */
+export function publicViewSourceHeaders(appOrigin: string): Record<string, string> {
+    return {
+        ...contentProxySourceHeaders(publicViewCspHeader(resolvePublicViewCspProfile(), appOrigin)),
+        'Referrer-Policy': CONTENT_DOMAIN_REFERRER_POLICY,
+        'Access-Control-Allow-Origin': appOrigin,
+    };
+}
+
+/**
+ * A file of the preview host page as a content source (`/preview-host/<project>/<file>`
+ * on the application host). Opened there the page does nothing: it is sandboxed
+ * without scripts. Its real policy applies on the content origin.
+ */
+export function previewHostSourceResponse(appOrigin: string, file: string): Response {
+    const response = servePreviewHostFile(appOrigin, file);
+    if (!response.ok) return response;
+    const policy = response.headers.get('Content-Security-Policy');
+    for (const [name, value] of Object.entries(contentProxySourceHeaders(policy))) response.headers.set(name, value);
+    if (policy) response.headers.set('Content-Security-Policy', 'sandbox');
+    return response;
 }
 
 export function createContentHostHandler(deps: ContentHostDeps = defaultDeps) {

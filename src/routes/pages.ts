@@ -40,9 +40,16 @@ import {
     publicViewPermissionsPolicy,
     resolvePublicViewCspProfile,
 } from '../shared/security/publicViewSandbox';
-import { getContentDomain } from '../utils/content-domain';
+import { getContentDomain, getContentProxy } from '../utils/content-domain';
 import { getPublicUrl } from '../utils/proxy-url.util';
-import { previewContentHostUrl, publicViewContentUrl } from './content-host';
+import {
+    previewContentHostUrl,
+    previewHostSourceResponse,
+    proxiedPreviewHostUrl,
+    proxiedPublicViewUrl,
+    publicViewContentUrl,
+    publicViewSourceHeaders,
+} from './content-host';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { isOfflineMode } from '../utils/offline.util';
 import { getPlatformBinding, getPlatformIntegrationParams, type PlatformBinding } from '../utils/platform-jwt';
@@ -715,14 +722,18 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 // With a content domain the iframe points at the content host, on
                 // its own origin. There is no fallback to this host: if the content
                 // host does not answer, the loader page shows an error.
+                // The same holds with a content proxy, which fetches the content
+                // from the opaque route below and serves it on its own origin.
                 const contentDomain = getContentDomain();
-                const contentSrc = contentDomain
-                    ? publicViewContentUrl(
-                          contentDomain,
-                          getPublicUrl(request, { requestIP: (req: Request) => server?.requestIP(req) ?? null }).origin,
-                          publicViewId,
-                      )
-                    : null;
+                const contentProxy = getContentProxy();
+                const appOrigin = getPublicUrl(request, {
+                    requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                }).origin;
+                const contentSrc = contentProxy
+                    ? proxiedPublicViewUrl(contentProxy, appOrigin, publicViewId)
+                    : contentDomain
+                      ? publicViewContentUrl(contentDomain, appOrigin, publicViewId)
+                      : null;
 
                 const viewModel = {
                     basePath: getBasePath(),
@@ -752,7 +763,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // CSP (not only in the iframe attribute) so the document stays opaque
             // even if the content URL is opened directly (new tab, fullscreen,
             // raw URL). It must never reach the authenticated session.
-            .get('/view/:publicViewId/_/*', async ({ params, set }) => {
+            .get('/view/:publicViewId/_/*', async ({ params, set, request, server }) => {
                 const { publicViewId } = params;
                 const relPath = (params as Record<string, string>)['*'] ?? '';
 
@@ -785,8 +796,31 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         'Permissions-Policy': publicViewPermissionsPolicy(),
                         'X-Content-Type-Options': 'nosniff',
                         'Cache-Control': 'no-store',
+                        ...(getContentProxy()
+                            ? publicViewSourceHeaders(
+                                  getPublicUrl(request, {
+                                      requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                                  }).origin,
+                              )
+                            : {}),
                     },
                 });
+            })
+
+            // =====================================================
+            // Preview host page, as a content source (EXE_CONTENT_PROXY)
+            // =====================================================
+            // The static transport files of the workarea preview, for a content
+            // proxy to serve on the content origin of one project. No project
+            // data is read here, and on this host the page is inert.
+            .get('/preview-host/:projectUuid/*', ({ params, request, server }) => {
+                if (isOfflineMode() || !getContentProxy()) {
+                    return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+                }
+                const appOrigin = getPublicUrl(request, {
+                    requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                }).origin;
+                return previewHostSourceResponse(appOrigin, (params as Record<string, string>)['*'] ?? '');
             })
 
             // =====================================================
@@ -1199,6 +1233,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 }
 
                 const previewContentDomain = isOfflineMode() ? null : getContentDomain();
+                const previewContentProxy = isOfflineMode() ? null : getContentProxy();
 
                 // Unified config object (replaces legacy 'symfony' object)
                 const config = {
@@ -1238,10 +1273,14 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     token: authToken,
                     // Content domain mode: where the preview of the open project runs. The
                     // label in it is derived here; the client never computes one.
-                    ...(previewContentDomain && projectUuid
+                    ...((previewContentDomain || previewContentProxy) && projectUuid
                         ? {
-                              previewContentHostUrl: previewContentHostUrl(
-                                  previewContentDomain,
+                              previewContentHostUrl: (previewContentProxy
+                                  ? proxiedPreviewHostUrl
+                                  : previewContentHostUrl)(
+                                  (previewContentProxy || previewContentDomain) as NonNullable<
+                                      typeof previewContentDomain
+                                  >,
                                   getPublicUrl(request, { requestIP: (req: Request) => server?.requestIP(req) ?? null })
                                       .origin,
                                   projectUuid,

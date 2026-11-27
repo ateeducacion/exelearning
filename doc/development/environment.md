@@ -198,6 +198,31 @@ application behaves as it does without the feature.
 
 See [Content Domain](../content-domain.md) for DNS, TLS and reverse-proxy setup.
 
+#### `EXE_CONTENT_PROXY`
+
+Optional alternative to `EXE_CONTENT_DOMAIN`, with the same `host[:port]` syntax.
+It names a content proxy (`src/content-proxy/`): a separate service that fetches
+author content from this application and serves each item from
+`<scheme>://x<hash>.<host>[:port]/…`. The deployment needs no DNS record,
+certificate or reverse-proxy rule for that domain, but must be reachable by the
+proxy.
+
+- The value is validated at boot like `EXE_CONTENT_DOMAIN`. Setting both stops
+  the server.
+- With it set, `/view/<public view id>/_/*` responses carry
+  `X-Exe-Content-Proxy` headers and `/preview-host/<project>/*` exists. Both stay
+  sandboxed when opened on the application host.
+- For local work run the proxy next to the application:
+
+  ```bash
+  CONTENT_PROXY_DOMAIN=exe-proxy.localhost ALLOW_HTTP=true PORT=8787 bun src/content-proxy/index.ts
+  EXE_CONTENT_PROXY=exe-proxy.localhost:8787 PUBLIC_VIEW_ENABLED=true make up-local
+  ```
+
+  and open the app at `http://exe-app.localhost:8080`.
+
+See [Content proxy](../content-domain.md#content-proxy).
+
 ### Database Configuration
 
 **SQLite (default):**

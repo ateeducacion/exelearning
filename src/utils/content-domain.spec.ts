@@ -5,6 +5,7 @@ import {
     decodeAppOrigin,
     encodeAppOrigin,
     getContentDomain,
+    getContentProxy,
     parseContentDomain,
     relateHostToContentDomain,
 } from './content-domain';
@@ -65,6 +66,36 @@ describe('contentDomainBootError', () => {
         expect(error).toContain('Invalid EXE_CONTENT_DOMAIN');
         expect(error).toContain('host[:port]');
         expect(error).toContain('Refusing to start');
+    });
+});
+
+describe('getContentProxy', () => {
+    it('is null when EXE_CONTENT_PROXY is unset or blank', () => {
+        expect(getContentProxy({})).toBeNull();
+        expect(getContentProxy({ EXE_CONTENT_PROXY: '  ' })).toBeNull();
+    });
+
+    it('parses the proxy domain like a content domain', () => {
+        expect(getContentProxy({ EXE_CONTENT_PROXY: 'Proxy.Example:8443' })).toEqual({
+            host: 'proxy.example',
+            port: '8443',
+        });
+        expect(() => getContentProxy({ EXE_CONTENT_PROXY: 'https://proxy.example' })).toThrow('host[:port]');
+    });
+
+    it('refuses to start on an invalid value, or when a content domain is set too', () => {
+        expect(contentDomainBootError({ EXE_CONTENT_PROXY: 'proxy.example' })).toBeNull();
+
+        const invalid = contentDomainBootError({ EXE_CONTENT_PROXY: '*.proxy.example' });
+        expect(invalid).toContain('Invalid EXE_CONTENT_PROXY');
+        expect(invalid).toContain('Refusing to start');
+
+        const both = contentDomainBootError({
+            EXE_CONTENT_DOMAIN: 'content.example',
+            EXE_CONTENT_PROXY: 'proxy.example',
+        });
+        expect(both).toContain('EXE_CONTENT_DOMAIN and EXE_CONTENT_PROXY are both set');
+        expect(both).toContain('Refusing to start');
     });
 });
 

@@ -94,6 +94,7 @@ const AUTHOR_SCRIPT = `<script>
     reach('topTitle', function () { return window.top.document.title; });
     reach('topApp', function () { return typeof window.top.eXeLearning; });
     reach('topCookie', function () { return window.top.document.cookie; });
+    reach('opener', function () { return window.top.opener === null ? 'none' : 'window'; });
     out.cookie = document.cookie;
     try {
         var response = await fetch(${JSON.stringify(`${PROXY_APP}/api/session/check`)}, { credentials: 'include' });
@@ -276,5 +277,27 @@ test.describe('Author content through a content proxy', () => {
 
         await page.click('#preview-refresh-button');
         await expect(content.getByText('Author content marker')).toBeVisible({ timeout: 30000 });
+
+        // In a new tab: an empty page of the editor origin with the same host page in a
+        // sandboxed frame. The content stays on its origin and gets no reference to the editor.
+        const [tab] = await Promise.all([page.waitForEvent('popup'), page.click('#preview-extract-button')]);
+        await expect(tab.locator('iframe')).toHaveAttribute('src', hostUrl.href);
+        expect(await tab.evaluate(() => window.origin)).toBe(PROXY_APP_ORIGIN);
+        const tabContent = tab.frameLocator('iframe').frameLocator('#preview-content');
+        const tabRoot = tabContent.locator('html');
+        const readTabProbe = async () => {
+            await expect(tabContent.getByText('Author content marker')).toBeVisible({ timeout: 30000 });
+            await expect(tabRoot).toHaveAttribute('data-author-probe', /origin/, { timeout: 15000 });
+            return JSON.parse((await tabRoot.getAttribute('data-author-probe')) ?? '{}');
+        };
+        const tabProbe = await readTabProbe();
+        expect(tabProbe.origin).toBe(hostUrl.origin);
+        expect(tabProbe.controlled).toBe(true);
+        expect(tabProbe.topApp).toMatch(/^blocked:/);
+        expect(tabProbe.opener).toBe('none');
+
+        // A reloaded tab is filled again by the editor.
+        await tab.reload();
+        expect((await readTabProbe()).origin).toBe(hostUrl.origin);
     });
 });

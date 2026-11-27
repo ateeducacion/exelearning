@@ -278,11 +278,11 @@ test.describe('Author content through a content proxy', () => {
         await page.click('#preview-refresh-button');
         await expect(content.getByText('Author content marker')).toBeVisible({ timeout: 30000 });
 
-        // In a new tab: an empty page of the editor origin with the same host page in a
-        // sandboxed frame. The content stays on its origin and gets no reference to the editor.
+        // In a new tab: an empty page of the editor with the same host page in a sandboxed
+        // frame. The content stays on its origin and gets no reference to the editor.
         const [tab] = await Promise.all([page.waitForEvent('popup'), page.click('#preview-extract-button')]);
         await expect(tab.locator('iframe')).toHaveAttribute('src', hostUrl.href);
-        expect(await tab.evaluate(() => window.origin)).toBe(PROXY_APP_ORIGIN);
+        expect(tab.url()).toBe(`${PROXY_APP}/preview-tab.html`);
         const tabContent = tab.frameLocator('iframe').frameLocator('#preview-content');
         const tabRoot = tabContent.locator('html');
         const readTabProbe = async () => {

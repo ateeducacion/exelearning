@@ -213,6 +213,8 @@ address.
 | Public viewer: content on `https://x<hash>.<content domain>`; `window.top` and `window.parent` throw; no cookies; its own `localStorage`; not authenticated against the application | pass | pass | pass | pass | pass |
 | The embedding page cannot read the content document | pass | pass | pass | pass | pass |
 | Workarea preview: content on the project's `https://x<hash>.<content domain>`, served by that origin's worker; the editor's page and cookies are out of reach | not run | pass | pass | pass | pass |
+| Preview in a new tab: an empty page of the editor with the host page in a sandboxed frame; content on the same origin, served by its worker; `window.top.opener` is `null`; the editor's page is out of reach | not run | pass | pass | pass | pass |
+| The new tab is reloaded: the editor fills it again, with what was edited meanwhile | not run | pass | pass | pass | pass |
 | Framed registration visible to a top-level page of the content origin | not run | yes | yes | no | no |
 
 From a terminal, against the Worker: another label for the same path, 404;

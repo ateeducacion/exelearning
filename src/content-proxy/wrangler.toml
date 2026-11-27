@@ -1,0 +1,18 @@
+# Cloudflare Worker that runs the content proxy (see worker.ts and doc/content-domain.md).
+#
+#   bun x wrangler deploy --config src/content-proxy/wrangler.toml
+#
+# The zone needs one proxied DNS record for `*` (for example `AAAA * 100::`): the
+# Worker answers every request, so the record never reaches a server.
+name = "exelearning-content-proxy"
+main = "worker.ts"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+routes = [{ pattern = "*.exelearningusercontent.com/*", zone_name = "exelearningusercontent.com" }]
+
+[vars]
+CONTENT_PROXY_DOMAIN = "exelearningusercontent.com"
+# Only proxy these source hosts (comma separated; ".example.org" matches subdomains).
+# Empty: any public HTTPS host that opts in.
+# ALLOWED_HOSTS = "app.example.org,.example.edu"

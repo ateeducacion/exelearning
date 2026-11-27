@@ -124,7 +124,7 @@ Consequences for the design: the workarea always reaches the worker through the
 host page it frames, never through a top-level page of the content origin. With
 partitioning, a top-level tab of the content origin gets a different worker with
 no content, which is one reason "open the preview in a new tab" frames the host
-page in an empty tab of the editor origin instead (see `design.md`).
+page in an empty page of the editor origin instead (see `design.md`).
 
 ### Workarea preview on a content origin
 
@@ -141,8 +141,9 @@ from the workarea.
 | `indexedDB.databases()` | none of the editor's databases |
 | `fetch('<app>/api/session/check', { credentials: 'include' })` | not authenticated |
 
-The same spec opens the preview in a new tab (`about:blank`, editor origin, with
-the host page in a sandboxed frame). There the probes give the same results, and:
+The same spec opens the preview in a new tab (`/preview-tab.html` of the editor,
+with the host page in a sandboxed frame). There the probes give the same
+results, and:
 
 | Check in the new tab | Result |
 |---|---|
@@ -150,7 +151,16 @@ the host page in a sandboxed frame). There the probes give the same results, and
 | The frame's `sandbox` list | the panel's, without `allow-top-navigation` and `allow-popups-to-escape-sandbox` |
 | Content edited while the panel is closed, after reloading the tab | shown: the editor fills the reloaded tab again |
 | A refresh of the panel | shown in the tab too |
-| Origin of the reloaded `about:blank` tab | still the editor origin (Chromium and Firefox) |
+
+An `about:blank` tab was measured first, against the real deployment, with
+`window.open('')`, a paragraph written from the opener, and a reload of the tab:
+
+| After the reload, from the opener | Chromium 159 | Firefox 159 | WebKit 27.2 |
+|---|---|---|---|
+| `tab.document` | a new, empty document | a new, empty document | `SecurityError` |
+| `window.origin` in the tab | the editor origin | the editor origin | `null` |
+
+That is why the tab loads a real page of the editor.
 
 ### Real deployment
 

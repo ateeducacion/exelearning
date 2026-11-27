@@ -248,7 +248,7 @@ The blob URL fallback remains for the mode-off path only.
 | Page updates (`subscribeToChanges()`, `scheduleRefresh()`) | regenerate and resend the export | unchanged; they call `refresh()` |
 | Search navigation in the preview | runs inside the exported pages | unchanged; it is content code and now runs on the content origin |
 | `app.js` `registerPreviewServiceWorker()` | registers the worker under `<basePath>viewer/` on the editor origin | still registered and never given content. **Known gap:** it could be skipped in this mode |
-| `previewPanel.js` `extractToNewTab()` | opens `<basePath>/viewer/` of the editor origin in a new tab | opens an empty tab of the editor origin and puts the host page in a sandboxed frame inside it; see "Preview in a new tab" below |
+| `previewPanel.js` `extractToNewTab()` | opens `<basePath>/viewer/` of the editor origin in a new tab | opens an empty page of the editor origin and puts the host page in a sandboxed frame inside it; see "Preview in a new tab" below |
 | `modalPrintPreview.js` | renders the print preview from a blob URL in its own iframe and reads its document | **Known gap:** a separate surface that still runs in the editor origin; not changed here |
 | `exe_export.js` `isPreview` (`pathname.startsWith('/viewer/')`) | relative-link adjustment for the preview | false on the content host, as it already is under a non-empty `BASE_PATH`; links resolve relative to the page |
 | `ideviceNode.js`, `YjsProjectBridge.js`, `asset_url_resolver.js` (`contentWindow` / `contentDocument`) | editor-side iframes inside the workarea DOM | not the preview iframe; out of scope |
@@ -262,11 +262,12 @@ that holds a reference to a top-level window can navigate it: author content
 could send the editor tab to a look-alike page. With storage partitioning it
 would also get a different, empty worker.
 
-So `extractToNewTab()` opens `window.open('', '_blank')`: an empty document that
-inherits the editor origin. `_contentHostTab()` puts one element in it, an
-iframe with the `sandbox` list of the panel's iframe, and connects a second
-`PreviewContentHost` to the host page loaded there. The result has the shape of
-the panel, with the same guarantees:
+So `extractToNewTab()` opens `<basePath>/preview-tab.html`, a static page of the
+editor origin with an empty body and a policy that allows frames and nothing
+else (`default-src 'none'`: no script can run in it). Once it has loaded,
+`_contentHostTab()` puts one element in it, an iframe with the `sandbox` list of
+the panel's iframe, and connects a second `PreviewContentHost` to the host page
+loaded there. The result has the shape of the panel, with the same guarantees:
 
 - Author content is two frames down, on the content origin, in a frame that
   cannot navigate its top window (no `allow-top-navigation`) nor any other
@@ -280,11 +281,18 @@ the panel, with the same guarantees:
 The frame in the tab has the same top-level site as the panel's, so both use one
 worker: a refresh sends the files once and asks the other frame to show them.
 The tab reloads the page it is on instead of going back to the first one. The
-popup monitor notices a reloaded tab (a new, empty document) and fills it again;
-a tab that the user takes to another site is left alone.
+popup monitor notices a reloaded tab (a new, empty document) and fills it again.
+The workarea writes to the tab only while it shows that empty page: a tab that
+the user takes elsewhere, to another page of the editor included, is left alone.
 
-Known gaps: the address bar shows `about:blank`, and the tab has no error page
-of its own (a failed refresh shows the error in the panel).
+An `about:blank` tab (`window.open('')`) was tried first and dropped: it inherits
+the editor origin, but WebKit gives it an opaque origin when it is reloaded, so
+the workarea can no longer reach it (measured with Playwright WebKit 27.2;
+Chromium and Firefox keep the origin).
+
+Known gaps: the tab has no error page of its own (a failed refresh shows the
+error in the panel), and the page shows nothing when it is opened without the
+editor.
 
 Other known gaps of phase 2:
 

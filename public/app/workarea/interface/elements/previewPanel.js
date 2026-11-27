@@ -111,8 +111,17 @@ export default class PreviewPanelManager {
     }
 
     /**
+     * The empty page of this origin that extractToNewTab() opens in content domain mode.
+     * @returns {string}
+     */
+    _previewTabUrl() {
+        const basePath = eXeLearning.app?.getBasePath?.() || '';
+        return new URL(`${basePath}/preview-tab.html`, window.location.origin).href;
+    }
+
+    /**
      * Message client for the preview frame in the tab opened by extractToNewTab() (content
-     * domain mode), or null when no such tab can be reached.
+     * domain mode), or null while that tab does not show its empty page.
      *
      * The tab holds an empty page of this origin and the preview goes in a sandboxed frame
      * inside it, as in the panel. A tab on the content origin itself would need a reference
@@ -124,11 +133,15 @@ export default class PreviewPanelManager {
         const tab = this._isPopupOpen() ? this._popupWindow : null;
         let doc = null;
         try {
-            doc = tab?.document;
+            // Only the empty page is ever written to: the user may take the tab anywhere,
+            // another page of this origin included.
+            if (tab?.location.href === this._previewTabUrl() && tab.document.readyState === 'complete') {
+                doc = tab.document;
+            }
         } catch {
-            // The user took the tab to another site.
+            // The tab is on another site.
         }
-        if (!doc?.body) {
+        if (!doc) {
             this._tabHost?.destroy();
             this._tabHost = null;
             return null;
@@ -141,7 +154,6 @@ export default class PreviewPanelManager {
             iframe.setAttribute('sandbox', this.iframe.getAttribute('sandbox') ?? '');
             iframe.setAttribute('allowfullscreen', '');
             iframe.title = this.iframe.title;
-            iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0';
             doc.title = this.iframe.title;
             doc.body.replaceChildren(iframe);
             this._tabHost = new PreviewContentHost({
@@ -365,16 +377,18 @@ export default class PreviewPanelManager {
      */
     _setupPopupMonitor() {
         this._clearPopupMonitor();
+        // Content domain mode: the monitor also fills the tab again, so it runs more often.
+        const interval = this._contentHostUrl() ? 500 : 2000;
         this._popupMonitorTimer = setInterval(() => {
             if (!this._isPopupOpen()) {
                 Logger.log('[PreviewPanel] Popup window closed');
                 this._popupWindow = null;
                 this._clearPopupMonitor();
             } else if (this._contentHostUrl() && this._contentHostTab()?.iframe.src === '') {
-                // Content domain mode: the tab was opened or reloaded and its frame is empty.
+                // The tab was opened or reloaded and its frame is empty.
                 this.refresh();
             }
-        }, 2000);
+        }, interval);
     }
 
     /**
@@ -1546,16 +1560,16 @@ export default class PreviewPanelManager {
      */
     async extractToNewTab() {
         if (this._contentHostUrl()) {
-            // Content domain mode: an empty page of this origin, filled by _contentHostTab().
-            const tab = window.open('', '_blank');
+            // Content domain mode: an empty page of this origin, filled by _contentHostTab()
+            // once it has loaded. The popup monitor does it if this listener is not called.
+            const tab = window.open(this._previewTabUrl(), '_blank');
             if (!tab) {
                 Logger.warn('[PreviewPanel] The browser blocked the preview tab');
                 return;
             }
             this._popupWindow = tab;
             this._setupPopupMonitor();
-            // A refresh that is already running does not know the tab: the monitor fills it.
-            await this.refresh();
+            tab.addEventListener('load', () => this.refresh(), { once: true });
             return;
         }
         try {

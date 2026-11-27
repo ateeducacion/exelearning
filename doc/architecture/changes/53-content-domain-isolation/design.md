@@ -260,7 +260,7 @@ Other known gaps of phase 2:
 - Pinned and slide-out previews each load their own host page. Both use the same
   origin and worker.
 - WebKit is not part of the project's E2E suite; it was exercised by the spike
-  only.
+  and, as Safari 26.4, on the real deployment recorded in `research.md`.
 
 ## Migration and compatibility
 

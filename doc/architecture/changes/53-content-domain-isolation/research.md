@@ -117,7 +117,8 @@ Result, Playwright 1.65.1 builds plus the installed Chrome:
    ([Storage Partitioning](https://privacysandbox.google.com/cookies/storage-partitioning)),
    and the transport does not depend on sharing the worker with any other
    context, but that case should be confirmed on a real deployment with two
-   registrable domains over HTTPS.
+   registrable domains over HTTPS. It was: see
+   [Real deployment](#real-deployment).
 
 Consequences for the design: the workarea always reaches the worker through the
 host page it frames, never through a top-level page of the content origin. With
@@ -139,3 +140,39 @@ from the workarea.
 | `document.cookie`, `window.top.document.cookie` | empty, `SecurityError` |
 | `indexedDB.databases()` | none of the editor's databases |
 | `fetch('<app>/api/session/check', { credentials: 'include' })` | not authenticated |
+
+### Real deployment
+
+Date: 2026-11-27. A deployment of this branch with the application on one
+registrable domain and `EXE_CONTENT_DOMAIN` on another, both over HTTPS behind
+Cloudflare, with Nginx and Traefik in front of the container. A project with an
+author `<script>` in a text iDevice was opened through its public link and
+previewed from the workarea.
+
+| Check | Chrome 158 | Chromium 145 (Playwright) | Firefox 146 (Playwright) | Safari 26.4 |
+|---|---|---|---|---|
+| Public viewer: content on `https://v<hash>.<content domain>`; `window.top` and `window.parent` throw; no cookies; its own `localStorage`; not authenticated against the application | pass | pass | pass | pass |
+| The embedding page cannot read the content document | pass | pass | pass | pass |
+| Workarea preview: content on `https://p<hash>.<content domain>`, served by that origin's worker; the editor's page and cookies are out of reach | pass | pass | pass | pass |
+| Framed registration visible to a top-level page of the content origin | no | yes | yes | no |
+| Framed `localStorage` visible to a top-level page of the content origin | no | yes | yes | no |
+
+Chrome 158 and Safari 26.4 are the installed browsers (Safari driven through
+`safaridriver`). In both, the Service Worker and the storage of the framed
+content origin were partitioned by top-level site, and the preview worked. That
+is the case the loopback spike could not produce in Chromium.
+
+The deployment also showed three things that are not about browsers. They are
+now in [`doc/content-domain.md`](../../../content-domain.md):
+
+1. The content is served with the scheme the application believes it has. With
+   a proxy chain that reported `http` to the application, the viewer page
+   carried an `http://` content URL.
+2. With `TRUSTED_PROXIES` set and a proxy that did not set `X-Forwarded-Host`
+   and `X-Forwarded-Port`, a client could choose the host and the port of the
+   application origin in the response to its own request. Setting both headers
+   in the proxy, or `TRUSTED_HEADERS=x-forwarded-proto,x-forwarded-for`, closed
+   it.
+3. Cloudflare Email Address Obfuscation, on by default, rewrote the e-mail
+   addresses in the author's HTML on the content hosts and added a script from
+   `/cdn-cgi/`. It was turned off for the content zone.

@@ -9,10 +9,11 @@
  * workarea over a MessageChannel, hands it to the worker and shows the result
  * in the frame below it.
  *
- * Trust: only the configured application origin, and only the window that
- * embeds this page, may connect. Everything else on this origin is author
- * content and is treated as untrusted: from the content frame only the message
- * types in RELAYED_TO_APP are forwarded, without their payload.
+ * Trust: the page hands its channel to the window that embeds it, and only if
+ * that window is on the configured application origin. It takes no window
+ * message from anyone else. Everything else on this origin is author content
+ * and is treated as untrusted: from the content frame only the message types in
+ * RELAYED_TO_APP are forwarded, without their payload.
  */
 
 /** Requests the application may make to the Service Worker through this page. */
@@ -48,6 +49,15 @@ export function startPreviewHost(win) {
 
     const toApp = (message) => port?.postMessage(message);
 
+    /** Whether the frame shows a page of the preview: it may be empty or have followed a link elsewhere. */
+    const showsPreview = () => {
+        try {
+            return frame.contentWindow.location.href.startsWith(viewerBase.href);
+        } catch {
+            return false;
+        }
+    };
+
     // Firefox starts a framed document uncontrolled even when the worker is already active,
     // so ask the worker to claim this page instead of waiting for a claim that already ran.
     const worker = (async () => {
@@ -71,7 +81,8 @@ export function startPreviewHost(win) {
             if (type === 'NAVIGATE') {
                 const target = new URL(String(data?.path || 'index.html'), viewerBase);
                 if (!target.href.startsWith(viewerBase.href)) throw new Error('Path outside the preview');
-                frame.src = target.href;
+                if (data?.keepPage && showsPreview()) frame.contentWindow.location.reload();
+                else frame.src = target.href;
                 reply({ type: 'NAVIGATED' });
             } else if (RELAYED_TO_WORKER.has(type)) {
                 const channel = new MessageChannel();
@@ -89,14 +100,6 @@ export function startPreviewHost(win) {
     }
 
     win.addEventListener('message', (event) => {
-        if (event.source === embedder) {
-            if (event.origin === appOrigin && event.data?.type === 'exe-preview-connect' && event.ports?.[0]) {
-                port?.close();
-                port = event.ports[0];
-                port.onmessage = onAppMessage;
-            }
-            return;
-        }
         if (
             event.source === frame.contentWindow &&
             event.origin === win.location.origin &&
@@ -112,7 +115,13 @@ export function startPreviewHost(win) {
     });
 
     worker.then(
-        () => embedder.postMessage({ type: 'exe-preview-host-ready' }, appOrigin),
+        () => {
+            // The target origin makes the browser deliver the port only to the application.
+            const channel = new MessageChannel();
+            port = channel.port1;
+            port.onmessage = onAppMessage;
+            embedder.postMessage({ type: 'exe-preview-host-ready' }, appOrigin, [channel.port2]);
+        },
         (error) =>
             embedder.postMessage({ type: 'exe-preview-host-error', message: String(error?.message || error) }, appOrigin),
     );

@@ -7,19 +7,28 @@ describe('PreviewContentHost', () => {
     let win;
     let iframe;
     let frameWindow;
-    let channels;
-    let originalMessageChannel;
     let onMessage;
     let host;
 
     /** Deliver a window message to the workarea, as the browser would. */
-    const windowMessage = (data, { source = frameWindow, origin = CONTENT_ORIGIN } = {}) =>
-        win.listener({ data, source, origin });
+    const windowMessage = (data, { source = frameWindow, origin = CONTENT_ORIGIN, ports = [] } = {}) =>
+        win.listener({ data, source, origin, ports });
 
-    /** Make the host page announce itself and return the port the workarea keeps. */
+    /** A MessagePort as the host page would transfer it. */
+    const hostPort = () => ({
+        sent: [],
+        onmessage: null,
+        close: vi.fn(),
+        postMessage(message, transfer) {
+            this.sent.push({ message, transfer });
+        },
+    });
+
+    /** Make the host page announce itself and return the port it hands over. */
     const hostReady = () => {
-        windowMessage({ type: 'exe-preview-host-ready' });
-        return channels.at(-1).port1;
+        const port = hostPort();
+        windowMessage({ type: 'exe-preview-host-ready' }, { ports: [port] });
+        return port;
     };
 
     /** Answer the request with the given type on the current port. */
@@ -30,22 +39,6 @@ describe('PreviewContentHost', () => {
 
     beforeEach(() => {
         vi.useFakeTimers();
-        channels = [];
-        originalMessageChannel = globalThis.MessageChannel;
-        globalThis.MessageChannel = function () {
-            const port = () => ({
-                sent: [],
-                onmessage: null,
-                close: vi.fn(),
-                postMessage(message, transfer) {
-                    this.sent.push({ message, transfer });
-                },
-            });
-            this.port1 = port();
-            this.port2 = port();
-            channels.push(this);
-        };
-
         win = {
             listener: null,
             addEventListener: vi.fn((_type, listener) => {
@@ -61,7 +54,6 @@ describe('PreviewContentHost', () => {
 
     afterEach(() => {
         host.destroy();
-        globalThis.MessageChannel = originalMessageChannel;
         vi.useRealTimers();
     });
 
@@ -79,17 +71,17 @@ describe('PreviewContentHost', () => {
     });
 
     describe('connect', () => {
-        it('loads the host page and hands it a MessagePort once it is ready', async () => {
+        it('loads the host page and takes the MessagePort it hands over', async () => {
             const connected = host.connect();
             expect(iframe.src).toBe(HOST_URL);
             expect(iframe.removeAttribute).toHaveBeenCalledWith('srcdoc');
 
-            hostReady();
+            const port = hostReady();
             await connected;
 
-            expect(frameWindow.postMessage).toHaveBeenCalledWith({ type: 'exe-preview-connect' }, CONTENT_ORIGIN, [
-                channels[0].port2,
-            ]);
+            expect(port.onmessage).toEqual(expect.any(Function));
+            // Nothing is posted to the host page's window: everything goes through the port.
+            expect(frameWindow.postMessage).not.toHaveBeenCalled();
         });
 
         it('shares one attempt between concurrent callers and is a no-op once connected', async () => {
@@ -114,14 +106,17 @@ describe('PreviewContentHost', () => {
                 () => {},
             );
 
-            windowMessage({ type: 'exe-preview-host-ready' }, { source: { postMessage: vi.fn() } });
-            windowMessage({ type: 'exe-preview-host-ready' }, { origin: 'https://app.test' });
-            windowMessage({ type: 'exe-preview-host-ready' }, { origin: 'https://pxyz.content.test' });
+            const stranger = hostPort();
+            const ports = [stranger];
+            windowMessage({ type: 'exe-preview-host-ready' }, { source: { postMessage: vi.fn() }, ports });
+            windowMessage({ type: 'exe-preview-host-ready' }, { origin: 'https://app.test', ports });
+            windowMessage({ type: 'exe-preview-host-ready' }, { origin: 'https://pxyz.content.test', ports });
+            // An announcement without a port is not a connection either.
+            windowMessage({ type: 'exe-preview-host-ready' });
             await Promise.resolve();
 
             expect(settled).toBe(false);
-            expect(frameWindow.postMessage).not.toHaveBeenCalled();
-            expect(channels).toHaveLength(0);
+            expect(stranger.onmessage).toBeNull();
 
             hostReady();
             await connected;
@@ -152,9 +147,10 @@ describe('PreviewContentHost', () => {
         });
 
         it('ignores unrelated messages from the preview iframe', () => {
-            windowMessage({ type: 'something-else' });
+            const port = hostPort();
+            windowMessage({ type: 'something-else' }, { ports: [port] });
             windowMessage(null);
-            expect(channels).toHaveLength(0);
+            expect(port.onmessage).toBeNull();
         });
 
         it('replaces the channel when the host page reloads', async () => {
@@ -165,8 +161,7 @@ describe('PreviewContentHost', () => {
             const secondPort = hostReady();
 
             expect(firstPort.close).toHaveBeenCalled();
-            expect(secondPort).not.toBe(firstPort);
-            expect(channels).toHaveLength(2);
+            expect(secondPort.onmessage).toEqual(expect.any(Function));
         });
     });
 
@@ -191,11 +186,24 @@ describe('PreviewContentHost', () => {
             await vi.waitFor(() => expect(port.sent).toHaveLength(3));
             expect(port.sent[2].message).toMatchObject({
                 type: 'NAVIGATE',
-                data: { path: 'index.html?exe-teacher=1' },
+                data: { path: 'index.html?exe-teacher=1', keepPage: false },
             });
             answer(port, 'NAVIGATE', { type: 'NAVIGATED' });
 
             await expect(sending).resolves.toEqual({ fileCount: 2 });
+        });
+
+        it('keeps the page on screen when asked to', async () => {
+            const sending = host.sendContent({}, {}, { keepPage: true });
+            const port = hostReady();
+            await vi.waitFor(() => expect(port.sent).toHaveLength(1));
+            answer(port, 'SET_CONTENT', { type: 'CONTENT_READY' });
+            await vi.waitFor(() => expect(port.sent).toHaveLength(2));
+            answer(port, 'VERIFY_READY', { ready: true, fileCount: 1 });
+            await vi.waitFor(() => expect(port.sent).toHaveLength(3));
+            expect(port.sent[2].message.data).toEqual({ path: 'index.html?exe-teacher=1', keepPage: true });
+            answer(port, 'NAVIGATE', { type: 'NAVIGATED' });
+            await sending;
         });
 
         it('fails when the worker does not accept the content', async () => {
@@ -248,6 +256,29 @@ describe('PreviewContentHost', () => {
             const rejection = expect(sending).rejects.toThrow('The preview connection was reset');
             host.reset();
             await rejection;
+        });
+    });
+
+    describe('showContent', () => {
+        it('shows what the worker already holds, without sending files', async () => {
+            const showing = host.showContent({ keepPage: true });
+            const port = hostReady();
+            await vi.waitFor(() => expect(port.sent).toHaveLength(1));
+            expect(port.sent[0].message.type).toBe('VERIFY_READY');
+            answer(port, 'VERIFY_READY', { ready: true, fileCount: 4 });
+            await vi.waitFor(() => expect(port.sent).toHaveLength(2));
+            expect(port.sent[1].message).toMatchObject({ type: 'NAVIGATE', data: { keepPage: true } });
+            answer(port, 'NAVIGATE', { type: 'NAVIGATED' });
+
+            await expect(showing).resolves.toEqual({ fileCount: 4 });
+        });
+
+        it('fails when the worker holds nothing', async () => {
+            const showing = host.showContent();
+            const port = hostReady();
+            await vi.waitFor(() => expect(port.sent).toHaveLength(1));
+            answer(port, 'VERIFY_READY', { ready: false, message: 'empty' });
+            await expect(showing).rejects.toThrow('empty');
         });
     });
 
@@ -310,6 +341,14 @@ describe('PreviewContentHost', () => {
             host.destroy();
             await rejection;
             expect(win.removeEventListener).toHaveBeenCalledWith('message', expect.any(Function));
+        });
+
+        it('does not fail when its window can no longer be reached', () => {
+            // A tab that showed the preview and was then taken to another site.
+            win.removeEventListener.mockImplementation(() => {
+                throw new DOMException('Blocked a frame', 'SecurityError');
+            });
+            expect(() => host.destroy()).not.toThrow();
         });
     });
 });

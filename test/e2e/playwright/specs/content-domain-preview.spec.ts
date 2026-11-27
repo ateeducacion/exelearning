@@ -29,6 +29,7 @@ const AUTHOR_SCRIPT = `<script>
     reach('topBody', function () { return window.top.document.body.innerHTML.length; });
     reach('topApp', function () { return typeof window.top.eXeLearning; });
     reach('topCookie', function () { return window.top.document.cookie; });
+    reach('opener', function () { return window.top.opener === null ? 'none' : 'window'; });
     out.cookie = document.cookie;
     try {
         var dbs = await indexedDB.databases();
@@ -153,9 +154,63 @@ test.describe('Workarea preview on a content domain', () => {
 
         await page.click('#preview-refresh-button');
         await expect(content.getByText('First version of the content')).toBeVisible({ timeout: 30000 });
+    });
 
-        // The "open in a new tab" action is not offered in this mode.
-        await expect(page.locator('#preview-extract-button')).toBeHidden();
+    test('the preview opens in a new tab, still on the content origin and without the editor', async ({ page }) => {
+        await openWorkarea(page, 'Content domain preview tab');
+        const hostUrl = new URL(
+            await page.evaluate(() => (window as any).eXeLearning.config.previewContentHostUrl as string),
+        );
+        await selectFirstPage(page);
+        await addTextIdeviceWithHtml(page, `<p>First version of the content</p>${AUTHOR_SCRIPT}`);
+        await page.click('#head-bottom-preview');
+        const panelContent = page.frameLocator('#preview-iframe').frameLocator('#preview-content');
+        await expect(panelContent.getByText('First version of the content')).toBeVisible({ timeout: 30000 });
+
+        const [tab] = await Promise.all([page.waitForEvent('popup'), page.click('#preview-extract-button')]);
+
+        // The tab is an empty page of the editor origin. Its only element is a sandboxed frame
+        // with the host page of the content origin, as in the panel.
+        const frame = tab.locator('iframe');
+        await expect(frame).toHaveAttribute('src', hostUrl.href);
+        expect(tab.url()).toBe('about:blank');
+        expect(await tab.evaluate(() => window.origin)).toBe(APP_ORIGIN);
+        expect(await frame.getAttribute('sandbox')).toBe(await page.locator('#preview-iframe').getAttribute('sandbox'));
+        expect(await frame.getAttribute('sandbox')).not.toContain('allow-top-navigation');
+        expect(await frame.getAttribute('sandbox')).not.toContain('allow-popups-to-escape-sandbox');
+
+        const content = tab.frameLocator('iframe').frameLocator('#preview-content');
+        await expect(content.getByText('First version of the content')).toBeVisible({ timeout: 30000 });
+        const readProbe = async () => {
+            const root = content.locator('html');
+            await expect(root).toHaveAttribute('data-author-probe', /origin/, { timeout: 15000 });
+            return JSON.parse((await root.getAttribute('data-author-probe')) ?? '{}');
+        };
+        const probe = await readProbe();
+        expect(probe.origin).toBe(hostUrl.origin);
+        expect(probe.controlled).toBe(true);
+        expect(probe.topTitle).toMatch(/^blocked:/);
+        expect(probe.topApp).toMatch(/^blocked:/);
+        expect(probe.topCookie).toMatch(/^blocked:/);
+        expect(probe.cookie).toBe('');
+        // The tab keeps no reference to the editor window that opened it.
+        expect(probe.opener).toBe('none');
+        expect(await tab.evaluate(() => window.opener)).toBeNull();
+
+        // Reloading the tab empties it. The editor puts the preview back, with what was edited
+        // meanwhile, although the panel is closed.
+        await page.click('#previewsidenavclose');
+        await expect(page.locator('#previewsidenav')).not.toHaveClass(/active/);
+        await addTextIdeviceWithHtml(page, '<p>Second version of the content</p>');
+        await tab.reload();
+        await expect(content.getByText('Second version of the content')).toBeVisible({ timeout: 30000 });
+        expect((await readProbe()).opener).toBe('none');
+
+        // A refresh of the panel reaches the tab too.
+        await addTextIdeviceWithHtml(page, '<p>Third version of the content</p>');
+        await page.click('#head-bottom-preview');
+        await expect(panelContent.getByText('Third version of the content')).toBeVisible({ timeout: 30000 });
+        await expect(content.getByText('Third version of the content')).toBeVisible({ timeout: 30000 });
     });
 
     test('the workarea ignores preview messages that do not come from the content origin', async ({ page }) => {
@@ -167,24 +222,19 @@ test.describe('Workarea preview on a content domain', () => {
         await expect(content.getByText('Message test content')).toBeVisible({ timeout: 30000 });
 
         // A "ready" announcement posted by the editor itself (wrong source and origin) must
-        // not make the workarea hand out a channel.
-        const leaked = await page.evaluate(
-            () =>
-                new Promise<boolean>(resolve => {
-                    const original = MessageChannel;
-                    let created = false;
-                    (window as any).MessageChannel = function (this: MessageChannel) {
-                        created = true;
-                        return new original();
-                    };
-                    window.postMessage({ type: 'exe-preview-host-ready' }, location.origin);
-                    setTimeout(() => {
-                        (window as any).MessageChannel = original;
-                        resolve(created);
-                    }, 300);
-                }),
-        );
-        expect(leaked).toBe(false);
+        // not become the preview channel: the next refresh sends nothing through its port.
+        await page.evaluate(() => {
+            const channel = new MessageChannel();
+            (window as any).__forgedPortMessages = 0;
+            channel.port2.onmessage = () => {
+                (window as any).__forgedPortMessages += 1;
+            };
+            window.postMessage({ type: 'exe-preview-host-ready' }, location.origin, [channel.port1]);
+        });
+        const shownAgain = page.waitForEvent('framenavigated', frame => frame.url().includes('/viewer/index.html'));
+        await page.click('#preview-refresh-button');
+        await shownAgain;
+        expect(await page.evaluate(() => (window as any).__forgedPortMessages)).toBe(0);
         await expect(content.getByText('Message test content')).toBeVisible();
     });
 });

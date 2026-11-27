@@ -702,9 +702,11 @@ origin. The server gives the workarea a host page URL on a per-project content
 origin (`previewContentHostUrl` in the client config); the preview iframe loads
 it, the workarea posts the generated export over a `MessageChannel`, and that
 origin's own `preview-sw.js` serves it to a frame nested in the host page. The
-host page accepts messages only from the application origin; the workarea
-accepts them only from the preview iframe on that content origin. There is no
-blob URL fallback in this mode. Without a content domain the preview is exactly
+host page hands its end of the channel only to the window that embeds it, and
+only if that window is on the application origin; the workarea accepts it only
+from the preview iframe on that content origin. "Open in new tab" keeps this
+shape: an empty tab of the editor origin with the host page in a sandboxed
+frame. There is no blob URL fallback in this mode. Without a content domain the preview is exactly
 as described in §8.1–8.5.
 
 ### 8.7 Registration Lifecycle and Self-Healing

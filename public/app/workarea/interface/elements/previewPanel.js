@@ -62,8 +62,10 @@ export default class PreviewPanelManager {
         this._popupMonitorTimer = null;
         this._recoveryChannel = null;
 
-        // Content domain mode: one message client per preview iframe
+        // Content domain mode: one message client per preview iframe, and the one of the
+        // frame in the tab opened by extractToNewTab()
         this._contentHosts = new Map();
+        this._tabHost = null;
     }
 
     /**
@@ -77,13 +79,6 @@ export default class PreviewPanelManager {
         this._setupVisibilityHandler();
         this._setupBroadcastChannelListener();
         this._setupServiceWorkerListener();
-        if (this._contentHostUrl()) {
-            // A new tab cannot be handed the preview without giving author content a
-            // reference to this window, so the action is not offered in this mode.
-            for (const button of [this.extractButton, this.pinnedExtractButton]) {
-                if (button) button.hidden = true;
-            }
-        }
         Logger.log('[PreviewPanel] Initialized');
     }
 
@@ -116,6 +111,50 @@ export default class PreviewPanelManager {
     }
 
     /**
+     * Message client for the preview frame in the tab opened by extractToNewTab() (content
+     * domain mode), or null when no such tab can be reached.
+     *
+     * The tab holds an empty page of this origin and the preview goes in a sandboxed frame
+     * inside it, as in the panel. A tab on the content origin itself would need a reference
+     * to this window to receive the preview, and author content could navigate it. The frame
+     * is put in place from here, again after the user reloads the tab.
+     * @returns {PreviewContentHost|null}
+     */
+    _contentHostTab() {
+        const tab = this._isPopupOpen() ? this._popupWindow : null;
+        let doc = null;
+        try {
+            doc = tab?.document;
+        } catch {
+            // The user took the tab to another site.
+        }
+        if (!doc?.body) {
+            this._tabHost?.destroy();
+            this._tabHost = null;
+            return null;
+        }
+        if (this._tabHost?.iframe.ownerDocument !== doc || !this._tabHost.iframe.isConnected) {
+            this._tabHost?.destroy();
+            // Frames can read top.opener: leave the content no reference to this window.
+            tab.opener = null;
+            const iframe = doc.createElement('iframe');
+            iframe.setAttribute('sandbox', this.iframe.getAttribute('sandbox') ?? '');
+            iframe.setAttribute('allowfullscreen', '');
+            iframe.title = this.iframe.title;
+            iframe.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0';
+            doc.title = this.iframe.title;
+            doc.body.replaceChildren(iframe);
+            this._tabHost = new PreviewContentHost({
+                hostUrl: this._contentHostUrl(),
+                iframe,
+                win: tab,
+                onMessage: (message) => this._onContentHostMessage(message),
+            });
+        }
+        return this._tabHost;
+    }
+
+    /**
      * Requests relayed by the host page from the content origin. The sender is untrusted:
      * only these two message types are acted on, and neither carries data.
      * @param {{type: string}} message
@@ -138,13 +177,24 @@ export default class PreviewPanelManager {
         if (!targetIframe) {
             throw new Error('No iframe available');
         }
-        const host = this._getContentHost(targetIframe);
+        // The panel is left alone while it is closed and a tab shows the preview.
+        const tabHost = this._contentHostTab();
+        const panelHost = tabHost && !this.isOpen && !this.isPinned ? null : this._getContentHost(targetIframe);
         try {
             const files = await this._generatePreviewFilesOrThrow();
-            await host.sendContent(files, { openExternalLinksInNewWindow: true });
+            // One worker serves every frame of the content origin: the files are sent once.
+            // The tab reloads the page it is on instead of going back to the first one.
+            const options = { openExternalLinksInNewWindow: true };
+            if (panelHost) {
+                await panelHost.sendContent(files, options);
+                await tabHost?.showContent({ keepPage: true });
+            } else {
+                await tabHost.sendContent(files, options, { keepPage: true });
+            }
         } catch (error) {
             // The error page replaces the host page, so the next refresh must load it again.
-            host.reset();
+            panelHost?.reset();
+            tabHost?.reset();
             throw error;
         }
         Logger.log('[PreviewPanel] Preview loaded on the content domain');
@@ -320,6 +370,9 @@ export default class PreviewPanelManager {
                 Logger.log('[PreviewPanel] Popup window closed');
                 this._popupWindow = null;
                 this._clearPopupMonitor();
+            } else if (this._contentHostUrl() && this._contentHostTab()?.iframe.src === '') {
+                // Content domain mode: the tab was opened or reloaded and its frame is empty.
+                this.refresh();
             }
         }, 2000);
     }
@@ -1492,7 +1545,19 @@ export default class PreviewPanelManager {
      * Opens the SW-served preview in a new tab
      */
     async extractToNewTab() {
-        if (this._contentHostUrl()) return;
+        if (this._contentHostUrl()) {
+            // Content domain mode: an empty page of this origin, filled by _contentHostTab().
+            const tab = window.open('', '_blank');
+            if (!tab) {
+                Logger.warn('[PreviewPanel] The browser blocked the preview tab');
+                return;
+            }
+            this._popupWindow = tab;
+            this._setupPopupMonitor();
+            // A refresh that is already running does not know the tab: the monitor fills it.
+            await this.refresh();
+            return;
+        }
         try {
             Logger.log('[PreviewPanel] Extracting preview to new tab...');
 
@@ -1714,6 +1779,8 @@ export default class PreviewPanelManager {
             host.destroy();
         }
         this._contentHosts.clear();
+        this._tabHost?.destroy();
+        this._tabHost = null;
 
         // Revoke blob URLs
         [this.iframe, this.pinnedIframe].forEach((iframe) => {

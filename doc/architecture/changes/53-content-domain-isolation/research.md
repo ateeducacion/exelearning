@@ -123,8 +123,8 @@ Result, Playwright 1.65.1 builds plus the installed Chrome:
 Consequences for the design: the workarea always reaches the worker through the
 host page it frames, never through a top-level page of the content origin. With
 partitioning, a top-level tab of the content origin gets a different worker with
-no content, which is one reason "open the preview in a new tab" is not offered
-in this mode (see `design.md`).
+no content, which is one reason "open the preview in a new tab" frames the host
+page in an empty tab of the editor origin instead (see `design.md`).
 
 ### Workarea preview on a content origin
 
@@ -140,6 +140,17 @@ from the workarea.
 | `document.cookie`, `window.top.document.cookie` | empty, `SecurityError` |
 | `indexedDB.databases()` | none of the editor's databases |
 | `fetch('<app>/api/session/check', { credentials: 'include' })` | not authenticated |
+
+The same spec opens the preview in a new tab (`about:blank`, editor origin, with
+the host page in a sandboxed frame). There the probes give the same results, and:
+
+| Check in the new tab | Result |
+|---|---|
+| `window.top.opener` read by the author script | `null` |
+| The frame's `sandbox` list | the panel's, without `allow-top-navigation` and `allow-popups-to-escape-sandbox` |
+| Content edited while the panel is closed, after reloading the tab | shown: the editor fills the reloaded tab again |
+| A refresh of the panel | shown in the tab too |
+| Origin of the reloaded `about:blank` tab | still the editor origin (Chromium and Firefox) |
 
 ### Real deployment
 

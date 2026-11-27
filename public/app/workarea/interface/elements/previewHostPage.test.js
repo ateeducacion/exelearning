@@ -18,21 +18,28 @@ describe('preview host page', () => {
     const windowMessage = (data, { source = embedder, origin = APP_ORIGIN, ports = [] } = {}) =>
         win.listeners.message({ data, source, origin, ports });
 
-    /** A MessagePort as the application would transfer it. */
-    const appPort = () => ({ sent: [], onmessage: null, close: vi.fn(), postMessage(message) { this.sent.push(message); } });
-
-    /** Connect the application and return its port. */
-    const connect = () => {
-        const port = appPort();
-        windowMessage({ type: 'exe-preview-connect' }, { ports: [port] });
-        return port;
+    /**
+     * Start the page and return its end of the channel it hands to the application:
+     * `onmessage` receives the application's requests and `sent` holds what it answered.
+     */
+    const connect = async () => {
+        await startPreviewHost(win).worker;
+        await Promise.resolve();
+        return channels[0].port1;
     };
 
     beforeEach(() => {
         channels = [];
         originalMessageChannel = globalThis.MessageChannel;
         globalThis.MessageChannel = function () {
-            this.port1 = { onmessage: null, close: vi.fn() };
+            this.port1 = {
+                sent: [],
+                onmessage: null,
+                close: vi.fn(),
+                postMessage(message) {
+                    this.sent.push(message);
+                },
+            };
             this.port2 = {};
             channels.push(this);
         };
@@ -49,7 +56,7 @@ describe('preview host page', () => {
             }),
         };
         embedder = { postMessage: vi.fn() };
-        frame = { contentWindow: { name: 'content' }, src: '' };
+        frame = { contentWindow: { name: 'content', location: { href: 'about:blank', reload: vi.fn() } }, src: '' };
         win = {
             listeners: {},
             parent: embedder,
@@ -85,13 +92,17 @@ describe('preview host page', () => {
             expect(startPreviewHost(win)).toBeNull();
         });
 
-        it('registers the worker for its own directory and tells the application it is ready', async () => {
+        it('registers the worker for its own directory and hands the application a channel', async () => {
             const host = startPreviewHost(win);
             await host.worker;
             await Promise.resolve();
 
             expect(serviceWorker.register).toHaveBeenCalledWith('preview-sw.js?v=v4.0.6', { scope: './' });
-            expect(embedder.postMessage).toHaveBeenCalledWith({ type: 'exe-preview-host-ready' }, APP_ORIGIN);
+            // Only to the window that embeds the page, and only if it is the application origin.
+            expect(embedder.postMessage).toHaveBeenCalledTimes(1);
+            expect(embedder.postMessage).toHaveBeenCalledWith({ type: 'exe-preview-host-ready' }, APP_ORIGIN, [
+                channels[0].port2,
+            ]);
         });
 
         it('registers without a version when the page carries none', async () => {
@@ -111,7 +122,9 @@ describe('preview host page', () => {
 
             await expect(host.worker).resolves.toBe(controller);
             await Promise.resolve();
-            expect(embedder.postMessage).toHaveBeenCalledWith({ type: 'exe-preview-host-ready' }, APP_ORIGIN);
+            expect(embedder.postMessage).toHaveBeenCalledWith({ type: 'exe-preview-host-ready' }, APP_ORIGIN, [
+                channels[0].port2,
+            ]);
         });
 
         it('reports an error when Service Workers are not available', async () => {
@@ -145,28 +158,17 @@ describe('preview host page', () => {
     });
 
     describe('connection', () => {
-        beforeEach(async () => {
-            await startPreviewHost(win).worker;
-        });
+        it('takes no port from a window message, whoever sends it', async () => {
+            const port = await connect();
+            const stranger = { onmessage: null };
+            const ports = [stranger];
+            windowMessage({ type: 'exe-preview-connect' }, { ports });
+            windowMessage({ type: 'exe-preview-connect' }, { source: { other: true }, ports });
+            windowMessage({ type: 'exe-preview-host-ready' }, { origin: CONTENT_ORIGIN, ports });
 
-        it('accepts a port only from the embedding window on the application origin', async () => {
-            const stranger = appPort();
-            windowMessage({ type: 'exe-preview-connect' }, { source: { other: true }, ports: [stranger] });
-            windowMessage({ type: 'exe-preview-connect' }, { origin: 'https://evil.test', ports: [stranger] });
-            windowMessage({ type: 'exe-preview-connect' }, { origin: CONTENT_ORIGIN, ports: [stranger] });
-            windowMessage({ type: 'exe-preview-connect' }, { ports: [] });
-            windowMessage({ type: 'something-else' }, { ports: [stranger] });
             expect(stranger.onmessage).toBeNull();
-
-            const port = connect();
-            expect(port.onmessage).toEqual(expect.any(Function));
-        });
-
-        it('replaces an earlier port when the application reconnects', () => {
-            const first = connect();
-            const second = connect();
-            expect(first.close).toHaveBeenCalled();
-            expect(second.onmessage).toEqual(expect.any(Function));
+            expect(port.close).not.toHaveBeenCalled();
+            expect(channels).toHaveLength(1);
         });
     });
 
@@ -174,8 +176,7 @@ describe('preview host page', () => {
         let port;
 
         beforeEach(async () => {
-            await startPreviewHost(win).worker;
-            port = connect();
+            port = await connect();
         });
 
         it('forwards content to the worker, transferring its buffers, and relays the answer', async () => {
@@ -185,18 +186,18 @@ describe('preview host page', () => {
             await port.onmessage({ data: { id: 7, type: 'SET_CONTENT', data } });
 
             expect(controller.postMessage).toHaveBeenCalledWith({ type: 'SET_CONTENT', data }, [
-                channels[0].port2,
+                channels[1].port2,
                 buffer,
             ]);
-            channels[0].port1.onmessage({ data: { type: 'CONTENT_READY', fileCount: 2 } });
+            channels[1].port1.onmessage({ data: { type: 'CONTENT_READY', fileCount: 2 } });
             expect(port.sent).toEqual([{ id: 7, reply: { type: 'CONTENT_READY', fileCount: 2 } }]);
-            expect(channels[0].port1.close).toHaveBeenCalled();
+            expect(channels[1].port1.close).toHaveBeenCalled();
         });
 
         it('forwards status requests that carry no data', async () => {
             await port.onmessage({ data: { id: 8, type: 'GET_STATUS' } });
             expect(controller.postMessage).toHaveBeenCalledWith({ type: 'GET_STATUS', data: undefined }, [
-                channels[0].port2,
+                channels[1].port2,
             ]);
         });
 
@@ -207,6 +208,31 @@ describe('preview host page', () => {
 
             await port.onmessage({ data: { id: 2, type: 'NAVIGATE' } });
             expect(frame.src).toBe(`${CONTENT_ORIGIN}/exe/content/token/preview/uuid-1/viewer/index.html`);
+        });
+
+        it('reloads the page on screen instead, when asked to keep it', async () => {
+            const viewer = `${CONTENT_ORIGIN}/exe/content/token/preview/uuid-1/viewer/`;
+            const request = { id: 1, type: 'NAVIGATE', data: { path: 'index.html', keepPage: true } };
+
+            // Nothing of the preview on screen yet: go to the page.
+            await port.onmessage({ data: request });
+            expect(frame.src).toBe(`${viewer}index.html`);
+            expect(frame.contentWindow.location.reload).not.toHaveBeenCalled();
+
+            frame.src = '';
+            frame.contentWindow.location.href = `${viewer}html/second-page.html`;
+            await port.onmessage({ data: request });
+            expect(frame.contentWindow.location.reload).toHaveBeenCalledTimes(1);
+            expect(frame.src).toBe('');
+
+            // The frame followed a link to another site and cannot be read.
+            frame.contentWindow = {
+                get location() {
+                    throw new DOMException('Blocked a frame', 'SecurityError');
+                },
+            };
+            await port.onmessage({ data: request });
+            expect(frame.src).toBe(`${viewer}index.html`);
         });
 
         it.each(['../host.html', '/login', 'https://evil.test/', '//evil.test/x'])(
@@ -237,8 +263,7 @@ describe('preview host page', () => {
 
     describe('messages towards the application', () => {
         it('relays the type, and only the type, of allowed requests from the content frame', async () => {
-            await startPreviewHost(win).worker;
-            const port = connect();
+            const port = await connect();
 
             windowMessage(
                 { type: 'exe-download-elpx', payload: 'ignored' },
@@ -252,8 +277,7 @@ describe('preview host page', () => {
         });
 
         it('asks for the content again when the worker lost it', async () => {
-            await startPreviewHost(win).worker;
-            const port = connect();
+            const port = await connect();
 
             serviceWorker.listeners.message({ data: { type: 'CONTENT_NEEDED', reason: 'restarted' } });
             serviceWorker.listeners.message({ data: { type: 'CONTENT_UPDATED' } });
@@ -262,9 +286,11 @@ describe('preview host page', () => {
             expect(port.sent).toEqual([{ type: 'CONTENT_NEEDED' }]);
         });
 
-        it('drops messages while no application is connected', async () => {
-            await startPreviewHost(win).worker;
+        it('drops messages until the channel exists', () => {
+            serviceWorker.ready = new Promise(() => {});
+            startPreviewHost(win);
             expect(() => serviceWorker.listeners.message({ data: { type: 'CONTENT_NEEDED' } })).not.toThrow();
+            expect(channels).toHaveLength(0);
         });
     });
 });

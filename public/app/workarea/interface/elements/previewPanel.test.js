@@ -2538,11 +2538,19 @@ describe('PreviewPanelManager', () => {
       const SANDBOX = 'allow-scripts allow-same-origin allow-popups';
       let tab;
 
-      /** A tab as window.open('') returns it: an empty page of this origin. */
+      /** A loaded, empty document, as the tab has after it loads or reloads its page. */
+      const emptyDocument = () => {
+        const doc = document.implementation.createHTMLDocument('');
+        Object.defineProperty(doc, 'readyState', { value: 'complete', configurable: true });
+        return doc;
+      };
+
+      /** The tab once it shows the empty page that the editor opened in it. */
       const emptyTab = () => ({
         closed: false,
         opener: window,
-        document: document.implementation.createHTMLDocument(''),
+        location: { href: manager._previewTabUrl() },
+        document: emptyDocument(),
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       });
@@ -2559,15 +2567,28 @@ describe('PreviewPanelManager', () => {
         expect(manager.pinnedExtractButton.hidden).toBe(false);
       });
 
+      it('opens the empty page below the base path of the application', () => {
+        expect(manager._previewTabUrl()).toBe(`${window.location.origin}/preview-tab.html`);
+
+        window.eXeLearning.app.getBasePath = () => '/exe';
+        expect(manager._previewTabUrl()).toBe(`${window.location.origin}/exe/preview-tab.html`);
+        delete window.eXeLearning.app.getBasePath;
+      });
+
       it('opens an empty tab of this origin and shows the preview in a sandboxed frame inside it', async () => {
         const open = vi.spyOn(window, 'open').mockReturnValue(tab);
         const send = vi.spyOn(PreviewContentHost.prototype, 'sendContent').mockResolvedValue({ fileCount: 1 });
 
         await manager.extractToNewTab();
 
-        expect(open).toHaveBeenCalledWith('', '_blank');
+        expect(open).toHaveBeenCalledWith(`${window.location.origin}/preview-tab.html`, '_blank');
         expect(manager._popupWindow).toBe(tab);
         expect(manager._popupMonitorTimer).not.toBeNull();
+        // Nothing is sent until the empty page has loaded.
+        expect(send).not.toHaveBeenCalled();
+        const [, onLoad, options] = tab.addEventListener.mock.calls.find(([type]) => type === 'load');
+        expect(options).toEqual({ once: true });
+        await onLoad();
 
         const frames = tab.document.querySelectorAll('iframe');
         expect(frames).toHaveLength(1);
@@ -2643,6 +2664,34 @@ describe('PreviewPanelManager', () => {
         expect(tab.document.querySelectorAll('iframe')).toHaveLength(1);
       });
 
+      it('waits for the empty page to load before touching the tab', () => {
+        manager._popupWindow = tab;
+        // window.open() returns the tab while it still shows its first, blank document.
+        tab.location.href = 'about:blank';
+        expect(manager._contentHostTab()).toBeNull();
+
+        tab.location.href = manager._previewTabUrl();
+        Object.defineProperty(tab.document, 'readyState', { value: 'loading', configurable: true });
+        expect(manager._contentHostTab()).toBeNull();
+        expect(tab.document.querySelectorAll('iframe')).toHaveLength(0);
+
+        Object.defineProperty(tab.document, 'readyState', { value: 'complete', configurable: true });
+        expect(manager._contentHostTab()).not.toBeNull();
+      });
+
+      it('never writes to another page of this origin that the user opened in the tab', () => {
+        manager._popupWindow = tab;
+        const destroy = vi.spyOn(manager._contentHostTab(), 'destroy');
+
+        tab.location.href = `${window.location.origin}/workarea?project=other`;
+        tab.document = emptyDocument();
+        tab.document.body.innerHTML = '<main>Another project</main>';
+
+        expect(manager._contentHostTab()).toBeNull();
+        expect(destroy).toHaveBeenCalled();
+        expect(tab.document.body.innerHTML).toBe('<main>Another project</main>');
+      });
+
       it('puts the frame back and fills it after the tab is reloaded', () => {
         vi.useFakeTimers();
         const refresh = vi.spyOn(manager, 'refresh').mockResolvedValue();
@@ -2652,15 +2701,15 @@ describe('PreviewPanelManager', () => {
         manager._setupPopupMonitor();
 
         // The frame is empty until a refresh loads the host page in it.
-        vi.advanceTimersByTime(2000);
+        vi.advanceTimersByTime(500);
         expect(refresh).toHaveBeenCalledTimes(1);
         vi.spyOn(first.iframe, 'src', 'get').mockReturnValue(HOST_URL);
         vi.advanceTimersByTime(2000);
         expect(refresh).toHaveBeenCalledTimes(1);
 
         // A reload leaves the tab with a new, empty document.
-        tab.document = document.implementation.createHTMLDocument('');
-        vi.advanceTimersByTime(2000);
+        tab.document = emptyDocument();
+        vi.advanceTimersByTime(500);
 
         expect(destroy).toHaveBeenCalled();
         expect(manager._tabHost).not.toBe(first);
@@ -2674,7 +2723,7 @@ describe('PreviewPanelManager', () => {
         const tabHost = manager._contentHostTab();
         const destroy = vi.spyOn(tabHost, 'destroy');
         const panelSend = vi.spyOn(manager._getContentHost(manager.iframe), 'sendContent').mockResolvedValue({});
-        Object.defineProperty(tab, 'document', {
+        Object.defineProperty(tab, 'location', {
           get() {
             throw new DOMException('Blocked a frame', 'SecurityError');
           },

@@ -169,12 +169,13 @@ test.describe('Workarea preview on a content domain', () => {
 
         const [tab] = await Promise.all([page.waitForEvent('popup'), page.click('#preview-extract-button')]);
 
-        // The tab is an empty page of the editor origin. Its only element is a sandboxed frame
-        // with the host page of the content origin, as in the panel.
+        // The tab is an empty page of the editor. Its only element is a sandboxed frame with
+        // the host page of the content origin, as in the panel.
         const frame = tab.locator('iframe');
         await expect(frame).toHaveAttribute('src', hostUrl.href);
-        expect(tab.url()).toBe('about:blank');
-        expect(await tab.evaluate(() => window.origin)).toBe(APP_ORIGIN);
+        expect(tab.url()).toBe(`${APP}/preview-tab.html`);
+        await expect(tab.locator('body > *')).toHaveCount(1);
+        await expect(tab.locator('script')).toHaveCount(0);
         expect(await frame.getAttribute('sandbox')).toBe(await page.locator('#preview-iframe').getAttribute('sandbox'));
         expect(await frame.getAttribute('sandbox')).not.toContain('allow-top-navigation');
         expect(await frame.getAttribute('sandbox')).not.toContain('allow-popups-to-escape-sandbox');

@@ -658,7 +658,46 @@ content-domain tokens for content served from the application host.
 | **Preview host page** | `public/app/workarea/interface/elements/previewHostPage.js` | Served on the project's content origin; relays the generated preview to that origin's Service Worker |
 | **Preview client** | `public/app/workarea/interface/elements/previewContentHost.js` | Workarea side of the message transport |
 
-With a content domain the **workarea preview** (§8.1–8.5) also leaves the editor
+##### Content proxy (`EXE_CONTENT_PROXY`)
+
+A deployment without a content domain of its own can name a **content proxy**
+instead: a separate service (`src/content-proxy/`, a Cloudflare Worker or a Bun
+process) that owns a content domain and serves the content of any application.
+The application keeps serving author content only from routes that are safe on
+its own host, and marks them as **content sources**:
+
+```
+https://x<sha256(prefix)[:40]>.<proxy domain>/<base64url(prefix)>/<path>
+        │                                         │
+        │  label must equal the hash of ──────────┘
+        ▼
+GET <prefix><path>            prefix = https://app.example<BASE_PATH>/view/:id/_/
+    (no cookies, GET only)             or  …/preview-host/:projectUuid/
+        │
+        ▼  application host, unchanged opaque response plus
+           X-Exe-Content-Proxy: 1
+           X-Exe-Content-Proxy-CSP: <policy for the content origin>
+```
+
+- The proxy serves a response only when the label is the hash of the prefix and
+  the requested URL stays below the prefix, so one origin only ever shows one
+  source. Labels need no secret: the proxy fetches the prefix it hashes, so an
+  origin cannot be claimed for content that its source does not serve.
+- A source opts in per response. Its own `Content-Security-Policy` is the opaque
+  one (`sandbox`), so opening the source URL on the application host is as safe
+  as in the default mode; the proxy replaces it with the value of
+  `X-Exe-Content-Proxy-CSP`. Nothing a client sends changes which policy the
+  application host emits.
+- The proxy forwards no cookie or credential, drops `Set-Cookie`, and refuses
+  redirects, error bodies and responses that did not opt in.
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Protocol** | `src/content-proxy/protocol.ts` | Label, prefix encoding and header names, shared by both sides |
+| **Proxy** | `src/content-proxy/worker.ts` | Request handler (Cloudflare Worker default export; `index.ts` runs it on Bun) |
+| **Sources and URLs** | `src/routes/content-host.ts` | `proxiedPublicViewUrl`, `proxiedPreviewHostUrl`, source headers |
+
+With a content domain or a content proxy the **workarea preview** (§8.1–8.5) also leaves the editor
 origin. The server gives the workarea a host page URL on a per-project content
 origin (`previewContentHostUrl` in the client config); the preview iframe loads
 it, the workarea posts the generated export over a `MessageChannel`, and that

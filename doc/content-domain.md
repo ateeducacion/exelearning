@@ -14,8 +14,18 @@ It applies to two things: the **public viewer** (`/view/…` links) and the
 **preview inside the editor**, which otherwise runs author content in the
 editor's own origin.
 
-If you do not set `EXE_CONTENT_DOMAIN`, nothing on this page applies and the
-application behaves as it always has.
+There are two ways to get one:
+
+- **Your own content domain** (`EXE_CONTENT_DOMAIN`): a wildcard DNS record, a
+  wildcard certificate and a reverse-proxy rule send `*.<your domain>` to your
+  eXeLearning server. Nobody else takes part. Most of this page is about it.
+- **A content proxy** (`EXE_CONTENT_PROXY`): a small separate service owns the
+  content domain, fetches the content from your application and serves it, each
+  item on its own origin. You set one variable and need no DNS record,
+  certificate or proxy rule. See [Content proxy](#content-proxy).
+
+If you set neither variable, nothing on this page applies and the application
+behaves as it always has.
 
 ## What you need
 
@@ -302,6 +312,127 @@ same content domain. Each installation needs its own:
 
 Either way the content domain must be on a different site from the application.
 
+A [content proxy](#content-proxy) is the third option: any number of
+installations use the same domain, and none of them needs a DNS record.
+
+## Content proxy
+
+A content proxy serves the content of any eXeLearning installation, on any
+domain, from one shared content domain. The project runs one at
+`exelearningusercontent.com`.
+
+```env
+EXE_CONTENT_PROXY=exelearningusercontent.com
+```
+
+That is the whole setup. Do not set `EXE_CONTENT_DOMAIN` as well: the server
+refuses to start with both.
+
+What the application needs:
+
+- to be reachable from the internet over HTTPS, with a valid certificate, on a
+  host name (the proxy does not fetch IP addresses);
+- to know its public `https://` address, as described under
+  [What you need](#what-you-need) (`TRUSTED_PROXIES` when TLS ends at a proxy).
+
+An installation on an intranet or on `localhost` cannot use a public proxy,
+because the proxy cannot reach it.
+
+### How it works
+
+Author content already has a safe address on the application host: the opaque
+route `/view/<public view id>/_/…`, which answers with
+`Content-Security-Policy: sandbox`. With a content proxy that route becomes a
+**content source**. The viewer iframe points at
+
+```text
+https://x<40 hex>.exelearningusercontent.com/<base64url(source URL prefix)>/index.html
+```
+
+and the proxy answers it with the response of `<source URL prefix>index.html`.
+The label is the SHA-256 hash of the source URL prefix, so:
+
+- one published project, on one application address, is one origin;
+- the proxy serves a response only when the label matches the prefix in the
+  path, and the requested file is below that prefix. Content from one source can
+  never appear on the origin of another, whoever asks;
+- no secret, account or registration is shared with the proxy. The application
+  derives the label the same way the proxy checks it.
+
+The proxy only answers `GET`, sends no cookies or credentials to the
+application, and passes no `Set-Cookie` on. It serves a response only when the
+application marked it as a content source (`X-Exe-Content-Proxy: 1`), so it
+cannot be used to show other sites under the content domain. The policy for the
+content origin travels in `X-Exe-Content-Proxy-CSP`; the response keeps its own
+opaque `Content-Security-Policy`, so the source URL stays harmless when it is
+opened on the application host.
+
+The editor preview works the same way. Its source is
+`/preview-host/<project>/`, three static files that only exist with
+`EXE_CONTENT_PROXY` set. The previewed project itself never passes through the
+proxy: the editor hands it to the Service Worker of the content origin inside
+the browser.
+
+### What you accept by using a shared proxy
+
+- **Published content passes through it.** Whoever runs the proxy can see, and
+  could alter, the public content it serves and sees the address of every
+  visitor. It cannot reach the application: it has no session and no credentials.
+  Editor previews do not pass through it.
+- **It is one more service that must be up.** If the proxy does not answer, the
+  viewer and the preview show an error. They do not fall back to the application
+  host.
+- **Labels can be computed by anyone** who knows the source URL. They do not
+  protect anything: access to a public view is the public view id, as before.
+- **Every origin on the domain is the same site** as every other one, of every
+  installation, until the domain is in the
+  [Public Suffix List](https://publicsuffix.org/). Origin isolation (page,
+  storage, Service Workers) does not depend on that.
+
+An institution that does not want a third party in the path uses its own content
+domain, or runs its own proxy.
+
+### Run your own proxy
+
+The proxy is `src/content-proxy/` in this repository: about 150 lines with no
+dependencies, the same code for both options below. You need a domain on a
+different site from the application, as with a content domain.
+
+**Cloudflare Worker.** Add the domain to Cloudflare, create one proxied DNS
+record for `*` that points nowhere (`AAAA * 100::`), edit the domain in
+`src/content-proxy/wrangler.toml` and deploy:
+
+```bash
+bun x wrangler deploy --config src/content-proxy/wrangler.toml
+```
+
+The Worker answers every request for `*.<domain>`, so the record never reaches a
+server. Turn off **Email Address Obfuscation** and **Rocket Loader** for the
+zone, and turn on **Always Use HTTPS**: they apply to a Worker's responses too.
+The free Workers plan allows 100,000 requests per day for the whole account, and
+every file of a content item is one request.
+
+**Any server.** Run it on Bun behind the wildcard DNS record, certificate and
+reverse-proxy rule described above, pointing the rule at this process instead of
+at eXeLearning:
+
+```bash
+CONTENT_PROXY_DOMAIN=content.example.org ALLOWED_HOSTS=exe.example.org PORT=8787 \
+  bun src/content-proxy/index.ts
+```
+
+| Variable | Meaning |
+|---|---|
+| `CONTENT_PROXY_DOMAIN` | The domain the proxy answers under (`<label>.<domain>`). Required |
+| `ALLOWED_HOSTS` | Comma-separated hosts the proxy may fetch from; `.example.org` matches subdomains. Empty: any public HTTPS host that opts in |
+| `ALLOW_HTTP` | `true` also allows `http:` sources and local names. For development only |
+| `PORT` | Port to listen on (Bun only; default 8787) |
+
+Set `ALLOWED_HOSTS` on a proxy that runs inside your network: without it the
+process fetches any address it is asked for. An open proxy also lets anyone who
+runs a server show their own pages under your domain, each on an origin of its
+own.
+
 ## Check that it works
 
 1. Enable the public link of a project (Share dialog) and open it.
@@ -330,6 +461,19 @@ If the content host cannot be reached, the viewer shows "The content could not
 be loaded from the content domain." It does not fall back to the application
 host.
 
+With a content proxy the label is `x` plus 40 characters, and two more checks
+apply:
+
+```bash
+# The source is marked for the proxy, and is still opaque on the application host
+curl -s -o /dev/null -D - 'https://online.exelearning.net/view/<public view id>/_/index.html' \
+  | grep -iE '^(content-security-policy|x-exe-content-proxy)'
+
+# The same content on the origin of another label answers 404
+curl -s -o /dev/null -w '%{http_code}\n' \
+  'https://x0000000000000000000000000000000000000000.exelearningusercontent.com/<rest of the content URL>'
+```
+
 ## Troubleshooting
 
 | Symptom | Cause | What to do |
@@ -341,6 +485,10 @@ host.
 | The application itself answers 404 | The content domain is the application host or a parent of it | Use a domain on a different site |
 | Cloudflare error 526 | Full (strict), and the certificate on the server is not valid for the content hosts | Install a certificate for `*.<content domain>` on the server |
 | E-mail addresses in the content are replaced and a script from `/cdn-cgi/` appears | Cloudflare Email Address Obfuscation | Turn it off for the content zone |
+| Content proxy: the content URL answers 502 "The address is not a content source" | The application does not have `EXE_CONTENT_PROXY` set, or runs a version without it | Set the variable and restart |
+| Content proxy: the content URL answers 502 "The content source did not answer" | The proxy cannot reach the application | The application must be public, over HTTPS, with a valid certificate |
+| Content proxy: the content URL answers 404 and its path decodes to an `http://` address | The application does not know it is served over HTTPS | Same as the first row |
+| Content proxy: the content URL answers 403 | The proxy has a list of allowed hosts and the application is not in it | Ask whoever runs the proxy, or run your own |
 
 ## What changes for the content
 
@@ -377,11 +525,14 @@ link. The content loads from `http://<label>.exe-content.localhost:8080`.
 
 ## Limits
 
-- Labels are derived from the server signing secret (`API_JWT_SECRET`). Rotating
-  it changes every content origin; whatever content stored in the browser under
-  the old origin is no longer reachable.
-- All instances of a deployment must share `API_JWT_SECRET`, as they already do
+- With your own content domain, labels are derived from the server signing
+  secret (`API_JWT_SECRET`). Rotating it changes every content origin; whatever
+  content stored in the browser under the old origin is no longer reachable.
+  All instances of a deployment must share `API_JWT_SECRET`, as they already do
   for sessions.
+- With a content proxy, labels are derived from the address of the application.
+  Changing its host name or `BASE_PATH` changes every content origin in the same
+  way.
 - Two content items are different origins but the same site unless the content
   domain is in the [Public Suffix List](https://publicsuffix.org/). Origin
   isolation (page, storage, Service Workers) does not depend on that.

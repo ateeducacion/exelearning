@@ -262,6 +262,59 @@ Other known gaps of phase 2:
 - WebKit is not part of the project's E2E suite; it was exercised by the spike
   and, as Safari 26.4, on the real deployment recorded in `research.md`.
 
+## Content proxy (`EXE_CONTENT_PROXY`)
+
+The content domain above needs a wildcard DNS record that points at one
+deployment, so a domain serves one installation. A content proxy removes that
+coupling: one domain, run as a small service, serves any installation.
+
+Decisions:
+
+- **A reverse proxy keyed by the source URL, not a registry.** The content URL is
+  `https://<label>.<proxy domain>/<base64url(prefix)>/<path>` and the proxy
+  fetches `<prefix><path>`. The label is `x` plus the first 160 bits of
+  `SHA-256("exe-content-proxy-v1\n" + prefix)`. The proxy needs no list of
+  installations, no shared secret and no state.
+- **The label is public, and that is enough.** The keyed label of the content
+  domain stops a client from pairing a label with other content, because the
+  server that checks it is the one that serves the content. Here the proxy
+  fetches exactly the prefix it hashed, so the pairing holds without a key. A
+  party that runs its own server gets origins for its own prefixes only.
+- **Sources are the routes that are already safe on the application host.** The
+  public view source is the opaque route `/view/:id/_/*`, unchanged except for
+  three headers. The preview source is `/preview-host/:projectUuid/*`, the same
+  static files the content host serves, with `Content-Security-Policy: sandbox`
+  on the page. No route serves author content on the application host without
+  the opaque policy, in any mode.
+- **The policy for the content origin is a response header of the source**
+  (`X-Exe-Content-Proxy-CSP`), not something the proxy asks for. A request header
+  that switched the policy would make the application host emit a non-opaque
+  response for author content, which a cache or a later change could replay to a
+  browser.
+- **Opt-in per response** (`X-Exe-Content-Proxy: 1`). Without it the proxy would
+  show any public page of any site under the content domain.
+- **Path confinement.** The proxy refuses `\`, `%2e`, `%2f` and `%5c` in the
+  path and checks the resolved URL against the prefix, because a source may
+  decode them and leave the directory that names the origin.
+- **Kept apart from the content domain.** Both variables set refuses to boot.
+  The two modes share the viewer template, the sandbox tokens, the preview
+  transport and the no-fallback rule; they differ in who answers the content
+  host and in how the label is derived.
+
+Not done: the proxy does not cache, does not follow redirects, and does not
+serve `HEAD`. The LMS plugins do not use it yet; the protocol is not specific to
+this application (a source is any URL prefix that opts in).
+
+| Invariant | Tests |
+|---|---|
+| A source is never served on the origin of another source | `worker.spec.ts` ("never serves a prefix on the origin of another prefix", "does not leave the prefix through …"); E2E `content-proxy.spec.ts` ("an origin serves only its own source") |
+| Only responses that opted in are served; no redirect, error body, cookie or credential passes | `worker.spec.ts` ("refuses a response that did not opt in", "does not follow or pass on redirects", "reports the status of a source error without its body", "serves the source below the prefix …") |
+| Sources stay opaque on the application host | `pages.spec.ts` ("becomes a content source with a content proxy, and stays opaque on this host", "serves the host page bound to the origin of the request, inert on this host"); E2E ("the source stays opaque when it is opened on the application host") |
+| With the mode off nothing changes | `pages.spec.ts` ("is not a content source unless a content proxy is set", "does not exist without a content proxy, nor in offline mode") |
+| The application and the proxy derive the same label | `content-host.spec.ts` ("builds public-view URLs that the proxy resolves to the opaque content route"); `protocol.spec.ts` (fixed vector) |
+| No fallback to the application origin | E2E ("shows an error instead of falling back when the proxy does not answer") |
+| Author scripts in the preview run on the content origin and cannot read the editor | E2E ("the workarea preview runs on the content origin of the project") |
+
 ## Migration and compatibility
 
 - Mode off: no route, header or template output changes. `viewer.njk` renders

@@ -32,11 +32,17 @@ import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { getPublicViewFile } from '../services/public-view-content';
 import {
+    CONTENT_DOMAIN_REFERRER_POLICY,
+    CONTENT_DOMAIN_SANDBOX,
+    PUBLIC_VIEW_REFERRER_POLICY,
     PUBLIC_VIEW_SANDBOX,
     publicViewCspHeader,
     publicViewPermissionsPolicy,
     resolvePublicViewCspProfile,
 } from '../shared/security/publicViewSandbox';
+import { getContentDomain } from '../utils/content-domain';
+import { getPublicUrl } from '../utils/proxy-url.util';
+import { previewContentHostUrl, publicViewContentUrl } from './content-host';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { isOfflineMode } from '../utils/offline.util';
 import { getPlatformBinding, getPlatformIntegrationParams, type PlatformBinding } from '../utils/platform-jwt';
@@ -667,7 +673,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // Renders the shell page that hosts the untrusted author content in a
             // sandboxed iframe. The actual content bytes are served separately by
             // the isolated `/view/:publicViewId/_/*` content route below.
-            .get('/view/:publicViewId', async ({ params, currentUser, request, set, impersonation }) => {
+            .get('/view/:publicViewId', async ({ params, currentUser, request, set, impersonation, server }) => {
                 const { publicViewId } = params;
 
                 // Public viewer: look up strictly by the opaque public view id.
@@ -706,16 +712,30 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                 setRenderLocale(locale);
 
+                // With a content domain the iframe points at the content host, on
+                // its own origin. There is no fallback to this host: if the content
+                // host does not answer, the loader page shows an error.
+                const contentDomain = getContentDomain();
+                const contentSrc = contentDomain
+                    ? publicViewContentUrl(
+                          contentDomain,
+                          getPublicUrl(request, { requestIP: (req: Request) => server?.requestIP(req) ?? null }).origin,
+                          publicViewId,
+                      )
+                    : null;
+
                 const viewModel = {
                     basePath: getBasePath(),
                     publicViewId,
                     title: project.title || 'Untitled Project',
                     lang: locale,
                     impersonation,
-                    // Tokens for the isolating iframe (opaque origin: no
-                    // allow-same-origin). Single source of truth shared with the
-                    // CSP emitted on the content responses below.
-                    sandboxTokens: PUBLIC_VIEW_SANDBOX,
+                    contentSrc,
+                    // Tokens for the isolating iframe. Single source of truth shared
+                    // with the CSP emitted on the content responses. Without a content
+                    // domain the origin is opaque (no allow-same-origin).
+                    sandboxTokens: contentSrc ? CONTENT_DOMAIN_SANDBOX : PUBLIC_VIEW_SANDBOX,
+                    referrerPolicy: contentSrc ? CONTENT_DOMAIN_REFERRER_POLICY : PUBLIC_VIEW_REFERRER_POLICY,
                 };
 
                 const html = renderTemplate('viewer/viewer', viewModel);
@@ -773,7 +793,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // Workarea Page
             // =====================================================
             .get('/workarea', async ctx => {
-                const { currentUser, isGuest, query, set, jwt, request, impersonation } = ctx;
+                const { currentUser, isGuest, query, set, jwt, request, impersonation, server } = ctx;
                 const { authMethod, isImpersonated } = ctx;
                 // Check if user is authenticated
                 if (!currentUser) {
@@ -1178,6 +1198,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     }
                 }
 
+                const previewContentDomain = isOfflineMode() ? null : getContentDomain();
+
                 // Unified config object (replaces legacy 'symfony' object)
                 const config = {
                     // Version for cache busting in preview and asset URLs
@@ -1214,6 +1236,18 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     ideviceTypeUser: 'user',
                     ideviceVisibilityPreferencePre: 'exe_',
                     token: authToken,
+                    // Content domain mode: where the preview of the open project runs. The
+                    // label in it is derived here; the client never computes one.
+                    ...(previewContentDomain && projectUuid
+                        ? {
+                              previewContentHostUrl: previewContentHostUrl(
+                                  previewContentDomain,
+                                  getPublicUrl(request, { requestIP: (req: Request) => server?.requestIP(req) ?? null })
+                                      .origin,
+                                  projectUuid,
+                              ),
+                          }
+                        : {}),
                 };
 
                 // Server-side translations using XLF files

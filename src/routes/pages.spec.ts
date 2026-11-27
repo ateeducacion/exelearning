@@ -21,7 +21,9 @@ import {
 import { zipSync, strToU8 } from 'fflate';
 import { SignJWT } from 'jose';
 import { configurePublicViewContent, resetPublicViewContent, type ExportResult } from '../services/public-view-content';
-import { PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
+import { CONTENT_DOMAIN_SANDBOX, PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
+import { encodeAppOrigin } from '../utils/content-domain';
+import { contentLabel } from '../utils/content-label';
 import { passwordFingerprint, verifyToken } from './auth';
 
 // Mock data stores
@@ -1909,6 +1911,70 @@ describe('Pages Routes', () => {
             expect(config.token).toBeDefined();
         });
 
+        describe('preview content host (EXE_CONTENT_DOMAIN)', () => {
+            const savedContentDomain = process.env.EXE_CONTENT_DOMAIN;
+            const savedOnlineMode = process.env.APP_ONLINE_MODE;
+
+            afterEach(() => {
+                if (savedContentDomain === undefined) delete process.env.EXE_CONTENT_DOMAIN;
+                else process.env.EXE_CONTENT_DOMAIN = savedContentDomain;
+                if (savedOnlineMode === undefined) delete process.env.APP_ONLINE_MODE;
+                else process.env.APP_ONLINE_MODE = savedOnlineMode;
+            });
+
+            async function renderWorkareaConfig(): Promise<Record<string, unknown>> {
+                let templateData: any = null;
+                const customTemplate: PagesTemplateDeps = {
+                    renderTemplate: (_template: string, data: any) => {
+                        templateData = data;
+                        return '<html></html>';
+                    },
+                    setRenderLocale: () => {},
+                };
+                const customApp = new Elysia().use(createPagesRoutes({ ...mockDeps, template: customTemplate }));
+                const jwt = await import('@elysiajs/jwt');
+                const tempApp = new Elysia().use(jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
+                const token = await tempApp.decorator.jwt.sign({
+                    sub: '1',
+                    email: 'test@test.com',
+                    roles: ['ROLE_USER'],
+                    isGuest: false,
+                });
+                mockSessions.set('content-host-project', { sessionId: 'content-host-project', fileName: 'Test.elp' });
+
+                await customApp.handle(
+                    new Request('https://app.test/workarea?project=content-host-project', {
+                        headers: { Cookie: `auth=${token}` },
+                    }),
+                );
+                return templateData.config;
+            }
+
+            it('is absent from the workarea config when no content domain is set', async () => {
+                delete process.env.EXE_CONTENT_DOMAIN;
+                const config = await renderWorkareaConfig();
+                expect('previewContentHostUrl' in config).toBe(false);
+            });
+
+            it('gives the workarea the host page on the content origin derived for the open project', async () => {
+                process.env.EXE_CONTENT_DOMAIN = 'content.test';
+                const config = await renderWorkareaConfig();
+
+                const label = contentLabel('preview', 'content-host-project', 'https://app.test');
+                expect(config.previewContentHostUrl).toBe(
+                    `https://${label}.content.test/content/${encodeAppOrigin('https://app.test')}` +
+                        '/preview/content-host-project/host.html',
+                );
+            });
+
+            it('is absent in offline mode, which has no content domain', async () => {
+                process.env.EXE_CONTENT_DOMAIN = 'content.test';
+                process.env.APP_ONLINE_MODE = '0';
+                const config = await renderWorkareaConfig();
+                expect('previewContentHostUrl' in config).toBe(false);
+            });
+        });
+
         it('should handle template render error with fallback HTML', async () => {
             const customTemplate: PagesTemplateDeps = {
                 renderTemplate: (_template: string, _data: any) => {
@@ -3119,6 +3185,66 @@ describe('Pages Routes', () => {
             expect(html).not.toContain('secret-internal-uuid');
             expect(templateData.uuid).toBeUndefined();
             expect(templateData.publicViewId).toBe('public-view-id-55');
+        });
+
+        describe('iframe target', () => {
+            let templateData: any = null;
+            const capture: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+            const savedContentDomain = process.env.EXE_CONTENT_DOMAIN;
+            const savedBasePath = process.env.BASE_PATH;
+
+            beforeEach(() => {
+                templateData = null;
+                mockProjects.set('iframe-target-project', {
+                    id: 57,
+                    uuid: 'iframe-target-uuid',
+                    public_view_id: 'public-view-id-57',
+                    public_view_enabled: 1,
+                    owner_id: 999,
+                    title: 'Iframe target',
+                });
+            });
+
+            afterEach(() => {
+                if (savedContentDomain === undefined) delete process.env.EXE_CONTENT_DOMAIN;
+                else process.env.EXE_CONTENT_DOMAIN = savedContentDomain;
+                if (savedBasePath === undefined) delete process.env.BASE_PATH;
+                else process.env.BASE_PATH = savedBasePath;
+            });
+
+            it('keeps the opaque-origin iframe on the application host when no content domain is set', async () => {
+                delete process.env.EXE_CONTENT_DOMAIN;
+                const customApp = new Elysia().use(createPagesRoutes({ ...mockDeps, template: capture }));
+
+                await customApp.handle(new Request('http://app.test/view/public-view-id-57'));
+
+                expect(templateData.contentSrc).toBeNull();
+                expect(templateData.sandboxTokens).toBe(PUBLIC_VIEW_SANDBOX);
+                expect(templateData.sandboxTokens).not.toContain('allow-same-origin');
+                expect(templateData.referrerPolicy).toBe('no-referrer');
+            });
+
+            it('points the iframe at the content host derived for the view when a content domain is set', async () => {
+                process.env.EXE_CONTENT_DOMAIN = 'content.test:8443';
+                process.env.BASE_PATH = '/exe';
+                const customApp = new Elysia().use(createPagesRoutes({ ...mockDeps, template: capture }));
+
+                await customApp.handle(new Request('https://app.test/view/public-view-id-57'));
+
+                const label = contentLabel('view', 'public-view-id-57', 'https://app.test');
+                expect(templateData.contentSrc).toBe(
+                    `https://${label}.content.test:8443/exe/content/${encodeAppOrigin('https://app.test')}` +
+                        '/view/public-view-id-57/index.html',
+                );
+                expect(templateData.sandboxTokens).toBe(CONTENT_DOMAIN_SANDBOX);
+                expect(templateData.referrerPolicy).toBe('strict-origin-when-cross-origin');
+            });
         });
 
         it('should return 404 for an enabled link when the site disables public links', async () => {

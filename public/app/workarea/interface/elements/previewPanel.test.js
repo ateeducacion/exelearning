@@ -1,3 +1,4 @@
+import PreviewContentHost from './previewContentHost.js';
 import PreviewPanelManager from './previewPanel.js';
 
 /**
@@ -2407,6 +2408,368 @@ describe('PreviewPanelManager', () => {
       await manager.refresh();
 
       expect(swRefreshSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('content domain mode', () => {
+    const HOST_URL = 'https://pabc.content.test/content/token/preview/uuid-1/host.html';
+    let files;
+
+    beforeEach(() => {
+      files = { 'index.html': new ArrayBuffer(4) };
+      window.eXeLearning.config = { previewContentHostUrl: HOST_URL };
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: true, files });
+      manager = new PreviewPanelManager();
+    });
+
+    afterEach(() => {
+      manager.destroy();
+    });
+
+    it('is off unless the server provides a host page URL', () => {
+      delete window.eXeLearning.config;
+      expect(manager._contentHostUrl()).toBeNull();
+      window.eXeLearning.config = { previewContentHostUrl: HOST_URL };
+      expect(manager._contentHostUrl()).toBe(HOST_URL);
+    });
+
+    it('creates one message client per preview iframe, for the origin the server gave', () => {
+      const host = manager._getContentHost(manager.iframe);
+
+      expect(host.origin).toBe('https://pabc.content.test');
+      expect(host.iframe).toBe(manager.iframe);
+      expect(manager._getContentHost(manager.iframe)).toBe(host);
+      expect(manager._getContentHost(manager.pinnedIframe)).not.toBe(host);
+    });
+
+    it('sends the generated preview to the content host and never uses the Service Worker or blob paths', async () => {
+      const host = manager._getContentHost(manager.iframe);
+      const sendContent = vi.spyOn(host, 'sendContent').mockResolvedValue({ fileCount: 1 });
+      const swRefresh = vi.spyOn(manager, 'refreshWithServiceWorker');
+      const blobRefresh = vi.spyOn(manager, 'refreshWithBlobUrl');
+
+      await manager.refresh();
+
+      expect(sendContent).toHaveBeenCalledWith(files, { openExternalLinksInNewWindow: true });
+      expect(swRefresh).not.toHaveBeenCalled();
+      expect(blobRefresh).not.toHaveBeenCalled();
+      expect(manager.isLoading).toBe(false);
+    });
+
+    it('targets the pinned iframe when the preview is pinned', async () => {
+      manager.isPinned = true;
+      const pinnedHost = manager._getContentHost(manager.pinnedIframe);
+      const sendContent = vi.spyOn(pinnedHost, 'sendContent').mockResolvedValue({ fileCount: 1 });
+
+      await manager.refresh();
+
+      expect(sendContent).toHaveBeenCalled();
+    });
+
+    it('shows an error and does not fall back when the content host fails', async () => {
+      const host = manager._getContentHost(manager.iframe);
+      vi.spyOn(host, 'sendContent').mockRejectedValue(new Error('content domain unreachable'));
+      const reset = vi.spyOn(host, 'reset');
+      const showError = vi.spyOn(manager, 'showError').mockImplementation(() => {});
+      const blobRefresh = vi.spyOn(manager, 'refreshWithBlobUrl');
+      const swRefresh = vi.spyOn(manager, 'refreshWithServiceWorker');
+
+      await manager.refresh();
+
+      expect(showError).toHaveBeenCalledWith('content domain unreachable');
+      expect(reset).toHaveBeenCalled();
+      expect(blobRefresh).not.toHaveBeenCalled();
+      expect(swRefresh).not.toHaveBeenCalled();
+    });
+
+    it('shows an error when the preview cannot be generated', async () => {
+      window.SharedExporters.generatePreviewForSW.mockResolvedValue({ success: false, error: 'export failed' });
+      const showError = vi.spyOn(manager, 'showError').mockImplementation(() => {});
+
+      await manager.refresh();
+
+      expect(showError).toHaveBeenCalledWith('export failed');
+    });
+
+    it('fails when there is no iframe to show the preview in', async () => {
+      manager.iframe = null;
+      await expect(manager.refreshWithContentHost()).rejects.toThrow('No iframe available');
+    });
+
+    it('asks the content host whether the preview is still there', async () => {
+      expect(await manager._checkServiceWorkerContent()).toBe(false);
+
+      const host = manager._getContentHost(manager.iframe);
+      vi.spyOn(host, 'hasContent').mockResolvedValue(true);
+      expect(await manager._checkServiceWorkerContent()).toBe(true);
+
+      manager.isPinned = true;
+      expect(await manager._checkServiceWorkerContent()).toBe(false);
+    });
+
+    it('refreshes when the content host lost the preview, only while it is visible', () => {
+      const refresh = vi.spyOn(manager, 'refresh').mockResolvedValue();
+
+      manager._onContentHostMessage({ type: 'CONTENT_NEEDED' });
+      expect(refresh).not.toHaveBeenCalled();
+
+      manager.isOpen = true;
+      manager._onContentHostMessage({ type: 'CONTENT_NEEDED' });
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+
+    it('exports the ELPX when the content asks for it, and ignores other messages', () => {
+      const download = vi.spyOn(manager, '_downloadElpx').mockResolvedValue();
+
+      manager._onContentHostMessage({ type: 'something-else' });
+      expect(download).not.toHaveBeenCalled();
+
+      manager._onContentHostMessage({ type: 'exe-download-elpx' });
+      expect(download).toHaveBeenCalledTimes(1);
+    });
+
+    it('routes messages from the host page client to the panel', () => {
+      const onMessage = vi.spyOn(manager, '_onContentHostMessage').mockImplementation(() => {});
+      manager._getContentHost(manager.iframe).onMessage({ type: 'CONTENT_NEEDED' });
+      expect(onMessage).toHaveBeenCalledWith({ type: 'CONTENT_NEEDED' });
+    });
+
+    describe('preview in a new tab', () => {
+      const SANDBOX = 'allow-scripts allow-same-origin allow-popups';
+      let tab;
+
+      /** A loaded, empty document, as the tab has after it loads or reloads its page. */
+      const emptyDocument = () => {
+        const doc = document.implementation.createHTMLDocument('');
+        Object.defineProperty(doc, 'readyState', { value: 'complete', configurable: true });
+        return doc;
+      };
+
+      /** The tab once it shows the empty page that the editor opened in it. */
+      const emptyTab = () => ({
+        closed: false,
+        opener: window,
+        location: { href: manager._previewTabUrl() },
+        document: emptyDocument(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      });
+
+      beforeEach(() => {
+        tab = emptyTab();
+        manager.iframe.setAttribute('sandbox', SANDBOX);
+        manager.iframe.title = 'Content preview';
+      });
+
+      it('offers the action', () => {
+        manager.init();
+        expect(manager.extractButton.hidden).toBe(false);
+        expect(manager.pinnedExtractButton.hidden).toBe(false);
+      });
+
+      it('opens the empty page below the base path of the application', () => {
+        expect(manager._previewTabUrl()).toBe(`${window.location.origin}/preview-tab.html`);
+
+        window.eXeLearning.app.getBasePath = () => '/exe';
+        expect(manager._previewTabUrl()).toBe(`${window.location.origin}/exe/preview-tab.html`);
+        delete window.eXeLearning.app.getBasePath;
+      });
+
+      it('opens an empty tab of this origin and shows the preview in a sandboxed frame inside it', async () => {
+        const open = vi.spyOn(window, 'open').mockReturnValue(tab);
+        const send = vi.spyOn(PreviewContentHost.prototype, 'sendContent').mockResolvedValue({ fileCount: 1 });
+
+        await manager.extractToNewTab();
+
+        expect(open).toHaveBeenCalledWith(`${window.location.origin}/preview-tab.html`, '_blank');
+        expect(manager._popupWindow).toBe(tab);
+        expect(manager._popupMonitorTimer).not.toBeNull();
+        // Nothing is sent until the empty page has loaded.
+        expect(send).not.toHaveBeenCalled();
+        const [, onLoad, options] = tab.addEventListener.mock.calls.find(([type]) => type === 'load');
+        expect(options).toEqual({ once: true });
+        await onLoad();
+
+        const frames = tab.document.querySelectorAll('iframe');
+        expect(frames).toHaveLength(1);
+        expect(frames[0].getAttribute('sandbox')).toBe(SANDBOX);
+        expect(tab.document.title).toBe('Content preview');
+        // The content can read top.opener: the tab must not keep the editor window there.
+        expect(tab.opener).toBeNull();
+
+        // The host page in that frame talks to this tab, on the origin the server gave.
+        expect(manager._tabHost.iframe).toBe(frames[0]);
+        expect(manager._tabHost.win).toBe(tab);
+        expect(manager._tabHost.origin).toBe('https://pabc.content.test');
+
+        // The panel is closed, so the files go to the tab, which keeps the page it is on.
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(send.mock.contexts[0]).toBe(manager._tabHost);
+        expect(send).toHaveBeenCalledWith(files, { openExternalLinksInNewWindow: true }, { keepPage: true });
+      });
+
+      it('gives the frame no permissions when the panel frame has no sandbox list', () => {
+        manager.iframe.removeAttribute('sandbox');
+        manager._popupWindow = tab;
+
+        expect(manager._contentHostTab().iframe.getAttribute('sandbox')).toBe('');
+      });
+
+      it('does nothing when the browser blocks the tab', async () => {
+        vi.spyOn(window, 'open').mockReturnValue(null);
+        const refresh = vi.spyOn(manager, 'refresh');
+
+        await manager.extractToNewTab();
+
+        expect(manager._popupWindow).toBeNull();
+        expect(refresh).not.toHaveBeenCalled();
+      });
+
+      it('sends the files once and shows them in the tab too while the panel is open', async () => {
+        manager.isOpen = true;
+        manager._popupWindow = tab;
+        const panelSend = vi.spyOn(manager._getContentHost(manager.iframe), 'sendContent').mockResolvedValue({});
+        const tabHost = manager._contentHostTab();
+        const tabSend = vi.spyOn(tabHost, 'sendContent');
+        const tabShow = vi.spyOn(tabHost, 'showContent').mockResolvedValue({});
+
+        await manager.refresh();
+
+        expect(panelSend).toHaveBeenCalledWith(files, { openExternalLinksInNewWindow: true });
+        expect(tabShow).toHaveBeenCalledWith({ keepPage: true });
+        expect(tabSend).not.toHaveBeenCalled();
+      });
+
+      it('resets both connections when the preview cannot be shown', async () => {
+        manager.isOpen = true;
+        manager._popupWindow = tab;
+        const panelHost = manager._getContentHost(manager.iframe);
+        vi.spyOn(panelHost, 'sendContent').mockResolvedValue({});
+        const tabHost = manager._contentHostTab();
+        vi.spyOn(tabHost, 'showContent').mockRejectedValue(new Error('tab unreachable'));
+        const resets = [vi.spyOn(panelHost, 'reset'), vi.spyOn(tabHost, 'reset')];
+        const showError = vi.spyOn(manager, 'showError').mockImplementation(() => {});
+
+        await manager.refresh();
+
+        expect(showError).toHaveBeenCalledWith('tab unreachable');
+        for (const reset of resets) expect(reset).toHaveBeenCalled();
+      });
+
+      it('keeps one frame while the tab stays as it is', () => {
+        manager._popupWindow = tab;
+        const host = manager._contentHostTab();
+
+        expect(manager._contentHostTab()).toBe(host);
+        expect(tab.document.querySelectorAll('iframe')).toHaveLength(1);
+      });
+
+      it('waits for the empty page to load before touching the tab', () => {
+        manager._popupWindow = tab;
+        // window.open() returns the tab while it still shows its first, blank document.
+        tab.location.href = 'about:blank';
+        expect(manager._contentHostTab()).toBeNull();
+
+        tab.location.href = manager._previewTabUrl();
+        Object.defineProperty(tab.document, 'readyState', { value: 'loading', configurable: true });
+        expect(manager._contentHostTab()).toBeNull();
+        expect(tab.document.querySelectorAll('iframe')).toHaveLength(0);
+
+        Object.defineProperty(tab.document, 'readyState', { value: 'complete', configurable: true });
+        expect(manager._contentHostTab()).not.toBeNull();
+      });
+
+      it('never writes to another page of this origin that the user opened in the tab', () => {
+        manager._popupWindow = tab;
+        const destroy = vi.spyOn(manager._contentHostTab(), 'destroy');
+
+        tab.location.href = `${window.location.origin}/workarea?project=other`;
+        tab.document = emptyDocument();
+        tab.document.body.innerHTML = '<main>Another project</main>';
+
+        expect(manager._contentHostTab()).toBeNull();
+        expect(destroy).toHaveBeenCalled();
+        expect(tab.document.body.innerHTML).toBe('<main>Another project</main>');
+      });
+
+      it('puts the frame back and fills it after the tab is reloaded', () => {
+        vi.useFakeTimers();
+        const refresh = vi.spyOn(manager, 'refresh').mockResolvedValue();
+        manager._popupWindow = tab;
+        const first = manager._contentHostTab();
+        const destroy = vi.spyOn(first, 'destroy');
+        manager._setupPopupMonitor();
+
+        // The frame is empty until a refresh loads the host page in it.
+        vi.advanceTimersByTime(500);
+        expect(refresh).toHaveBeenCalledTimes(1);
+        vi.spyOn(first.iframe, 'src', 'get').mockReturnValue(HOST_URL);
+        vi.advanceTimersByTime(2000);
+        expect(refresh).toHaveBeenCalledTimes(1);
+
+        // A reload leaves the tab with a new, empty document.
+        tab.document = emptyDocument();
+        vi.advanceTimersByTime(500);
+
+        expect(destroy).toHaveBeenCalled();
+        expect(manager._tabHost).not.toBe(first);
+        expect(tab.document.querySelectorAll('iframe')).toHaveLength(1);
+        expect(refresh).toHaveBeenCalledTimes(2);
+        vi.useRealTimers();
+      });
+
+      it('leaves the tab alone once the user takes it to another site', async () => {
+        manager._popupWindow = tab;
+        const tabHost = manager._contentHostTab();
+        const destroy = vi.spyOn(tabHost, 'destroy');
+        const panelSend = vi.spyOn(manager._getContentHost(manager.iframe), 'sendContent').mockResolvedValue({});
+        Object.defineProperty(tab, 'location', {
+          get() {
+            throw new DOMException('Blocked a frame', 'SecurityError');
+          },
+        });
+
+        await manager.refresh();
+
+        expect(destroy).toHaveBeenCalled();
+        expect(manager._tabHost).toBeNull();
+        expect(panelSend).toHaveBeenCalled();
+      });
+
+      it('routes messages from the host page in the tab to the panel', () => {
+        manager._popupWindow = tab;
+        const onMessage = vi.spyOn(manager, '_onContentHostMessage').mockImplementation(() => {});
+
+        manager._contentHostTab().onMessage({ type: 'CONTENT_NEEDED' });
+
+        expect(onMessage).toHaveBeenCalledWith({ type: 'CONTENT_NEEDED' });
+      });
+
+      it('has no tab frame without an open tab', () => {
+        expect(manager._contentHostTab()).toBeNull();
+        manager._popupWindow = { ...tab, closed: true };
+        expect(manager._contentHostTab()).toBeNull();
+      });
+
+      it('disconnects from the tab on destroy', () => {
+        manager._popupWindow = tab;
+        const destroy = vi.spyOn(manager._contentHostTab(), 'destroy');
+
+        manager.destroy();
+
+        expect(destroy).toHaveBeenCalled();
+        expect(manager._tabHost).toBeNull();
+      });
+    });
+
+    it('disconnects from the content host on destroy', () => {
+      const host = manager._getContentHost(manager.iframe);
+      const destroy = vi.spyOn(host, 'destroy');
+
+      manager.destroy();
+
+      expect(destroy).toHaveBeenCalled();
+      expect(manager._contentHosts.size).toBe(0);
     });
   });
 

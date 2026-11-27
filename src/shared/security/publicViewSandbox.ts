@@ -14,6 +14,11 @@
  * source of truth (R2) for the sandbox tokens and the matching response headers,
  * so the iframe attribute and the response CSP never drift apart.
  *
+ * A deployment may instead serve the content from a separate content domain
+ * (`EXE_CONTENT_DOMAIN`, see `src/utils/content-domain.ts`). That mode has its
+ * own tokens and headers below; the opaque-origin policy of the application
+ * host is unchanged by it.
+ *
  * Requirements implemented (from the study, §6.2.1):
  * - R1: opaque origin by default — `allow-same-origin` is deliberately omitted.
  * - R2: one helper, no duplicated sandbox strings per template.
@@ -69,13 +74,42 @@ export function resolvePublicViewCspProfile(env: NodeJS.ProcessEnv = process.env
 }
 
 /**
+ * Sandbox tokens for content served from a content domain (`EXE_CONTENT_DOMAIN`).
+ *
+ * There the isolation boundary is the origin itself: the content runs on its
+ * own site, so `allow-same-origin` is granted to let it keep that origin
+ * (storage, Service Workers and nested embeds such as video players work). The
+ * sandbox is kept for what the origin does not cover: no `allow-top-navigation`
+ * and no `allow-modals`.
+ *
+ * Never use these tokens for content served from the application host.
+ */
+export const CONTENT_DOMAIN_SANDBOX = `${PUBLIC_VIEW_SANDBOX} allow-same-origin`;
+
+/** `referrerpolicy` of the opaque-origin iframe: do not leak the public URL. */
+export const PUBLIC_VIEW_REFERRER_POLICY = 'no-referrer';
+
+/**
+ * Referrer policy for the content-domain iframe and its responses. Embedded
+ * players (YouTube and others) refuse to play without a `Referer` naming the
+ * embedder; this sends the origin only, never the path.
+ */
+export const CONTENT_DOMAIN_REFERRER_POLICY = 'strict-origin-when-cross-origin';
+
+/**
  * Build the Content-Security-Policy header value for public-view content
  * responses. Always starts with the `sandbox` directive (R3) followed by the
  * restrictive resource directives of the selected profile (R4).
+ *
+ * Without `appOrigin` this is the opaque-origin policy of the application host.
+ * With `appOrigin` it is the content-domain policy: the content keeps its own
+ * origin and may only be framed by that application origin or by itself.
  */
-export function publicViewCspHeader(profile: PublicViewCspProfile = 'compatible'): string {
-    const sandbox = `sandbox ${PUBLIC_VIEW_SANDBOX}`;
-    const shared = ["object-src 'none'", "base-uri 'none'", "frame-ancestors 'self'"];
+export function publicViewCspHeader(profile: PublicViewCspProfile = 'compatible', appOrigin?: string): string {
+    const sandbox = `sandbox ${appOrigin ? CONTENT_DOMAIN_SANDBOX : PUBLIC_VIEW_SANDBOX}`;
+    // On a content domain 'self' is the content origin (a document may frame its own pages).
+    const frameAncestors = appOrigin ? `frame-ancestors 'self' ${appOrigin}` : "frame-ancestors 'self'";
+    const shared = ["object-src 'none'", "base-uri 'none'", frameAncestors];
 
     if (profile === 'strict') {
         return [
@@ -114,4 +148,49 @@ export function publicViewCspHeader(profile: PublicViewCspProfile = 'compatible'
  */
 export function publicViewPermissionsPolicy(): string {
     return ['camera=()', 'microphone=()', 'geolocation=()', 'payment=()'].join(', ');
+}
+
+/**
+ * Response headers for content served from a content domain. The application
+ * origin may read the response (`Access-Control-Allow-Origin`) so the loader can
+ * tell a served document from an error instead of showing a blank frame.
+ */
+export function contentDomainHeaders(
+    appOrigin: string,
+    profile: PublicViewCspProfile = 'compatible',
+): Record<string, string> {
+    return {
+        'Content-Security-Policy': publicViewCspHeader(profile, appOrigin),
+        'Permissions-Policy': publicViewPermissionsPolicy(),
+        'Referrer-Policy': CONTENT_DOMAIN_REFERRER_POLICY,
+        'X-Content-Type-Options': 'nosniff',
+        'Access-Control-Allow-Origin': appOrigin,
+        'Cache-Control': 'no-store',
+    };
+}
+
+/**
+ * Response headers for the preview host page served on a content domain: the
+ * small trusted page that receives the generated preview from the workarea and
+ * hands it to that origin's Service Worker. It runs only its own script, may be
+ * framed only by the application origin, and loads nothing from elsewhere.
+ */
+export function previewHostPageHeaders(appOrigin: string): Record<string, string> {
+    return {
+        'Content-Security-Policy': [
+            "default-src 'none'",
+            "script-src 'self'",
+            "worker-src 'self'",
+            "frame-src 'self'",
+            "connect-src 'self'",
+            "style-src 'unsafe-inline'",
+            "base-uri 'none'",
+            "form-action 'none'",
+            `frame-ancestors ${appOrigin}`,
+        ].join('; '),
+        'Permissions-Policy': publicViewPermissionsPolicy(),
+        'Referrer-Policy': CONTENT_DOMAIN_REFERRER_POLICY,
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store',
+    };
 }

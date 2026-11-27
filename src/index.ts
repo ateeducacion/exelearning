@@ -35,6 +35,8 @@ import { webSocketInfoRoutes } from './routes/websocket-info';
 import { yjsDebugRoutes } from './routes/yjs-debug';
 import { getAppVersion } from './utils/version';
 import { secretsBootError } from './utils/env';
+import { contentDomainBootError } from './utils/content-domain';
+import { contentHostGuard } from './routes/content-host';
 import { getFilesDir } from './services/file-helper';
 import { serveFilesDirFile } from './services/files-dir-response';
 import { db, closeDb } from './db/client';
@@ -174,6 +176,9 @@ const mermaidLibHandler = ({ params }: { params: { '*': string } }) => {
 const mermaidLibBaseHandler = () => mermaidLibHandler({ params: { '*': '' } });
 
 const app = new Elysia()
+    // === CONTENT DOMAIN (EXE_CONTENT_DOMAIN) ===
+    // Must stay first: see contentHostGuard.
+    .use(contentHostGuard())
     // === GLOBAL ERROR HANDLER ===
     .onError(({ code, error, request, set }) => {
         // Determine HTTP status code
@@ -651,7 +656,7 @@ function assertProductionSecrets(): void {
     // Keyed on BOTH APP_ENV=prod and NODE_ENV=production (see src/utils/env.ts)
     // so the default-secret refusal also fires on non-Docker prod deploys that
     // only set APP_ENV=prod, not just the Docker image that sets NODE_ENV.
-    const error = secretsBootError();
+    const error = secretsBootError() || contentDomainBootError();
     if (error) {
         console.error(error);
         process.exit(1);

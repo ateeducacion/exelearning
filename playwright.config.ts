@@ -73,6 +73,32 @@ const dynamicWebServer = process.env.E2E_BASE_URL
           env: { ...process.env, ...dynamicServerEnv },
       };
 
+// Second dynamic server (port 3003) with the optional content domain enabled and a
+// non-empty BASE_PATH. Only specs/content-domain*.spec.ts use it; every other spec keeps
+// running against the default server above, where the mode is off.
+// The app is reached at http://exe-app.localhost:3003/exe and the content at
+// http://<label>.exe-content.localhost:3003/exe: two different sites, both loopback.
+const contentDomainWebServer = process.env.E2E_BASE_URL
+    ? undefined
+    : {
+          command: 'bun src/index.ts',
+          // Readiness is probed over 127.0.0.1: Node does not resolve *.localhost on every platform.
+          url: 'http://127.0.0.1:3003/exe/login',
+          reuseExistingServer: !process.env.CI,
+          timeout: 120 * 1000,
+          stdout: 'pipe' as const,
+          stderr: 'pipe' as const,
+          env: {
+              ...process.env,
+              ...dynamicServerEnv,
+              FILES_DIR: path.join(os.tmpdir(), 'exelearning-e2e-content-domain'),
+              PORT: '3003',
+              APP_PORT: '3003',
+              BASE_PATH: '/exe',
+              EXE_CONTENT_DOMAIN: 'exe-content.localhost:3003',
+          },
+      };
+
 // Static server config (port 3002)
 const staticWebServer = {
     command: 'bun x serve dist/static -p 3002 --no-request-logging',
@@ -97,11 +123,13 @@ function getWebServerConfig() {
         return staticWebServer;
     }
     if (isRunningOnlyDynamic) {
-        return dynamicWebServer;
+        return [dynamicWebServer, contentDomainWebServer].filter((server): server is NonNullable<typeof server> =>
+            Boolean(server),
+        );
     }
-    // Mixed or all projects - start both servers
-    return [dynamicWebServer, staticWebServer].filter((server): server is NonNullable<typeof server> =>
-        Boolean(server),
+    // Mixed or all projects - start every server
+    return [dynamicWebServer, contentDomainWebServer, staticWebServer].filter(
+        (server): server is NonNullable<typeof server> => Boolean(server),
     );
 }
 
